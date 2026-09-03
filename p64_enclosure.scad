@@ -14,6 +14,10 @@
 //  the back) so the controller USB-C ports face DOWN. The LED image
 //  therefore has to be rotated 90 deg in firmware.
 //
+//  The shell is a wedge: depth_bottom deep where the controller and
+//  cables live, thinning to depth_top at the top edge. The back face is
+//  one flat inclined plane, so the print still lies flat on it.
+//
 //  part = "print"     -> back face on the bed, no supports needed
 //  part = "assembly"  -> shell + translucent panel / chip / plug mock-ups
 //  part = "section_x" -> cut through the cable pocket
@@ -33,13 +37,14 @@ holes_native    = [[0,56.85],[0,-56.85],[56.85,44],[-56.85,44],[56.85,-44],[-56.
 hub75_in_native = [-35.0, 5.4];   // centre of the HUB75 IN header, panel orientation, seen from the back
 
 /* [Shell] */
-wall     = 2.0;    // side wall thickness
-back_t   = 2.4;    // back wall thickness
-depth    = 22;     // outer depth behind the frame back face
-tilt     = 12;     // lean-back angle in degrees
-r_in     = 0.8;    // pocket corner radius
-ledge_w  = 1.5;    // seating ledge at the frame back face (0 = none)
-ledge_t  = 1.5;
+wall         = 2.0;    // side wall thickness
+back_t       = 2.4;    // back wall thickness (perpendicular to the back face)
+depth_bottom = 22;     // outer depth behind the frame back face at the bottom edge
+depth_top    = 8;      // outer depth at the top edge (>= 8 keeps the top screw heads recessed)
+tilt         = 12;     // lean-back angle in degrees
+r_in         = 0.8;    // pocket corner radius
+ledge_w      = 1.5;    // seating ledge at the frame back face (0 = none)
+ledge_t      = 1.5;
 
 /* [Screws] */
 screw_len  = 10;   // M3 screw length
@@ -88,9 +93,13 @@ $fn = 48;
 half_in  = panel/2 + panel_clr;
 half_out = half_in + wall;
 r_out    = r_in + wall;
-cav_d    = depth - back_t;                 // interior depth behind the frame back face
-wedge    = (depth + lip) * tan(tilt);      // extra height of the wedge at the front bottom
-floor_t  = screw_len - engage;             // boss floor between screw head and panel
+back_ang = atan((depth_bottom - depth_top) / (2*half_out));   // slope of the back face
+z_mid    = (depth_bottom + depth_top) / 2;                     // back face height at y = 0
+back_tz  = back_t / cos(back_ang);                             // back wall thickness measured along Z
+function z_back(y) = z_mid - y * tan(back_ang);                // outer back face
+function z_cav(y)  = z_back(y) - back_tz;                      // cavity back face
+wedge    = (depth_bottom + lip) * tan(tilt);                   // extra height of the wedge at the front bottom
+floor_t  = screw_len - engage;                                 // boss floor between screw head and panel
 
 function rot2(p, a) = [p[0]*cos(a) - p[1]*sin(a), p[0]*sin(a) + p[1]*cos(a)];
 function contains(v, x) = len([for (e = v) if (abs(e - x) < 1e-6) e]) > 0;
@@ -105,27 +114,46 @@ mic1 = chip_pt(mic1_c[0], mic1_c[1]);
 mic2 = chip_pt(mic2_c[0], mic2_c[1]);
 usb  = [for (y = usb_yc) chip_pt(0, y)];
 pocket_xc = (usb[0][0] + usb[1][0]) / 2;
+chip_top_y = max([for (c = [[0,0],[chip_size[0],0],chip_size,[0,chip_size[1]]]) chip_pt(c[0], c[1])[1]]);
 
-echo(str("outer size X x Y (front) = ", 2*half_out, " x ", 2*half_out + wedge, "  depth = ", depth + lip));
-echo(str("cavity clear depth = ", cav_d, "  wedge = ", wedge));
-echo(str("holes = ", holes));
+echo(str("outer size X x Y (front) = ", 2*half_out, " x ", 2*half_out + wedge,
+         "  depth bottom/top = ", depth_bottom + lip, "/", depth_top + lip, "  back slope = ", back_ang, " deg"));
+echo(str("clear depth: bottom edge ", z_cav(-half_in), "  chip top edge (y=", chip_top_y, ") ", z_cav(chip_top_y),
+         "  y=0 ", z_cav(0), "  top edge ", z_cav(half_in), "  wedge = ", wedge));
+echo(str("holes = ", holes, "  top boss back face z = ", z_back(max([for (h = holes) h[1]]))));
 echo(str("chip corners = ", chip_pt(0,0), " ", chip_pt(chip_size[0],0), " ", chip_pt(chip_size[0],chip_size[1]), " ", chip_pt(0,chip_size[1])));
 echo(str("usb ports = ", usb, "  boot = ", boot, "  rst = ", rst, "  mic1 = ", mic1, "  mic2 = ", mic2));
 
 // ---------------- primitives ----------------
 module rrect(w, h, r) { offset(r = r) square([w - 2*r, h - 2*r], center = true); }
 
+// local frame lying on the outer back face at height y: XY in the face, +Z outwards
+module on_back(y) { translate([0, y, z_back(y)]) rotate([-back_ang, 0, 0]) children(); }
+
+module back_slab(th = 0.01) {          // thin slab whose top face is the inclined back plane
+    H = 2*half_out / cos(back_ang);
+    translate([0, 0, z_mid]) rotate([-back_ang, 0, 0]) translate([0, 0, -th])
+        linear_extrude(th) rrect(2*half_out, H, r_out);
+}
+
 module outer_body() {
     hull() {
         translate([0, -wedge/2, -lip])
             linear_extrude(0.01) rrect(2*half_out, 2*half_out + wedge, r_out);
-        translate([0, 0, depth - 0.01])
-            linear_extrude(0.01) rrect(2*half_out, 2*half_out, r_out);
+        back_slab();
     }
 }
 
-module pocket() {
-    translate([0, 0, -lip - 1]) linear_extrude(lip + 1 + cav_d) rrect(2*half_in, 2*half_in, r_in);
+module below_cavity_back() {           // half-space under the cavity back plane
+    translate([0, 0, z_mid - back_tz]) rotate([-back_ang, 0, 0])
+        translate([-500, -500, -1000]) cube([1000, 1000, 1000]);
+}
+
+module cavity() {
+    intersection() {
+        translate([0, 0, -lip - 1]) linear_extrude(lip + 1 + depth_bottom) rrect(2*half_in, 2*half_in, r_in);
+        below_cavity_back();
+    }
 }
 
 module ledge() {
@@ -140,24 +168,23 @@ module ledge() {
     }
 }
 
-module boss(p) {
-    translate([p[0], p[1], 0]) cylinder(d = boss_od, h = cav_d + 0.01);
-    if (abs(p[0]) > abs(p[1])) {           // boss near a side wall: rib along X
+module boss(p) {                        // tall; clipped to the outer body in shell()
+    h = depth_bottom + 1;
+    translate([p[0], p[1], 0]) cylinder(d = boss_od, h = h);
+    if (abs(p[0]) > abs(p[1])) {        // boss near a side wall: rib along X
         sx  = p[0] > 0 ? 1 : -1;
         len = half_in + 1 - abs(p[0]);
-        translate([(p[0] + sx*(half_in + 1))/2, p[1], (cav_d + 0.01)/2])
-            cube([len, web_t, cav_d + 0.01], center = true);
-    } else {                                // boss near top/bottom wall: rib along Y
+        translate([(p[0] + sx*(half_in + 1))/2, p[1], h/2]) cube([len, web_t, h], center = true);
+    } else {                             // boss near top/bottom wall: rib along Y
         sy  = p[1] > 0 ? 1 : -1;
         len = half_in + 1 - abs(p[1]);
-        translate([p[0], (p[1] + sy*(half_in + 1))/2, (cav_d + 0.01)/2])
-            cube([web_t, len, cav_d + 0.01], center = true);
+        translate([p[0], (p[1] + sy*(half_in + 1))/2, h/2]) cube([web_t, len, h], center = true);
     }
 }
 
 module boss_hole(p) {
-    translate([p[0], p[1], -1])       cylinder(d = screw_hole, h = depth + 2);
-    translate([p[0], p[1], floor_t])  cylinder(d = cb_d, h = depth);
+    translate([p[0], p[1], -1])       cylinder(d = screw_hole, h = depth_bottom + 3);
+    translate([p[0], p[1], floor_t])  cylinder(d = cb_d, h = depth_bottom + 3);
 }
 
 module plug_pocket() {
@@ -171,17 +198,18 @@ module cable_groove() {
     y0 = -half_out - wedge - 1;
     y1 = -half_in + 2;
     translate([pocket_xc - groove_w/2, y0, pocket_z[1] - 0.5])
-        cube([groove_w, y1 - y0, depth - pocket_z[1] + 1.5]);
+        cube([groove_w, y1 - y0, depth_bottom - pocket_z[1] + 1.5]);
 }
 
 module back_notch() {
-    translate([pocket_xc - notch_w/2, -half_out - 1, depth - back_t - 1])
-        cube([notch_w, notch_h + 1, back_t + 2]);
+    z0 = z_cav(-half_out) - 2;
+    translate([pocket_xc - notch_w/2, -half_out - 1, z0])
+        cube([notch_w, notch_h + 1, depth_bottom + 1 - z0]);
 }
 
 module vent_slot(x, y) {
-    translate([x, y, depth - back_t - 1])
-        linear_extrude(back_t + 2) offset(r = vent_w/2) square([0.01, vent_l - vent_w], center = true);
+    on_back(y) translate([x, 0, -back_tz - 1])
+        linear_extrude(back_tz + 2) offset(r = vent_w/2) square([0.01, vent_l - vent_w], center = true);
 }
 
 module vent_grid() {
@@ -190,11 +218,11 @@ module vent_grid() {
 }
 
 module back_hole(p, d) {
-    translate([p[0], p[1], depth - back_t - 1]) cylinder(d = d, h = back_t + 2);
+    on_back(p[1]) translate([p[0], 0, -back_tz - 1]) cylinder(d = d, h = back_tz + 2);
 }
 
 module label(txt, p, dx) {
-    translate([p[0] + dx, p[1], depth - label_d]) linear_extrude(label_d + 1)
+    on_back(p[1]) translate([p[0] + dx, 0, -label_d]) linear_extrude(label_d + 1)
         text(txt, size = label_size, halign = "right", valign = "center", font = "Liberation Sans:style=Bold");
 }
 
@@ -202,9 +230,9 @@ module label(txt, p, dx) {
 module shell() {
     difference() {
         union() {
-            difference() { outer_body(); pocket(); }
+            difference() { outer_body(); cavity(); }
             ledge();
-            for (p = holes) boss(p);
+            intersection() { union() { for (p = holes) boss(p); } outer_body(); }
         }
         for (p = holes) boss_hole(p);
         plug_pocket();
@@ -250,12 +278,15 @@ module ghost_plug() {   // right-angle USB-C plug in the POWER port, cable towar
     p = usb[0];
     zc = z_chip + chip_t + 1.6;
     color("black", 0.5) translate([p[0] - 6, p[1] - 12, zc - 3.25]) cube([12, 12, 6.5]);
-    color("black", 0.5) translate([p[0], p[1] - 8.5, zc]) cylinder(d = 3.5, h = depth + 15 - zc);
+    color("black", 0.5) translate([p[0], p[1] - 8.5, zc]) cylinder(d = 3.5, h = depth_bottom + 15 - zc);
 }
 
 // ---------------- output selection ----------------
+// print: lay the inclined back face flat on the bed
+module print_orient() { translate([0, 0, z_mid * cos(back_ang)]) rotate([180 + back_ang, 0, 0]) children(); }
+
 if (part == "shell") shell();
-if (part == "print") rotate([180, 0, 0]) translate([0, 0, -depth]) shell();
+if (part == "print") print_orient() shell();
 if (part == "assembly") { shell(); ghost_panel(); ghost_chip(); ghost_plug(); }
 if (part == "section_x") intersection() { union() { shell(); ghost_panel(); ghost_chip(); ghost_plug(); }
                                           translate([pocket_xc - 200, -200, -100]) cube([200, 400, 200]); }

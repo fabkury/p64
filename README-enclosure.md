@@ -19,13 +19,18 @@ leaning back 12 degrees.
 - **Fit:** pocket 128.6 x 128.6 mm (0.3 mm clearance per side), 2 mm walls, 2.4 mm back wall.
   The walls wrap 12 mm forward over the panel's plastic frame only, so the LED/mask edge
   stands ~2.5 mm proud and the front is nearly bezel-less.
-- **Size:** 132.6 mm wide, 132.6 mm tall at the back and 139.8 mm at the front (the wedge),
-  34 mm deep overall (12 mm lip + 22 mm shell). Total thickness with the panel: ~34.5 mm.
-- **Interior:** 19.6 mm clear behind the frame's back face. The mounted controller needs
-  roughly 9 mm, so there is ample room for the VH4 power plug and its wires.
+- **Size:** 132.6 mm wide, 132.6 mm tall at the back edge and 139.8 mm at the front (the
+  base wedge). The side profile is a wedge: 34 mm deep at the bottom (12 mm lip + 22 mm
+  shell) thinning to 20 mm at the top (12 + 8). The back face is one flat plane sloping
+  6 degrees, so the print still lies flat on it.
+- **Interior:** 19.4 mm clear at the bottom edge, 12.9 mm at the top edge of the controller,
+  5.8 mm at the top edge of the panel. The mounted controller needs roughly 9 mm and the
+  VH4 power plug with its wires about 8 mm, both in the deep half.
 - **Mounting:** six counterbored bosses on the panel's inserts, positions from Waveshare's
   drawing: (0, +-56.85) and (+-56.85, +-44) mm, rotated with the panel. M3 x 10 screws go in
-  from the back; the boss floor is 5 mm so about 5 mm of thread engages the insert.
+  from the back; the boss floor is 5 mm so about 5 mm of thread engages the insert. The two
+  top bosses are only 6.6 mm tall because of the wedge; their screw heads end up 1 mm below
+  the back face (keep `depth_top` at 8 mm or more, or use M3 x 8 there).
   A 1.5 mm seating ledge with a 45-degree underside supports the frame's outer rim all around.
 - **Tilt / stand:** the bottom wall thickens into a wedge so the whole base is one flat plane
   at 12 degrees. Base contact patch is 34 mm deep; the centre of gravity lands about 9 mm
@@ -59,9 +64,10 @@ inserted before closing the shell.
 
 ## Printing
 
-- Print `p64_enclosure_print.stl` as delivered: back face on the bed, no supports needed.
-  The only overhangs are the 12-degree base face, the 45-degree ledge and 6.5 mm bridges
-  over the screw counterbores.
+- Print `p64_enclosure_print.stl` as delivered: it already lies on its inclined back face,
+  no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
+  ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
+  Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
 - Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores and the
   debossed labels stay clean on the first layer.
@@ -84,7 +90,8 @@ the six holes should line up with the inserts without forcing.
 
 ## Main parameters (`p64_enclosure.scad`)
 
-- `depth` 22, `tilt` 12, `lip` 12, `wall` 2, `back_t` 2.4, `panel_clr` 0.3
+- `depth_bottom` 22, `depth_top` 8 (set equal for a flat back), `tilt` 12, `lip` 12,
+  `wall` 2, `back_t` 2.4, `panel_clr` 0.3
 - `screw_len` 10, `engage` 5, `cb_d` 6.5, `boss_od` 10
 - `panel_rot` 90 (set 0 for the un-rotated panel; the cable pocket then no longer applies)
 - `vents`, `pin_d`, `mic_d`, `label_size`
