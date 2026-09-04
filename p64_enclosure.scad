@@ -27,7 +27,7 @@
 part = "shell";            // "shell" | "print" | "assembly" | "section_x" | "section_y"
 
 /* [Panel] */
-panel      = 128;          // frame outer size (square)
+panel      = 127.8;        // frame outer size, measured in RGB-Matrix-P2-64x64-2D.dwg (Waveshare quotes 128)
 panel_clr  = 0.3;          // clearance per side between panel and pocket
 frame_d    = 12;           // depth of the plastic frame behind the LED PCB
 lip        = 12;           // how far the walls wrap forward over the frame (12 = frame only)
@@ -42,8 +42,8 @@ back_t       = 2.4;    // back wall thickness (perpendicular to the back face)
 depth_bottom = 22;     // outer depth behind the frame back face at the bottom edge
 depth_top    = 8;      // outer depth at the top edge (>= 8 keeps the top screw heads recessed)
 tilt         = 12;     // lean-back angle in degrees
-r_in         = 0.8;    // pocket corner radius
-ledge_w      = 1.5;    // seating ledge at the frame back face (0 = none)
+r_in         = 0.6;    // pocket corner radius (the frame corners are sharp; keep small)
+ledge_w      = 1.6;    // seating ledge at the frame back face (0 = none); the frame's outer wall is 1.6 mm
 ledge_t      = 1.5;
 
 /* [Screws] */
@@ -55,7 +55,8 @@ boss_od    = 10;
 web_t      = 2;    // rib joining each boss to the nearest wall
 
 /* [Controller] */
-z_chip      = 1.5;              // chip PCB back face above the frame back face (assumed 0..3 mm)
+z_chip      = 0.5;              // chip PCB back face above the frame back face; the chip edge overhangs the
+                                // frame rim by ~0.8 mm, so it must rest at or just above the rim (0..1 mm)
 chip_size   = [50.01, 42];
 chip_socket = [17.69, 10.54];   // HUB75 socket centre from the chip's top-left corner
 chip_t      = 1.6;
@@ -68,7 +69,7 @@ mic1_c      = [2.2, 30.7];      // microphones (from the product photo, +-1 mm)
 mic2_c      = [47.8, 30.7];
 
 /* [Cable] */
-pocket_w = 28;          // plug pocket width, covers both USB-C ports
+pocket_w = 30;          // plug pocket width, covers both USB-C ports with +-1 mm header-position slack
 pocket_z = [-2, 10.5];  // plug pocket z-range
 groove_w = 12;          // cable groove under the base (wide enough for either port)
 notch_w  = 14;          // cable exit notch at the bottom of the back wall
@@ -77,13 +78,12 @@ notch_h  = 6;
 /* [Back wall features] */
 vents           = true;
 vent_w          = 1.6;
-vent_l          = 40;
 vent_pitch      = 6;
 vent_xmax       = 42;
-vent_bands      = [28, -28];
+vent_bands      = [[28, 40], [-28, 36]];   // [centre y, slot length]; lower band shorter to clear the mic holes
 vent_skip_lower = [-18, -12];   // columns left out of the lower band for BOOT/RST
-pin_d      = 2.6;   // pin holes over BOOT / RESET
-mic_d      = 3.0;   // microphone holes
+pin_d      = 3.5;   // pin holes over BOOT / RESET (sized for +-1 mm header-position error)
+mic_d      = 3.5;   // microphone holes
 label_d    = 0.6;   // debossed label depth
 label_size = 2.4;
 
@@ -207,14 +207,14 @@ module back_notch() {
         cube([notch_w, notch_h + 1, depth_bottom + 1 - z0]);
 }
 
-module vent_slot(x, y) {
+module vent_slot(x, y, l) {
     on_back(y) translate([x, 0, -back_tz - 1])
-        linear_extrude(back_tz + 2) offset(r = vent_w/2) square([0.01, vent_l - vent_w], center = true);
+        linear_extrude(back_tz + 2) offset(r = vent_w/2) square([0.01, l - vent_w], center = true);
 }
 
 module vent_grid() {
-    for (by = vent_bands) for (x = [-vent_xmax : vent_pitch : vent_xmax])
-        if (!(by < 0 && contains(vent_skip_lower, x))) vent_slot(x, by);
+    for (b = vent_bands) for (x = [-vent_xmax : vent_pitch : vent_xmax])
+        if (!(b[0] < 0 && contains(vent_skip_lower, x))) vent_slot(x, b[0], b[1]);
 }
 
 module back_hole(p, d) {
