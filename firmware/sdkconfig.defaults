@@ -1,0 +1,73 @@
+# p64 firmware: ESP-IDF defaults for the Waveshare ESP32-S3-RGB-Matrix board.
+# Only deviations from ESP-IDF's own defaults are listed. The generated
+# sdkconfig is ignored by git; edit this file (or run `idf.py save-defconfig`).
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- Module: ESP32-S3-WROOM-2-N32R16V (32 MB octal flash, 16 MB octal PSRAM) ---
+CONFIG_ESPTOOLPY_OCT_FLASH=y
+CONFIG_ESPTOOLPY_FLASHMODE_OPI=y
+CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_DTR=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+# Boot even if the PSRAM does not answer, so a wrong RAM setting is a log line, not a brick.
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+
+# --- Partition table (two 4 MB OTA slots + storage), see partitions.csv ---
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# --- Console: the board's USB port is wired to the ESP32-S3's native USB (no UART bridge) ---
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# --- CPU / RTOS / compiler ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# --- HUB75 driver (esphome/esp-hub75): Waveshare ESP32-S3-RGB-Matrix pin map ---
+# From the board schematic and Waveshare's own sdkconfig.defaults.
+CONFIG_HUB75_BOARD_CUSTOM=y
+CONFIG_HUB75_PIN_R1=4
+CONFIG_HUB75_PIN_G1=5
+CONFIG_HUB75_PIN_B1=6
+CONFIG_HUB75_PIN_R2=7
+CONFIG_HUB75_PIN_G2=15
+CONFIG_HUB75_PIN_B2=16
+CONFIG_HUB75_PIN_A=18
+CONFIG_HUB75_PIN_B=8
+CONFIG_HUB75_PIN_C=3
+CONFIG_HUB75_PIN_D=42
+CONFIG_HUB75_PIN_E=9
+CONFIG_HUB75_PIN_LAT=40
+CONFIG_HUB75_PIN_OE=2
+CONFIG_HUB75_PIN_CLK=41
+
+# --- HUB75 panel: Waveshare RGB-Matrix-P2-64x64 (1/32 scan) ---
+CONFIG_HUB75_PANEL_WIDTH=64
+CONFIG_HUB75_PANEL_HEIGHT=64
+CONFIG_HUB75_WIRING_STANDARD=y
+# Driver IC unconfirmed; Waveshare's Arduino demos use FM6126A. Switch to
+# CONFIG_HUB75_DRIVER_GENERIC=y if the panel stays dark or shows garbage.
+CONFIG_HUB75_DRIVER_FM6126A=y
+CONFIG_HUB75_LAYOUT_ROWS=1
+CONFIG_HUB75_LAYOUT_COLS=1
+CONFIG_HUB75_LAYOUT_HORIZONTAL=y
+# ROTATE_0 = panel-native orientation (row 63 is the edge marked "down" by the
+# bouncing ball). The enclosure mounts the panel turned 90 degrees; switch to
+# ROTATE_90 or ROTATE_270 once that is known.
+CONFIG_HUB75_ROTATE_0=y
+
+# --- HUB75 quality / performance ---
+CONFIG_HUB75_BIT_DEPTH_8=y
+CONFIG_HUB75_GAMMA_CIE1931=y
+CONFIG_HUB75_CLK_20MHZ=y
+CONFIG_HUB75_MIN_REFRESH_RATE=60
+CONFIG_HUB75_LATCH_BLANKING=1
+CONFIG_HUB75_BRIGHTNESS=255
+CONFIG_HUB75_DOUBLE_BUFFER=y
+CONFIG_HUB75_IRAM_OPTIMIZATION=y

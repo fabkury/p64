@@ -1,0 +1,13 @@
+menu "p64"
+
+    config P64_MAX_BRIGHTNESS
+        int "Maximum panel brightness (0-255)"
+        range 0 255
+        default 255
+        help
+            Global cap applied to every scene, including the top of the
+            brightness fades. Lower it (for example to 64) when the board is
+            powered from a laptop USB port only: a full-white panel at 255 draws
+            close to the panel's 15 W rating and will brown out a weak supply.
+
+endmenu

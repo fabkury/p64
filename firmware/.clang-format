@@ -1,0 +1,8 @@
+# Same style as the esp-hub75 driver, so the two code bases read alike.
+BasedOnStyle: Google
+IndentWidth: 2
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortCaseLabelsOnASingleLine: true
+DerivePointerAlignment: false
+PointerAlignment: Right

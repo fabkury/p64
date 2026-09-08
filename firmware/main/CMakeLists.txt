@@ -1,0 +1,15 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "display.cpp"
+        "button.cpp"
+        "scenes/ball.cpp"
+        "scenes/fade.cpp"
+        "scenes/hue_wheel.cpp"
+    INCLUDE_DIRS
+        "."
+    PRIV_REQUIRES
+        esphome__esp-hub75
+        driver
+        esp_timer
+)
