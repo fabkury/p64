@@ -1,0 +1,32 @@
+We are staring at the metaphorical empty whiteboard of a new project. Let's build something great. The project is called "p64", in reference to the 64x64 pixels LED matrix that defines it.
+
+p64 is:
+ - a desktop RGB LED matrix
+ - USB-C-powered
+ - wi-fi connected
+ - "the RGB matrix chip": This is the driver board/chip: https://www.waveshare.com/esp32-s3-rgb-matrix.htm / http://docs.waveshare.com/ESP32-S3-RGB-Matrix. Its package contents include: ESP32-S3-RGB-Matrix x1, 8Ω 5W speaker x1, SH1.0 4pin cable ~100mm x1, Screws pack x1.
+ - "the LED matrix panel": This is the LED matrix: https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838 / http://docs.waveshare.com/RGB-Matrix-Px-64x64
+ - This is the power source: https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775
+
+The current repo has had some prior work developing the 3D-printed enclosure that this project will require. That enclosure has been ordered at an online 3D printing service and will arrive within a week or two. In the meantime, we can make progress in everything else but the final physical assembly that requires the enclosure. We can basically develop the entire project without the enclosure, that's not an issue (I am just explaining so you know where everything stands).
+
+The manufacturer of our driver board, Waveshare, provides this as example for building with it:
+ - https://github.com/waveshareteam/ESP32-S3-RGB-Matrix: For convenience, this repo is already cloned to reference\ESP32-S3-RGB-Matrix.
+
+To get us started, I need to confirm some basic functionalities using the project's hardware. Please study the matter and implement firmware for the RGB matrix chip that:
+ 1. Displays a bouncing ball for 20 seconds. The ball should bounce on the "floor", allowing me to learn which way is "down" on the square LED matrix.
+ 2. Fades from maximum brightness (all pixels fully white at full power) to minimum brightness (zero brightness if possible) over 20 seconds, then back for another 20 seconds.
+ 3. Displays a hue wheel, but stretched to the square shape of the LED matrix. In other words, display a "square hue wheel" if that makes sense. Display this for 20 seconds.
+ 4. Cycle back to item 1. Repeat the sequence.
+
+For your reference, the RGB matrix chip WILL be connected to this laptop soon. For now, it is not available. When it IS connected, feel free to read it and indeed feel free to flash the new firmware to it. The current firmware in the chip is not important. The chip is fully available to be studied, erased, flashed and manipulated for development purposes.
+
+The outcome that I am expecting now is:
+ - a robust session of question-asking where you ask me questions about this project and anything left poorly specified.
+ - a fully built firmware for the RGB matrix chip
+ - firmware flashed to the actual RGB matrix chip, so I can see it working in front of me
+ - a well-organized repository, well-positioned for intense development work over the next weeks and months
+
+One more comment:
+ - If you need the RGB matrix chip in order to develop firmware for it, just say so instead of trying to find your way around the unavailability of the chip right now. But if you don't need the RGB matrix chip in order to develop firmware for it, go ahead and develop.
+ - For developing this firmware, we will be using ESP-IDF, not Arduino.

@@ -1,0 +1,18 @@
+# Upstream clones kept locally for reference (see README.md)
+reference/
+
+# ESP-IDF build products (firmware/)
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+firmware/dependencies.lock.old
+
+# Editors and OS
+.vscode/
+.idea/
+.cache/
+*.swp
+Thumbs.db
+.DS_Store
+__pycache__/
