@@ -7,12 +7,17 @@ leaning back 12 degrees.
 
 ## Files
 
-| File | What it is |
+| Path | What it is |
 |---|---|
-| `p64_enclosure.scad` | Parametric OpenSCAD source (OpenSCAD 2021.01+). Everything below is a parameter. |
-| `p64_enclosure_print.stl` | Ready to slice, already in print orientation (back face on the bed). |
-| `p64_enclosure_print.3mf` | Same mesh, 3MF. |
-| `render_*.png` | Preview renders (back, front with mock-ups, side section, bottom). |
+| `src/p64_enclosure.scad` | Parametric OpenSCAD source (OpenSCAD 2021.01+). Everything below is a parameter. |
+| `output/p64_enclosure_print.stl` | Ready to slice, already in print orientation (back face on the bed). |
+| `output/p64_enclosure_print.3mf` | Same mesh, 3MF. |
+| `output/p64_enclosure_service.stl` | Bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. |
+| `output/render_*.png` | Preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
+| `input/RGB-Matrix-P2-64x64-2D.dwg`, `.pdf` | Waveshare's drawing of the panel frame (DWG and a PDF rendering of it). |
+| `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
+| `input/*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
+| `archive/2026-08-stand-concept/` | Earlier, abandoned concept (detachable stand, wall keyholes). Kept for reference only. |
 
 ## What the design does
 
@@ -68,7 +73,7 @@ inserted before closing the shell.
 
 ## Printing
 
-- Print `p64_enclosure_print.stl` as delivered: it already lies on its inclined back face,
+- Print `output/p64_enclosure_print.stl` as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -79,7 +84,7 @@ inserted before closing the shell.
 
 ## Verified against the Waveshare drawing
 
-`RGB-Matrix-P2-64x64-2D.dwg` (in this folder, identical to Waveshare's GitHub copy) contains
+`input/RGB-Matrix-P2-64x64-2D.dwg` (identical to Waveshare's GitHub copy) contains
 the plastic frame ("JXS-P2-128*128 bottom case") and the LED mask, not the PCB. Checked:
 
 | Item | Drawing | Model |
@@ -91,7 +96,7 @@ the plastic frame ("JXS-P2-128*128 bottom case") and the LED mask, not the PCB. 
 | Corner screw recesses | dia 6 at (+-56, +-56), M1 x 6 screws | inside the cavity, 3.7 mm from the ledge |
 | Pins | dia 3 x 3 mm at (+-56, -29) | inside the cavity, clear of ledge and bosses |
 
-The controller's own dimensions come from `ESP32-S3-RGB-Matrix-2D.pdf` (1:1 vector PDF).
+The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:1 vector PDF).
 
 ## Things that could not be verified
 
@@ -104,7 +109,7 @@ The controller's own dimensions come from `ESP32-S3-RGB-Matrix-2D.pdf` (1:1 vect
 Quick verification with the printed part: the panel should drop into the pocket by hand;
 the six holes should line up with the inserts without forcing.
 
-## Main parameters (`p64_enclosure.scad`)
+## Main parameters (`src/p64_enclosure.scad`)
 
 - `depth_bottom` 22, `depth_top` 8 (set equal for a flat back), `tilt` 12, `lip` 12,
   `wall` 2, `back_t` 2.4, `panel_clr` 0.3
@@ -116,7 +121,7 @@ the six holes should line up with the inserts without forcing.
 Regenerate the STL with:
 
 ```
-openscad -o p64_enclosure_print.stl -D "part=\"print\"" p64_enclosure.scad
+openscad -o output/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
 ```
 
 ## Sources
