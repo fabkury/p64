@@ -51,7 +51,7 @@ screw_len  = 10;   // M3 screw length
 engage     = 5;    // thread engagement inside the brass insert
 screw_hole = 3.4;  // clearance hole
 cb_d       = 6.5;  // counterbore for head and driver
-boss_od    = 10;
+boss_od    = 10.5; // leaves 2.0 mm walls around the counterbore (JLC3DP preference)
 web_t      = 2;    // rib joining each boss to the nearest wall
 
 /* [Controller] */
@@ -82,10 +82,13 @@ vent_pitch      = 6;
 vent_xmax       = 42;
 vent_bands      = [[28, 40], [-28, 36]];   // [centre y, slot length]; lower band shorter to clear the mic holes
 vent_skip_lower = [-18, -12];   // columns left out of the lower band for BOOT/RST
-pin_d      = 3.5;   // pin holes over BOOT / RESET (sized for +-1 mm header-position error)
+pin_d      = 3.0;   // pin holes over BOOT / RESET (+-0.75 mm header-position slack, 2 mm bridge between them)
 mic_d      = 3.5;   // microphone holes
-label_d    = 0.6;   // debossed label depth
-label_size = 2.4;
+// groove marks beside the pin holes instead of text: one groove = BOOT, two = RESET
+mark_w     = 1.2;   // groove width  (>= 0.8 mm feature, >= 1.2 mm ribs between grooves)
+mark_l     = 3.0;   // groove length
+mark_d     = 0.8;   // groove depth
+mark_gap   = 1.5;   // material left between two grooves
 
 $fn = 48;
 
@@ -221,9 +224,10 @@ module back_hole(p, d) {
     on_back(p[1]) translate([p[0], 0, -back_tz - 1]) cylinder(d = d, h = back_tz + 2);
 }
 
-module label(txt, p, dx) {
-    on_back(p[1]) translate([p[0] + dx, 0, -label_d]) linear_extrude(label_d + 1)
-        text(txt, size = label_size, halign = "right", valign = "center", font = "Liberation Sans:style=Bold");
+module marks(p, n) {                    // n short grooves to the left of pin hole p
+    for (i = [0 : n - 1])
+        on_back(p[1]) translate([p[0] - (pin_d/2 + mark_gap + mark_w/2) - i*(mark_w + mark_gap), 0, -mark_d])
+            linear_extrude(mark_d + 1) square([mark_w, mark_l], center = true);
 }
 
 // ---------------- the part ----------------
@@ -243,8 +247,8 @@ module shell() {
         back_hole(rst,  pin_d);
         back_hole(mic1, mic_d);
         back_hole(mic2, mic_d);
-        label("BOOT", boot, -(pin_d/2 + 1));
-        label("RST",  rst,  -(pin_d/2 + 1));
+        marks(boot, 1);
+        marks(rst,  2);
     }
 }
 

@@ -28,7 +28,8 @@ leaning back 12 degrees.
   5.8 mm at the top edge of the panel. The mounted controller needs roughly 9 mm and the
   VH4 power plug with its wires about 8 mm, both in the deep half.
 - **Mounting:** six counterbored bosses on the panel's inserts, positions from Waveshare's
-  drawing: (0, +-56.85) and (+-56.85, +-44) mm, rotated with the panel. M3 x 10 screws go in
+  drawing: (0, +-56.85) and (+-56.85, +-44) mm, rotated with the panel. Bosses are 10.5 mm in
+  diameter around a 6.5 mm counterbore (2 mm walls). M3 x 10 screws go in
   from the back; the boss floor is 5 mm so about 5 mm of thread engages the insert. The two
   top bosses are only 6.6 mm tall because of the wedge; their screw heads end up 1 mm below
   the back face (keep `depth_top` at 8 mm or more, or use M3 x 8 there).
@@ -44,8 +45,10 @@ leaning back 12 degrees.
   plug's wide face) USB-C cable plugs into either port from underneath through a
   28 x 12.5 mm pocket in the base, then runs in a groove under the base to a notch at the
   bottom of the back wall. Nothing is visible from the front or sides.
-- **Back wall:** two bands of ventilation slots, 3.5 mm pin holes over BOOT and RESET with
-  debossed labels, 3.5 mm holes over the two microphones, six screw counterbores.
+- **Back wall:** two bands of ventilation slots, 3 mm pin holes over BOOT and RESET marked
+  with short grooves (one groove = BOOT, two grooves = RESET; text labels were dropped because
+  their 0.3 mm ribs are too thin for bureau printing), 3.5 mm holes over the two microphones,
+  six screw counterbores. Every wall and rib is 2.0 mm or thicker.
 
 Not included: access to the TF card slot. In every orientation the card slot ends up about
 39 mm from the nearest wall, so a slot in the shell would be useless. The card has to be
