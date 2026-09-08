@@ -19,10 +19,16 @@ the next one at any time. Each phase change is logged on the serial console.
 
 Then it starts again at phase 1.
 
-The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`). The
-enclosure mounts the panel turned 90 degrees; once the ball has shown which physical
-edge is native "down", set `CONFIG_HUB75_ROTATE_90` or `_270` in `sdkconfig.defaults`
-and rebuild.
+The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`).
+
+Verified on the hardware on 2026-09-08: with the panel in native orientation, seen
+from the front, the native bottom edge (the floor line) is at the bottom and the
+controller board with its two USB-C ports sits behind the **right** edge. The enclosure
+mounts the panel turned 90 degrees clockwise (front view) so the USB-C ports point down;
+that puts the native right edge at the bottom. The driver setting for that is
+`CONFIG_HUB75_ROTATE_90=y` (its transform maps image (x, y) to native (y, 63 - x), so
+image "down" becomes native +x). Switch it in `sdkconfig.defaults` when the enclosure
+arrives and the ball will again fall toward the physical bottom.
 
 ## Setup (Windows)
 
@@ -102,8 +108,8 @@ The main loop runs at 50 frames per second.
   I2S MCLK=12 SCLK=43 LRCK=38 DOUT=21 DIN=39, PA enable=11; SD card CLK=1 CMD=44 D0=17
   (CS=14 for SPI mode); RTC INT=10; BOOT button=0.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
-  Waveshare's Arduino demos use; unconfirmed on the actual chips). If the panel stays
-  dark or shows garbage, switch to `CONFIG_HUB75_DRIVER_GENERIC=y`.
+  Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
+  this setting. The chip marking itself is still unread; GENERIC may work too.
 - 8-bit colour depth, CIE 1931 gamma, 20 MHz HUB75 clock, double buffering.
 
 ## Upstream references
