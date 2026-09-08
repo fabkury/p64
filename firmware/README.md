@@ -13,7 +13,7 @@ the next one at any time. Each phase change is logged on the serial console.
 | # | Phase | Length | What to look for |
 |---|---|---|---|
 | 1 | Bouncing ball | 20 s | An orange ball drops and bounces on a blue floor line. **The floor is the panel's native bottom edge** (driver row 63). The L-shaped marker in the opposite corner is the native origin: white pixel = (0,0), red arm = +x, green arm = +y. |
-| 2 | White fade, linear | 40 s | All pixels white. Brightness steps evenly through the driver's 0-255 scale from full to fully off (20 s) and back (20 s). Shows how the hardware behaves at each step, including where it visibly cuts off near zero. |
+| 2 | White fade, linear | 40 s | All pixels white. Brightness steps evenly through the driver's 0-255 scale from full to fully off (20 s) and back (20 s). Shows how the hardware behaves at each step. Note the driver floors non-zero values: on a 64-wide panel brightness 1 already means about 17/255 of OE time, so the last visible step is roughly 7 % and then off. |
 | 3 | White fade, perceptual | 40 s | Same, but stepping CIE 1931 lightness evenly, so the change looks even to the eye. |
 | 4 | Square hue wheel | 20 s | Hue by angle around the centre, saturation by square distance from the centre (pure hues on the edges, white in the middle). Makes one full turn in 20 s. |
 
