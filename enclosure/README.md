@@ -17,6 +17,10 @@ leaning back 12 degrees.
 | `output/p64_enclosure_print.3mf` | Same mesh, 3MF. |
 | `output/p64_enclosure_service.stl` | Bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. |
 | `output/render_*.png` | Preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
+| `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
+| `output/p64_enclosure_print_v2.stl`, `.3mf` | v2 ready to slice, print orientation. |
+| `output/p64_enclosure_service_v2.stl` | v2 bureau variant, 0.45 mm clearance. |
+| `output/render_*_v2.png` | v2 renders: back, assembly with knobs, section through an encoder, print orientation. |
 | `input/RGB-Matrix-P2-64x64-2D.dwg`, `.pdf` | Waveshare's drawing of the panel frame (DWG and a PDF rendering of it). |
 | `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
 | `input/*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
@@ -61,6 +65,55 @@ leaning back 12 degrees.
 Not included: access to the TF card slot. In every orientation the card slot ends up about
 39 mm from the nearest wall, so a slot in the shell would be useless. The card has to be
 inserted before closing the shell.
+
+## v2: two rotary encoders on the back
+
+`src/p64_enclosure_v2.scad` is v1 with two rotary encoders for user input added; nothing
+else changed. It is a separate file so that v1, the print ordered on 2026-09-05, stays as it
+was. Set `encoders = false` in v2 to get the v1 geometry back.
+
+- **Hardware assumed:** two Adafruit 5880 boards (I2C "seesaw" rotary encoder breakout:
+  25.4 x 25.4 mm PCB with four 2.5 mm plated holes on a 20.32 mm square, a Bourns
+  PEC11-style 24-detent encoder with push switch soldered at the centre, 15 mm D-shaft,
+  M7 x 0.75 bushing 5 mm long, 6.5 mm body height) and 20 mm set-screw knobs. Board
+  geometry comes from Adafruit's EagleCAD file, the encoder from the Bourns PEC11 datasheet
+  (links under Sources). The 20 mm-shaft PEC11R has a 7 mm bushing: set `enc_bush_l = 7`.
+- **Where:** the shafts leave the back face at (+-47, -25) mm in the shell's coordinates,
+  i.e. 19 mm in from each side edge and 41 mm up from the bottom edge, one knob per side.
+  That spot is clear of the (+-56.85, 0) and (+-44, -56.85) bosses, the controller
+  (x = -16..26) and the cable pocket, and needs no extra shell depth.
+- **How they mount:** each board lies parallel to the back face, component side towards the
+  wall. Four 4.5 mm posts hang from the cavity back and end in 2.2 mm pegs that enter the
+  board's holes, so the board cannot turn. The bushing passes through a 7.4 mm hole; a
+  14 mm, 0.4 mm-deep spot-face on the outside gives the supplied washer and nut a flat seat
+  on the sloping wall and 3.0 mm of thread (the bushing stands 2.6 mm proud of the face).
+  The nut takes the knob's push force; the pegs only key the board.
+- **Numbers** (printed by the `echo` lines): cavity 15.2 mm deep at the encoder; board
+  bottom 7.2 mm behind the frame back face (ledge top is at 3.1 mm); posts 8.3 mm from the
+  nearest boss; board edge 4.5 mm from the side wall; shaft 12.6 mm proud of the face; knob
+  end 32 mm behind the frame back face. The knobs are therefore the deepest point of the
+  shell, 10 mm past the bottom edge: the display stands exactly as before, but laid on its
+  back it rests on the knobs.
+- **Vents:** the lower band loses its outer two columns on each side (x = +-36 and +-42)
+  where the boards sit. Everything else on the back wall is as in v1.
+- **Board orientation:** the side wall is only 4.5 mm from the board's outer edge, so turn
+  each board with its two STEMMA QT sockets facing up and down and the header pads towards
+  the centre (`enc_rot`). The cables then run vertically past the boards.
+- **Wiring (not part of the shell):** the two boards chain on the controller's 4-pin SH1.0
+  "GPIO" socket (pin 1 = IO45, 2 = IO46, 3 = 3V3, 4 = GND) used as a second I2C bus. The
+  STEMMA QT pin order differs, so use an SH-to-header cable pair rather than a straight
+  SH-SH cable; IO45/IO46 carry 10 k pull-downs on the controller, so add 2.2 k pull-ups to
+  3V3 on SDA and SCL. Second board: close jumper A0 (address 0x37).
+
+Assembly additions, before step 2 of the list below: plug the STEMMA QT cables into both
+boards; from inside the shell push each board onto its four pegs with the shaft through
+the wall; from outside fit the washer and nut (hand-tight, 10 kgf.cm max) and then the
+knob; connect the chain to the controller's GPIO socket before sliding the panel in.
+
+Printing: as v1. The posts and pegs stand up from the bed, no supports. The pegs are
+2.2 mm pins; MJF nylon prints them fine, for FDM check the fit and sand if needed. The
+spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring at the third layer,
+which is harmless.
 
 ## Assembly
 
@@ -120,11 +173,15 @@ the six holes should line up with the inserts without forcing.
 - `panel_rot` 90 (set 0 for the un-rotated panel; the cable pocket then no longer applies)
 - `vents`, `pin_d`, `mic_d`, `label_size`
 - `part` selects `shell`, `print`, `assembly`, `section_x`, `section_y`
+- v2 only: `encoders`, `enc_pos`, `enc_rot`, `enc_bush_l`, `enc_spot_t`, `enc_post_d`,
+  `enc_peg_d`, `enc_keepout`; `part` also accepts `section_enc`
 
 Regenerate the STL with:
 
 ```
 openscad -o output/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
+openscad -o output/p64_enclosure_print_v2.stl -D "part=\"print\"" src/p64_enclosure_v2.scad
+openscad -o output/p64_enclosure_service_v2.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
 ```
 
 ## Sources
@@ -132,3 +189,8 @@ openscad -o output/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure
 - Panel drawing: https://github.com/waveshareteam/RGB-Matrix-Px-xx/tree/main/hardware/dimensions/RGB-Matrix-Pxx-64x64 (`RGB-Matrix-P2-64x64-2D.dwg`)
 - Controller drawing: https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/dimensions (`ESP32-S3-RGB-Matrix-2D.pdf`)
 - Wikis: https://docs.waveshare.com/ESP32-S3-RGB-Matrix and https://docs.waveshare.com/RGB-Matrix-Px-64x64
+- Encoder board (v2): https://www.adafruit.com/product/5880 and its EagleCAD files
+  https://github.com/adafruit/Adafruit-I2C-QT-Rotary-Encoder-PCB
+- Encoder (v2): Bourns PEC11 datasheet https://cdn-shop.adafruit.com/datasheets/pec11.pdf
+- Controller GPIO socket pinout (v2): the schematic in
+  https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/schematics
