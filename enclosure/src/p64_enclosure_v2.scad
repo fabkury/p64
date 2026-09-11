@@ -384,7 +384,7 @@ module ghost_encoder(p, rot) {   // Adafruit 5880 board, encoder, washer + nut, 
         color("silver", 0.8) translate([0, 0, -back_t]) cylinder(d = enc_bush_d, h = enc_bush_l);
         color("silver", 0.8) translate([0, 0, -back_t]) cylinder(d = enc_shaft_d, h = enc_shaft_l);
         color("dimgray", 0.9) translate([0, 0, -enc_spot_t]) cylinder(d = 10 / cos(30), h = enc_nut_h, $fn = 6);
-        color("black", 0.8) translate([0, 0, -enc_spot_t + enc_nut_h + 0.3]) cylinder(d = knob_d, h = knob_h);
+        color([0.15, 0.15, 0.15]) translate([0, 0, -enc_spot_t + enc_nut_h + 0.3]) cylinder(d = knob_d, h = knob_h);   // opaque, dark enough to read as black but still shaded
     }
 }
 
