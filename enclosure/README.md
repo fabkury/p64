@@ -13,14 +13,15 @@ leaning back 12 degrees.
 | Path | What it is |
 |---|---|
 | `src/p64_enclosure.scad` | Parametric OpenSCAD source (OpenSCAD 2021.01+). Everything below is a parameter. |
-| `output/p64_enclosure_print.stl` | Ready to slice, already in print orientation (back face on the bed). |
-| `output/p64_enclosure_print.3mf` | Same mesh, 3MF. |
-| `output/p64_enclosure_service.stl` | Bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. |
-| `output/render_*.png` | Preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
+| `output/v1/p64_enclosure_print.stl` | v1, ready to slice, already in print orientation (back face on the bed). |
+| `output/v1/p64_enclosure_print.3mf` | Same mesh, 3MF. |
+| `output/v1/p64_enclosure_service.stl` | v1 bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. The file ordered on 2026-09-05. |
+| `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
-| `output/p64_enclosure_print_v2.stl`, `.3mf` | v2 ready to slice, print orientation. |
-| `output/p64_enclosure_service_v2.stl` | v2 bureau variant, 0.45 mm clearance. |
-| `output/render_*_v2.png` | v2 renders: back, assembly with knobs, section through an encoder, print orientation. |
+| `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation). |
+
+Each shell version gets its own sub-folder under `output/` with identical file names inside;
+the version lives in the folder name (and in the source file name under `src/`).
 | `input/RGB-Matrix-P2-64x64-2D.dwg`, `.pdf` | Waveshare's drawing of the panel frame (DWG and a PDF rendering of it). |
 | `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
 | `input/*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
@@ -129,7 +130,7 @@ which is harmless.
 
 ## Printing
 
-- Print `output/p64_enclosure_print.stl` as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the v2 file in `output/v2/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -179,9 +180,9 @@ the six holes should line up with the inserts without forcing.
 Regenerate the STL with:
 
 ```
-openscad -o output/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
-openscad -o output/p64_enclosure_print_v2.stl -D "part=\"print\"" src/p64_enclosure_v2.scad
-openscad -o output/p64_enclosure_service_v2.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
+openscad -o output/v1/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
+openscad -o output/v2/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v2.scad
+openscad -o output/v2/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
 ```
 
 ## Sources
