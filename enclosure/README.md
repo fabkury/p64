@@ -19,6 +19,8 @@ leaning back 12 degrees.
 | `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
+| `src/p64_enclosure_v3.scad` | **v3**: v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
+| `output/v3/` | v3 outputs, same file names and renders as v2. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -116,6 +118,30 @@ Printing: as v1. The posts and pegs stand up from the bed, no supports. The pegs
 spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring at the third layer,
 which is harmless.
 
+## v3: recessed plinth
+
+`src/p64_enclosure_v3.scad` is v2 with one change to the stand (`plinth = true`;
+`plinth = false` reproduces v2).
+
+- **Why:** leaning back 12 degrees drops the shell's back-bottom edge 7 mm below the
+  front-bottom edge, so a flat base needs 7.2 mm of material added below the front outline.
+  In v1 and v2 that is the 9 mm band under the LED matrix (wedge plus the 2 mm wall). It
+  cannot be taken from the back instead: the base plane would rise 5 mm into the cavity
+  there, leaving the USB plug 2 to 3 mm below the base and opening the bottom screw bosses.
+- **What v3 does:** the front outline keeps its 2 mm rim on all four sides, and the wedge
+  starts 12 mm behind the front face, at the frame's back face (`plinth_z0 = 0`), as a
+  4.7 mm plinth with a vertical front face. The base plane and the lean are exactly v2's,
+  so the display stands at the same height and angle; the front lip floats 7.1 mm above
+  the table at the front edge and 4.6 mm at the plinth.
+- **Stance:** the contact patch is 22.5 mm deep instead of 34.8 (it starts at the plinth).
+  The centre of gravity projects roughly 10 mm behind the plinth's front edge and 12 mm in
+  front of the rear edge, so the display is about as hard to tip forwards as backwards.
+- **What shows:** from the front, a uniform 2 mm rim and a shadow gap under it; from low
+  angles the plinth's front face, and in it the 30 mm-wide plug pocket as a notch. The
+  cable exit at the back is unchanged.
+- **Printing:** same orientation. The plinth's front face is a 4.7 mm-wide shelf facing the
+  front, fully supported; the base face overhangs 6 degrees as in v1. Print height 34.6 mm.
+
 ## Assembly
 
 1. Plug the controller onto the panel's HUB75 IN header and wire its 5V/GND screw terminals
@@ -130,7 +156,7 @@ which is harmless.
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the v2 file in `output/v2/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` or `output/v3/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -183,9 +209,12 @@ Regenerate the STL with:
 openscad -o output/v1/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
 openscad -o output/v2/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v2.scad
 openscad -o output/v2/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
+openscad -o output/v3/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v3.scad
+openscad -o output/v3/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v3.scad
 ```
 
-The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme:
+The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
+The v3 renders use the same commands with `v3` in both paths:
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad

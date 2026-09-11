@@ -36,6 +36,8 @@ git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S
 - Enclosure: v1 designed and verified against Waveshare's drawings; a development print
   was ordered from a bureau on 2026-09-05. v2 (`enclosure/src/p64_enclosure_v2.scad`)
   adds two rotary encoders on the back face for user input (two Adafruit 5880 I2C encoder
-  boards chained on the driver board's SH1.0 GPIO socket); not printed yet.
+  boards chained on the driver board's SH1.0 GPIO socket). v3 turns the stand's wedge into
+  a recessed plinth so the front rim is 2 mm on all four sides. Neither v2 nor v3 is
+  printed yet; v3 is the current design.
 - Firmware: bring-up test (bouncing ball, brightness fades, square hue wheel). See
   `firmware/README.md`.
