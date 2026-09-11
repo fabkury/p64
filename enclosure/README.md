@@ -19,8 +19,6 @@ leaning back 12 degrees.
 | `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
-| `src/p64_enclosure_v3.scad` | **v3**: v2 with the wedge foot moved from the front edge to a heel under the back (see [v3](#v3-no-bar-under-the-leds)), so the front rim is 2 mm on all four sides. |
-| `output/v3/` | v3 outputs, same file names and renders as v2. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -118,32 +116,6 @@ Printing: as v1. The posts and pegs stand up from the bed, no supports. The pegs
 spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring at the third layer,
 which is harmless.
 
-## v3: no bar under the LEDs
-
-`src/p64_enclosure_v3.scad` is v2 with one change: the wedge that makes the base flat sits
-under the back-bottom edge instead of below the front edge (`foot = "back"`; `foot = "front"`
-reproduces v2).
-
-- **Why:** leaning back 12 degrees on a flat base needs 7.2 mm of extra height across the
-  34 mm depth. v1 and v2 add it below the front outline, which shows from the front as a
-  9 mm bar under the LED matrix. v3 adds it as a heel under the rear half, hidden behind the
-  shell, so the front shows the same 2 mm rim on all four sides and the panel's bottom edge
-  sits 2 mm above the table.
-- **Geometry:** front outline 132.4 x 132.4 mm (v2: 132.4 x 139.6). The back face is
-  139.8 mm tall because the heel's back lies in the sloping back plane (heel 7.4 mm). The
-  base is still one flat plane at 12 degrees over the full depth, so the stance and the
-  tipping margins do not change; the display stands 7 mm lower. Interior, bosses, vents,
-  encoders and cable path are those of v2. Volume 83.3 cm3 (v2: 83.5).
-- **Contact:** at the front the shell rests on the bottom-front edge of the 2 mm lip, at the
-  back on the heel's edge, both full width; the plug pocket and the cable groove interrupt
-  the centre as before.
-- **Cable exit:** the groove under the base now runs through the heel, so the opening at the
-  back-bottom centre is 12 mm wide and about 13 mm tall (v2: 6 mm). The cable leaves straight
-  backwards at table level.
-- **Printing:** same orientation. The base face no longer overhangs; it leans inwards by
-  18 degrees going up, so only the ledge underside and the counterbore bridges remain as
-  unsupported features. Print height 33.8 mm, bed footprint 132.4 x 142.7 mm.
-
 ## Assembly
 
 1. Plug the controller onto the panel's HUB75 IN header and wire its 5V/GND screw terminals
@@ -158,7 +130,7 @@ reproduces v2).
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` or `output/v3/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the v2 file in `output/v2/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -211,14 +183,9 @@ Regenerate the STL with:
 openscad -o output/v1/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure.scad
 openscad -o output/v2/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v2.scad
 openscad -o output/v2/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
-openscad -o output/v3/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v3.scad
-openscad -o output/v3/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v3.scad
 ```
 
-The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
-The v3 renders use the same commands with `v3` in both paths, except the two product views,
-whose look-at height drops with the display: `--camera=300,495,180,0,0,62` and
-`--camera=308,-440,283,0,0,56`.
+The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme:
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
