@@ -39,7 +39,8 @@ git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S
   boards chained on the driver board's SH1.0 GPIO socket). v3 is a kept alternative that
   turns the stand's wedge into a recessed plinth. v4 is v2 plus two panel-mount USB-C
   sockets on the back face (POWER and USB), so the cables no longer plug into the driver
-  board from outside. v5, the current design, adds the speaker that ships with the driver
-  board, sunk into the upper back and firing backwards. Nothing after v1 is printed yet.
+  board from outside, and is the version to print next. v5 is a kept alternative that adds
+  the speaker shipped with the driver board, sunk into the upper back and firing
+  backwards. Nothing after v1 is printed yet.
 - Firmware: bring-up test (bouncing ball, brightness fades, square hue wheel). See
   `firmware/README.md`.

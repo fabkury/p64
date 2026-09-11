@@ -21,9 +21,9 @@ leaning back 12 degrees.
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
 | `src/p64_enclosure_v3.scad` | **v3** (kept alternative, v2 remains the version to print): v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
 | `output/v3/` | v3 outputs, same file names and renders as v2. |
-| `src/p64_enclosure_v4.scad` | **v4** (current design): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The cables no longer reach the controller from outside. |
+| `src/p64_enclosure_v4.scad` | **v4** (the version to print): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The cables no longer reach the controller from outside. |
 | `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
-| `src/p64_enclosure_v5.scad` | **v5** (current design): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
+| `src/p64_enclosure_v5.scad` | **v5** (kept alternative, v4 remains the version to print): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
 | `output/v5/` | v5 outputs, same file names as v4, plus `render_section_spk.png` through the speaker's lugs. |
 | `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker so far). |
 | `input/PXL_20260911_*.jpg` | Photos of the speaker box: front, front with lead, corner lug. |
@@ -186,7 +186,8 @@ shell; the controller's ports only ever see the short internal ribbons.
 
 `src/p64_enclosure_v5.scad` is v4 plus the 8 ohm speaker box that ships with the
 controller, mounted in the upper half of the back face and firing backwards. The shell's
-outline, depth and everything below the panel's centre line are unchanged from v4.
+outline, depth and everything below the panel's centre line are unchanged from v4. It is
+kept as an alternative: on 2026-09-11 the user chose to keep v4 as the version to print.
 
 - **Hardware** (hand-measured, see `input/measurements.md` and the photos): a
   99.4 x 44.4 x 20.7 mm box, two drivers on the front face, four corner lugs about
