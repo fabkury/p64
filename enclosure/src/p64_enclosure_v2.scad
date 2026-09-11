@@ -32,9 +32,10 @@
 //  part = "section_x"   -> cut through the cable pocket
 //  part = "section_y"   -> cut through the side screw bosses
 //  part = "section_enc" -> cut through the right-hand encoder
+//  part = "product"     -> the assembled display standing on a table (LED face mock-up)
 // =====================================================================
 
-part = "shell";            // "shell" | "print" | "assembly" | "section_x" | "section_y" | "section_enc"
+part = "shell";            // "shell" | "print" | "assembly" | "section_x" | "section_y" | "section_enc" | "product"
 
 /* [Panel] */
 panel      = 127.8;        // frame outer size, measured in RGB-Matrix-P2-64x64-2D.dwg (Waveshare quotes 128)
@@ -389,6 +390,24 @@ module ghost_encoder(p, rot) {   // Adafruit 5880 board, encoder, washer + nut, 
 
 module ghosts() { ghost_panel(); ghost_chip(); ghost_plug(); if (encoders) for (i = [0 : len(enc_pos) - 1]) ghost_encoder(enc_pos[i], enc_rot[i]); }
 
+// ---------------- product view: the assembled display standing on a table ----------------
+module ghost_face() {   // the LED mask: matt black front with a faint 2 mm pixel grid
+    z0 = -frame_d - 2.5 - 1.0;
+    color("black") translate([0, 0, z0]) linear_extrude(1.0) square(2*half_in, center = true);   // covers the fit gap in the mock-up
+    color([0.2, 0.2, 0.2]) for (i = [1 : 63]) {
+        translate([-panel/2 + 2*i - 0.1, -panel/2, z0 - 0.05]) cube([0.2, panel, 0.1]);
+        translate([-panel/2, -panel/2 + 2*i - 0.1, z0 - 0.05]) cube([panel, 0.2, 0.1]);
+    }
+}
+
+// design orientation -> standing on its wedge foot: front towards +Y, leaning back by tilt, base on z = 0
+module standing() {
+    translate([0, 0, (half_out + wedge) * cos(tilt) - lip * sin(tilt)])
+        rotate([tilt, 0, 0]) rotate([90, 0, 0]) children();
+}
+
+module table_top() { color("burlywood") translate([-260, -170, -4]) cube([520, 340, 4]); }
+
 // ---------------- output selection ----------------
 // print: lay the inclined back face flat on the bed
 module print_orient() { translate([0, 0, z_mid * cos(back_ang)]) rotate([180 + back_ang, 0, 0]) children(); }
@@ -402,3 +421,4 @@ if (part == "section_y") intersection() { union() { shell(); ghost_panel(); ghos
                                           translate([-200, -200, -100]) cube([400, 200, 200]); }
 if (part == "section_enc") intersection() { union() { shell(); ghosts(); }
                                             translate([enc_pos[0][0], -200, -100]) cube([200, 400, 200]); }
+if (part == "product") { standing() { shell(); ghosts(); ghost_face(); } table_top(); }

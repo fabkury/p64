@@ -18,7 +18,7 @@ leaning back 12 degrees.
 | `output/v1/p64_enclosure_service.stl` | v1 bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. The file ordered on 2026-09-05. |
 | `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
-| `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation). |
+| `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png`: the assembled display standing on a table, seen from the front-left). |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -192,7 +192,11 @@ openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize
 openscad -o output/v2/render_assembly.png    -D "part=\"assembly\""    --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
 openscad -o output/v2/render_section_enc.png -D "part=\"section_enc\"" --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-252,-48,94,60,0,8 src/p64_enclosure_v2.scad
 openscad -o output/v2/render_print.png       -D "part=\"print\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-270,-350,270,0,0,15 src/p64_enclosure_v2.scad
+openscad -o output/v2/render_product.png     -D "part=\"product\""     --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=300,495,180,0,0,66 src/p64_enclosure_v2.scad
 ```
+
+`part = "product"` stands the assembled shell on its wedge foot (front towards +Y, leaning
+back 12 degrees, base on z = 0) with a black LED-face mock-up and a table slab.
 
 ## Sources
 
