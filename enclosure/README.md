@@ -21,6 +21,8 @@ leaning back 12 degrees.
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
 | `src/p64_enclosure_v3.scad` | **v3** (kept alternative, v2 remains the version to print): v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
 | `output/v3/` | v3 outputs, same file names and renders as v2. |
+| `src/p64_enclosure_v4.scad` | **v4** (current design): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The cables no longer reach the controller from outside. |
+| `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -144,6 +146,38 @@ to keep v2 as the version to print, mainly for its longer contact patch.
   front, fully supported; the base face overhangs 6 degrees as in v1. Print height 33.8 mm,
   bed footprint 132.4 x 137.6 mm, volume 74.4 cm3 (v2: 83.5).
 
+## v4: panel-mount USB-C sockets
+
+`src/p64_enclosure_v4.scad` is v2 (front bar, not the v3 plinth) plus two JUXINICE
+panel-mount USB-C extensions (the 2-pack: 15 cm flat ribbon, USB 2.0, 100 W PD), one for
+the POWER port and one for the USB programming port. The external cables plug into the
+shell; the controller's ports only ever see the short internal ribbons.
+
+- **Hardware assumed** (from the seller's drawings; confirm on the parts): flange
+  25.2 x 8.2 mm with two threaded 2.5 mm holes 17 mm apart, 9 x 3.5 mm mouth, housing
+  about 12 x 8.2 x 19.5 mm with the ribbon leaving its far end, L-shaped plug 11 x 11 mm
+  whose ribbon leaves perpendicular to the plug's wide face.
+- **Where:** socket centres on the back face at (-44, -45) for POWER and (+44, -45) for USB,
+  mouths horizontal, 3.2 mm below each encoder board and 2.5 mm above each corner boss.
+  Each housing runs forward through the frame's back opening and ends 2 mm in front of the
+  frame back face, 10 mm above the panel PCB. The plugs hang 4.4 mm below the ports, 7 mm
+  above the bottom wall, ribbons leaving towards the back where the cavity is 18.6 mm deep.
+- **Wall features:** per socket a 9.6 x 4.1 mm stadium cut-out and two 2.8 mm holes; the
+  supplied screws thread into the socket from outside, so no nuts or inserts. One groove
+  outboard of the right socket marks it as USB; POWER has none. The lower vent band also
+  loses its +-30 columns (flange keep-out), leaving nine.
+- **Ribbon guides:** two printed hooks per ribbon on the cavity back (3 mm wide, 4 mm tall,
+  2.5 mm lip with 2.5 mm under it) at x = +-22 and +-32, one above and one below the
+  ribbon's line at y = -50.5, so each flat cable is held against the back wall between plug
+  and socket and cannot drift onto the encoder boards.
+- **Removed from v2:** the plug pocket in the base, the cable groove under the base and the
+  notch at the back wall. Base and back edge are closed; the only openings are the sockets.
+- **Assembly change:** plug both ribbons into the controller's ports before the panel slides
+  in (ribbon exit towards the back; the plug is reversible), lead each ribbon under its two
+  hooks, screw the sockets to the back face from outside, then continue as in v1.
+- **Printing:** as v2. The hook lips overhang 2.5 mm at 2.5 mm height, which MJF prints
+  without support and FDM handles with part cooling.
+
 ## Assembly
 
 1. Plug the controller onto the panel's HUB75 IN header and wire its 5V/GND screw terminals
@@ -158,7 +192,7 @@ to keep v2 as the version to print, mainly for its longer contact patch.
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` or `output/v3/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/`, `output/v3/` or `output/v4/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -213,10 +247,13 @@ openscad -o output/v2/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclos
 openscad -o output/v2/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v2.scad
 openscad -o output/v3/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v3.scad
 openscad -o output/v3/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v3.scad
+openscad -o output/v4/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v4.scad
+openscad -o output/v4/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v4.scad
 ```
 
 The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
-The v3 renders use the same commands with `v3` in both paths:
+The v3 and v4 renders use the same commands with `v3` or `v4` in both paths; v4 adds
+`render_section_usb.png` with `part="section_usb"` and `--camera=210,-70,70,-60,-40,5`:
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
@@ -240,3 +277,6 @@ back 12 degrees, base on z = 0) with a black LED-face mock-up and a table slab.
 - Encoder (v2): Bourns PEC11 datasheet https://cdn-shop.adafruit.com/datasheets/pec11.pdf
 - Controller GPIO socket pinout (v2): the schematic in
   https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/schematics
+- Panel-mount USB-C extension (v4): JUXINICE 2-pack, 90 degree, 15 cm, USB 2.0, 100 W PD,
+  https://www.amazon.com/JUXINICE-USB-Male-Female-Cable/dp/B0FL7HY5G8 ; dimensions taken
+  from the seller's listing drawings.
