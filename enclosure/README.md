@@ -19,7 +19,7 @@ leaning back 12 degrees.
 | `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
-| `src/p64_enclosure_v3.scad` | **v3**: v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
+| `src/p64_enclosure_v3.scad` | **v3** (kept alternative, v2 remains the version to print): v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
 | `output/v3/` | v3 outputs, same file names and renders as v2. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
@@ -121,7 +121,8 @@ which is harmless.
 ## v3: recessed plinth
 
 `src/p64_enclosure_v3.scad` is v2 with one change to the stand (`plinth = true`;
-`plinth = false` reproduces v2).
+`plinth = false` reproduces v2). It is kept as an alternative: on 2026-09-11 the user chose
+to keep v2 as the version to print, mainly for its longer contact patch.
 
 - **Why:** leaning back 12 degrees drops the shell's back-bottom edge 7 mm below the
   front-bottom edge, so a flat base needs 7.2 mm of material added below the front outline.
