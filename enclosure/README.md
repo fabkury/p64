@@ -140,7 +140,8 @@ which is harmless.
   angles the plinth's front face, and in it the 30 mm-wide plug pocket as a notch. The
   cable exit at the back is unchanged.
 - **Printing:** same orientation. The plinth's front face is a 4.7 mm-wide shelf facing the
-  front, fully supported; the base face overhangs 6 degrees as in v1. Print height 34.6 mm.
+  front, fully supported; the base face overhangs 6 degrees as in v1. Print height 33.8 mm,
+  bed footprint 132.4 x 137.6 mm, volume 74.4 cm3 (v2: 83.5).
 
 ## Assembly
 
