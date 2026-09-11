@@ -23,6 +23,10 @@ leaning back 12 degrees.
 | `output/v3/` | v3 outputs, same file names and renders as v2. |
 | `src/p64_enclosure_v4.scad` | **v4** (current design): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The cables no longer reach the controller from outside. |
 | `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
+| `src/p64_enclosure_v5.scad` | **v5** (current design): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
+| `output/v5/` | v5 outputs, same file names as v4, plus `render_section_spk.png` through the speaker's lugs. |
+| `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker so far). |
+| `input/PXL_20260911_*.jpg` | Photos of the speaker box: front, front with lead, corner lug. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -178,6 +182,42 @@ shell; the controller's ports only ever see the short internal ribbons.
 - **Printing:** as v2. The hook lips overhang 2.5 mm at 2.5 mm height, which MJF prints
   without support and FDM handles with part cooling.
 
+## v5: speaker in the back
+
+`src/p64_enclosure_v5.scad` is v4 plus the 8 ohm speaker box that ships with the
+controller, mounted in the upper half of the back face and firing backwards. The shell's
+outline, depth and everything below the panel's centre line are unchanged from v4.
+
+- **Hardware** (hand-measured, see `input/measurements.md` and the photos): a
+  99.4 x 44.4 x 20.7 mm box, two drivers on the front face, four corner lugs about
+  8.4 x 8.5 mm with 6.0 mm holes, the lugs' back face 12 mm behind the driver face, the
+  body continuing 8.7 mm behind that; the lead leaves the box 5.9 mm behind the driver face
+  and plugs into the controller's SPK header (JST PH). Hole centres are assumed at the lug
+  centres.
+- **How it mounts:** a plus-shaped window in the back wall (the 99.4 x 27.5 mm band between
+  the side lugs crossed with the 82.6 x 44.4 mm band between the end lugs, 0.5 mm
+  clearance) lets the rear 8.7 mm of the body into the cavity; the four lugs rest on the
+  outer back face and M4 x 10 thread-forming screws go through them into four printed
+  bosses inside (8 mm, 7 mm tall, 3.6 mm pilot, clipped clear of the window). The drivers
+  stay exposed and face the wall behind the display; the box stands 12 mm proud of the
+  back. No grille needed.
+- **Where:** envelope centred at (0, +27): window from y = 4.3 to 49.7, 1.9 mm below the top
+  screw bosses; the sunk body ends 2.4 mm behind the panel's VH4 power socket at the
+  window's bottom edge and 3.4 mm behind the HUB75 OUT header. Lug hole centres at
+  (+-45.5, 9.0) and (+-45.5, 45.0).
+- **Lead:** it leaves the box outside the shell, so a 4.5 mm notch in each end edge of the
+  window lets it in (either end, so the box can go in either way round). Inside it runs down
+  the cavity to the SPK header at the controller's right edge; 150 mm is ample.
+- **Vents:** the upper vent band is gone (the speaker covers it); two vertical slots on each
+  side of the box (x = +-57.5 and +-61.5, 34 mm long) keep an exhaust at the top. The lower
+  band is as in v4.
+- **Assembly change:** push the box into the window from behind after the panel is in, with
+  the lead's corner at whichever end is convenient, lead through the notch, then the four
+  screws. The lead plugs into the SPK header before the shell closes, so leave enough slack
+  inside, or plug it through the window before seating the box.
+- **Printing:** as v4. The window and the four bosses print without support; the bosses
+  grow from the bed side.
+
 ## Assembly
 
 1. Plug the controller onto the panel's HUB75 IN header and wire its 5V/GND screw terminals
@@ -192,7 +232,7 @@ shell; the controller's ports only ever see the short internal ribbons.
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/`, `output/v3/` or `output/v4/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` to `output/v5/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
@@ -249,11 +289,14 @@ openscad -o output/v3/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclos
 openscad -o output/v3/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v3.scad
 openscad -o output/v4/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v4.scad
 openscad -o output/v4/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v4.scad
+openscad -o output/v5/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v5.scad
+openscad -o output/v5/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v5.scad
 ```
 
 The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
-The v3 and v4 renders use the same commands with `v3` or `v4` in both paths; v4 adds
-`render_section_usb.png` with `part="section_usb"` and `--camera=210,-70,70,-60,-40,5`:
+The v3 to v5 renders use the same commands with `v3`, `v4` or `v5` in both paths; v4 adds
+`render_section_usb.png` with `part="section_usb"` and `--camera=210,-70,70,-60,-40,5`,
+v5 adds `render_section_spk.png` with `part="section_spk"` and `--camera=170,-40,90,-60,27,10`:
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
