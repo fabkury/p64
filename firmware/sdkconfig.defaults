@@ -66,12 +66,14 @@ CONFIG_HUB75_LAYOUT_HORIZONTAL=y
 CONFIG_HUB75_ROTATE_0=y
 
 # --- HUB75 quality / performance ---
-CONFIG_HUB75_BIT_DEPTH_8=y
+# Refresh = 32 rows x 2^(bits-1) descriptors x 64 px / clock. The panel is multiplexed,
+# so phone photos show stripes of rows unless the exposure spans a whole refresh:
+#   20 MHz, 8 bit -> 76 Hz;  32 MHz, 8 bit -> 122 Hz;  32 MHz, 7 bit -> 244 Hz.
+# 7 bits means 128 levels per channel instead of 256 (slight banding in gradients);
+# 32 MHz showed no artefacts on this panel although the driver chips are specified
+# around 25-30 MHz. Fall back to 26.7 MHz (2 lines below) if ghosting or noise appears.
+CONFIG_HUB75_BIT_DEPTH_7=y
 CONFIG_HUB75_GAMMA_CIE1931=y
-# 32 MHz gives a 122 Hz refresh at 8 bits, which halves the row banding phone photos
-# show compared with 20 MHz (76 Hz). Verified artefact-free on this panel although the
-# driver chips are specified around 25-30 MHz; fall back to 26.7 MHz (102 Hz) if
-# ghosting or noise ever appears.
 CONFIG_HUB75_CLK_32MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60
 CONFIG_HUB75_LATCH_BLANKING=1
