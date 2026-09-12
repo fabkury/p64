@@ -33,4 +33,9 @@ void request_next();
 // Moves the waiting artwork out, if any.
 bool take_ready(Artwork &out);
 
+// While paused the fetcher holds new requests (in-flight downloads finish). Used by
+// the speed test to keep the link to itself.
+void set_paused(bool paused);
+bool busy();  // a fetch is in progress
+
 }  // namespace p64::makapix

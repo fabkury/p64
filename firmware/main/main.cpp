@@ -23,6 +23,7 @@
 #include "display.hpp"
 #include "net/clock.hpp"
 #include "net/makapix.hpp"
+#include "net/speedtest.hpp"
 #include "net/wifi.hpp"
 #include "scene.hpp"
 #include "scenes/gif_show.hpp"
@@ -142,7 +143,10 @@ extern "C" void app_main() {
 
   // Network, clock and the Makapix fetcher come up in the background (core 0).
   p64::clock::start(CONFIG_P64_TZ, CONFIG_P64_NTP_SERVER);
-  if (p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD)) p64::makapix::start();
+  if (p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD)) {
+    p64::makapix::start();
+    p64::speedtest::start();
+  }
 
   for (size_t i = 0;; i = (i + 1) % kSceneCount) {
     p64::Scene &scene = *g_scenes[i];

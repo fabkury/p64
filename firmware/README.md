@@ -201,6 +201,34 @@ above a few percent. A full-white panel at 255 draws close to the panel's 15 W r
 Without USB-PD the supply gives the standard 3 A. If only a laptop cable is available,
 lower `P64_MAX_BRIGHTNESS` in menuconfig (menu "p64") before flashing.
 
+## Network throughput
+
+Measured on 2026-09-12 with the show and the clock running, Wi-Fi at -50 dBm on a 40 MHz
+802.11n channel, application-level (bytes handed to the application per second of
+body transfer; "connect" is DNS + TCP + TLS + request). `P64_SPEEDTEST` in menuconfig
+runs the test 45 s after boot and logs it (`main/net/speedtest.cpp`); it holds the
+artwork fetcher meanwhile.
+
+| Transfer | Default lwIP (5.7 KB window) | Tuned (64 KB window, TLS internal + dynamic) |
+|---|---|---|
+| CDN, HTTPS, 1 MB (Cloudflare, ~12 ms away) | 450-460 KB/s, connect 1.2 s | 130-460 KB/s (link-dependent), connect 1.1 s |
+| CDN, HTTPS, 5 MB | 410-430 KB/s | 510 KB/s |
+| Plain HTTP, 5 MB (~100 ms away) | 55 KB/s | 600 KB/s |
+| Makapix Club, HTTPS, one 239 KB GIF, cold | 25 KB/s, connect 2.5 s | 30-220 KB/s, connect 2.5 s |
+| Makapix Club, five GIFs (956 KB) on one kept-alive connection | 25 KB/s overall | 25-45 KB/s overall, single files 15-250 KB/s |
+
+What the numbers say: with the default window a transfer moves 5.7 KB per round trip,
+so speed is set by distance alone. With the 64 KB window a nearby server is limited by
+the device itself at roughly 450-510 KB/s over HTTPS (about 4 Mbit/s; TLS record
+processing on the Wi-Fi core), plain HTTP reaches 600 KB/s, and Makapix Club, about
+220 ms away, swings between 20 and 220 KB/s from one transfer to the next regardless of
+settings: that is the long path and its losses, not the device. A typical 100-250 KB
+artwork therefore takes 5 to 15 s including the 2.5 s TLS handshake, which matches the
+fetcher's own log. Keeping TLS buffers in PSRAM cost throughput (240-390 KB/s from the
+CDN) and was dropped; releasing them between records (`MBEDTLS_DYNAMIC_BUFFER`) fixed
+the out-of-memory that two simultaneous TLS sessions caused with everything in
+internal RAM.
+
 ## Layout
 
 ```
@@ -223,6 +251,7 @@ firmware/
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
     net/makapix.*         background fetcher: one random promoted GIF from Makapix Club
+    net/speedtest.*       download throughput test (P64_SPEEDTEST, off by default)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
     scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, clock overlay

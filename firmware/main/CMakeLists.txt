@@ -46,6 +46,7 @@ idf_component_register(
         "net/wifi.cpp"
         "net/clock.cpp"
         "net/makapix.cpp"
+        "net/speedtest.cpp"
         "scenes/gif_show.cpp"
         "${GIF_TABLE_SRC}"
     INCLUDE_DIRS

@@ -96,6 +96,13 @@ height_max=..&file_format=gif`, then `/api/d/{sqid}.gif`), gated on Wi-Fi and NT
 (TLS needs the clock), handing bytes to the scene under a mutex. The server code is
 github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the contract.
 
+Network: `sdkconfig.defaults` sets a 64 KB TCP window, lwIP buffers in PSRAM and
+mbedTLS buffers internal + dynamic; measured numbers and the reasoning are in
+`firmware/README.md` "Network throughput". `P64_SPEEDTEST` (menuconfig, off) runs a
+download test 45 s after boot and logs it; it downloads ~12 MB, so never leave it on.
+Makapix Club is ~220 ms away and its throughput is erratic (20-220 KB/s); that is the
+path, not the device.
+
 GDMA lesson (hard-won, 2026-09-12): the hardware AES/SHA engines stream through GDMA and
 their bursts starve the panel's LCD_CAM FIFO when the panel's DMA stream is fast; at
 32 MHz the panel's DMA freezes mid-frame (descriptor pointer stuck, OUT_DONE set, no

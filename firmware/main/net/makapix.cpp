@@ -1,6 +1,7 @@
 #include "net/makapix.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <deque>
@@ -34,6 +35,8 @@ constexpr uint32_t kNetworkWaitMs = 90 * 1000;  // give up waiting for Wi-Fi/NTP
 std::mutex g_mutex;
 std::optional<Artwork> g_ready;
 bool g_in_flight = false;
+std::atomic<bool> g_paused{false};
+std::atomic<bool> g_fetching{false};
 TaskHandle_t g_task = nullptr;
 std::deque<std::string> g_recent;  // task-private
 char g_user_agent[48] = "p64";
@@ -243,8 +246,10 @@ void fetcher_task(void *) {
         continue;  // still holding one nobody took; nothing to do
       }
     }
+    while (g_paused.load()) vTaskDelay(pdMS_TO_TICKS(250));
     Artwork art;
     bool ok = false;
+    g_fetching = true;
     if (wait_for_network()) {
       for (int attempt = 1; attempt <= kAttemptsPerRequest && !ok; ++attempt) {
         const int64_t t0 = xTaskGetTickCount();
@@ -258,6 +263,7 @@ void fetcher_task(void *) {
         }
       }
     }
+    g_fetching = false;
     std::lock_guard<std::mutex> lock(g_mutex);
     if (ok) g_ready = std::move(art);
     g_in_flight = false;
@@ -301,5 +307,9 @@ bool take_ready(Artwork &out) {
   g_ready.reset();
   return true;
 }
+
+void set_paused(bool paused) { g_paused = paused; }
+
+bool busy() { return g_fetching.load(); }
 
 }  // namespace p64::makapix

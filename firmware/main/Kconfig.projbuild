@@ -81,4 +81,12 @@ menu "p64"
 
     endmenu
 
+    config P64_SPEEDTEST
+        bool "Run a download speed test 45 s after boot (results in the log)"
+        default n
+        help
+            Downloads a few MB from a CDN over HTTPS and HTTP and several Makapix
+            artworks while the show keeps running, and logs application-level
+            throughput. A test aid, not for normal use.
+
 endmenu
