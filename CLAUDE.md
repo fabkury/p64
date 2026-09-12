@@ -48,7 +48,11 @@ Environment facts that bite:
   port. To capture a boot log non-interactively, open the port with pyserial (dtr/rts
   false), pulse `rts` true for 0.1 s to reset, then read; `idf.py monitor` wants a TTY.
 - `sdkconfig.defaults` is the source of truth (board, panel, pins, driver options);
-  `sdkconfig` is generated and ignored. `dependencies.lock` is committed.
+  `sdkconfig` is generated and ignored. `dependencies.lock` is committed. Wi-Fi
+  credentials live only in the git-ignored `firmware/sdkconfig.secrets` (template:
+  `sdkconfig.secrets.example`), applied by the project CMakeLists on top of the
+  defaults; never write them anywhere else, and never echo the SSID or password
+  into a summary (the Wi-Fi driver's own log lines print the SSID).
 - Full white at brightness 255 draws close to the panel's 15 W rating; the 27 W supply
   goes on the POWER port, the laptop on the USB port. `P64_MAX_BRIGHTNESS` (menu "p64")
   caps every scene for laptop-only sessions.
@@ -66,14 +70,19 @@ relinks the DMA descriptor chain; the DMA finishes the old front buffer first an
 no signal. `Display` finds the LCD GDMA channel (`out.peri_sel == LCD`), clears its
 end-of-frame flag before each flip, and `wait_for_back_buffer()` sleeps until just before
 the predicted boundary, spins on the flag, then checks `eof_des_addr`/`dscr` to confirm
-the DMA switched chains. The loop is therefore locked to the panel refresh (122 Hz at the
-current 32 MHz HUB75 clock, 76 Hz at 20 MHz): render into RAM right after `present()`,
+the DMA switched chains (the chain that was front is noted at flip time from
+`eof_des_addr`; testing against "the chain that just ended" instead breaks as soon as
+presents are sparse). The loop is therefore locked to the panel refresh (76 Hz at the
+current 20 MHz HUB75 clock, 122 Hz at 32 MHz): render into RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
-blocking at least occasionally (it does), otherwise the idle task on core 0 starves and
-the task watchdog fires. Measured: 5.8 ms per `draw_pixels()` for 64x64, which now fills
-most of the 8.2 ms period, so the copy is the cost to watch before any faster refresh.
-Changing `sdkconfig.defaults` does not touch an existing generated `sdkconfig`: delete
-`firmware/sdkconfig` (or use menuconfig) for a changed default to take effect.
+blocking at least occasionally (it does), otherwise the idle task starves and the task
+watchdog fires. Scenes return "dirty" only when something changed; unchanged frames are
+not re-presented. Measured: 5.8 ms per `draw_pixels()` for 64x64, so the copy is the
+cost to watch before any faster refresh. The main task runs on core 1
+(`ESP_MAIN_TASK_AFFINITY_CPU1`), Wi-Fi and lwIP on core 0.
+Changing `sdkconfig.defaults` or `sdkconfig.secrets` does not touch an existing
+generated `sdkconfig`: delete `firmware/sdkconfig` (or use menuconfig) for a changed
+default to take effect.
 
 Driver API notes: the released `esp-hub75` (0.3.x from the component registry) lacks
 things present on its git main (no `row_decoder`; `ICN2038S` is a distinct enumerator).

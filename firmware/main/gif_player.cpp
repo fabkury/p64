@@ -69,7 +69,8 @@ bool GifPlayer::next_frame() {
   if (!open_) return false;
   if (at_end_) rewind();
   frame_started_ = false;
-  int rc = gif_->playFrame(false, nullptr, this);
+  int delay_ms = 0;
+  int rc = gif_->playFrame(false, &delay_ms, this);
   if (!frame_started_) {
     // Nothing was drawn: either trailing data after the last frame, or a broken file.
     if (rc < 0) {
@@ -78,7 +79,7 @@ bool GifPlayer::next_frame() {
     }
     rewind();
     frame_started_ = false;
-    rc = gif_->playFrame(false, nullptr, this);
+    rc = gif_->playFrame(false, &delay_ms, this);
     if (!frame_started_) {
       fail();
       return false;
@@ -86,6 +87,7 @@ bool GifPlayer::next_frame() {
   }
   previous_ = current_;
   ++frames_;
+  last_delay_ms_ = delay_ms;
   at_end_ = (rc <= 0);
   return true;
 }

@@ -5,24 +5,40 @@ RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
 [esphome/esp-hub75](https://github.com/esphome-libs/esp-hub75) DMA driver (pulled in
 by the IDF component manager); no Arduino, no LVGL.
 
-## What it does today: the GIF frame-rate test
+## What it does today: the GIF show with a clock
 
 The firmware plays the GIFs embedded from `assets/gifs/` (64 Makapix Club artworks,
-1.1 MB) as fast as the panel accepts frames: frame delays are ignored, each frame is
-shown for exactly one panel refresh. The order is shuffled at boot, each GIF plays for
-10 s (looping as needed), then the next one starts; after the last it wraps around.
-The number top-right, on a black box, is the delivered frame rate measured over the
-last half second. Pressing **BOOT** restarts the scene with a new shuffle.
+1.1 MB) at their intended speed, in an order shuffled at boot, 30 s per GIF (looping as
+needed), wrapping around after the last one. Frame delays are honoured with the browser
+rule: a delay under 20 ms is shown for 100 ms. Top-left, on a black box, a 24-hour
+clock (HH:MM) set from NTP over Wi-Fi; it reads `--:--` until the first sync. Pressing
+**BOOT** restarts the scene with a new shuffle.
 
 Per GIF the log reports frames shown, fps, loops and decode+scale time per frame; every
-10 s the main loop logs render / wait / copy times, late flips and sync timeouts.
+10 s the main loop logs frames presented, render / wait / copy times, late flips and
+sync timeouts. Frames are only presented when a GIF frame or the clock changed.
 
 Artwork is scaled in the firmware to 64x64 with the aspect ratio kept: nearest
 neighbour when enlarging (pixel art stays crisp), box average when shrinking, black
 bars around the image. Transparent pixels show black.
 
+Menu `p64` in menuconfig (`.\tools\idf.ps1 menuconfig`) holds the knobs: brightness cap,
+Wi-Fi credentials, NTP server, timezone (POSIX TZ string, default New York), seconds
+per GIF, and two switches that turn the show back into the frame-rate test: ignore
+frame delays, and show the delivered fps top-right.
+
 Earlier scenes (bouncing ball, white fades, full-power white, the rotating square hue
 wheel) live in git history (`git log -- main/scenes`).
+
+### Wi-Fi credentials
+
+Copy `sdkconfig.secrets.example` to `sdkconfig.secrets` (git-ignored) and fill in the
+SSID and password; the project's `CMakeLists.txt` applies it on top of
+`sdkconfig.defaults`. Like any defaults file it only reaches an existing generated
+`sdkconfig` after `menuconfig` or after deleting `sdkconfig`. Without it the firmware
+runs offline and the clock stays at `--:--`. The network stack, lwIP and SNTP run on
+core 0; the main task (rendering) is pinned to core 1 so traffic never delays a frame.
+First sync after boot takes 5 to 30 s (Wi-Fi join, DNS, SNTP's own start-up delay).
 
 ### GIF pipeline
 
@@ -60,23 +76,26 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 122.1 Hz (64x64, 8 bit planes, 32 MHz HUB75 clock; it was
-76.3 Hz at the 20 MHz the bring-up started with). The driver double-buffers, but its
+The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock; 32 MHz gives
+122 Hz and was used for the frame-rate tests). The driver double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
 front buffer until that frame ends, and the driver gives no signal when it has
 switched. Drawing into the back buffer too early tears.
 
 `Display` therefore watches the LCD GDMA channel directly (`display.cpp`):
 
-1. `present()` copies the RAM frame into the back buffer, clears the channel's
-   end-of-frame flag, then flips.
+1. `present()` copies the RAM frame into the back buffer, notes which chain is front
+   (the channel's `eof_des_addr`, the last descriptor of the chain the DMA is looping
+   in), clears the channel's end-of-frame flag, then flips.
 2. The scene renders the next frame into RAM straight away (rendering overlaps the
    panel's switch).
-3. `wait_for_back_buffer()` sleeps until about 1.5 ms before the predicted boundary
+3. `wait_for_back_buffer()` sleeps until shortly before the predicted boundary
    (boundaries are exactly periodic), spins on the end-of-frame flag, then reads the
-   channel's `eof_des_addr` and `dscr` registers: if the descriptor being fetched still
-   lies in the chain that just ended, the flip missed the boundary (the DMA had already
-   prefetched the last descriptor) and it waits for the next one.
+   channel's `dscr` register: if the descriptor being fetched still lies in the chain
+   that was front at the flip, the flip missed the boundary (the DMA had already
+   prefetched the last descriptor) and it waits for the next one. Testing against the
+   chain noted at flip time, rather than the chain that just ended, is what keeps this
+   correct when presents are sparse and many boundaries have passed in between.
 4. Only then does the next `present()` copy into the freed buffer.
 
 Results on the hardware (2026-09-12), one new frame per refresh in every case:
@@ -160,16 +179,19 @@ firmware/
   main/
     CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
     idf_component.yml     dependencies (esphome/esp-hub75); dependencies.lock pins versions
-    Kconfig.projbuild     menu "p64": P64_MAX_BRIGHTNESS
-    main.cpp              app_main: runs the scene list, BOOT restarts, FPS meter, stats log
+    Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, GIF dwell, test switches
+    main.cpp              app_main: display, Wi-Fi + clock start, scene loop, BOOT restarts, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
     scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
     gif_player.hpp/.cpp   GifPlayer (decode + composite) and Scaler; no ESP-IDF dependencies
     gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
+    net/wifi.*            Wi-Fi station with reconnect
+    net/clock.*           timezone + SNTP, local time of day
     color.hpp             HSV to RGB
-    font3x5.hpp           3x5 digits for on-panel counters
-    scenes/gif_fps.*      the GIF playback scene
+    font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
+    scenes/gif_show.*     the GIF show scene (clock overlay, optional fps overlay / max speed)
+  sdkconfig.secrets.example  template for the git-ignored Wi-Fi credentials file
   tools/*.ps1             env activation and idf.py wrappers
   tools/gifcheck/         PC check of the GIF pipeline against Pillow
 ```
@@ -191,9 +213,10 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 8-bit colour depth, CIE 1931 gamma, 32 MHz HUB75 clock (122 Hz refresh; the
-  FM6126A-class drivers are specified around 25-30 MHz, so back off to 26.7 MHz if
-  ghosting or noise ever appears), double buffering.
+- 8-bit colour depth, CIE 1931 gamma, 20 MHz HUB75 clock (76 Hz refresh; 32 MHz gave
+  122 Hz without visible artefacts during the frame-rate tests, though the FM6126A-class
+  drivers are specified around 25-30 MHz), double buffering.
+- Main task pinned to core 1; Wi-Fi, lwIP and the event loop on core 0.
 - Brightness 0 blanks the panel; values 1-255 pass through a driver curve whose floor on
   a 64-wide panel is about 17/255 of output-enable time.
 

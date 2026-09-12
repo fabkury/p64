@@ -38,6 +38,10 @@ class GifPlayer {
   uint32_t frames_decoded() const { return frames_; }      // since open()
   uint32_t loops() const { return loops_; }                // wrap-arounds since open()
   int last_error() const { return last_error_; }           // AnimatedGIF error code
+  // Delay stored in the GIF for the frame last decoded, in ms (0 when absent).
+  int last_delay_ms() const { return last_delay_ms_; }
+  // True when the frame last decoded is the animation's last one.
+  bool at_end() const { return at_end_; }
 
  private:
   struct Rect {
@@ -62,6 +66,7 @@ class GifPlayer {
   Rect current_, previous_;
   uint32_t frames_ = 0, loops_ = 0;
   int last_error_ = 0;
+  int last_delay_ms_ = 0;
 };
 
 // Fits an RGB888 image of one size into an RGB888 destination of another size, keeping

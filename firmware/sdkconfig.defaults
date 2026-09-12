@@ -27,6 +27,9 @@ CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# Rendering runs in the main task on core 1; Wi-Fi, lwIP and the event loop stay on
+# core 0, so network traffic cannot delay the frame-locked present.
+CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1=y
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 
 # --- HUB75 driver (esphome/esp-hub75): Waveshare ESP32-S3-RGB-Matrix pin map ---
@@ -65,10 +68,9 @@ CONFIG_HUB75_ROTATE_0=y
 # --- HUB75 quality / performance ---
 CONFIG_HUB75_BIT_DEPTH_8=y
 CONFIG_HUB75_GAMMA_CIE1931=y
-# 32 MHz (160 MHz / 5) gives a ~122 Hz refresh at 8 bits, so the frame-locked loop
-# can deliver ~122 fps. 20 MHz (76 Hz) was verified first; fall back to 26.7 MHz
-# (102 Hz) if the panel shows ghosting or noise at 32 MHz.
-CONFIG_HUB75_CLK_32MHZ=y
+# 20 MHz gives a 76 Hz refresh at 8 bits. 32 MHz (122 Hz) was verified too and is
+# the setting for frame-rate tests; the driver chips are specified around 25-30 MHz.
+CONFIG_HUB75_CLK_20MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255

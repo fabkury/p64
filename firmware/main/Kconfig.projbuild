@@ -5,9 +5,57 @@ menu "p64"
         range 0 255
         default 255
         help
-            Global cap applied to every scene, including the top of the
-            brightness fades. Lower it (for example to 64) when the board is
-            powered from a laptop USB port only: a full-white panel at 255 draws
-            close to the panel's 15 W rating and will brown out a weak supply.
+            Global cap applied to every scene. Lower it (for example to 64) when
+            the board is powered from a laptop USB port only: a full-white panel
+            at 255 draws close to the panel's 15 W rating and will brown out a
+            weak supply.
+
+    menu "Wi-Fi and time"
+
+        config P64_WIFI_SSID
+            string "Wi-Fi network name (SSID)"
+            default ""
+            help
+                Leave empty to run without Wi-Fi (the clock then shows --:--).
+                Do not put real credentials in sdkconfig.defaults: use the
+                git-ignored sdkconfig.secrets (see sdkconfig.secrets.example).
+
+        config P64_WIFI_PASSWORD
+            string "Wi-Fi password"
+            default ""
+
+        config P64_NTP_SERVER
+            string "NTP server"
+            default "pool.ntp.org"
+
+        config P64_TZ
+            string "Timezone (POSIX TZ string)"
+            default "EST5EDT,M3.2.0,M11.1.0"
+            help
+                POSIX rule for local time, e.g. "EST5EDT,M3.2.0,M11.1.0" (New York),
+                "<-03>3" (Sao Paulo), "WET0WEST,M3.5.0/1,M10.5.0" (Lisbon),
+                "CET-1CEST,M3.5.0,M10.5.0/3" (Berlin).
+
+    endmenu
+
+    menu "GIF show"
+
+        config P64_GIF_DWELL_S
+            int "Seconds each GIF stays on screen"
+            range 1 3600
+            default 30
+
+        config P64_GIF_MAX_SPEED
+            bool "Ignore frame delays (frame-rate test)"
+            default n
+            help
+                Plays every frame as fast as the panel accepts frames instead of
+                honouring the delay stored in the GIF.
+
+        config P64_SHOW_FPS
+            bool "Show the delivered frame rate top-right"
+            default n
+
+    endmenu
 
 endmenu

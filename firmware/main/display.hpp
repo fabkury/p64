@@ -87,6 +87,7 @@ class Display {
   uint8_t brightness_ = 0;
   int lcd_dma_channel_ = -1;
   bool flip_pending_ = false;
+  uint32_t old_front_last_ = 0;  // last descriptor of the chain that was front at the flip
   int64_t last_flip_us_ = 0;
   int64_t last_boundary_us_ = 0;  // 0 until the first frame boundary has been observed
   int64_t last_yield_us_ = 0;     // when the wait last blocked (lets the idle task run)

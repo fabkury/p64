@@ -1,0 +1,7 @@
+I can see that all GIFs play at 122 FPS, except during the transition from one GIF to the next.
+
+We are done with the high-FPS testing. Please do:
+ - Revert the whole firmware back to 76 Hz
+ - Disable the "GIF frame duration bypass", i.e. play each GIF frame for its intended duration
+ - Disable/hide the FPS counter and its black background rectangle
+ - Implement on the top-left side: an NTP-sync'ed 24-h clock

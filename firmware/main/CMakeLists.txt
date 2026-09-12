@@ -43,7 +43,9 @@ idf_component_register(
         "display.cpp"
         "button.cpp"
         "gif_player.cpp"
-        "scenes/gif_fps.cpp"
+        "net/wifi.cpp"
+        "net/clock.cpp"
+        "scenes/gif_show.cpp"
         "${GIF_TABLE_SRC}"
     INCLUDE_DIRS
         "."
@@ -52,6 +54,11 @@ idf_component_register(
         animatedgif
         driver
         esp_timer
+        nvs_flash
+        esp_wifi
+        esp_netif
+        esp_event
+        lwip
     EMBED_FILES
         ${GIF_FILES}
 )

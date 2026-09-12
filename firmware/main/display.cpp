@@ -262,7 +262,12 @@ void Display::present(const Frame &frame) {
   stats_.copy_us += static_cast<uint64_t>(esp_timer_get_time() - t0);
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
   if (lcd_dma_channel_ >= 0) {
-    gdma_ll_tx_clear_interrupt_status(&GDMA, static_cast<uint32_t>(lcd_dma_channel_), GDMA_LL_EVENT_TX_EOF);
+    const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
+    // Before the flip the DMA loops in the front chain, so the last end-of-frame
+    // descriptor address identifies that chain; wait_for_dma_switch() checks that
+    // the DMA has left it. 0 means no frame has ended yet (right after begin()).
+    old_front_last_ = GDMA.channel[ch].out.eof_des_addr;
+    gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
   }
   driver_->flip_buffer();
   flip_pending_ = true;
@@ -288,7 +293,8 @@ void Display::wait_for_back_buffer() {
 bool Display::wait_for_dma_switch() {
   const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
   const double period = refresh_period_us();
-  const int64_t deadline = last_flip_us_ + static_cast<int64_t>(kSyncTimeoutPeriods * period);
+  if (old_front_last_ == 0) return false;  // no chain identity yet: use the timed wait
+  const int64_t deadline = esp_timer_get_time() + static_cast<int64_t>(kSyncTimeoutPeriods * period);
   while (true) {
     // Sleep until shortly before the next predicted boundary, then spin on the flag.
     // The main task must block now and then or the idle task (which feeds the task
@@ -317,13 +323,14 @@ bool Display::wait_for_dma_switch() {
     }
     last_boundary_us_ = esp_timer_get_time();
     gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
-    // The chain that just finished ends at eof_des_addr. If the descriptor being
-    // fetched now lies inside that same chain, the DMA looped instead of switching
-    // (the relink came too late for this boundary): wait for the next one.
-    const uint32_t eof_addr = GDMA.channel[ch].out.eof_des_addr;
+    // A frame boundary has passed. If the descriptor being fetched now still lies in
+    // the chain that was front when we flipped, the DMA looped instead of switching
+    // (the relink came too late for that boundary): wait for the next one. Once it
+    // is anywhere else, the old front buffer is free, however many boundaries ago
+    // the switch happened.
     const uint32_t fetching = GDMA.channel[ch].out.dscr;
-    const bool looped = (eof_addr - fetching) < kChainBytes;  // unsigned: wraps when fetching > eof_addr
-    if (!looped) return true;
+    const bool still_old = (old_front_last_ - fetching) < kChainBytes;  // unsigned: wraps when fetching > last
+    if (!still_old) return true;
     ++stats_.late_flips;
   }
 }

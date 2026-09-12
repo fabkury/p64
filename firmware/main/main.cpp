@@ -1,14 +1,13 @@
-// p64 -- frame-rate test firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
+// p64 -- firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
 //
-// Plays the embedded GIFs (assets/gifs) as fast as the panel accepts frames, 10 s each,
-// with the delivered frame rate top-right, and logs frame statistics every 10 s.
-// Press BOOT to restart the scene (new shuffle).
+// Plays the embedded GIFs (assets/gifs) at their intended speed, one after the other,
+// with an NTP-synced clock top-left. Press BOOT to restart the scene (new shuffle).
+// Menuconfig (menu "p64") can turn it back into the frame-rate test.
 //
 // Frame pacing: a scene renders the next frame into RAM right after the previous one
 // was flipped in, so rendering overlaps the panel's buffer switch; the loop then waits
 // for the DMA to reach the frame boundary (see display.hpp) before copying the frame
-// into the freed back buffer. That locks rendering to the panel refresh: one new frame
-// per refresh, no tearing.
+// into the freed back buffer. Frames are only presented when something changed.
 
 #include <cinttypes>
 #include <cstddef>
@@ -17,11 +16,14 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sdkconfig.h"
 
 #include "button.hpp"
 #include "display.hpp"
+#include "net/clock.hpp"
+#include "net/wifi.hpp"
 #include "scene.hpp"
-#include "scenes/gif_fps.hpp"
+#include "scenes/gif_show.hpp"
 
 namespace {
 
@@ -30,8 +32,8 @@ constexpr int64_t kStatsIntervalUs = 10 * 1000 * 1000;
 
 // Static so the frame and the scene's decoder state stay off the main task's stack.
 p64::Frame g_frame;
-p64::GifFpsScene g_gif_fps;
-p64::Scene *const g_scenes[] = {&g_gif_fps};
+p64::GifShowScene g_gif_show;
+p64::Scene *const g_scenes[] = {&g_gif_show};
 constexpr size_t kSceneCount = sizeof(g_scenes) / sizeof(g_scenes[0]);
 
 // Frames presented per second for the on-panel counter, measured over ~0.5 s windows.
@@ -76,8 +78,8 @@ struct StatsWindow {
     if (frames == 0) return;
     const float seconds = static_cast<float>(now_us - start_us) / 1e6f;
     const float n = static_cast<float>(frames);
-    ESP_LOGI(TAG, "%s: %" PRIu32 " frames in %.1f s = %.1f fps; per frame render %.2f ms, wait %.2f ms, copy %.2f ms; "
-                  "late flips %" PRIu32 ", sync timeouts %" PRIu32 " (%s)",
+    ESP_LOGI(TAG, "%s: %" PRIu32 " frames presented in %.1f s = %.1f fps; per frame render %.2f ms, wait %.2f ms, "
+                  "copy %.2f ms; late flips %" PRIu32 ", sync timeouts %" PRIu32 " (%s)",
              name, frames, seconds, n / seconds, static_cast<float>(render_us) / n / 1000.0f,
              static_cast<float>(s.wait_us) / n / 1000.0f, static_cast<float>(s.copy_us) / n / 1000.0f,
              s.late_flips, s.timeouts, display.dma_sync() ? "frame-locked to the DMA" : "timed fallback");
@@ -112,7 +114,7 @@ void run_scene(p64::Scene &scene, p64::Display &display, p64::Button &boot) {
       meter.tick(esp_timer_get_time());
       ++window.frames;
     } else {
-      vTaskDelay(pdMS_TO_TICKS(5));  // static scene: just keep polling the button
+      vTaskDelay(pdMS_TO_TICKS(2));  // nothing new: poll the button and the schedule
     }
     if (now - window.start_us >= kStatsIntervalUs) {
       window.log(scene.name(), now, display);
@@ -125,7 +127,7 @@ void run_scene(p64::Scene &scene, p64::Display &display, p64::Button &boot) {
 }  // namespace
 
 extern "C" void app_main() {
-  ESP_LOGI(TAG, "p64 frame-rate test firmware, built " __DATE__ " " __TIME__);
+  ESP_LOGI(TAG, "p64 firmware, built " __DATE__ " " __TIME__);
   ESP_LOGI(TAG, "brightness cap %u/255", static_cast<unsigned>(p64::max_brightness()));
 
   static p64::Display display;
@@ -135,6 +137,10 @@ extern "C" void app_main() {
   }
   static p64::Button boot;
   boot.begin();
+
+  // Network and clock come up in the background (Wi-Fi tasks live on core 0).
+  p64::clock::start(CONFIG_P64_TZ, CONFIG_P64_NTP_SERVER);
+  p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD);
 
   for (size_t i = 0;; i = (i + 1) % kSceneCount) {
     p64::Scene &scene = *g_scenes[i];
