@@ -63,14 +63,15 @@ runs offline and the clock stays at `--:--`. The network stack, lwIP and SNTP ru
 core 0; the main task (rendering) is pinned to core 1 so traffic never delays a frame.
 First sync after boot takes 5 to 30 s (Wi-Fi join, DNS, SNTP's own start-up delay).
 
-TLS runs AES and SHA in software (`CONFIG_MBEDTLS_HARDWARE_AES=n`, `_SHA=n`). The
-hardware engines stream through GDMA, and their bursts starve the panel's LCD_CAM FIFO
-at the 32 MHz pixel clock: the LCD stops, the panel's DMA freezes mid-frame, and only a
-reboot recovers it (verified: stalls within seconds of the first HTTPS request with
-either engine on, none in software, none at 20 MHz; stopping and restarting the panel
-driver in place does not bring the DMA back). The same can happen with any other heavy
-GDMA user; the display logs "panel DMA stalled" once if it ever does. RSA and ECC
-acceleration do not use DMA and stay on.
+TLS uses the hardware AES and SHA engines (ESP-IDF's defaults), and that is why the
+panel runs at 20 MHz. The engines stream through GDMA, and their bursts starve the
+panel's LCD_CAM FIFO when the panel's own DMA stream is fast: at 32 MHz (64 MB/s) the
+LCD stops, the panel's DMA freezes mid-frame, and only a reboot recovers it (verified:
+stalls within seconds of the first HTTPS request with either engine on; none at 20 MHz,
+40 MB/s; none at 32 MHz with software crypto; stopping and restarting the panel driver
+in place does not bring the DMA back). To run the panel at 32 MHz again, set
+`CONFIG_MBEDTLS_HARDWARE_AES=n` and `_SHA=n`. The same stall can come from any other
+heavy GDMA user; the display logs "panel DMA stalled" once if it ever happens.
 
 ### GIF pipeline
 
@@ -108,9 +109,9 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 244.1 Hz (64x64, 7 bit planes, 32 MHz HUB75 clock; 8 bits give
-122 Hz and 20 MHz with 8 bits 76 Hz, both photographing with more row banding). The
-driver double-buffers, but its
+The panel refreshes at 152.6 Hz (64x64, 7 bit planes, 20 MHz HUB75 clock; 32 MHz would
+give 244 Hz but needs software TLS crypto, see Wi-Fi credentials below; 8 bits at
+20 MHz give 76 Hz). The driver double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
 front buffer until that frame ends, and the driver gives no signal when it has
 switched. Drawing into the back buffer too early tears.
@@ -247,11 +248,11 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 7-bit colour depth (128 levels per channel), CIE 1931 gamma, 32 MHz HUB75 clock:
-  244 Hz refresh, chosen so phone photos show as little row banding as the driver
-  allows. 8 bits at 32 MHz (122 Hz) and 8 bits at 20 MHz (76 Hz) were verified too; no
-  visible artefacts at 32 MHz on this panel although the FM6126A-class drivers are
-  specified around 25-30 MHz. Double buffering.
+- 7-bit colour depth (128 levels per channel), CIE 1931 gamma, 20 MHz HUB75 clock:
+  153 Hz refresh, the fastest that coexists with hardware TLS crypto (32 MHz, 244 Hz,
+  works with software crypto; 8 bits at 20 MHz give 76 Hz). No visible artefacts at
+  32 MHz on this panel although the FM6126A-class drivers are specified around
+  25-30 MHz. Double buffering.
 - Photographing the panel: it is multiplexed (two rows lit at a time), so a short
   exposure captures a stripe of rows. Use a manual exposure of 1/30 s or longer, or
   lower the brightness so the phone picks a longer one; a faster refresh only shrinks

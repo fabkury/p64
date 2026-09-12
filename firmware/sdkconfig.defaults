@@ -23,13 +23,15 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # --- Console: the board's USB port is wired to the ESP32-S3's native USB (no UART bridge) ---
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
-# --- TLS: AES and SHA in software ---
+# --- TLS: hardware AES and SHA (ESP-IDF defaults), which constrains the HUB75 clock ---
 # The hardware AES/SHA engines stream through GDMA and their bursts starve the panel's
-# LCD_CAM FIFO at the 32 MHz pixel clock; the panel then stops for good (verified on
-# 2026-09-12: stalls within seconds of the first HTTPS request with either engine on,
-# none in software; none at 20 MHz). RSA/ECC acceleration does not use DMA and stays on.
-CONFIG_MBEDTLS_HARDWARE_AES=n
-CONFIG_MBEDTLS_HARDWARE_SHA=n
+# LCD_CAM FIFO when the panel's own DMA stream is fast; the panel then stops for good.
+# Verified on 2026-09-12: at 32 MHz (64 MB/s) stalls within seconds of the first HTTPS
+# request with either engine on; none at 20 MHz (40 MB/s); none at 32 MHz with
+# software crypto. Keep the panel at 20 MHz while these are on, or set both to n
+# before raising the clock.
+CONFIG_MBEDTLS_HARDWARE_AES=y
+CONFIG_MBEDTLS_HARDWARE_SHA=y
 
 # --- CPU / RTOS / compiler ---
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
@@ -76,13 +78,13 @@ CONFIG_HUB75_ROTATE_0=y
 # --- HUB75 quality / performance ---
 # Refresh = 32 rows x 2^(bits-1) descriptors x 64 px / clock. The panel is multiplexed,
 # so phone photos show stripes of rows unless the exposure spans a whole refresh:
-#   20 MHz, 8 bit -> 76 Hz;  32 MHz, 8 bit -> 122 Hz;  32 MHz, 7 bit -> 244 Hz.
-# 7 bits means 128 levels per channel instead of 256 (slight banding in gradients);
-# 32 MHz showed no artefacts on this panel although the driver chips are specified
-# around 25-30 MHz. Fall back to 26.7 MHz (2 lines below) if ghosting or noise appears.
+#   20 MHz, 8 bit -> 76 Hz;  20 MHz, 7 bit -> 153 Hz;  32 MHz, 7 bit -> 244 Hz.
+# 7 bits means 128 levels per channel instead of 256 (slight banding in gradients).
+# 20 MHz is the fastest clock that coexists with the hardware AES/SHA engines (see the
+# TLS section above); 32 MHz works only with software crypto.
 CONFIG_HUB75_BIT_DEPTH_7=y
 CONFIG_HUB75_GAMMA_CIE1931=y
-CONFIG_HUB75_CLK_32MHZ=y
+CONFIG_HUB75_CLK_20MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255

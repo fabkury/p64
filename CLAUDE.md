@@ -72,9 +72,9 @@ end-of-frame flag before each flip, and `wait_for_back_buffer()` sleeps until ju
 the predicted boundary, spins on the flag, then checks `eof_des_addr`/`dscr` to confirm
 the DMA switched chains (the chain that was front is noted at flip time from
 `eof_des_addr`; testing against "the chain that just ended" instead breaks as soon as
-presents are sparse). The loop is therefore locked to the panel refresh (244 Hz at the
-current 32 MHz clock with 7 bit planes, chosen against photo banding; 122 Hz at 8 bits,
-76 Hz at 20 MHz and 8 bits): render into RAM right after `present()`,
+presents are sparse). The loop is therefore locked to the panel refresh (153 Hz at the
+current 20 MHz clock with 7 bit planes; 244 Hz at 32 MHz needs software TLS crypto, see
+the GDMA lesson below; 76 Hz at 20 MHz and 8 bits): render into RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
 blocking at least occasionally (it does), otherwise the idle task starves and the task
 watchdog fires. Scenes return "dirty" only when something changed; unchanged frames are
@@ -97,13 +97,15 @@ height_max=..&file_format=gif`, then `/api/d/{sqid}.gif`), gated on Wi-Fi and NT
 github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the contract.
 
 GDMA lesson (hard-won, 2026-09-12): the hardware AES/SHA engines stream through GDMA and
-their bursts starve the panel's LCD_CAM FIFO at the 32 MHz pixel clock; the panel's DMA
-then freezes mid-frame (descriptor pointer stuck, OUT_DONE set, no EOF) and only a
-reboot recovers it. `sdkconfig.defaults` therefore runs AES/SHA in software; keep it
-that way, and expect the same from any other heavy GDMA user (audio, SD). Things that
-were tried and do not help: reserving the panel pair's receive channel; stopping and
-restarting the Hub75Driver in place (the DMA does not come back). `Display` logs
-"panel DMA stalled" once when it detects the frozen pointer.
+their bursts starve the panel's LCD_CAM FIFO when the panel's DMA stream is fast; at
+32 MHz the panel's DMA freezes mid-frame (descriptor pointer stuck, OUT_DONE set, no
+EOF) and only a reboot recovers it. The user chose hardware crypto with the panel at
+20 MHz (verified stall-free); 32 MHz requires `CONFIG_MBEDTLS_HARDWARE_AES=n` and
+`_SHA=n`. Never raise the HUB75 clock without revisiting that. Expect the same from any
+other heavy GDMA user (audio, SD). Things that were tried and do not help: reserving the
+panel pair's receive channel; stopping and restarting the Hub75Driver in place (the DMA
+does not come back). `Display` logs "panel DMA stalled" once when it detects the
+frozen pointer.
 
 GIF playback (`main/gif_player.*`): bitbank2/AnimatedGIF, vendored as
 `firmware/components/animatedgif` (Apache-2.0, one documented local patch), used in
