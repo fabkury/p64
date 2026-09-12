@@ -1,6 +1,6 @@
-// p64 -- phase 1: a ball under gravity, bouncing on the panel's native bottom edge,
-// cycling once through the fully saturated hue spectrum during the phase, with the
-// delivered frame rate in the top-right corner.
+// p64 -- a ball under gravity, bouncing on the panel's native bottom edge for as long
+// as the firmware runs, cycling through the fully saturated hue spectrum every 10 s,
+// with the delivered frame rate in the top-right corner.
 //
 // What you see tells you the panel's native orientation: the floor line is row
 // kHeight-1 ("down"), and the small L-shaped marker in the corner is the origin
@@ -14,7 +14,7 @@ namespace p64 {
 class BallScene : public Scene {
  public:
   const char *name() const override { return "bouncing ball"; }
-  uint32_t duration_ms() const override { return 10 * 1000; }
+  uint32_t duration_ms() const override { return kRunForever; }
   void enter(Display &display, Frame &frame) override;
   bool render(Display &display, Frame &frame, const FrameInfo &info) override;
 

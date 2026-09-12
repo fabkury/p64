@@ -7,12 +7,12 @@ by the IDF component manager); no Arduino, no LVGL.
 
 ## What it does today: the frame-rate test
 
-The firmware runs one scene, the bouncing ball, in 10 s rounds and logs frame
-statistics after each round (average fps, per-frame render / wait / copy times, late
-flips, sync timeouts). Pressing **BOOT** restarts the round.
+The firmware runs one scene, the bouncing ball, continuously, and logs frame statistics
+every 10 s (average fps, per-frame render / wait / copy times, late flips, sync
+timeouts). Pressing **BOOT** restarts the scene.
 
-A ball drops and bounces on a blue floor line while its colour runs once around the
-fully saturated hue circle per round. **The floor is the panel's native bottom edge**
+A ball drops and bounces on a blue floor line while its colour runs around the fully
+saturated hue circle once every 10 s. **The floor is the panel's native bottom edge**
 (driver row 63). The L-shaped marker top-left is the native origin: white pixel = (0,0),
 red arm = +x, green arm = +y. The number top-right is the delivered frame rate,
 measured over the last half second.

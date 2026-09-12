@@ -14,10 +14,14 @@ struct FrameInfo {
   float fps;      // frames actually presented per second, measured over the last ~0.5 s
 };
 
+// duration_ms() return value meaning "run until BOOT is pressed".
+constexpr uint32_t kRunForever = 0;
+
 class Scene {
  public:
   virtual ~Scene() = default;
   virtual const char *name() const = 0;
+  // How long the scene runs before the next one starts, or kRunForever.
   virtual uint32_t duration_ms() const = 0;
   // Called once when the scene starts. Must leave the panel showing its first frame.
   virtual void enter(Display &display, Frame &frame) = 0;

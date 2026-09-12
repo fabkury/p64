@@ -15,6 +15,7 @@ constexpr float kRestitution = 0.86f;   // energy kept per floor bounce
 constexpr float kMinApex = 14.0f;       // px above the floor; below this the ball is re-launched
 constexpr float kLaunchApex = 50.0f;    // px above the floor after a re-launch
 constexpr float kMaxStep = 0.05f;       // s, guards the integration against long stalls
+constexpr uint32_t kHuePeriodMs = 10 * 1000;  // one trip around the hue circle
 
 constexpr int kFloorRow = kHeight - 1;                    // the floor line lives on this row
 constexpr float kFloorY = static_cast<float>(kFloorRow);  // top edge of the floor line
@@ -41,8 +42,7 @@ void BallScene::enter(Display &display, Frame &frame) {
 
 bool BallScene::render(Display &, Frame &frame, const FrameInfo &info) {
   step(std::min(info.dt_s, kMaxStep));
-  // One full trip around the hue circle over the phase.
-  const float hue = static_cast<float>(info.t_ms) / static_cast<float>(duration_ms());
+  const float hue = static_cast<float>(info.t_ms % kHuePeriodMs) / static_cast<float>(kHuePeriodMs);
   draw(frame, hue, info.fps);
   return true;
 }
