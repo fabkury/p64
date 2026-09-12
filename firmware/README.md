@@ -76,8 +76,8 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock; 32 MHz gives
-122 Hz and was used for the frame-rate tests). The driver double-buffers, but its
+The panel refreshes at 122.1 Hz (64x64, 8 bit planes, 32 MHz HUB75 clock; 20 MHz gives
+76 Hz, which photographs with twice the row banding). The driver double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
 front buffer until that frame ends, and the driver gives no signal when it has
 switched. Drawing into the back buffer too early tears.
@@ -213,9 +213,13 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 8-bit colour depth, CIE 1931 gamma, 20 MHz HUB75 clock (76 Hz refresh; 32 MHz gave
-  122 Hz without visible artefacts during the frame-rate tests, though the FM6126A-class
-  drivers are specified around 25-30 MHz), double buffering.
+- 8-bit colour depth, CIE 1931 gamma, 32 MHz HUB75 clock (122 Hz refresh, chosen so
+  phone photos show less row banding; no visible artefacts on this panel although the
+  FM6126A-class drivers are specified around 25-30 MHz), double buffering.
+- Photographing the panel: it is multiplexed (two rows lit at a time), so a short
+  exposure captures a stripe of rows. Use a manual exposure of 1/30 s or longer, or
+  lower the brightness so the phone picks a longer one; a faster refresh only shrinks
+  the effect.
 - Main task pinned to core 1; Wi-Fi, lwIP and the event loop on core 0.
 - Brightness 0 blanks the panel; values 1-255 pass through a driver curve whose floor on
   a 64-wide panel is about 17/255 of output-enable time.

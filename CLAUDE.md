@@ -72,8 +72,9 @@ end-of-frame flag before each flip, and `wait_for_back_buffer()` sleeps until ju
 the predicted boundary, spins on the flag, then checks `eof_des_addr`/`dscr` to confirm
 the DMA switched chains (the chain that was front is noted at flip time from
 `eof_des_addr`; testing against "the chain that just ended" instead breaks as soon as
-presents are sparse). The loop is therefore locked to the panel refresh (76 Hz at the
-current 20 MHz HUB75 clock, 122 Hz at 32 MHz): render into RAM right after `present()`,
+presents are sparse). The loop is therefore locked to the panel refresh (122 Hz at the
+current 32 MHz HUB75 clock, chosen against photo banding; 76 Hz at 20 MHz): render into
+RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
 blocking at least occasionally (it does), otherwise the idle task starves and the task
 watchdog fires. Scenes return "dirty" only when something changed; unchanged frames are

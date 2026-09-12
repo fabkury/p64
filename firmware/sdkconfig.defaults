@@ -68,9 +68,11 @@ CONFIG_HUB75_ROTATE_0=y
 # --- HUB75 quality / performance ---
 CONFIG_HUB75_BIT_DEPTH_8=y
 CONFIG_HUB75_GAMMA_CIE1931=y
-# 20 MHz gives a 76 Hz refresh at 8 bits. 32 MHz (122 Hz) was verified too and is
-# the setting for frame-rate tests; the driver chips are specified around 25-30 MHz.
-CONFIG_HUB75_CLK_20MHZ=y
+# 32 MHz gives a 122 Hz refresh at 8 bits, which halves the row banding phone photos
+# show compared with 20 MHz (76 Hz). Verified artefact-free on this panel although the
+# driver chips are specified around 25-30 MHz; fall back to 26.7 MHz (102 Hz) if
+# ghosting or noise ever appears.
+CONFIG_HUB75_CLK_32MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255
