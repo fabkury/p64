@@ -44,6 +44,8 @@ class Frame {
   void fill_disc(float cx, float cy, float radius, Rgb c);
 
   const uint8_t *data() const { return px_; }
+  // Bulk write access: kWidth*kHeight*3 bytes, row-major RGB888.
+  uint8_t *pixels() { return px_; }
 
  private:
   uint8_t px_[kWidth * kHeight * 3] = {};

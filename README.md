@@ -42,5 +42,6 @@ git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S
   board from outside, and is the version to print next. v5 is a kept alternative that adds
   the speaker shipped with the driver board, sunk into the upper back and firing
   backwards. Nothing after v1 is printed yet.
-- Firmware: bring-up test (bouncing ball, brightness fades, square hue wheel). See
-  `firmware/README.md`.
+- Firmware: display bring-up done (pins, panel driver, orientation verified); rendering
+  frame-locked to the panel refresh at 122 Hz; GIF playback (Makapix artwork) running as
+  a frame-rate test. See `firmware/README.md`.

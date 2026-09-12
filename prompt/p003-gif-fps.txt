@@ -1,0 +1,8 @@
+Great.
+
+The ball FPS test is done. It can also now stay in git history only. Let's move on to another, higher level of FPS testing: real-world GIF playing.
+
+I have prepared a set of animated GIFs in folder gifs/. Please do:
+ - Embed/hardcode them in the firmware in whichever way you see fit. Try to prioritize performance, given that this is an FPS test.
+ - Implement GIF playback in the firmware. Artworks must be scaled (not ahead of embedding into the firmware) to 64x64 pixels (LED matrix size) with aspect ratio preservation (black letterbox/pillarbox if necessary). Feel free to implement GIF playback in whichever way you see fit (using or not using dependencies), but remember that as per Makapix Club's allowances the GIFs are technically allowed to have transparency.
+ - Then create a new FPS test scene: GIF playback at maximum speed, ignoring their frame durations (just play each frame as fast as possible), with the FPS counter on top (make sure to draw a black rectangle behind the FPS numbers so they're always visible regardless of the GIF that's playing). Play each available GIF in a loop for 10 seconds, then go to the next, in a cycle (go back to the first after playing the last).

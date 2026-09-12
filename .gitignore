@@ -7,6 +7,7 @@ firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/managed_components/
 firmware/dependencies.lock.old
+firmware/tools/gifcheck/build/
 
 # Editors and OS
 .vscode/

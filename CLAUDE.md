@@ -80,6 +80,18 @@ things present on its git main (no `row_decoder`; `ICN2038S` is a distinct enume
 Brightness 0 blanks the panel; 1-255 go through a curve floored at ~17/255 on a 64-wide
 panel.
 
+GIF playback (`main/gif_player.*`): bitbank2/AnimatedGIF, vendored as
+`firmware/components/animatedgif` (Apache-2.0, one documented local patch), used in
+`GIF_DRAW_RAW` mode with an RGB888 palette; `GifPlayer` composites the lines it gets
+into an RGB888 canvas (transparency, all four disposal modes, black background) and
+`Scaler` fits the canvas into 64x64 (nearest up, box-average down, black bars).
+`gif_player.*` must stay free of ESP-IDF includes: `tools/gifcheck/gifcheck.py` builds
+it natively with the harness in that folder and compares every frame of every GIF in
+`assets/gifs/` against Pillow, pixel-exact; run it after touching the decoder, the
+compositor, the scaler, or the assets. The GIFs are embedded by `main/CMakeLists.txt`
+(glob over `assets/gifs/*.gif`, generated `gif_assets.cpp` table); dropping a file in
+the folder and rebuilding is all it takes.
+
 Orientation: the firmware drives the panel in native orientation (`ROTATE_0`): row 63 is
 the native bottom, and the controller's USB-C ports sit behind the native right edge. The
 enclosure turns the panel 90 degrees clockwise (front view); the matching setting is

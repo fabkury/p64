@@ -1,7 +1,8 @@
 // p64 -- frame-rate test firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
 //
-// Runs the bouncing-ball scene (hue-cycling ball, FPS counter top-right) indefinitely,
-// logging frame statistics every 10 s. Press BOOT to restart the scene.
+// Plays the embedded GIFs (assets/gifs) as fast as the panel accepts frames, 10 s each,
+// with the delivered frame rate top-right, and logs frame statistics every 10 s.
+// Press BOOT to restart the scene (new shuffle).
 //
 // Frame pacing: a scene renders the next frame into RAM right after the previous one
 // was flipped in, so rendering overlaps the panel's buffer switch; the loop then waits
@@ -20,17 +21,17 @@
 #include "button.hpp"
 #include "display.hpp"
 #include "scene.hpp"
-#include "scenes/ball.hpp"
+#include "scenes/gif_fps.hpp"
 
 namespace {
 
 constexpr const char *TAG = "p64";
 constexpr int64_t kStatsIntervalUs = 10 * 1000 * 1000;
 
-// Static so the 12 KB frame stays off the main task's stack.
+// Static so the frame and the scene's decoder state stay off the main task's stack.
 p64::Frame g_frame;
-p64::BallScene g_ball;
-p64::Scene *const g_scenes[] = {&g_ball};
+p64::GifFpsScene g_gif_fps;
+p64::Scene *const g_scenes[] = {&g_gif_fps};
 constexpr size_t kSceneCount = sizeof(g_scenes) / sizeof(g_scenes[0]);
 
 // Frames presented per second for the on-panel counter, measured over ~0.5 s windows.

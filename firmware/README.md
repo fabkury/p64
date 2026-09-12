@@ -5,20 +5,47 @@ RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
 [esphome/esp-hub75](https://github.com/esphome-libs/esp-hub75) DMA driver (pulled in
 by the IDF component manager); no Arduino, no LVGL.
 
-## What it does today: the frame-rate test
+## What it does today: the GIF frame-rate test
 
-The firmware runs one scene, the bouncing ball, continuously, and logs frame statistics
-every 10 s (average fps, per-frame render / wait / copy times, late flips, sync
-timeouts). Pressing **BOOT** restarts the scene.
+The firmware plays the GIFs embedded from `assets/gifs/` (64 Makapix Club artworks,
+1.1 MB) as fast as the panel accepts frames: frame delays are ignored, each frame is
+shown for exactly one panel refresh. The order is shuffled at boot, each GIF plays for
+10 s (looping as needed), then the next one starts; after the last it wraps around.
+The number top-right, on a black box, is the delivered frame rate measured over the
+last half second. Pressing **BOOT** restarts the scene with a new shuffle.
 
-A ball drops and bounces on a blue floor line while its colour runs around the fully
-saturated hue circle once every 10 s. **The floor is the panel's native bottom edge**
-(driver row 63). The L-shaped marker top-left is the native origin: white pixel = (0,0),
-red arm = +x, green arm = +y. The number top-right is the delivered frame rate,
-measured over the last half second.
+Per GIF the log reports frames shown, fps, loops and decode+scale time per frame; every
+10 s the main loop logs render / wait / copy times, late flips and sync timeouts.
 
-Earlier bring-up scenes (white fades, full-power white, the rotating square hue wheel)
-live in git history (`git log -- main/scenes`).
+Artwork is scaled in the firmware to 64x64 with the aspect ratio kept: nearest
+neighbour when enlarging (pixel art stays crisp), box average when shrinking, black
+bars around the image. Transparent pixels show black.
+
+Earlier scenes (bouncing ball, white fades, full-power white, the rotating square hue
+wheel) live in git history (`git log -- main/scenes`).
+
+### GIF pipeline
+
+`components/animatedgif` is a vendored copy of bitbank2/AnimatedGIF (Apache-2.0, see
+its README for the one local patch). It is used in RAW mode: the library decodes LZW
+and hands `GifPlayer` (`main/gif_player.*`) one line at a time with the palette, the
+frame rectangle, the transparency index and the disposal method; `GifPlayer`
+composites into an RGB888 canvas of the GIF's logical size, honouring all four disposal
+modes (the library itself does not implement "restore previous"), and `Scaler` fits the
+canvas into the 64x64 frame. `gif_player.*` has no ESP-IDF dependencies on purpose.
+
+`tools/gifcheck/gifcheck.py` builds that exact code natively (needs g++ and Pillow),
+decodes every GIF in `assets/gifs/`, and compares every frame's canvas against Pillow
+and every scaled frame against a Python twin of the scaler, pixel-exact. Run it after
+touching the decoder, the compositor, the scaler or the assets:
+
+```
+python tools\gifcheck\gifcheck.py          # all GIFs; exit code 0 when everything matches
+python tools\gifcheck\gifcheck.py a.gif    # specific files
+```
+
+Adding artwork: drop the `.gif` into `assets/gifs/` and rebuild; `main/CMakeLists.txt`
+globs the folder, embeds the files in flash and generates the `kGifAssets` table.
 
 The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`).
 
@@ -52,12 +79,18 @@ switched. Drawing into the back buffer too early tears.
    prefetched the last descriptor) and it waits for the next one.
 4. Only then does the next `present()` copy into the freed buffer.
 
-Results on the hardware (2026-09-12), one new frame per refresh in both cases:
+Results on the hardware (2026-09-12), one new frame per refresh in every case:
 
-| HUB75 clock | Refresh | Delivered | Per frame: copy / render / wait | Late flips per 10 s |
-|---|---|---|---|---|
-| 20 MHz | 76.3 Hz | 76.0 fps | 5.8 / 0.04 / 7.3 ms | 3 |
-| 32 MHz | 122.1 Hz | 122.0 fps | 5.8 / 0.04 / 2.4 ms | 0 |
+| Scene | HUB75 clock | Refresh | Delivered | Per frame: copy / render / wait | Late flips per 10 s |
+|---|---|---|---|---|---|
+| Ball | 20 MHz | 76.3 Hz | 76.0 fps | 5.8 / 0.04 / 7.3 ms | 3 |
+| Ball | 32 MHz | 122.1 Hz | 122.0 fps | 5.8 / 0.04 / 2.4 ms | 0 |
+| GIFs (16 to 64 px) | 32 MHz | 122.1 Hz | 122.1 fps | 5.8 / 1.0 to 1.4 / 1.0 to 1.4 ms | 0 |
+
+For these small GIFs decode plus scale costs 1.0 to 1.4 ms per frame (a single-frame
+GIF re-parses its header every frame), so the copy still dominates and the frame rate
+stays at the refresh cap. Larger artwork would eat into the remaining ~1 ms of headroom
+and start dropping to every other refresh.
 
 "Late flips" are flips that landed in the DMA's prefetch window and cost one extra
 refresh. If the GDMA channel cannot be found the wait falls back to a full refresh
@@ -122,17 +155,23 @@ firmware/
   CMakeLists.txt          ESP-IDF project "p64"
   sdkconfig.defaults      every setting that differs from ESP-IDF defaults (board, panel, pins)
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
+  assets/gifs/            the GIFs embedded in the firmware (+ Makapix manifest.json, not embedded)
+  components/animatedgif/ vendored bitbank2/AnimatedGIF decoder (see its README)
   main/
+    CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
     idf_component.yml     dependencies (esphome/esp-hub75); dependencies.lock pins versions
     Kconfig.projbuild     menu "p64": P64_MAX_BRIGHTNESS
-    main.cpp              app_main: runs the scene list in rounds, BOOT restarts, FPS meter, stats log
+    main.cpp              app_main: runs the scene list, BOOT restarts, FPS meter, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
     scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
+    gif_player.hpp/.cpp   GifPlayer (decode + composite) and Scaler; no ESP-IDF dependencies
+    gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 digits for on-panel counters
-    scenes/ball.*         the bouncing-ball scene
+    scenes/gif_fps.*      the GIF playback scene
   tools/*.ps1             env activation and idf.py wrappers
+  tools/gifcheck/         PC check of the GIF pipeline against Pillow
 ```
 
 Rendering model: scenes draw into a 64x64 RGB888 `Frame` in ordinary RAM; `Display::present()`
