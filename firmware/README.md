@@ -7,15 +7,15 @@ by the IDF component manager); no Arduino, no LVGL.
 
 ## What it does today: the bring-up test
 
-The firmware loops through four phases. Press the board's **BOOT** button to skip to
-the next one at any time. Each phase change is logged on the serial console.
+The firmware loops through three phases. Press the board's **BOOT** button to skip to
+the next one at any time. Each phase change is logged on the serial console, with
+frame-rate statistics at the end of every animated phase.
 
 | # | Phase | Length | What to look for |
 |---|---|---|---|
-| 1 | Bouncing ball | 20 s | An orange ball drops and bounces on a blue floor line. **The floor is the panel's native bottom edge** (driver row 63). The L-shaped marker in the opposite corner is the native origin: white pixel = (0,0), red arm = +x, green arm = +y. |
-| 2 | White fade, linear | 40 s | All pixels white. Brightness steps evenly through the driver's 0-255 scale from full to fully off (20 s) and back (20 s). Shows how the hardware behaves at each step. Note the driver floors non-zero values: on a 64-wide panel brightness 1 already means about 17/255 of OE time, so the last visible step is roughly 7 % and then off. |
-| 3 | White fade, perceptual | 40 s | Same, but stepping CIE 1931 lightness evenly, so the change looks even to the eye. |
-| 4 | Square hue wheel | 20 s | Hue by angle around the centre, saturation by square distance from the centre (pure hues on the edges, white in the middle). Makes one full turn in 20 s. |
+| 1 | Bouncing ball | 10 s | A ball drops and bounces on a blue floor line while its colour runs once around the fully saturated hue circle (red at the start, back to red at the end). **The floor is the panel's native bottom edge** (driver row 63). The L-shaped marker top-left is the native origin: white pixel = (0,0), red arm = +x, green arm = +y. The number top-right is the delivered frame rate, measured over the last half second. |
+| 2 | Full power | 20 s | Every pixel pure white at the maximum brightness allowed by `P64_MAX_BRIGHTNESS`. This is the panel's worst-case power draw. |
+| 3 | Square hue wheel | 50 s | Hue by angle around the centre, saturation by square distance from the centre (pure hues on the edges, white in the middle). Turns continuously, one full turn every 20 s. |
 
 Then it starts again at phase 1.
 
@@ -29,6 +29,37 @@ that puts the native right edge at the bottom. The driver setting for that is
 `CONFIG_HUB75_ROTATE_90=y` (its transform maps image (x, y) to native (y, 63 - x), so
 image "down" becomes native +x). Switch it in `sdkconfig.defaults` when the enclosure
 arrives and the ball will again fall toward the physical bottom.
+
+## Frame pacing: locked to the panel refresh
+
+The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock). The driver
+double-buffers, but its `flip_buffer()` only relinks the DMA descriptor chain: the DMA
+keeps scanning the old front buffer until that frame ends, and the driver gives no
+signal when it has switched. Drawing into the back buffer too early tears.
+
+`Display` therefore watches the LCD GDMA channel directly (`display.cpp`):
+
+1. `present()` copies the RAM frame into the back buffer, clears the channel's
+   end-of-frame flag, then flips.
+2. The scene renders the next frame into RAM straight away (rendering overlaps the
+   panel's switch).
+3. `wait_for_back_buffer()` sleeps until about 1.5 ms before the predicted boundary
+   (boundaries are exactly periodic), spins on the end-of-frame flag, then reads the
+   channel's `eof_des_addr` and `dscr` registers: if the descriptor being fetched still
+   lies in the chain that just ended, the flip missed the boundary (the DMA had already
+   prefetched the last descriptor) and it waits for the next one.
+4. Only then does the next `present()` copy into the freed buffer.
+
+Result on the hardware (2026-09-12): 76.0 fps average over the ball phase, one new
+frame per refresh; per frame about 5.8 ms copying into the driver's bit-plane buffers,
+0.04 ms rendering, 7.3 ms waiting. A handful of flips per phase land in the prefetch
+window and cost one extra refresh; the log counts them ("late flips"). If the GDMA
+channel cannot be found the wait falls back to a full refresh period after each flip
+("timed fallback" in the log, about 50 fps).
+
+Going above 76 fps needs a faster panel refresh: a 32 MHz HUB75 clock gives ~122 Hz,
+or a higher `HUB75_MIN_REFRESH_RATE` makes the driver shorten the low bit planes.
+Both are single settings in `sdkconfig.defaults`; the loop adapts automatically.
 
 ## Setup (Windows)
 
@@ -83,19 +114,21 @@ firmware/
   main/
     idf_component.yml     dependencies (esphome/esp-hub75); dependencies.lock pins versions
     Kconfig.projbuild     menu "p64": P64_MAX_BRIGHTNESS
-    main.cpp              app_main: runs the scenes in a loop, BOOT skips
-    display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, built from sdkconfig)
+    main.cpp              app_main: runs the scenes in a loop, BOOT skips, FPS meter, stats log
+    display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
-    scene.hpp             Scene interface: enter() + render() per frame
+    scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
+    color.hpp             HSV to RGB
+    font3x5.hpp           3x5 digits for on-panel counters
     scenes/ball.*         phase 1
-    scenes/fade.*         phases 2 and 3
-    scenes/hue_wheel.*    phase 4
+    scenes/white.*        phase 2
+    scenes/hue_wheel.*    phase 3
   tools/*.ps1             env activation and idf.py wrappers
 ```
 
 Rendering model: scenes draw into a 64x64 RGB888 `Frame` in ordinary RAM; `Display::present()`
 hands it to the driver with one `draw_pixels()` call and flips the driver's double buffer.
-The main loop runs at 50 frames per second.
+The main loop presents one frame per panel refresh.
 
 ## Hardware facts baked into `sdkconfig.defaults`
 
@@ -111,6 +144,8 @@ The main loop runs at 50 frames per second.
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
 - 8-bit colour depth, CIE 1931 gamma, 20 MHz HUB75 clock, double buffering.
+- Brightness 0 blanks the panel; values 1-255 pass through a driver curve whose floor on
+  a 64-wide panel is about 17/255 of output-enable time.
 
 ## Upstream references
 

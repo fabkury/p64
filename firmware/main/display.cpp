@@ -5,12 +5,39 @@
 #include <cstring>
 
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "hal/dma_types.h"
+#include "hal/gdma_ll.h"
 #include "hub75.h"
+#include "soc/gdma_channel.h"
+#include "soc/gdma_struct.h"
+#include "soc/soc_caps.h"
 
 namespace p64 {
 namespace {
 
 constexpr const char *TAG = "display";
+
+// Timed fallback: extra time after the refresh period before the back buffer is
+// touched, covering the descriptor the DMA may already have fetched plus jitter.
+constexpr int64_t kFlipMarginUs = 700;
+// DMA-synchronised wait: how long before the predicted boundary the task stops
+// sleeping and starts spinning on the end-of-frame flag.
+constexpr int64_t kSpinLeadUs = 1500;
+// Give up on the DMA flag after this many refresh periods and use the timed fallback.
+constexpr int kSyncTimeoutPeriods = 3;
+
+// One descriptor chain (one buffer) of the driver: descriptors per frame x their size.
+constexpr uint32_t kChainBytes = kHub75ScanRows * kHub75DescriptorsPerRow * sizeof(dma_descriptor_t);
+
+int find_lcd_dma_channel() {
+  for (int ch = 0; ch < SOC_GDMA_PAIRS_PER_GROUP; ++ch) {
+    if (GDMA.channel[ch].out.peri_sel.sel == SOC_GDMA_TRIG_PERIPH_LCD0) return ch;
+  }
+  return -1;
+}
 
 Hub75Config config_from_sdkconfig() {
   Hub75Config cfg{};
@@ -90,23 +117,7 @@ Hub75Config config_from_sdkconfig() {
   cfg.pins.oe = CONFIG_HUB75_PIN_OE;
   cfg.pins.clk = CONFIG_HUB75_PIN_CLK;
 
-#if defined(CONFIG_HUB75_CLK_8MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_8M;
-#elif defined(CONFIG_HUB75_CLK_10MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_10M;
-#elif defined(CONFIG_HUB75_CLK_16MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_16M;
-#elif defined(CONFIG_HUB75_CLK_18MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_18M;
-#elif defined(CONFIG_HUB75_CLK_23MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_23M;
-#elif defined(CONFIG_HUB75_CLK_27MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_27M;
-#elif defined(CONFIG_HUB75_CLK_32MHZ)
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_32M;
-#else
-  cfg.output_clock_speed = Hub75ClockSpeed::HZ_20M;
-#endif
+  cfg.output_clock_speed = static_cast<Hub75ClockSpeed>(kHub75RequestedClockHz);
   cfg.min_refresh_rate = CONFIG_HUB75_MIN_REFRESH_RATE;
   cfg.latch_blanking = CONFIG_HUB75_LATCH_BLANKING;
   cfg.brightness = CONFIG_HUB75_BRIGHTNESS;
@@ -224,24 +235,103 @@ bool Display::begin() {
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
   driver_->flip_buffer();
   driver_->clear();
+  lcd_dma_channel_ = find_lcd_dma_channel();
 #endif
-  ESP_LOGI(TAG, "HUB75 refresh running");
+  last_flip_us_ = esp_timer_get_time();
+  flip_pending_ = false;
+  ESP_LOGI(TAG, "HUB75 refresh running; expected refresh period %.1f us (%.1f Hz)", refresh_period_us(),
+           1e6 / refresh_period_us());
+  if (lcd_dma_channel_ >= 0) {
+    ESP_LOGI(TAG, "frame boundaries read from GDMA channel %d (%lu-byte descriptor chains): frame-locked rendering",
+             lcd_dma_channel_, static_cast<unsigned long>(kChainBytes));
+  } else if (cfg.double_buffer) {
+    ESP_LOGW(TAG, "LCD GDMA channel not found: frames wait a full refresh period after each flip");
+  }
   return true;
 }
 
 void Display::present(const Frame &frame) {
   if (!driver_) return;
+  const int64_t t0 = esp_timer_get_time();
   driver_->draw_pixels(0, 0, kWidth, kHeight, frame.data(), Hub75PixelFormat::RGB888, Hub75ColorOrder::RGB,
                        false);
+  stats_.copy_us += static_cast<uint64_t>(esp_timer_get_time() - t0);
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
+  if (lcd_dma_channel_ >= 0) {
+    gdma_ll_tx_clear_interrupt_status(&GDMA, static_cast<uint32_t>(lcd_dma_channel_), GDMA_LL_EVENT_TX_EOF);
+  }
   driver_->flip_buffer();
+  flip_pending_ = true;
 #endif
+  last_flip_us_ = esp_timer_get_time();
+  ++stats_.frames;
+}
+
+void Display::wait_for_back_buffer() {
+#if defined(CONFIG_HUB75_DOUBLE_BUFFER)
+  if (!driver_ || !flip_pending_) return;
+  const int64_t t0 = esp_timer_get_time();
+  bool done = false;
+  if (lcd_dma_channel_ >= 0) done = wait_for_dma_switch();
+  if (!done) wait_timed();
+  flip_pending_ = false;
+  stats_.wait_us += static_cast<uint64_t>(esp_timer_get_time() - t0);
+#endif
+}
+
+// Waits for the frame boundary at which the DMA actually moved to the other chain.
+// Returns false on timeout (caller falls back to the timed wait).
+bool Display::wait_for_dma_switch() {
+  const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
+  const double period = refresh_period_us();
+  const int64_t deadline = last_flip_us_ + static_cast<int64_t>(kSyncTimeoutPeriods * period);
+  while (true) {
+    // Sleep until shortly before the next predicted boundary, then spin on the flag.
+    if (last_boundary_us_ != 0) {
+      const int64_t now = esp_timer_get_time();
+      const double elapsed = static_cast<double>(now - last_boundary_us_);
+      const double periods_ahead = std::ceil(elapsed / period);
+      const int64_t predicted = last_boundary_us_ + static_cast<int64_t>(periods_ahead * period);
+      const int64_t remaining = predicted - now - kSpinLeadUs;
+      if (remaining >= 2000) vTaskDelay(pdMS_TO_TICKS(remaining / 1000));
+    }
+    while (!(gdma_ll_tx_get_interrupt_status(&GDMA, ch, true) & GDMA_LL_EVENT_TX_EOF)) {
+      if (esp_timer_get_time() > deadline) {
+        ++stats_.timeouts;
+        return false;
+      }
+    }
+    last_boundary_us_ = esp_timer_get_time();
+    gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
+    // The chain that just finished ends at eof_des_addr. If the descriptor being
+    // fetched now lies inside that same chain, the DMA looped instead of switching
+    // (the relink came too late for this boundary): wait for the next one.
+    const uint32_t eof_addr = GDMA.channel[ch].out.eof_des_addr;
+    const uint32_t fetching = GDMA.channel[ch].out.dscr;
+    const bool looped = (eof_addr - fetching) < kChainBytes;  // unsigned: wraps when fetching > eof_addr
+    if (!looped) return true;
+    ++stats_.late_flips;
+  }
+}
+
+void Display::wait_timed() {
+  const int64_t target = last_flip_us_ + static_cast<int64_t>(refresh_period_us()) + kFlipMarginUs;
+  const int64_t remaining = target - esp_timer_get_time();
+  if (remaining > 2000) vTaskDelay(pdMS_TO_TICKS((remaining - 1000) / 1000));
+  while (esp_timer_get_time() < target) {
+  }
 }
 
 void Display::set_brightness(uint8_t value) {
   if (!driver_) return;
   brightness_ = value;
   driver_->set_brightness(value);
+}
+
+Display::Stats Display::take_stats() {
+  const Stats out = stats_;
+  stats_ = Stats{};
+  return out;
 }
 
 }  // namespace p64

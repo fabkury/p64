@@ -4,7 +4,7 @@ idf_component_register(
         "display.cpp"
         "button.cpp"
         "scenes/ball.cpp"
-        "scenes/fade.cpp"
+        "scenes/white.cpp"
         "scenes/hue_wheel.cpp"
     INCLUDE_DIRS
         "."

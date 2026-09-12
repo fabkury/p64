@@ -8,6 +8,12 @@
 
 namespace p64 {
 
+struct FrameInfo {
+  uint32_t t_ms;  // time since the scene's enter()
+  float dt_s;     // time since the previous render() call
+  float fps;      // frames actually presented per second, measured over the last ~0.5 s
+};
+
 class Scene {
  public:
   virtual ~Scene() = default;
@@ -15,9 +21,8 @@ class Scene {
   virtual uint32_t duration_ms() const = 0;
   // Called once when the scene starts. Must leave the panel showing its first frame.
   virtual void enter(Display &display, Frame &frame) = 0;
-  // Called once per frame; t_ms is the time since enter(), dt_s the time since the
-  // previous call. Return true when `frame` changed and must be presented.
-  virtual bool render(Display &display, Frame &frame, uint32_t t_ms, float dt_s) = 0;
+  // Called once per frame. Return true when `frame` changed and must be presented.
+  virtual bool render(Display &display, Frame &frame, const FrameInfo &info) = 0;
 };
 
 // Brightness cap from menuconfig (P64_MAX_BRIGHTNESS), honoured by every scene.

@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include "color.hpp"
+#include "font3x5.hpp"
+
 namespace p64 {
 namespace {
 
@@ -13,14 +16,14 @@ constexpr float kMinApex = 14.0f;       // px above the floor; below this the ba
 constexpr float kLaunchApex = 50.0f;    // px above the floor after a re-launch
 constexpr float kMaxStep = 0.05f;       // s, guards the integration against long stalls
 
-constexpr int kFloorRow = kHeight - 1;                         // the floor line lives on this row
-constexpr float kFloorY = static_cast<float>(kFloorRow);       // top edge of the floor line
+constexpr int kFloorRow = kHeight - 1;                    // the floor line lives on this row
+constexpr float kFloorY = static_cast<float>(kFloorRow);  // top edge of the floor line
 
-constexpr Rgb kBall{255, 110, 0};
 constexpr Rgb kFloor{0, 70, 200};
 constexpr Rgb kOrigin{255, 255, 255};
 constexpr Rgb kAxisX{255, 0, 0};
 constexpr Rgb kAxisY{0, 255, 0};
+constexpr Rgb kCounter{255, 255, 255};
 
 float launch_speed(float apex) { return std::sqrt(2.0f * kGravity * apex); }
 
@@ -32,13 +35,15 @@ void BallScene::enter(Display &display, Frame &frame) {
   vx_ = 11.0f;
   vy_ = 0.0f;
   display.set_brightness(max_brightness());
-  draw(frame);
+  draw(frame, 0.0f, 0.0f);
   display.present(frame);
 }
 
-bool BallScene::render(Display &, Frame &frame, uint32_t, float dt_s) {
-  step(std::min(dt_s, kMaxStep));
-  draw(frame);
+bool BallScene::render(Display &, Frame &frame, const FrameInfo &info) {
+  step(std::min(info.dt_s, kMaxStep));
+  // One full trip around the hue circle over the phase.
+  const float hue = static_cast<float>(info.t_ms) / static_cast<float>(duration_ms());
+  draw(frame, hue, info.fps);
   return true;
 }
 
@@ -69,16 +74,18 @@ void BallScene::step(float dt) {
   }
 }
 
-void BallScene::draw(Frame &frame) const {
+void BallScene::draw(Frame &frame, float hue_turns, float fps) const {
   frame.clear();
   frame.fill_rect(0, kFloorRow, kWidth, 1, kFloor);
-  frame.fill_disc(x_, y_, kRadius, kBall);
-  // Origin marker, drawn last so it stays visible if the ball passes over it.
+  frame.fill_disc(x_, y_, kRadius, hsv_to_rgb(hue_turns, 1.0f, 1.0f));
+  // Overlays are drawn last so they stay visible if the ball passes over them.
   for (int i = 1; i <= 4; ++i) {
     frame.set(i, 0, kAxisX);
     frame.set(0, i, kAxisY);
   }
   frame.set(0, 0, kOrigin);
+  const unsigned shown = static_cast<unsigned>(std::lround(std::clamp(fps, 0.0f, 999.0f)));
+  draw_number_right(frame, kWidth - 1, 0, shown, kCounter);
 }
 
 }  // namespace p64

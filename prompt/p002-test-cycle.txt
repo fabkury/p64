@@ -1,0 +1,11 @@
+It's a fresh new day. Let's make some changes.
+
+Please change the test cycle to:
+ - 10 seconds of ball bouncing, PLUS:
+  a. the ball continuously shifts color along the fully saturated hue spectrum
+  b. an FPS counter at the top of the screens should display the actual, delivered frame rate
+  c. the code should try to deliver or surpass the panel's 76 Hz refresh rate (without causing tearing)
+ - 20 seconds of full power: maximum brightness, all pixels pure white
+ - 50 seconds rotating spectrum colors (as already exists, just longer)
+
+Once done, build and flash the firmware to the board connected to USB-C. I already have it plugged to 27 W power and to this laptop.
