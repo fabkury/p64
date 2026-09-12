@@ -90,6 +90,21 @@ things present on its git main (no `row_decoder`; `ICN2038S` is a distinct enume
 Brightness 0 blanks the panel; 1-255 go through a curve floored at ~17/255 on a 64-wide
 panel.
 
+Makapix Club (`main/net/makapix.*`): a fetcher task on core 0 does two anonymous
+HTTPS GETs per artwork (`/api/post?promoted=true&sort=random&limit=1&width_max=..&
+height_max=..&file_format=gif`, then `/api/d/{sqid}.gif`), gated on Wi-Fi and NTP
+(TLS needs the clock), handing bytes to the scene under a mutex. The server code is
+github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the contract.
+
+GDMA lesson (hard-won, 2026-09-12): the hardware AES/SHA engines stream through GDMA and
+their bursts starve the panel's LCD_CAM FIFO at the 32 MHz pixel clock; the panel's DMA
+then freezes mid-frame (descriptor pointer stuck, OUT_DONE set, no EOF) and only a
+reboot recovers it. `sdkconfig.defaults` therefore runs AES/SHA in software; keep it
+that way, and expect the same from any other heavy GDMA user (audio, SD). Things that
+were tried and do not help: reserving the panel pair's receive channel; stopping and
+restarting the Hub75Driver in place (the DMA does not come back). `Display` logs
+"panel DMA stalled" once when it detects the frozen pointer.
+
 GIF playback (`main/gif_player.*`): bitbank2/AnimatedGIF, vendored as
 `firmware/components/animatedgif` (Apache-2.0, one documented local patch), used in
 `GIF_DRAW_RAW` mode with an RGB888 palette; `GifPlayer` composites the lines it gets

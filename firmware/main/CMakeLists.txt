@@ -45,6 +45,7 @@ idf_component_register(
         "gif_player.cpp"
         "net/wifi.cpp"
         "net/clock.cpp"
+        "net/makapix.cpp"
         "scenes/gif_show.cpp"
         "${GIF_TABLE_SRC}"
     INCLUDE_DIRS
@@ -59,6 +60,11 @@ idf_component_register(
         esp_netif
         esp_event
         lwip
+        esp_http_client
+        esp-tls
+        mbedtls
+        json
+        esp_app_format
     EMBED_FILES
         ${GIF_FILES}
 )

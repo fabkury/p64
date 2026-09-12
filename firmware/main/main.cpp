@@ -1,8 +1,9 @@
 // p64 -- firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
 //
-// Plays the embedded GIFs (assets/gifs) at their intended speed, one after the other,
-// with an NTP-synced clock top-left. Press BOOT to restart the scene (new shuffle).
-// Menuconfig (menu "p64") can turn it back into the frame-rate test.
+// Starts on an embedded GIF (assets/gifs), then plays a random promoted Makapix Club
+// artwork every 30 s, fetched in the background (embedded GIFs fill in when offline),
+// at the GIFs' intended speed, with an NTP-synced clock top-left. Press BOOT to
+// restart the scene. Menuconfig (menu "p64") can turn it back into the frame-rate test.
 //
 // Frame pacing: a scene renders the next frame into RAM right after the previous one
 // was flipped in, so rendering overlaps the panel's buffer switch; the loop then waits
@@ -21,6 +22,7 @@
 #include "button.hpp"
 #include "display.hpp"
 #include "net/clock.hpp"
+#include "net/makapix.hpp"
 #include "net/wifi.hpp"
 #include "scene.hpp"
 #include "scenes/gif_show.hpp"
@@ -138,9 +140,9 @@ extern "C" void app_main() {
   static p64::Button boot;
   boot.begin();
 
-  // Network and clock come up in the background (Wi-Fi tasks live on core 0).
+  // Network, clock and the Makapix fetcher come up in the background (core 0).
   p64::clock::start(CONFIG_P64_TZ, CONFIG_P64_NTP_SERVER);
-  p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD);
+  if (p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD)) p64::makapix::start();
 
   for (size_t i = 0;; i = (i + 1) % kSceneCount) {
     p64::Scene &scene = *g_scenes[i];

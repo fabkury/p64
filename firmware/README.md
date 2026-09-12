@@ -5,14 +5,37 @@ RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
 [esphome/esp-hub75](https://github.com/esphome-libs/esp-hub75) DMA driver (pulled in
 by the IDF component manager); no Arduino, no LVGL.
 
-## What it does today: the GIF show with a clock
+## What it does today: Makapix Club artwork with a clock
 
-The firmware plays the GIFs embedded from `assets/gifs/` (64 Makapix Club artworks,
-1.1 MB) at their intended speed, in an order shuffled at boot, 30 s per GIF (looping as
-needed), wrapping around after the last one. Frame delays are honoured with the browser
-rule: a delay under 20 ms is shown for 100 ms. Top-left, on a black box, a 24-hour
-clock (HH:MM) set from NTP over Wi-Fi; it reads `--:--` until the first sync. Pressing
-**BOOT** restarts the scene with a new shuffle.
+At boot the firmware plays one of the GIFs embedded from `assets/gifs/` (64 Makapix
+Club artworks, 1.1 MB), picked at random. In the background it asks Makapix Club for a
+random promoted GIF that fits the panel and downloads it; every 30 s the panel switches
+to the artwork that arrived and the next one is requested. When nothing arrived (Wi-Fi
+down, request failed, NTP not synced yet), a random embedded GIF fills the slot. GIFs
+play at their intended speed, looping as needed; frame delays are honoured with the
+browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a black box, a
+24-hour clock (HH:MM) set from NTP over Wi-Fi; it reads `--:--` until the first sync.
+Pressing **BOOT** restarts the scene.
+
+### Makapix Club client (`main/net/makapix.*`)
+
+Anonymous HTTPS, two requests per artwork, both against the public API of
+<https://makapix.club> (its code is at <https://github.com/fabkury/makapix>):
+
+```
+GET /api/post?promoted=true&sort=random&limit=1&width_max=64&height_max=64&file_format=gif
+GET /api/d/{public_sqid}.gif
+```
+
+The first returns one random promoted post with a GIF variant no larger than the panel
+(the JSON carries sqid, title, artist, size and the files list; 143 candidates at the
+time of writing); the second is the GIF file itself. A fetcher task on the Wi-Fi core
+does the work: it waits for Wi-Fi and the NTP sync (TLS checks certificate dates),
+skips artworks shown in the last 32 picks (re-drawing up to three times), caps the
+download at `P64_MAKAPIX_MAX_BYTES` (1 MB), retries once, and hands the bytes to the
+scene through a mutex. The scene logs title, artist and the page URL for each artwork.
+User agent: `p64/<git version>`. Menu `p64 > Makapix Club` can disable it or change
+the host.
 
 Per GIF the log reports frames shown, fps, loops and decode+scale time per frame; every
 10 s the main loop logs frames presented, render / wait / copy times, late flips and
@@ -23,9 +46,9 @@ neighbour when enlarging (pixel art stays crisp), box average when shrinking, bl
 bars around the image. Transparent pixels show black.
 
 Menu `p64` in menuconfig (`.\tools\idf.ps1 menuconfig`) holds the knobs: brightness cap,
-Wi-Fi credentials, NTP server, timezone (POSIX TZ string, default New York), seconds
-per GIF, and two switches that turn the show back into the frame-rate test: ignore
-frame delays, and show the delivered fps top-right.
+Wi-Fi credentials, NTP server, timezone (POSIX TZ string, default New York), Makapix
+on/off, host and download cap, seconds per artwork, and two switches that turn the show
+back into the frame-rate test: ignore frame delays, and show the delivered fps top-right.
 
 Earlier scenes (bouncing ball, white fades, full-power white, the rotating square hue
 wheel) live in git history (`git log -- main/scenes`).
@@ -39,6 +62,15 @@ SSID and password; the project's `CMakeLists.txt` applies it on top of
 runs offline and the clock stays at `--:--`. The network stack, lwIP and SNTP run on
 core 0; the main task (rendering) is pinned to core 1 so traffic never delays a frame.
 First sync after boot takes 5 to 30 s (Wi-Fi join, DNS, SNTP's own start-up delay).
+
+TLS runs AES and SHA in software (`CONFIG_MBEDTLS_HARDWARE_AES=n`, `_SHA=n`). The
+hardware engines stream through GDMA, and their bursts starve the panel's LCD_CAM FIFO
+at the 32 MHz pixel clock: the LCD stops, the panel's DMA freezes mid-frame, and only a
+reboot recovers it (verified: stalls within seconds of the first HTTPS request with
+either engine on, none in software, none at 20 MHz; stopping and restarting the panel
+driver in place does not bring the DMA back). The same can happen with any other heavy
+GDMA user; the display logs "panel DMA stalled" once if it ever does. RSA and ECC
+acceleration do not use DMA and stay on.
 
 ### GIF pipeline
 
@@ -189,9 +221,10 @@ firmware/
     gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
+    net/makapix.*         background fetcher: one random promoted GIF from Makapix Club
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
-    scenes/gif_show.*     the GIF show scene (clock overlay, optional fps overlay / max speed)
+    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, clock overlay
   sdkconfig.secrets.example  template for the git-ignored Wi-Fi credentials file
   tools/*.ps1             env activation and idf.py wrappers
   tools/gifcheck/         PC check of the GIF pipeline against Pillow

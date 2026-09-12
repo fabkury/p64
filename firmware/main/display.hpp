@@ -82,12 +82,16 @@ class Display {
  private:
   bool wait_for_dma_switch();
   void wait_timed();
+  void note_timeout(uint32_t fetching);  // stall detection (warns once)
 
   Hub75Driver *driver_ = nullptr;
   uint8_t brightness_ = 0;
   int lcd_dma_channel_ = -1;
   bool flip_pending_ = false;
   uint32_t old_front_last_ = 0;  // last descriptor of the chain that was front at the flip
+  uint32_t stall_dscr_ = 0;      // descriptor pointer seen at the previous timeout
+  int stall_count_ = 0;          // consecutive timeouts with the pointer frozen
+  bool stall_reported_ = false;
   int64_t last_flip_us_ = 0;
   int64_t last_boundary_us_ = 0;  // 0 until the first frame boundary has been observed
   int64_t last_yield_us_ = 0;     // when the wait last blocked (lets the idle task run)

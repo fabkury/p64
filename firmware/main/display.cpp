@@ -30,6 +30,9 @@ constexpr int64_t kFlipMarginUs = 700;
 constexpr int64_t kSpinLeadUs = 600;
 // Give up on the DMA flag after this many refresh periods and use the timed fallback.
 constexpr int kSyncTimeoutPeriods = 3;
+// Consecutive timeouts with the DMA's descriptor pointer frozen before a stall is
+// reported.
+constexpr int kStallTimeouts = 3;
 // Longest the main task may go without blocking (keeps the idle task and its watchdog fed).
 constexpr int64_t kForcedYieldUs = 1000 * 1000;
 
@@ -318,9 +321,11 @@ bool Display::wait_for_dma_switch() {
     while (!(gdma_ll_tx_get_interrupt_status(&GDMA, ch, true) & GDMA_LL_EVENT_TX_EOF)) {
       if (esp_timer_get_time() > deadline) {
         ++stats_.timeouts;
+        note_timeout(GDMA.channel[ch].out.dscr);
         return false;
       }
     }
+    stall_count_ = 0;
     last_boundary_us_ = esp_timer_get_time();
     gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
     // A frame boundary has passed. If the descriptor being fetched now still lies in
@@ -340,6 +345,29 @@ void Display::wait_timed() {
   const int64_t remaining = target - esp_timer_get_time();
   if (remaining > 2000) vTaskDelay(pdMS_TO_TICKS((remaining - 1000) / 1000));
   while (esp_timer_get_time() < target) {
+  }
+}
+
+// A refresh without an end-of-frame is not proof of a stall (the flag may simply have
+// been missed), but the same descriptor pointer on several consecutive timeouts is:
+// a running DMA advances it every few microseconds. The panel's DMA stops for good
+// when its LCD FIFO underruns, which heavy traffic from another GDMA user can cause
+// at high pixel clocks (seen with the hardware AES/SHA engines during TLS at 32 MHz;
+// hence software crypto in sdkconfig.defaults). Stopping and restarting the driver in
+// place was tried and does not bring the DMA back, so this only reports.
+void Display::note_timeout(uint32_t fetching) {
+  if (fetching == stall_dscr_) {
+    ++stall_count_;
+  } else {
+    stall_dscr_ = fetching;
+    stall_count_ = 1;
+  }
+  if (stall_count_ >= kStallTimeouts && !stall_reported_) {
+    stall_reported_ = true;
+    ESP_LOGE(TAG,
+             "panel DMA stalled (descriptor pointer frozen at 0x%lx): another DMA user is starving the LCD FIFO; "
+             "lower the HUB75 clock or remove that DMA traffic, then reboot",
+             static_cast<unsigned long>(stall_dscr_));
   }
 }
 

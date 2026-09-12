@@ -23,6 +23,14 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # --- Console: the board's USB port is wired to the ESP32-S3's native USB (no UART bridge) ---
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
+# --- TLS: AES and SHA in software ---
+# The hardware AES/SHA engines stream through GDMA and their bursts starve the panel's
+# LCD_CAM FIFO at the 32 MHz pixel clock; the panel then stops for good (verified on
+# 2026-09-12: stalls within seconds of the first HTTPS request with either engine on,
+# none in software; none at 20 MHz). RSA/ECC acceleration does not use DMA and stays on.
+CONFIG_MBEDTLS_HARDWARE_AES=n
+CONFIG_MBEDTLS_HARDWARE_SHA=n
+
 # --- CPU / RTOS / compiler ---
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000

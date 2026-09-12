@@ -1,0 +1,16 @@
+Thanks. Let's now get back to modifying the "scene".
+
+The current scene is approximately:
+ 1. Play the one of the 64 GIFs in random order
+ 2. Change to a new GIF every 30 seconds
+ 3. Repeat back to step 1.
+
+The new scene should be approximately:
+ 0. Startup: Play one of the 64 embedded GIFs, randomly chosen.
+ 1. In the background, query Makapix Club for a random promoted GIF that is <= 64x64 pixels. Download it.
+ 2. When the previous artwork has been playing for 30 seconds: switch to the new GIF.
+ 3. Repeat back to step 1.
+
+In other words, now the device will be querying Makapix Club by itself. Remember that Makapix Club is open source, its code is on GitHub.
+
+Once done, flash the new firmware to the device.

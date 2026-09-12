@@ -5,8 +5,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <numeric>
-#include <random>
 
 #include "esp_log.h"
 #include "esp_random.h"
@@ -50,56 +48,87 @@ void draw_boxed_text(Frame &frame, int x, int y, const char *text) {
 const char *GifShowScene::name() const { return kMaxSpeed ? "gif playback, max speed" : "gif show"; }
 
 void GifShowScene::enter(Display &display, Frame &frame) {
-  order_.resize(kGifAssetCount);
-  std::iota(order_.begin(), order_.end(), size_t{0});
-  std::minstd_rand rng(esp_random());
-  std::shuffle(order_.begin(), order_.end(), rng);
-  ESP_LOGI(TAG, "%u GIFs embedded, shuffled; %lu s each, frame delays %s", static_cast<unsigned>(kGifAssetCount),
+  ESP_LOGI(TAG, "%u GIFs embedded; %lu s per artwork, frame delays %s", static_cast<unsigned>(kGifAssetCount),
            static_cast<unsigned long>(kDwellMs / 1000), kMaxSpeed ? "ignored" : "honoured (min 100 ms when under 20)");
-
   display.set_brightness(max_brightness());
-  position_ = 0;
-  if (!start_gif(position_, 0)) advance(0);
+  embedded_index_ = kGifAssetCount ? esp_random() % kGifAssetCount : 0;
+  play_embedded(0);
+  makapix::request_next();
   frame.clear();
-  decode_next(0);
-  scaler_.scale(player_.canvas(), frame.pixels());
+  if (player_.is_open()) {
+    decode_next(0);
+    scaler_.scale(player_.canvas(), frame.pixels());
+  }
   draw_overlays(frame, 0.0f);
   display.present(frame);
 }
 
-bool GifShowScene::start_gif(size_t order_index, uint32_t now_ms) {
-  if (order_.empty()) return false;
-  const GifAsset &asset = kGifAssets[order_[order_index]];
+bool GifShowScene::open_current(const uint8_t *data, size_t size, uint32_t now_ms) {
   gif_start_ms_ = now_ms;
   gif_frames_ = 0;
   gif_decode_us_ = 0;
   next_frame_ms_ = now_ms;
   single_frame_ = false;
-  if (!player_.open(asset.data, asset.size)) {
-    ESP_LOGW(TAG, "%s: cannot open (AnimatedGIF error %d), skipped", asset.name, player_.last_error());
+  if (!player_.open(data, size)) {
+    ESP_LOGW(TAG, "%s: cannot open (AnimatedGIF error %d), skipped", current_name_.c_str(), player_.last_error());
     return false;
   }
   scaler_.configure(player_.width(), player_.height(), kWidth, kHeight);
-  ESP_LOGI(TAG, "playing %s (%dx%d, %zu bytes) at %dx%d", asset.name, player_.width(), player_.height(), asset.size,
-           scaler_.out_w(), scaler_.out_h());
   return true;
 }
 
-void GifShowScene::advance(uint32_t now_ms) {
-  // Move to the next GIF that opens; give up after one full pass so a folder of bad
-  // files cannot spin forever.
-  for (size_t tries = 0; tries < order_.size(); ++tries) {
-    position_ = (position_ + 1) % order_.size();
-    if (start_gif(position_, now_ms)) return;
+// Plays a random embedded GIF other than the last one shown. Tries a few if a file
+// refuses to open; false only when none opens.
+bool GifShowScene::play_embedded(uint32_t now_ms) {
+  if (kGifAssetCount == 0) return false;
+  download_ = makapix::Artwork{};  // release any downloaded bytes
+  for (size_t tries = 0; tries < kGifAssetCount; ++tries) {
+    size_t index = esp_random() % kGifAssetCount;
+    if (kGifAssetCount > 1 && index == embedded_index_) index = (index + 1) % kGifAssetCount;
+    embedded_index_ = index;
+    const GifAsset &asset = kGifAssets[index];
+    current_name_ = asset.name;
+    if (open_current(asset.data, asset.size, now_ms)) {
+      ESP_LOGI(TAG, "playing embedded %s (%dx%d, %zu bytes) at %dx%d", asset.name, player_.width(), player_.height(),
+               asset.size, scaler_.out_w(), scaler_.out_h());
+      return true;
+    }
   }
+  return false;
+}
+
+bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
+  player_.close();  // it may still point into the previous download's bytes
+  download_ = std::move(art);
+  current_name_ = "makapix " + download_.sqid;
+  if (!open_current(download_.gif.data(), download_.gif.size(), now_ms)) return false;
+  ESP_LOGI(TAG, "playing makapix %s \"%s\" by %s (%dx%d, %u bytes) at %dx%d, https://%s/p/%s", download_.sqid.c_str(),
+           download_.title.c_str(), download_.artist.c_str(), player_.width(), player_.height(),
+           static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h(), CONFIG_P64_MAKAPIX_HOST,
+           download_.sqid.c_str());
+  return true;
+}
+
+// End of a 30 s slot: the downloaded artwork if one is waiting, else an embedded GIF;
+// then ask for the next download so it is ready when this slot ends.
+void GifShowScene::next_slot(uint32_t now_ms) {
+  log_gif_stats(now_ms);
+  makapix::Artwork art;
+  bool playing = false;
+  if (makapix::take_ready(art)) playing = play_download(std::move(art), now_ms);
+  if (!playing) {
+    ESP_LOGI(TAG, "no downloaded artwork ready, using an embedded GIF");
+    playing = play_embedded(now_ms);
+  }
+  if (!playing) player_.close();
+  makapix::request_next();
 }
 
 void GifShowScene::log_gif_stats(uint32_t now_ms) const {
   if (!player_.is_open() || gif_frames_ == 0) return;
-  const GifAsset &asset = kGifAssets[order_[position_]];
   const float seconds = static_cast<float>(now_ms - gif_start_ms_) / 1000.0f;
   ESP_LOGI(TAG, "%s: %" PRIu32 " frames in %.1f s = %.1f fps, %" PRIu32 " loops, decode+scale %.3f ms/frame",
-           asset.name, gif_frames_, seconds, static_cast<float>(gif_frames_) / seconds, player_.loops(),
+           current_name_.c_str(), gif_frames_, seconds, static_cast<float>(gif_frames_) / seconds, player_.loops(),
            static_cast<float>(gif_decode_us_) / static_cast<float>(gif_frames_) / 1000.0f);
 }
 
@@ -119,30 +148,24 @@ bool GifShowScene::decode_next(uint32_t now_ms) {
 bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
   bool dirty = false;
 
-  if (!order_.empty()) {
-    if (info.t_ms - gif_start_ms_ >= kDwellMs) {
-      log_gif_stats(info.t_ms);
-      advance(info.t_ms);
-      dirty = true;
-    }
-    const bool due = kMaxSpeed || static_cast<int32_t>(info.t_ms - next_frame_ms_) >= 0;
-    if (player_.is_open() && (dirty || (due && !single_frame_))) {
-      if (decode_next(info.t_ms)) {
-        scaler_.scale(player_.canvas(), frame.pixels());
-      } else {
-        ESP_LOGW(TAG, "%s: decode error %d after %" PRIu32 " frames, skipping",
-                 kGifAssets[order_[position_]].name, player_.last_error(), gif_frames_);
-        advance(info.t_ms);
-        frame.clear();
-      }
-      dirty = true;
-    } else if (!player_.is_open()) {
-      frame.clear();
-      dirty = true;
-    }
-  } else if (info.t_ms == 0) {
-    frame.clear();
+  if (info.t_ms - gif_start_ms_ >= kDwellMs) {
+    next_slot(info.t_ms);
     dirty = true;
+  }
+  const bool due = kMaxSpeed || static_cast<int32_t>(info.t_ms - next_frame_ms_) >= 0;
+  if (player_.is_open() && (dirty || (due && !single_frame_))) {
+    if (decode_next(info.t_ms)) {
+      scaler_.scale(player_.canvas(), frame.pixels());
+    } else {
+      ESP_LOGW(TAG, "%s: decode error %d after %" PRIu32 " frames, moving on", current_name_.c_str(),
+               player_.last_error(), gif_frames_);
+      if (!play_embedded(info.t_ms)) player_.close();
+      frame.clear();
+      if (player_.is_open() && decode_next(info.t_ms)) scaler_.scale(player_.canvas(), frame.pixels());
+    }
+    dirty = true;
+  } else if (!player_.is_open() && dirty) {
+    frame.clear();
   }
 
   // The clock only changes once a minute; redraw the overlays when it does or when

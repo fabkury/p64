@@ -38,6 +38,29 @@ menu "p64"
 
     endmenu
 
+    menu "Makapix Club"
+
+        config P64_MAKAPIX_ENABLE
+            bool "Fetch promoted artwork from Makapix Club"
+            default y
+            help
+                Every slot the device asks makapix.club for a random promoted GIF
+                that fits the panel and plays it in the next slot. Off: only the
+                embedded GIFs play.
+
+        config P64_MAKAPIX_HOST
+            string "Makapix Club host"
+            default "makapix.club"
+
+        config P64_MAKAPIX_MAX_BYTES
+            int "Largest GIF file to download (bytes)"
+            range 4096 4194304
+            default 1048576
+            help
+                Downloads land in PSRAM; this cap keeps a huge file from eating it.
+
+    endmenu
+
     menu "GIF show"
 
         config P64_GIF_DWELL_S
