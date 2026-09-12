@@ -1,7 +1,7 @@
-// p64 -- bring-up test firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
+// p64 -- frame-rate test firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
 //
-// Cycles through: bouncing ball with FPS counter (10 s) -> full power, all white (20 s)
-// -> rotating square hue wheel (50 s) -> repeat. Press BOOT to skip ahead.
+// Runs the bouncing-ball scene (hue-cycling ball, FPS counter top-right) in 10 s
+// rounds, logging frame statistics after each round. Press BOOT to restart a round.
 //
 // Frame pacing: a scene renders the next frame into RAM right after the previous one
 // was flipped in, so rendering overlaps the panel's buffer switch; the loop then waits
@@ -21,19 +21,15 @@
 #include "display.hpp"
 #include "scene.hpp"
 #include "scenes/ball.hpp"
-#include "scenes/hue_wheel.hpp"
-#include "scenes/white.hpp"
 
 namespace {
 
 constexpr const char *TAG = "p64";
 
-// Static so the 12 KB frame and the hue tables stay off the main task's stack.
+// Static so the 12 KB frame stays off the main task's stack.
 p64::Frame g_frame;
 p64::BallScene g_ball;
-p64::WhiteScene g_white;
-p64::HueWheelScene g_hue_wheel;
-p64::Scene *const g_scenes[] = {&g_ball, &g_white, &g_hue_wheel};
+p64::Scene *const g_scenes[] = {&g_ball};
 constexpr size_t kSceneCount = sizeof(g_scenes) / sizeof(g_scenes[0]);
 
 // Frames presented per second, measured over ~0.5 s windows.
@@ -110,7 +106,7 @@ void run_scene(p64::Scene &scene, p64::Display &display, p64::Button &boot) {
 }  // namespace
 
 extern "C" void app_main() {
-  ESP_LOGI(TAG, "p64 bring-up firmware, built " __DATE__ " " __TIME__);
+  ESP_LOGI(TAG, "p64 frame-rate test firmware, built " __DATE__ " " __TIME__);
   ESP_LOGI(TAG, "brightness cap %u/255", static_cast<unsigned>(p64::max_brightness()));
 
   static p64::Display display;
@@ -123,8 +119,7 @@ extern "C" void app_main() {
 
   for (size_t i = 0;; i = (i + 1) % kSceneCount) {
     p64::Scene &scene = *g_scenes[i];
-    ESP_LOGI(TAG, "phase %u/%u: %s, %" PRIu32 " s (BOOT skips)", static_cast<unsigned>(i + 1),
-             static_cast<unsigned>(kSceneCount), scene.name(), scene.duration_ms() / 1000);
+    ESP_LOGI(TAG, "round: %s, %" PRIu32 " s (BOOT restarts)", scene.name(), scene.duration_ms() / 1000);
     run_scene(scene, display, boot);
   }
 }

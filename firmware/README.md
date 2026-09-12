@@ -5,19 +5,20 @@ RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
 [esphome/esp-hub75](https://github.com/esphome-libs/esp-hub75) DMA driver (pulled in
 by the IDF component manager); no Arduino, no LVGL.
 
-## What it does today: the bring-up test
+## What it does today: the frame-rate test
 
-The firmware loops through three phases. Press the board's **BOOT** button to skip to
-the next one at any time. Each phase change is logged on the serial console, with
-frame-rate statistics at the end of every animated phase.
+The firmware runs one scene, the bouncing ball, in 10 s rounds and logs frame
+statistics after each round (average fps, per-frame render / wait / copy times, late
+flips, sync timeouts). Pressing **BOOT** restarts the round.
 
-| # | Phase | Length | What to look for |
-|---|---|---|---|
-| 1 | Bouncing ball | 10 s | A ball drops and bounces on a blue floor line while its colour runs once around the fully saturated hue circle (red at the start, back to red at the end). **The floor is the panel's native bottom edge** (driver row 63). The L-shaped marker top-left is the native origin: white pixel = (0,0), red arm = +x, green arm = +y. The number top-right is the delivered frame rate, measured over the last half second. |
-| 2 | Full power | 20 s | Every pixel pure white at the maximum brightness allowed by `P64_MAX_BRIGHTNESS`. This is the panel's worst-case power draw. |
-| 3 | Square hue wheel | 50 s | Hue by angle around the centre, saturation by square distance from the centre (pure hues on the edges, white in the middle). Turns continuously, one full turn every 20 s. |
+A ball drops and bounces on a blue floor line while its colour runs once around the
+fully saturated hue circle per round. **The floor is the panel's native bottom edge**
+(driver row 63). The L-shaped marker top-left is the native origin: white pixel = (0,0),
+red arm = +x, green arm = +y. The number top-right is the delivered frame rate,
+measured over the last half second.
 
-Then it starts again at phase 1.
+Earlier bring-up scenes (white fades, full-power white, the rotating square hue wheel)
+live in git history (`git log -- main/scenes`).
 
 The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`).
 
@@ -32,10 +33,11 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock). The driver
-double-buffers, but its `flip_buffer()` only relinks the DMA descriptor chain: the DMA
-keeps scanning the old front buffer until that frame ends, and the driver gives no
-signal when it has switched. Drawing into the back buffer too early tears.
+The panel refreshes at 122.1 Hz (64x64, 8 bit planes, 32 MHz HUB75 clock; it was
+76.3 Hz at the 20 MHz the bring-up started with). The driver double-buffers, but its
+`flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
+front buffer until that frame ends, and the driver gives no signal when it has
+switched. Drawing into the back buffer too early tears.
 
 `Display` therefore watches the LCD GDMA channel directly (`display.cpp`):
 
@@ -50,16 +52,25 @@ signal when it has switched. Drawing into the back buffer too early tears.
    prefetched the last descriptor) and it waits for the next one.
 4. Only then does the next `present()` copy into the freed buffer.
 
-Result on the hardware (2026-09-12): 76.0 fps average over the ball phase, one new
-frame per refresh; per frame about 5.8 ms copying into the driver's bit-plane buffers,
-0.04 ms rendering, 7.3 ms waiting. A handful of flips per phase land in the prefetch
-window and cost one extra refresh; the log counts them ("late flips"). If the GDMA
-channel cannot be found the wait falls back to a full refresh period after each flip
-("timed fallback" in the log, about 50 fps).
+Results on the hardware (2026-09-12), one new frame per refresh in both cases:
 
-Going above 76 fps needs a faster panel refresh: a 32 MHz HUB75 clock gives ~122 Hz,
-or a higher `HUB75_MIN_REFRESH_RATE` makes the driver shorten the low bit planes.
-Both are single settings in `sdkconfig.defaults`; the loop adapts automatically.
+| HUB75 clock | Refresh | Delivered | Per frame: copy / render / wait | Late flips per 10 s |
+|---|---|---|---|---|
+| 20 MHz | 76.3 Hz | 76.0 fps | 5.8 / 0.04 / 7.3 ms | 3 |
+| 32 MHz | 122.1 Hz | 122.0 fps | 5.8 / 0.04 / 2.4 ms | 0 |
+
+"Late flips" are flips that landed in the DMA's prefetch window and cost one extra
+refresh. If the GDMA channel cannot be found the wait falls back to a full refresh
+period after each flip ("timed fallback" in the log, about 50 fps at 76 Hz).
+
+The main task must block at least once in a while or the idle task on core 0 starves
+and the task watchdog fires every 5 s; the wait sleeps whenever a whole tick of slack
+exists and forces a one-tick yield once a second otherwise.
+
+The copy into the driver's bit-plane buffers is now the limit: 5.8 ms of the 8.2 ms
+period. A faster refresh (7-bit depth, or a higher `HUB75_MIN_REFRESH_RATE`) would
+leave too little room for it; going further means shrinking the copy (dirty-rectangle
+updates, or a faster blit inside the driver).
 
 ## Setup (Windows)
 
@@ -114,15 +125,13 @@ firmware/
   main/
     idf_component.yml     dependencies (esphome/esp-hub75); dependencies.lock pins versions
     Kconfig.projbuild     menu "p64": P64_MAX_BRIGHTNESS
-    main.cpp              app_main: runs the scenes in a loop, BOOT skips, FPS meter, stats log
+    main.cpp              app_main: runs the scene list in rounds, BOOT restarts, FPS meter, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
     scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 digits for on-panel counters
-    scenes/ball.*         phase 1
-    scenes/white.*        phase 2
-    scenes/hue_wheel.*    phase 3
+    scenes/ball.*         the bouncing-ball scene
   tools/*.ps1             env activation and idf.py wrappers
 ```
 
@@ -143,7 +152,9 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 8-bit colour depth, CIE 1931 gamma, 20 MHz HUB75 clock, double buffering.
+- 8-bit colour depth, CIE 1931 gamma, 32 MHz HUB75 clock (122 Hz refresh; the
+  FM6126A-class drivers are specified around 25-30 MHz, so back off to 26.7 MHz if
+  ghosting or noise ever appears), double buffering.
 - Brightness 0 blanks the panel; values 1-255 pass through a driver curve whose floor on
   a 64-wide panel is about 17/255 of output-enable time.
 

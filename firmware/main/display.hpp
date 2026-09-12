@@ -87,6 +87,7 @@ class Display {
   bool flip_pending_ = false;
   int64_t last_flip_us_ = 0;
   int64_t last_boundary_us_ = 0;  // 0 until the first frame boundary has been observed
+  int64_t last_yield_us_ = 0;     // when the wait last blocked (lets the idle task run)
   Stats stats_;
 };
 

@@ -65,7 +65,10 @@ CONFIG_HUB75_ROTATE_0=y
 # --- HUB75 quality / performance ---
 CONFIG_HUB75_BIT_DEPTH_8=y
 CONFIG_HUB75_GAMMA_CIE1931=y
-CONFIG_HUB75_CLK_20MHZ=y
+# 32 MHz (160 MHz / 5) gives a ~122 Hz refresh at 8 bits, so the frame-locked loop
+# can deliver ~122 fps. 20 MHz (76 Hz) was verified first; fall back to 26.7 MHz
+# (102 Hz) if the panel shows ghosting or noise at 32 MHz.
+CONFIG_HUB75_CLK_32MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255

@@ -24,10 +24,14 @@ constexpr const char *TAG = "display";
 // touched, covering the descriptor the DMA may already have fetched plus jitter.
 constexpr int64_t kFlipMarginUs = 700;
 // DMA-synchronised wait: how long before the predicted boundary the task stops
-// sleeping and starts spinning on the end-of-frame flag.
-constexpr int64_t kSpinLeadUs = 1500;
+// sleeping and starts spinning on the end-of-frame flag. Waking late is harmless
+// (the flag is simply already set), so this only trades spin time for detection
+// latency; the 1 ms tick adds up to 1 ms of early wake-up on top.
+constexpr int64_t kSpinLeadUs = 600;
 // Give up on the DMA flag after this many refresh periods and use the timed fallback.
 constexpr int kSyncTimeoutPeriods = 3;
+// Longest the main task may go without blocking (keeps the idle task and its watchdog fed).
+constexpr int64_t kForcedYieldUs = 1000 * 1000;
 
 // One descriptor chain (one buffer) of the driver: descriptors per frame x their size.
 constexpr uint32_t kChainBytes = kHub75ScanRows * kHub75DescriptorsPerRow * sizeof(dma_descriptor_t);
@@ -287,13 +291,23 @@ bool Display::wait_for_dma_switch() {
   const int64_t deadline = last_flip_us_ + static_cast<int64_t>(kSyncTimeoutPeriods * period);
   while (true) {
     // Sleep until shortly before the next predicted boundary, then spin on the flag.
+    // The main task must block now and then or the idle task (which feeds the task
+    // watchdog) never runs on this core: sleep whenever a whole tick of slack exists,
+    // and force a one-tick yield at least once a second even when it does not.
+    const int64_t now = esp_timer_get_time();
+    int64_t remaining = 0;
     if (last_boundary_us_ != 0) {
-      const int64_t now = esp_timer_get_time();
       const double elapsed = static_cast<double>(now - last_boundary_us_);
       const double periods_ahead = std::ceil(elapsed / period);
       const int64_t predicted = last_boundary_us_ + static_cast<int64_t>(periods_ahead * period);
-      const int64_t remaining = predicted - now - kSpinLeadUs;
-      if (remaining >= 2000) vTaskDelay(pdMS_TO_TICKS(remaining / 1000));
+      remaining = predicted - now - kSpinLeadUs;
+    }
+    if (remaining >= 1000) {
+      vTaskDelay(pdMS_TO_TICKS(remaining / 1000));
+      last_yield_us_ = now;
+    } else if (now - last_yield_us_ > kForcedYieldUs) {
+      vTaskDelay(1);
+      last_yield_us_ = now;
     }
     while (!(gdma_ll_tx_get_interrupt_status(&GDMA, ch, true) & GDMA_LL_EVENT_TX_EOF)) {
       if (esp_timer_get_time() > deadline) {

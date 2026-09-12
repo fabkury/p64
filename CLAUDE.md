@@ -66,10 +66,14 @@ relinks the DMA descriptor chain; the DMA finishes the old front buffer first an
 no signal. `Display` finds the LCD GDMA channel (`out.peri_sel == LCD`), clears its
 end-of-frame flag before each flip, and `wait_for_back_buffer()` sleeps until just before
 the predicted boundary, spins on the flag, then checks `eof_des_addr`/`dscr` to confirm
-the DMA switched chains. The loop is therefore locked to the 76.3 Hz refresh: render into
-RAM right after `present()`, then `wait_for_back_buffer()`, then `present()`. Keep that
-order. Measured: 5.8 ms per `draw_pixels()` for 64x64, so the copy is the cost to watch;
-a faster refresh (32 MHz clock or higher `HUB75_MIN_REFRESH_RATE`) is one sdkconfig line.
+the DMA switched chains. The loop is therefore locked to the panel refresh (122 Hz at the
+current 32 MHz HUB75 clock, 76 Hz at 20 MHz): render into RAM right after `present()`,
+then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
+blocking at least occasionally (it does), otherwise the idle task on core 0 starves and
+the task watchdog fires. Measured: 5.8 ms per `draw_pixels()` for 64x64, which now fills
+most of the 8.2 ms period, so the copy is the cost to watch before any faster refresh.
+Changing `sdkconfig.defaults` does not touch an existing generated `sdkconfig`: delete
+`firmware/sdkconfig` (or use menuconfig) for a changed default to take effect.
 
 Driver API notes: the released `esp-hub75` (0.3.x from the component registry) lacks
 things present on its git main (no `row_decoder`; `ICN2038S` is a distinct enumerator).
