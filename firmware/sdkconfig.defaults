@@ -98,18 +98,22 @@ CONFIG_HUB75_ROTATE_0=y
 # with a halving output-enable window, so every plane keeps its binary weight:
 #   frame time = 32 rows x (T + 2^(bits-1-T)) transmissions x 64 px / 20 MHz,
 #   T = the smallest value that reaches HUB75_MIN_REFRESH_RATE.
-# 10 bits, T=3 (min refresh 140): 67 transmissions per row, 145.7 Hz, 1024 levels per
-# channel; the shortest LED pulse (plane 0) is 3 pixel clocks = 150 ns. Before (8 bits,
-# T=0, 76 Hz, 256 levels) dark artwork showed 2-3 shades: the darkest quarter of the
-# input range had 11 codes, now 45. Gamma 2.2 matches the sRGB monitors the artwork was
-# made on (CIE 1931 rendered the mid-tones slightly darker).
+# 10 bits, T=4 (min refresh 250): 36 transmissions per row, 271.3 Hz, 1024 codes per
+# channel. Output-enable windows for planes 0..4 are 1, 3, 7, 15 and 31 pixel clocks
+# (50 ns to 1.55 us), 62 for planes 5..9; the 50 ns pulse of plane 0 (1/1979 of full
+# scale) may give little light, everything from plane 1 (150 ns) up is solid. Chosen on
+# 2026-09-13 over T=3 (145.8 Hz, all ten planes solid) for band-free phone photos at
+# 1/270 s or longer. Before (8 bits, T=0, 76 Hz) dark artwork showed 2-3 shades: the
+# darkest quarter of the input range had 11 codes, now 25-49. Gamma 2.2 matches the
+# sRGB monitors the artwork was made on (CIE 1931 rendered the mid-tones darker).
 # 20 MHz stays: the hardware AES/SHA engines (TLS) and, later, the SD card share the
 # GDMA/AHB bandwidth, and 32 MHz stalled the panel with hardware crypto (TLS section).
-# The panel is multiplexed, so photos need an exposure of one refresh or longer: 1/145 s.
+# Next steps if ever wanted: min refresh 400 -> T=5, 465 Hz, plane 0 without a window
+# and plane 1 at 50 ns (dark quarter 13-25 codes); 600 -> T=6, 698 Hz (7-14 codes).
 CONFIG_HUB75_BIT_DEPTH_10=y
 CONFIG_HUB75_GAMMA_2_2=y
 CONFIG_HUB75_CLK_20MHZ=y
-CONFIG_HUB75_MIN_REFRESH_RATE=140
+CONFIG_HUB75_MIN_REFRESH_RATE=250
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255
 CONFIG_HUB75_DOUBLE_BUFFER=y

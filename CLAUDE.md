@@ -76,7 +76,7 @@ time from `dscr` itself: `eof_des_addr` lags one frame behind a switch and named
 chain whenever two presents came within a frame, as at every artwork transition, after
 which every wait ran into its timeout; testing against "the chain that just ended" breaks
 as soon as presents are sparse). The loop is therefore locked to the panel refresh
-(145.8 Hz: 10 bit planes at 20 MHz with the four lowest sent once per frame, see the
+(271.3 Hz: 10 bit planes at 20 MHz with the five lowest sent once per frame, see the
 driver patch below; 32 MHz needs software TLS crypto, see the GDMA lesson below):
 render into RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
@@ -95,8 +95,9 @@ transition bit get halving output-enable windows so `HUB75_MIN_REFRESH_RATE` no 
 collapses the levels (upstream gave them equal weight), the LUT is refitted to the real
 on-times, the gamma 2.2 table is fixed (upstream mapped black to white), and getters
 expose frame period, descriptor count and transition bit (Display relies on them).
-Current setting 10 bits, minimum 140 Hz -> transition 3, 145.8 Hz, 1024 levels; the
-reasoning and the numbers are in `firmware/README.md` "Tonal depth and refresh". The
+Current setting 10 bits, minimum 250 Hz -> transition 4, 271.3 Hz, 1024 codes (plane 0
+on a 50 ns pulse); the reasoning, the numbers and the neighbouring settings are in
+`firmware/README.md` "Tonal depth and refresh". The
 released driver lacks things present on its git main (no `row_decoder`; `ICN2038S` is a
 distinct enumerator). Brightness 0 blanks the panel; 1-255 go through a curve floored at
 ~17/255 on a 64-wide panel, and any value below 255 now costs the low planes first.

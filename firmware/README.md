@@ -152,7 +152,7 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 145.8 Hz (64x64, 10 bit planes with the four lowest sent once
+The panel refreshes at 271.3 Hz (64x64, 10 bit planes with the five lowest sent once
 per frame, 20 MHz HUB75 clock; see "Tonal depth and refresh" below). The driver
 double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
@@ -205,10 +205,9 @@ and the task watchdog fires every 5 s; the wait sleeps whenever a whole tick of 
 exists and forces a one-tick yield once a second otherwise.
 
 The copy into the driver's bit-plane buffers is the limit: 5.8 ms with 8 planes, 6.9 ms
-with the current 10 planes, slightly more than the 6.86 ms refresh period, so at most
-every other refresh can carry a new frame (about 72 fps, far above any GIF). Going
-further means shrinking the copy (dirty-rectangle updates, or a faster blit inside the
-driver).
+with the current 10 planes, almost two of the 3.69 ms refresh periods, so at most every
+second refresh can carry a new frame (about 135 fps, far above any GIF). Going further
+means shrinking the copy (dirty-rectangle updates, or a faster blit inside the driver).
 
 ## Tonal depth and refresh
 
@@ -226,15 +225,19 @@ The driver is therefore vendored under `components/esp-hub75` and patched (see i
 output-enable window, so every plane keeps its binary weight, and the LUT is refitted
 to the planes' real on-times after each brightness change. Frame time is
 32 rows x (T + 2^(bits-1-T)) transmissions x 64 pixels / clock, with T the smallest
-value that reaches the minimum refresh rate. Current setting: 10 bits, minimum 140 Hz,
-hence T = 3, 67 transmissions per row, 145.8 Hz, 1024 levels per channel (45 codes in
-the darkest quarter), shortest LED pulse 3 pixel clocks = 150 ns (plane 0, worth 1/1024
-of full scale); output-enable windows 3/7/15/31 clocks for planes 0-3 and 62 for the
-rest. The clock stays at 20 MHz because the hardware crypto engines and, later, the SD
+value that reaches the minimum refresh rate. Current setting: 10 bits, minimum 250 Hz,
+hence T = 4, 36 transmissions per row, 271.3 Hz, 1024 codes per channel; output-enable
+windows 1/3/7/15/31 pixel clocks (50 ns to 1.55 us) for planes 0-4 and 62 for the rest.
+The 50 ns pulse of plane 0 (1/1979 of full scale) may give little light, which would
+merge neighbouring codes: the darkest quarter has 49 codes on paper and at least 25
+(it had 11 at 8 bits). The step below, minimum 140 Hz -> T = 3, 145.8 Hz, keeps all
+ten planes at 150 ns or longer (48 dark codes); the steps above are 465 Hz (T = 5,
+plane 0 without a window, 13-25 dark codes) and 698 Hz (T = 6, 7-14, the old 8-bit
+look). The clock stays at 20 MHz because the hardware crypto engines and, later, the SD
 card share the DMA bandwidth. The tone curve is gamma 2.2 (the released driver's gamma
 2.2 table was broken: black mapped to full white; fixed in the patch), matching the
 sRGB monitors the artwork is made on. Photos need an exposure of one refresh or longer,
-1/145 s. Use `/pattern` to judge the darks against a monitor. Brightness below 255
+1/270 s. Use `/pattern` to judge the darks against a monitor. Brightness below 255
 shortens every window and costs the low planes first, so dim in software if ever needed.
 
 ## Setup (Windows)
@@ -361,8 +364,8 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 10 bit planes (1024 levels per channel) with the four lowest sent once per frame,
-  gamma 2.2, 20 MHz HUB75 clock: 145.8 Hz refresh (see "Tonal depth and refresh").
+- 10 bit planes (1024 codes per channel) with the five lowest sent once per frame,
+  gamma 2.2, 20 MHz HUB75 clock: 271.3 Hz refresh (see "Tonal depth and refresh").
   History: 8 bits full BCM was 76 Hz; 7 bits (153 Hz) banded visibly and was reverted
   on 2026-09-12. 20 MHz is the fastest clock that coexists with hardware TLS crypto
   (32 MHz works with software crypto; no visible artefacts at 32 MHz on this panel

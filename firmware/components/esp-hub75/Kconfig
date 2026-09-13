@@ -353,7 +353,7 @@ menu "HUB75 RGB LED Matrix Driver"
         config HUB75_MIN_REFRESH_RATE
             int "Minimum Refresh Rate (Hz)"
             default 60
-            range 30 240
+            range 30 2000
             help
                 Target minimum refresh rate in Hz.
 

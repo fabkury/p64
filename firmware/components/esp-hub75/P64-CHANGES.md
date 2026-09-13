@@ -26,6 +26,12 @@ whose summed on-time is nearest the gamma table's target. This replaces upstream
 brightness shortens every window, so the low planes lose resolution first; run the panel
 near full brightness for the best gradation and dim in software if needed.
 
+## HUB75_MIN_REFRESH_RATE range (Kconfig)
+
+Raised from 30-240 to 30-2000 Hz: with binary-weighted low planes a high minimum is a
+usable setting (p64 runs 250, which selects transition bit 4 and 271 Hz on a 64x64
+panel at 20 MHz).
+
 ## Timing getters (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
 
 `Hub75Driver::get_frame_period_us()`, `get_descriptor_count()` and

@@ -1,0 +1,3 @@
+Let's keep at 20 MHz, but increase the refresh rate, to get even better photos. Remember to flash the new firmware on the device when done.
+
+[Answers: 271 Hz (transition bit 4) rather than 465 or 698 Hz; build-time setting only, no runtime /refresh switch.]
