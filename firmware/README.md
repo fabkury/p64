@@ -51,6 +51,7 @@ Endpoints:
 | `GET /play?url=<GIF URL>[&seconds=N]` | download any GIF (http or https) and play it |
 | `POST /play` with the same fields form-encoded | same |
 | `GET /stop` | end on-demand playback now; the rotation resumes |
+| `GET /pattern` | hold a tone test pattern (grey and colour ramps of the darkest quarter, a full ramp, two shaded spheres) until `/stop` or the next `/play` |
 | `GET /status` | JSON: what is playing (name, source, size, seconds left), the last request (id, state, error), Wi-Fi IP and RSSI, heap |
 | `GET /` | a form for phones |
 
@@ -151,9 +152,9 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock; 7 bit planes
-would give 153 Hz but their 128 levels per channel band visibly in artwork, and 32 MHz
-needs software TLS crypto, see Wi-Fi credentials below). The driver double-buffers, but its
+The panel refreshes at 145.8 Hz (64x64, 10 bit planes with the four lowest sent once
+per frame, 20 MHz HUB75 clock; see "Tonal depth and refresh" below). The driver
+double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
 front buffer until that frame ends, and the driver gives no signal when it has
 switched. Drawing into the back buffer too early tears.
@@ -203,10 +204,38 @@ The main task must block at least once in a while or the idle task on core 0 sta
 and the task watchdog fires every 5 s; the wait sleeps whenever a whole tick of slack
 exists and forces a one-tick yield once a second otherwise.
 
-The copy into the driver's bit-plane buffers is now the limit: 5.8 ms of the 8.2 ms
-period. A faster refresh (7-bit depth, or a higher `HUB75_MIN_REFRESH_RATE`) would
-leave too little room for it; going further means shrinking the copy (dirty-rectangle
-updates, or a faster blit inside the driver).
+The copy into the driver's bit-plane buffers is the limit: 5.8 ms with 8 planes, 6.9 ms
+with the current 10 planes, slightly more than the 6.86 ms refresh period, so at most
+every other refresh can carry a new frame (about 72 fps, far above any GIF). Going
+further means shrinking the copy (dirty-rectangle updates, or a faster blit inside the
+driver).
+
+## Tonal depth and refresh
+
+An LCD receives gamma-encoded values, so dark tones get as many codes as bright ones;
+the panel modulates light linearly in time, so with 8 bit planes the darkest quarter of
+the input range (0-63 of 255) had only 11 distinct codes and dark artwork (Makapix Hqm,
+a shaded brown ball) showed 2-3 flat shades. More planes double the frame time each,
+and the driver's `HUB75_MIN_REFRESH_RATE` knob, which sends the low planes once instead
+of repeating them, collapsed the levels in the released driver because it kept the same
+output-enable window for every plane (8 bits forced to 150 Hz gave 66 levels, worse
+than plain 7 bits).
+
+The driver is therefore vendored under `components/esp-hub75` and patched (see its
+`P64-CHANGES.md`): planes at or below the transition bit T are sent once with a halving
+output-enable window, so every plane keeps its binary weight, and the LUT is refitted
+to the planes' real on-times after each brightness change. Frame time is
+32 rows x (T + 2^(bits-1-T)) transmissions x 64 pixels / clock, with T the smallest
+value that reaches the minimum refresh rate. Current setting: 10 bits, minimum 140 Hz,
+hence T = 3, 67 transmissions per row, 145.8 Hz, 1024 levels per channel (45 codes in
+the darkest quarter), shortest LED pulse 3 pixel clocks = 150 ns (plane 0, worth 1/1024
+of full scale); output-enable windows 3/7/15/31 clocks for planes 0-3 and 62 for the
+rest. The clock stays at 20 MHz because the hardware crypto engines and, later, the SD
+card share the DMA bandwidth. The tone curve is gamma 2.2 (the released driver's gamma
+2.2 table was broken: black mapped to full white; fixed in the patch), matching the
+sRGB monitors the artwork is made on. Photos need an exposure of one refresh or longer,
+1/145 s. Use `/pattern` to judge the darks against a monitor. Brightness below 255
+shortens every window and costs the low planes first, so dim in software if ever needed.
 
 ## Setup (Windows)
 
@@ -291,9 +320,10 @@ firmware/
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
   assets/gifs/            the GIFs embedded in the firmware (+ Makapix manifest.json, not embedded)
   components/animatedgif/ vendored bitbank2/AnimatedGIF decoder (see its README)
+  components/esp-hub75/   vendored esphome/esp-hub75 0.3.6 with the p64 patch (see P64-CHANGES.md)
   main/
     CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
-    idf_component.yml     dependencies (esphome/esp-hub75, espressif/mdns); dependencies.lock pins versions
+    idf_component.yml     dependencies (espressif/mdns); dependencies.lock pins versions
     Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, Makapix, web control, GIF dwell, test switches
     main.cpp              app_main: display, Wi-Fi + clock start, scene loop, BOOT restarts, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
@@ -304,7 +334,7 @@ firmware/
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
     net/makapix.*         background fetcher: random promoted GIFs for the show, on-demand downloads for the web
-    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, / form
+    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, /pattern, / form
     net/speedtest.*       download throughput test (P64_SPEEDTEST, off by default)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
@@ -331,12 +361,12 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 8-bit colour depth (256 levels per channel), CIE 1931 gamma, 20 MHz HUB75 clock:
-  76 Hz refresh. 7 bits (153 Hz) were tried on 2026-09-12 and reverted: the 128 levels
-  banded visibly in Makapix artwork. 20 MHz is the fastest clock that coexists with
-  hardware TLS crypto (32 MHz works with software crypto; no visible artefacts at 32 MHz
-  on this panel although the FM6126A-class drivers are specified around 25-30 MHz).
-  Double buffering.
+- 10 bit planes (1024 levels per channel) with the four lowest sent once per frame,
+  gamma 2.2, 20 MHz HUB75 clock: 145.8 Hz refresh (see "Tonal depth and refresh").
+  History: 8 bits full BCM was 76 Hz; 7 bits (153 Hz) banded visibly and was reverted
+  on 2026-09-12. 20 MHz is the fastest clock that coexists with hardware TLS crypto
+  (32 MHz works with software crypto; no visible artefacts at 32 MHz on this panel
+  although the FM6126A-class drivers are specified around 25-30 MHz). Double buffering.
 - Photographing the panel: it is multiplexed (two rows lit at a time), so a short
   exposure captures a stripe of rows. Use a manual exposure of 1/30 s or longer, or
   lower the brightness so the phone picks a longer one; a faster refresh only shrinks

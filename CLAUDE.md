@@ -9,7 +9,8 @@ plugged onto their RGB-Matrix-P2-64x64 panel, in a 3D-printed tabletop shell. Tw
 of work live here, each with its own README that is the detailed reference:
 
 - `firmware/` — ESP-IDF v5.5 firmware, C++20, directly on the `esphome/esp-hub75` DMA
-  driver. No Arduino, no LVGL, no Waveshare BSP (only its pin map was reused).
+  driver (vendored and patched under `firmware/components/esp-hub75`). No Arduino, no
+  LVGL, no Waveshare BSP (only its pin map was reused).
 - `enclosure/` — the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
 
@@ -74,24 +75,31 @@ on the flag, then checks that `dscr` has left the chain that was front (identifi
 time from `dscr` itself: `eof_des_addr` lags one frame behind a switch and named the wrong
 chain whenever two presents came within a frame, as at every artwork transition, after
 which every wait ran into its timeout; testing against "the chain that just ended" breaks
-as soon as presents are sparse). The loop is therefore locked to the panel refresh (76 Hz at the
-current 20 MHz clock with 8 bit planes; 7 bit planes would double that but their 128 levels
-banded visibly in artwork; 32 MHz needs software TLS crypto, see the GDMA lesson below):
+as soon as presents are sparse). The loop is therefore locked to the panel refresh
+(145.8 Hz: 10 bit planes at 20 MHz with the four lowest sent once per frame, see the
+driver patch below; 32 MHz needs software TLS crypto, see the GDMA lesson below):
 render into RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
 blocking at least occasionally (it does), otherwise the idle task starves and the task
 watchdog fires. Scenes return "dirty" only when something changed; unchanged frames are
-not re-presented. Measured: 5.8 ms per `draw_pixels()` for 64x64, so the copy is the
-cost to watch before any faster refresh. The main task runs on core 1
+not re-presented. Measured: 6.9 ms per `draw_pixels()` for 64x64 with 10 planes (5.8 ms
+with 8), so the copy is the cost to watch before any faster refresh. The main task runs on core 1
 (`ESP_MAIN_TASK_AFFINITY_CPU1`), Wi-Fi and lwIP on core 0.
 Changing `sdkconfig.defaults` or `sdkconfig.secrets` does not touch an existing
 generated `sdkconfig`: delete `firmware/sdkconfig` (or use menuconfig) for a changed
 default to take effect.
 
-Driver API notes: the released `esp-hub75` (0.3.x from the component registry) lacks
-things present on its git main (no `row_decoder`; `ICN2038S` is a distinct enumerator).
-Brightness 0 blanks the panel; 1-255 go through a curve floored at ~17/255 on a 64-wide
-panel.
+Driver: `esp-hub75` 0.3.6 is vendored under `firmware/components/esp-hub75` with a patch
+("p64 patch" markers, listed in its `P64-CHANGES.md`): planes at or below the driver's
+transition bit get halving output-enable windows so `HUB75_MIN_REFRESH_RATE` no longer
+collapses the levels (upstream gave them equal weight), the LUT is refitted to the real
+on-times, the gamma 2.2 table is fixed (upstream mapped black to white), and getters
+expose frame period, descriptor count and transition bit (Display relies on them).
+Current setting 10 bits, minimum 140 Hz -> transition 3, 145.8 Hz, 1024 levels; the
+reasoning and the numbers are in `firmware/README.md` "Tonal depth and refresh". The
+released driver lacks things present on its git main (no `row_decoder`; `ICN2038S` is a
+distinct enumerator). Brightness 0 blanks the panel; 1-255 go through a curve floored at
+~17/255 on a 64-wide panel, and any value below 255 now costs the low planes first.
 
 Makapix Club (`main/net/makapix.*`): a fetcher task on core 0 does two anonymous
 HTTPS GETs per artwork (`/api/post?promoted=true&sort=random&limit=1&width_max=..&
@@ -101,7 +109,8 @@ github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the con
 
 Web control (`main/net/web.*`): `esp_http_server` on port 80 plus mDNS (`espressif/mdns`,
 hostname `p64` -> p64.local). `/play?post=<Makapix URL or sqid>|url=<GIF URL>[&seconds=N]`
-answers 202 at once and queues a `makapix::PlayRequest`; the fetcher task serves those
+answers 202 at once and queues a `makapix::PlayRequest` (`/pattern` holds a tone test
+pattern, `/stop` ends either); the fetcher task serves those
 ahead of the rotation (one TLS session at a time, on purpose: two at once ran internal
 RAM out before), validates the GIF header and size (`P64_WEB_MAX_BYTES`,
 `P64_WEB_MAX_DIMENSION`), and the scene picks the result up with `take_play()`,
