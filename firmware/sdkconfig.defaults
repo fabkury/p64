@@ -93,18 +93,23 @@ CONFIG_HUB75_LAYOUT_HORIZONTAL=y
 CONFIG_HUB75_ROTATE_0=y
 
 # --- HUB75 quality / performance ---
-# Refresh = 32 rows x 2^(bits-1) descriptors x 64 px / clock. The panel is multiplexed,
-# so phone photos show stripes of rows unless the exposure spans a whole refresh:
-#   20 MHz, 8 bit -> 76 Hz;  20 MHz, 7 bit -> 153 Hz;  32 MHz, 7 bit -> 244 Hz.
-# 8 bits (256 levels per channel) is the floor for image quality: at 7 bits the 128
-# levels showed visible banding in Makapix artwork on 2026-09-12. Photos need a manual
-# exposure of 1/30 s or longer at 76 Hz (see README "Photographing the panel").
-# 20 MHz is the fastest clock that coexists with the hardware AES/SHA engines (see the
-# TLS section above); 32 MHz works only with software crypto.
-CONFIG_HUB75_BIT_DEPTH_8=y
-CONFIG_HUB75_GAMMA_CIE1931=y
+# The vendored driver (components/esp-hub75, "p64 patch") sends the bit planes above the
+# transition bit T 1, 2, 4, ... times per frame and the planes at or below T once each
+# with a halving output-enable window, so every plane keeps its binary weight:
+#   frame time = 32 rows x (T + 2^(bits-1-T)) transmissions x 64 px / 20 MHz,
+#   T = the smallest value that reaches HUB75_MIN_REFRESH_RATE.
+# 10 bits, T=3 (min refresh 140): 67 transmissions per row, 145.7 Hz, 1024 levels per
+# channel; the shortest LED pulse (plane 0) is 3 pixel clocks = 150 ns. Before (8 bits,
+# T=0, 76 Hz, 256 levels) dark artwork showed 2-3 shades: the darkest quarter of the
+# input range had 11 codes, now 45. Gamma 2.2 matches the sRGB monitors the artwork was
+# made on (CIE 1931 rendered the mid-tones slightly darker).
+# 20 MHz stays: the hardware AES/SHA engines (TLS) and, later, the SD card share the
+# GDMA/AHB bandwidth, and 32 MHz stalled the panel with hardware crypto (TLS section).
+# The panel is multiplexed, so photos need an exposure of one refresh or longer: 1/145 s.
+CONFIG_HUB75_BIT_DEPTH_10=y
+CONFIG_HUB75_GAMMA_2_2=y
 CONFIG_HUB75_CLK_20MHZ=y
-CONFIG_HUB75_MIN_REFRESH_RATE=60
+CONFIG_HUB75_MIN_REFRESH_RATE=140
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255
 CONFIG_HUB75_DOUBLE_BUFFER=y
