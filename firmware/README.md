@@ -119,8 +119,9 @@ switched. Drawing into the back buffer too early tears.
 `Display` therefore watches the LCD GDMA channel directly (`display.cpp`):
 
 1. `present()` copies the RAM frame into the back buffer, notes which chain is front
-   (the channel's `eof_des_addr`, the last descriptor of the chain the DMA is looping
-   in), clears the channel's end-of-frame flag, then flips.
+   (the one containing the descriptor the channel is fetching, `dscr`; the last
+   descriptors of both chains were learned at start-up from two frame boundaries),
+   clears the channel's end-of-frame flag, then flips.
 2. The scene renders the next frame into RAM straight away (rendering overlaps the
    panel's switch).
 3. `wait_for_back_buffer()` sleeps until shortly before the predicted boundary
@@ -130,6 +131,13 @@ switched. Drawing into the back buffer too early tears.
    prefetched the last descriptor) and it waits for the next one. Testing against the
    chain noted at flip time, rather than the chain that just ended, is what keeps this
    correct when presents are sparse and many boundaries have passed in between.
+   The front chain must not be identified from `eof_des_addr` either: it names the
+   chain whose frame ended last, so for one frame after a switch it still points at
+   the previous front. A present inside that window (every artwork transition presents
+   two frames a few milliseconds apart) recorded the wrong chain, every later check
+   then said "still old" until the timeout, and with 100 ms GIF delays the overdue next
+   frame recreated the condition: 4 to 11 late flips per frame for minutes at a time
+   (found and fixed on 2026-09-12).
 4. Only then does the next `present()` copy into the freed buffer.
 
 Results on the hardware (2026-09-12), one new frame per refresh in every case:

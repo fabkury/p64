@@ -39,6 +39,11 @@ constexpr int64_t kForcedYieldUs = 1000 * 1000;
 // One descriptor chain (one buffer) of the driver: descriptors per frame x their size.
 constexpr uint32_t kChainBytes = kHub75ScanRows * kHub75DescriptorsPerRow * sizeof(dma_descriptor_t);
 
+// Whether a descriptor address lies in the chain whose last descriptor is `last`.
+inline bool in_chain(uint32_t addr, uint32_t last) {
+  return (last - addr) < kChainBytes;  // unsigned: wraps when addr > last
+}
+
 int find_lcd_dma_channel() {
   for (int ch = 0; ch < SOC_GDMA_PAIRS_PER_GROUP; ++ch) {
     if (GDMA.channel[ch].out.peri_sel.sel == SOC_GDMA_TRIG_PERIPH_LCD0) return ch;
@@ -240,17 +245,21 @@ bool Display::begin() {
   brightness_ = cfg.brightness;
   driver_->clear();
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
-  driver_->flip_buffer();
-  driver_->clear();
   lcd_dma_channel_ = find_lcd_dma_channel();
+  if (lcd_dma_channel_ >= 0 && !learn_chains()) lcd_dma_channel_ = -1;
+  if (lcd_dma_channel_ < 0) driver_->flip_buffer();
+  driver_->clear();
 #endif
   last_flip_us_ = esp_timer_get_time();
   flip_pending_ = false;
   ESP_LOGI(TAG, "HUB75 refresh running; expected refresh period %.1f us (%.1f Hz)", refresh_period_us(),
            1e6 / refresh_period_us());
   if (lcd_dma_channel_ >= 0) {
-    ESP_LOGI(TAG, "frame boundaries read from GDMA channel %d (%lu-byte descriptor chains): frame-locked rendering",
-             lcd_dma_channel_, static_cast<unsigned long>(kChainBytes));
+    ESP_LOGI(TAG,
+             "frame boundaries read from GDMA channel %d (%lu-byte descriptor chains ending at 0x%lx and 0x%lx): "
+             "frame-locked rendering",
+             lcd_dma_channel_, static_cast<unsigned long>(kChainBytes), static_cast<unsigned long>(chain_last_[0]),
+             static_cast<unsigned long>(chain_last_[1]));
   } else if (cfg.double_buffer) {
     ESP_LOGW(TAG, "LCD GDMA channel not found: frames wait a full refresh period after each flip");
   }
@@ -266,10 +275,14 @@ void Display::present(const Frame &frame) {
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
   if (lcd_dma_channel_ >= 0) {
     const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
-    // Before the flip the DMA loops in the front chain, so the last end-of-frame
-    // descriptor address identifies that chain; wait_for_dma_switch() checks that
-    // the DMA has left it. 0 means no frame has ended yet (right after begin()).
-    old_front_last_ = GDMA.channel[ch].out.eof_des_addr;
+    // Before the flip the DMA loops in the front chain; the descriptor it is fetching
+    // says which of the two that is, and wait_for_dma_switch() then checks that the
+    // DMA has left it. (eof_des_addr would be the obvious identity but it lags: it still
+    // names the chain that just ended until the new front completes a frame, and a
+    // present within that frame, as at every artwork transition, then recorded the
+    // wrong chain and every later check said "still old" until the timeout.)
+    const uint32_t fetching = GDMA.channel[ch].out.dscr;
+    old_front_last_ = in_chain(fetching, chain_last_[1]) ? chain_last_[1] : chain_last_[0];
     gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
   }
   driver_->flip_buffer();
@@ -296,7 +309,7 @@ void Display::wait_for_back_buffer() {
 bool Display::wait_for_dma_switch() {
   const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
   const double period = refresh_period_us();
-  if (old_front_last_ == 0) return false;  // no chain identity yet: use the timed wait
+  if (old_front_last_ == 0) return false;  // no chain identity: use the timed wait
   const int64_t deadline = esp_timer_get_time() + static_cast<int64_t>(kSyncTimeoutPeriods * period);
   while (true) {
     // Sleep until shortly before the next predicted boundary, then spin on the flag.
@@ -318,7 +331,9 @@ bool Display::wait_for_dma_switch() {
       vTaskDelay(1);
       last_yield_us_ = now;
     }
+    bool saw_edge = false;  // the boundary time is only accurate when the flag was seen to set
     while (!(gdma_ll_tx_get_interrupt_status(&GDMA, ch, true) & GDMA_LL_EVENT_TX_EOF)) {
+      saw_edge = true;
       if (esp_timer_get_time() > deadline) {
         ++stats_.timeouts;
         note_timeout(GDMA.channel[ch].out.dscr);
@@ -326,7 +341,7 @@ bool Display::wait_for_dma_switch() {
       }
     }
     stall_count_ = 0;
-    last_boundary_us_ = esp_timer_get_time();
+    if (saw_edge) last_boundary_us_ = esp_timer_get_time();
     gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
     // A frame boundary has passed. If the descriptor being fetched now still lies in
     // the chain that was front when we flipped, the DMA looped instead of switching
@@ -334,10 +349,34 @@ bool Display::wait_for_dma_switch() {
     // is anywhere else, the old front buffer is free, however many boundaries ago
     // the switch happened.
     const uint32_t fetching = GDMA.channel[ch].out.dscr;
-    const bool still_old = (old_front_last_ - fetching) < kChainBytes;  // unsigned: wraps when fetching > last
+    const bool still_old = in_chain(fetching, old_front_last_);
     if (!still_old) return true;
     ++stats_.late_flips;
+    if (esp_timer_get_time() > deadline) {  // the flag being set on arrival must not bypass the deadline
+      ++stats_.timeouts;
+      note_timeout(fetching);
+      return false;
+    }
   }
+}
+
+// Learns the last descriptor of both chains: the DMA loops chain 0 after begin(); after
+// a flip it loops chain 1. eof_des_addr names the chain whose frame ended last, so it is
+// read a few refresh periods after each change. Leaves chain 1 as the front buffer.
+bool Display::learn_chains() {
+  const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
+  const TickType_t settle = pdMS_TO_TICKS(static_cast<uint32_t>(3 * refresh_period_us() / 1000) + 2);
+  vTaskDelay(settle);
+  chain_last_[0] = GDMA.channel[ch].out.eof_des_addr;
+  driver_->flip_buffer();
+  vTaskDelay(settle);
+  chain_last_[1] = GDMA.channel[ch].out.eof_des_addr;
+  if (chain_last_[0] == 0 || chain_last_[1] == 0 || chain_last_[0] == chain_last_[1]) {
+    ESP_LOGW(TAG, "could not identify both descriptor chains (0x%lx, 0x%lx): frames wait a full refresh period after each flip",
+             static_cast<unsigned long>(chain_last_[0]), static_cast<unsigned long>(chain_last_[1]));
+    return false;
+  }
+  return true;
 }
 
 void Display::wait_timed() {

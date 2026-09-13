@@ -80,6 +80,7 @@ class Display {
   static constexpr double refresh_period_us();
 
  private:
+  bool learn_chains();
   bool wait_for_dma_switch();
   void wait_timed();
   void note_timeout(uint32_t fetching);  // stall detection (warns once)
@@ -88,7 +89,8 @@ class Display {
   uint8_t brightness_ = 0;
   int lcd_dma_channel_ = -1;
   bool flip_pending_ = false;
-  uint32_t old_front_last_ = 0;  // last descriptor of the chain that was front at the flip
+  uint32_t chain_last_[2] = {0, 0};  // last descriptor of each of the driver's two chains (learned in begin())
+  uint32_t old_front_last_ = 0;      // last descriptor of the chain that was front at the flip
   uint32_t stall_dscr_ = 0;      // descriptor pointer seen at the previous timeout
   int stall_count_ = 0;          // consecutive timeouts with the pointer frozen
   bool stall_reported_ = false;

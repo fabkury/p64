@@ -67,14 +67,17 @@ draws into a RAM `Frame` (RGB888, `display.hpp`) and returns whether the frame c
 
 The non-obvious part is frame pacing (`display.cpp`). The driver's `flip_buffer()` only
 relinks the DMA descriptor chain; the DMA finishes the old front buffer first and gives
-no signal. `Display` finds the LCD GDMA channel (`out.peri_sel == LCD`), clears its
-end-of-frame flag before each flip, and `wait_for_back_buffer()` sleeps until just before
-the predicted boundary, spins on the flag, then checks `eof_des_addr`/`dscr` to confirm
-the DMA switched chains (the chain that was front is noted at flip time from
-`eof_des_addr`; testing against "the chain that just ended" instead breaks as soon as
-presents are sparse). The loop is therefore locked to the panel refresh (153 Hz at the
-current 20 MHz clock with 7 bit planes; 244 Hz at 32 MHz needs software TLS crypto, see
-the GDMA lesson below; 76 Hz at 20 MHz and 8 bits): render into RAM right after `present()`,
+no signal. `Display` finds the LCD GDMA channel (`out.peri_sel == LCD`), learns the last
+descriptor of both chains at start-up, clears the channel's end-of-frame flag before each
+flip, and `wait_for_back_buffer()` sleeps until just before the predicted boundary, spins
+on the flag, then checks that `dscr` has left the chain that was front (identified at flip
+time from `dscr` itself: `eof_des_addr` lags one frame behind a switch and named the wrong
+chain whenever two presents came within a frame, as at every artwork transition, after
+which every wait ran into its timeout; testing against "the chain that just ended" breaks
+as soon as presents are sparse). The loop is therefore locked to the panel refresh (76 Hz at the
+current 20 MHz clock with 8 bit planes; 7 bit planes would double that but their 128 levels
+banded visibly in artwork; 32 MHz needs software TLS crypto, see the GDMA lesson below):
+render into RAM right after `present()`,
 then `wait_for_back_buffer()`, then `present()`. Keep that order, and keep the wait
 blocking at least occasionally (it does), otherwise the idle task starves and the task
 watchdog fires. Scenes return "dirty" only when something changed; unchanged frames are
