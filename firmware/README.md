@@ -13,9 +13,9 @@ random promoted GIF that fits the panel and downloads it; every 30 s the panel s
 to the artwork that arrived and the next one is requested. When nothing arrived (Wi-Fi
 down, request failed, NTP not synced yet), a random embedded GIF fills the slot. GIFs
 play at their intended speed, looping as needed; frame delays are honoured with the
-browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a half-transparent
-black box (the artwork shows through at half brightness), a 24-hour clock (HH:MM) set
-from NTP over Wi-Fi; it reads `--:--` until the first sync.
+browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a 70 % black box
+(the artwork shows through at 30 % brightness), a 24-hour clock (HH:MM) set from NTP
+over Wi-Fi; it reads `--:--` until the first sync.
 Pressing **BOOT** restarts the scene.
 
 ### Makapix Club client (`main/net/makapix.*`)

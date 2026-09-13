@@ -36,12 +36,12 @@ constexpr bool kShowFps = false;
 // what the artist saw in a browser and on Makapix's own viewer.
 uint32_t effective_delay_ms(int delay_ms) { return delay_ms < 20 ? 100 : static_cast<uint32_t>(delay_ms); }
 
-// Opacity of the box behind overlay text: half-transparent black, so the artwork stays
-// visible through it while the digits keep their contrast.
-constexpr uint8_t kBoxAlpha = 128;
+// Opacity of the box behind overlay text: 70 % black, so the artwork stays faintly
+// visible through it while the digits keep their contrast (50 % was too see-through).
+constexpr uint8_t kBoxAlpha = 179;
 
-// Draws text with its top-left at (x, y) on a half-transparent black box with 1 pixel
-// of padding.
+// Draws text with its top-left at (x, y) on a translucent black box with 1 pixel of
+// padding.
 void draw_boxed_text(Frame &frame, int x, int y, const char *text) {
   const int w = text_width_3x5(text);
   frame.blend_rect(x - 1, y - 1, w + 2, 7, kBlack, kBoxAlpha);
