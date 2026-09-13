@@ -3,6 +3,7 @@
 //   GET|POST /play?post=<Makapix post URL or sqid>&seconds=N
 //   GET|POST /play?url=<GIF URL>&seconds=N      -> 202, the GIF is queued for playback
 //   GET /stop                                    -> ends on-demand playback, the show resumes
+//   GET /pattern                                 -> holds the tone test pattern until /stop or /play
 //   GET /status                                  -> JSON: what is playing, last request, link
 //   GET /                                        -> a form for phones
 //
@@ -37,5 +38,8 @@ void publish(const NowPlaying &now);
 
 // True once after each /stop (the scene polls it).
 bool take_stop();
+
+// True once after each /pattern (the scene polls it).
+bool take_pattern();
 
 }  // namespace p64::web

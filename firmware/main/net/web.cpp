@@ -34,6 +34,7 @@ httpd_handle_t g_server = nullptr;
 std::mutex g_mutex;
 NowPlaying g_now;
 std::atomic<bool> g_stop{false};
+std::atomic<bool> g_pattern{false};
 
 const char kIndexHtml[] = R"html(<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -55,7 +56,7 @@ button{font-size:1em;padding:.5em 1.4em;margin-top:.8em}
 <label for="url">URL</label><input id="url" type="text" name="url" placeholder="https://example.com/animation.gif" required>
 <label for="s2">Seconds (0 = until the next request)</label><input id="s2" type="number" name="seconds" value="60" min="0">
 <br><button type="submit">Play</button></fieldset></form>
-<p><a href="/status">Status</a> &middot; <a href="/stop">Stop and resume the show</a></p>
+<p><a href="/status">Status</a> &middot; <a href="/stop">Stop and resume the show</a> &middot; <a href="/pattern">Tone test pattern</a></p>
 </body></html>
 )html";
 
@@ -253,6 +254,18 @@ esp_err_t handle_stop(httpd_req_t *req) {
   return send_json(req, "200 OK", root);
 }
 
+esp_err_t handle_pattern(httpd_req_t *req) {
+  makapix::cancel_play();
+  g_pattern = true;
+  ESP_LOGI(TAG, "test pattern requested");
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddBoolToObject(root, "pattern", true);
+  cJSON_AddStringToObject(root, "layout",
+                          "rows 8-15 grey 0..63 by column; 16-23 grey 0..255; 24-31 red, 32-39 green, 40-47 blue "
+                          "0..63; 48-63 a brown and a grey sphere; /stop or /play ends it");
+  return send_json(req, "200 OK", root);
+}
+
 esp_err_t handle_status(httpd_req_t *req) {
   cJSON *root = cJSON_CreateObject();
   cJSON_AddStringToObject(root, "hostname", CONFIG_P64_WEB_HOSTNAME ".local");
@@ -350,11 +363,12 @@ void start() {
       {.uri = "/play", .method = HTTP_GET, .handler = handle_play, .user_ctx = nullptr},
       {.uri = "/play", .method = HTTP_POST, .handler = handle_play, .user_ctx = nullptr},
       {.uri = "/stop", .method = HTTP_GET, .handler = handle_stop, .user_ctx = nullptr},
+      {.uri = "/pattern", .method = HTTP_GET, .handler = handle_pattern, .user_ctx = nullptr},
       {.uri = "/status", .method = HTTP_GET, .handler = handle_status, .user_ctx = nullptr},
   };
   for (const httpd_uri_t &r : routes) httpd_register_uri_handler(g_server, &r);
   ESP_LOGI(TAG,
-           "web control at http://%s.local:%d/ (/play, /stop, /status); default %lu s per request, GIFs up to %dx%d "
+           "web control at http://%s.local:%d/ (/play, /stop, /status, /pattern); default %lu s per request, GIFs up to %dx%d "
            "and %u bytes",
            CONFIG_P64_WEB_HOSTNAME, CONFIG_P64_WEB_PORT, static_cast<unsigned long>(kDefaultSeconds),
            CONFIG_P64_WEB_MAX_DIMENSION, CONFIG_P64_WEB_MAX_DIMENSION, static_cast<unsigned>(CONFIG_P64_WEB_MAX_BYTES));
@@ -366,5 +380,7 @@ void publish(const NowPlaying &now) {
 }
 
 bool take_stop() { return g_stop.exchange(false); }
+
+bool take_pattern() { return g_pattern.exchange(false); }
 
 }  // namespace p64::web

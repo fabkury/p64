@@ -90,6 +90,7 @@ bool GifShowScene::play_embedded(uint32_t now_ms) {
   if (kGifAssetCount == 0) return false;
   download_ = makapix::Artwork{};  // release any downloaded bytes
   on_demand_ = false;              // an embedded GIF is never a web request
+  pattern_ = false;
   for (size_t tries = 0; tries < kGifAssetCount; ++tries) {
     size_t index = esp_random() % kGifAssetCount;
     if (kGifAssetCount > 1 && index == embedded_index_) index = (index + 1) % kGifAssetCount;
@@ -108,6 +109,7 @@ bool GifShowScene::play_embedded(uint32_t now_ms) {
 
 bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
   player_.close();  // it may still point into the previous download's bytes
+  pattern_ = false;
   download_ = std::move(art);
   current_name_ = download_.sqid.empty() ? download_.url : "makapix " + download_.sqid;
   if (!open_current(download_.gif.data(), download_.gif.size(), now_ms)) return false;
@@ -179,6 +181,10 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
       dirty = true;
     }
   }
+  if (web::take_pattern()) {
+    start_pattern(info.t_ms);
+    dirty = true;
+  }
   if (web::take_stop() && on_demand_) {
     end_on_demand(info.t_ms, "stopped from the web");
     dirty = true;
@@ -204,6 +210,8 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
       if (player_.is_open() && decode_next(info.t_ms)) scaler_.scale(player_.canvas(), frame.pixels());
     }
     dirty = true;
+  } else if (pattern_ && dirty) {
+    draw_pattern(frame);
   } else if (!player_.is_open() && dirty) {
     frame.clear();
   }
@@ -221,6 +229,7 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
   if (clock_changed) std::strcpy(clock_text_, text);
   if (dirty || clock_changed || kShowFps) {
     if (!dirty && player_.is_open()) scaler_.scale(player_.canvas(), frame.pixels());  // restore under the old overlay
+    if (!dirty && pattern_) draw_pattern(frame);
     draw_overlays(frame, info.fps);
     dirty = true;
   }
@@ -259,7 +268,9 @@ void GifShowScene::end_on_demand(uint32_t now_ms, const char *why) {
 void GifShowScene::publish_now_playing() const {
   web::NowPlaying now;
   now.name = current_name_;
-  if (download_.gif.empty()) {
+  if (pattern_) {
+    now.source = "pattern";
+  } else if (download_.gif.empty()) {
     now.source = "embedded";
   } else if (download_.sqid.empty()) {
     now.source = "url";
@@ -275,6 +286,67 @@ void GifShowScene::publish_now_playing() const {
   now.started_us = esp_timer_get_time();
   now.until_us = on_demand_ ? on_demand_until_us_ : 0;
   web::publish(now);
+}
+
+// /pattern: hold a synthetic tone test until /stop or the next request (it rides on the
+// on-demand state with no time limit).
+void GifShowScene::start_pattern(uint32_t now_ms) {
+  log_gif_stats(now_ms);
+  player_.close();
+  download_ = makapix::Artwork{};
+  current_name_ = "test pattern";
+  current_bytes_ = 0;
+  gif_start_ms_ = now_ms;
+  gif_frames_ = 0;
+  single_frame_ = true;
+  pattern_ = true;
+  on_demand_ = true;
+  on_demand_id_ = 0;
+  on_demand_indefinite_ = true;
+  on_demand_until_us_ = 0;
+  ESP_LOGI(TAG, "showing the tone test pattern until /stop or the next request");
+  publish_now_playing();
+}
+
+// Rows 0-7 black (the clock sits there). Rows 8-15: grey 0..63 by column, one code per
+// column: the darkest quarter of the input range, where the panel's quantisation shows.
+// Rows 16-23: grey 0..255 (4 per column). Rows 24-31 / 32-39 / 40-47: red, green and
+// blue 0..63. Rows 48-63: a brown and a grey shaded sphere on dark grey, the kind of
+// shape that looked flat on the panel at 8 bits.
+void GifShowScene::draw_pattern(Frame &frame) const {
+  frame.clear();
+  for (int x = 0; x < kWidth; ++x) {
+    const uint8_t q = static_cast<uint8_t>(x);            // 0..63
+    const uint8_t f = static_cast<uint8_t>(x * 4 + 2);    // 2..254
+    for (int y = 8; y < 16; ++y) frame.set(x, y, Rgb{q, q, q});
+    for (int y = 16; y < 24; ++y) frame.set(x, y, Rgb{f, f, f});
+    for (int y = 24; y < 32; ++y) frame.set(x, y, Rgb{q, 0, 0});
+    for (int y = 32; y < 40; ++y) frame.set(x, y, Rgb{0, q, 0});
+    for (int y = 40; y < 48; ++y) frame.set(x, y, Rgb{0, 0, q});
+  }
+  frame.fill_rect(0, 48, kWidth, 16, Rgb{24, 24, 24});
+  struct Ball {
+    float cx, cy, r;
+    float base[3];
+  };
+  const Ball balls[] = {{16.0f, 56.0f, 7.0f, {150.0f, 95.0f, 55.0f}}, {48.0f, 56.0f, 7.0f, {110.0f, 110.0f, 110.0f}}};
+  const float lx = -0.5f, ly = -0.6f, lz = 0.62f;  // light from the upper left, towards the viewer
+  for (const Ball &b : balls) {
+    for (int y = 48; y < 64; ++y) {
+      for (int x = 0; x < kWidth; ++x) {
+        const float dx = (static_cast<float>(x) + 0.5f - b.cx) / b.r;
+        const float dy = (static_cast<float>(y) + 0.5f - b.cy) / b.r;
+        const float d2 = dx * dx + dy * dy;
+        if (d2 > 1.0f) continue;
+        const float nz = std::sqrt(1.0f - d2);
+        const float lambert = std::max(0.0f, dx * lx + dy * ly + nz * lz);
+        const float shade = 0.10f + 0.90f * lambert;
+        frame.set(x, y, Rgb{static_cast<uint8_t>(std::min(255.0f, b.base[0] * shade)),
+                            static_cast<uint8_t>(std::min(255.0f, b.base[1] * shade)),
+                            static_cast<uint8_t>(std::min(255.0f, b.base[2] * shade))});
+      }
+    }
+  }
 }
 
 void GifShowScene::draw_overlays(Frame &frame, float fps) const {

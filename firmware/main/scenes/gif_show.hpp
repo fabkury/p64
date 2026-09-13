@@ -30,6 +30,8 @@ class GifShowScene : public Scene {
   bool open_current(const uint8_t *data, size_t size, uint32_t now_ms);
   void next_slot(uint32_t now_ms);
   void start_on_demand(makapix::Artwork &&art, uint32_t seconds, uint32_t id, uint32_t now_ms);
+  void start_pattern(uint32_t now_ms);
+  void draw_pattern(Frame &frame) const;
   void end_on_demand(uint32_t now_ms, const char *why);
   void publish_now_playing() const;
   void log_gif_stats(uint32_t now_ms) const;
@@ -41,6 +43,7 @@ class GifShowScene : public Scene {
   makapix::Artwork download_;    // owns the bytes of the artwork being played, if any
   size_t current_bytes_ = 0;     // size of the GIF being played (for the status page)
   bool on_demand_ = false;       // playing a web request rather than the rotation
+  bool pattern_ = false;         // showing the tone test pattern (a web request too)
   uint32_t on_demand_id_ = 0;
   bool on_demand_indefinite_ = false;
   uint32_t on_demand_until_ms_ = 0;  // scene time; unused when indefinite
