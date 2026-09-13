@@ -40,6 +40,8 @@ class Frame {
   // Out-of-range coordinates are ignored, so callers can draw without clipping.
   void set(int x, int y, Rgb c);
   void fill_rect(int x, int y, int w, int h, Rgb c);
+  // Blends c over the rectangle with opacity alpha (0 = untouched, 255 = fill_rect).
+  void blend_rect(int x, int y, int w, int h, Rgb c, uint8_t alpha);
   // Disc in continuous coordinates: pixel (i, j) covers [i, i+1) x [j, j+1).
   void fill_disc(float cx, float cy, float radius, Rgb c);
 

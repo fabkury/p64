@@ -196,6 +196,21 @@ void Frame::fill_rect(int x, int y, int w, int h, Rgb c) {
   }
 }
 
+void Frame::blend_rect(int x, int y, int w, int h, Rgb c, uint8_t alpha) {
+  const int x0 = std::max(x, 0);
+  const int y0 = std::max(y, 0);
+  const int x1 = std::min(x + w, kWidth);
+  const int y1 = std::min(y + h, kHeight);
+  const unsigned a = alpha, ia = 255u - alpha;
+  const unsigned add[3] = {c.r * a + 127u, c.g * a + 127u, c.b * a + 127u};
+  for (int yy = y0; yy < y1; ++yy) {
+    uint8_t *p = &px_[(yy * kWidth + x0) * 3];
+    for (int xx = x0; xx < x1; ++xx, p += 3) {
+      for (int i = 0; i < 3; ++i) p[i] = static_cast<uint8_t>((p[i] * ia + add[i]) / 255u);
+    }
+  }
+}
+
 void Frame::fill_disc(float cx, float cy, float radius, Rgb c) {
   const int x0 = std::max(0, static_cast<int>(std::floor(cx - radius)));
   const int y0 = std::max(0, static_cast<int>(std::floor(cy - radius)));
