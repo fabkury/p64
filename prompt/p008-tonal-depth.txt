@@ -1,0 +1,9 @@
+[Preceding question, answered as a report only]
+I am looking at the Hqm artwork on my computer LCD monitor, and on the p64 LED matrix. The quality of the image of that particular artwork on the LED is deplorable. The artwork has deep hues of brown and gray, and a prominent "3D" ball. That ball looks flat on the LED matrix, as if it had 2 or 3 colors only, and the colors don't even match what I see on the LCD monitor.
+
+What this means is that even at maximum quality (8-bit, 76 Hz, 20 MHz), some artworks nevertheless have poor quality on the LED matrix. Therefore, I want to take a step back and reconsider my options. Do not implement anything yet, just report back to me: if I am willing to compromise visual quality for higher refresh rates (hence better photos, less banding), what would be my options? What levels of quality could we deliver, and at what technical tradeoffs?
+
+[Task]
+We're keeping 20 MHz because we will need the shared bandwidth to access SD card later. We're also keeping hardware crypto. Please proceed with option 1, making commits as you make progress. Once done, flash the new firmware to the board via USB-C.
+
+[Option 1, from the report: vendor and patch the esp-hub75 driver so the bit planes at or below its transition bit are weighted by output-enable duty, keeping 2^bits levels at a shortened frame; chosen target 10 bits at ~146 Hz, gamma 2.2, plus a /pattern test endpoint.]
