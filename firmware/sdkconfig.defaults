@@ -37,14 +37,17 @@ CONFIG_MBEDTLS_HARDWARE_SHA=y
 # lwIP's default 5.7 KB TCP window caps a download at 5.7 KB per round trip: 55 KB/s
 # from a server 100 ms away, 25 KB/s from makapix.club 220 ms away. A 64 KB window and
 # a deeper receive mailbox lift those to 600 KB/s and up to 220 KB/s. lwIP buffers go
-# to PSRAM; TLS buffers stay in internal RAM (faster: 460-510 KB/s vs 240-390 KB/s from
-# a nearby CDN when they were in PSRAM) but are released between records, so two TLS
-# sessions at once no longer exhaust internal RAM.
+# to PSRAM. TLS buffers use the default allocator: internal RAM first (faster: 460-510
+# KB/s vs 240-390 KB/s from a nearby CDN with everything in PSRAM), PSRAM when internal
+# RAM is short. Internal-only allocation (MBEDTLS_INTERNAL_MEM_ALLOC) failed mid-download
+# twice on 2026-09-13 ("Dynamic Impl: alloc(13334 bytes) failed") once the HTTP server
+# and mDNS were added: with the 8-bit panel buffers about 35-40 KB of internal RAM is
+# free at run time. Buffers are released between records (DYNAMIC_BUFFER).
 CONFIG_LWIP_TCP_WND_DEFAULT=65535
 CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65535
 CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
 CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
-CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC=y
+CONFIG_MBEDTLS_DEFAULT_MEM_ALLOC=y
 CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 
 # --- CPU / RTOS / compiler ---

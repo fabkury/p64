@@ -274,10 +274,13 @@ processing on the Wi-Fi core), plain HTTP reaches 600 KB/s, and Makapix Club, ab
 220 ms away, swings between 20 and 220 KB/s from one transfer to the next regardless of
 settings: that is the long path and its losses, not the device. A typical 100-250 KB
 artwork therefore takes 5 to 15 s including the 2.5 s TLS handshake, which matches the
-fetcher's own log. Keeping TLS buffers in PSRAM cost throughput (240-390 KB/s from the
-CDN) and was dropped; releasing them between records (`MBEDTLS_DYNAMIC_BUFFER`) fixed
-the out-of-memory that two simultaneous TLS sessions caused with everything in
-internal RAM.
+fetcher's own log. Keeping TLS buffers only in PSRAM cost throughput (240-390 KB/s from
+the CDN) and was dropped; keeping them only in internal RAM failed mid-download once
+the HTTP server and mDNS were added (about 35-40 KB of internal RAM is free at run time
+with the 8-bit panel buffers). mbedTLS therefore uses the default allocator, internal
+RAM first and PSRAM when that is short, and releases its buffers between records
+(`MBEDTLS_DYNAMIC_BUFFER`), which also fixed the out-of-memory that two simultaneous
+TLS sessions once caused.
 
 ## Layout
 
