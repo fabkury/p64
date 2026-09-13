@@ -259,7 +259,9 @@ void GifShowScene::start_on_demand(makapix::Artwork &&art, uint32_t seconds, uin
 }
 
 void GifShowScene::end_on_demand(uint32_t now_ms, const char *why) {
-  if (why) {
+  if (why && pattern_) {
+    ESP_LOGI(TAG, "test pattern over (%s), back to the show", why);
+  } else if (why) {
     ESP_LOGI(TAG, "web request #%lu over (%s), back to the show", static_cast<unsigned long>(on_demand_id_), why);
   }
   next_slot(now_ms);  // clears the on-demand state and plays the rotation's next artwork
