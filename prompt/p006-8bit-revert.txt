@@ -1,0 +1,1 @@
+Noticing some artworks on the LED matrix during the tests, I realized that the 7-bits per channel are hitting their quality perceivably. Let's revert to 8 bits per channel, 20 MHz.

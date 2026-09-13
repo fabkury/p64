@@ -93,10 +93,12 @@ CONFIG_HUB75_ROTATE_0=y
 # Refresh = 32 rows x 2^(bits-1) descriptors x 64 px / clock. The panel is multiplexed,
 # so phone photos show stripes of rows unless the exposure spans a whole refresh:
 #   20 MHz, 8 bit -> 76 Hz;  20 MHz, 7 bit -> 153 Hz;  32 MHz, 7 bit -> 244 Hz.
-# 7 bits means 128 levels per channel instead of 256 (slight banding in gradients).
+# 8 bits (256 levels per channel) is the floor for image quality: at 7 bits the 128
+# levels showed visible banding in Makapix artwork on 2026-09-12. Photos need a manual
+# exposure of 1/30 s or longer at 76 Hz (see README "Photographing the panel").
 # 20 MHz is the fastest clock that coexists with the hardware AES/SHA engines (see the
 # TLS section above); 32 MHz works only with software crypto.
-CONFIG_HUB75_BIT_DEPTH_7=y
+CONFIG_HUB75_BIT_DEPTH_8=y
 CONFIG_HUB75_GAMMA_CIE1931=y
 CONFIG_HUB75_CLK_20MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=60

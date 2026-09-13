@@ -109,9 +109,9 @@ arrives and the ball will again fall toward the physical bottom.
 
 ## Frame pacing: locked to the panel refresh
 
-The panel refreshes at 152.6 Hz (64x64, 7 bit planes, 20 MHz HUB75 clock; 32 MHz would
-give 244 Hz but needs software TLS crypto, see Wi-Fi credentials below; 8 bits at
-20 MHz give 76 Hz). The driver double-buffers, but its
+The panel refreshes at 76.3 Hz (64x64, 8 bit planes, 20 MHz HUB75 clock; 7 bit planes
+would give 153 Hz but their 128 levels per channel band visibly in artwork, and 32 MHz
+needs software TLS crypto, see Wi-Fi credentials below). The driver double-buffers, but its
 `flip_buffer()` only relinks the DMA descriptor chain: the DMA keeps scanning the old
 front buffer until that frame ends, and the driver gives no signal when it has
 switched. Drawing into the back buffer too early tears.
@@ -277,11 +277,12 @@ The main loop presents one frame per panel refresh.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.
-- 7-bit colour depth (128 levels per channel), CIE 1931 gamma, 20 MHz HUB75 clock:
-  153 Hz refresh, the fastest that coexists with hardware TLS crypto (32 MHz, 244 Hz,
-  works with software crypto; 8 bits at 20 MHz give 76 Hz). No visible artefacts at
-  32 MHz on this panel although the FM6126A-class drivers are specified around
-  25-30 MHz. Double buffering.
+- 8-bit colour depth (256 levels per channel), CIE 1931 gamma, 20 MHz HUB75 clock:
+  76 Hz refresh. 7 bits (153 Hz) were tried on 2026-09-12 and reverted: the 128 levels
+  banded visibly in Makapix artwork. 20 MHz is the fastest clock that coexists with
+  hardware TLS crypto (32 MHz works with software crypto; no visible artefacts at 32 MHz
+  on this panel although the FM6126A-class drivers are specified around 25-30 MHz).
+  Double buffering.
 - Photographing the panel: it is multiplexed (two rows lit at a time), so a short
   exposure captures a stripe of rows. Use a manual exposure of 1/30 s or longer, or
   lower the brightness so the phone picks a longer one; a faster refresh only shrinks
