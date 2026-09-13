@@ -1,20 +1,4 @@
 dependencies:
-  esphome/esp-hub75:
-    component_hash: 202ba936d1b18780903b734ce9e40b9ec04114dba7420714743018b3047753a8
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.4.0'
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    targets:
-    - esp32
-    - esp32s2
-    - esp32s3
-    - esp32c6
-    - esp32p4
-    version: 0.3.6
   espressif/mdns:
     component_hash: 3ba256ac95e07c274be53cbd73f06cb846c403b61e8fbdf1be57bdb79db7a63e
     dependencies:
@@ -30,9 +14,8 @@ dependencies:
       type: idf
     version: 5.5.4
 direct_dependencies:
-- esphome/esp-hub75
 - espressif/mdns
 - idf
-manifest_hash: 694747164a1de53fcfdeb2fdcdd8c3e36a3a22a9016aa4bf9518eb22e177fbae
+manifest_hash: ffd6880ace673f17427d2928ff853d44205b7bd11818b2be4071881f0fed3db3
 target: esp32s3
 version: 2.0.0

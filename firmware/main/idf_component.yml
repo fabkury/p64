@@ -1,7 +1,7 @@
 ## IDF Component Manager manifest for the p64 application.
+## esphome/esp-hub75 is vendored under components/esp-hub75 (patched, see its README).
 ## Managed components are downloaded into firmware/managed_components/ on the
 ## first build; dependencies.lock pins the exact versions and is committed.
 dependencies:
   idf: ">=5.5"
-  esphome/esp-hub75: "^0.3.6"
   espressif/mdns: "^1.8"

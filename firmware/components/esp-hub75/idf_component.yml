@@ -1,0 +1,53 @@
+dependencies:
+  idf:
+    version: '>=4.4.0'
+description: High-performance DMA-based driver for HUB75 RGB LED matrix panels on
+  ESP32 platforms
+discussion: https://github.com/esphome-libs/esp-hub75/discussions
+documentation: https://github.com/esphome-libs/esp-hub75/blob/main/README.md
+files:
+  exclude:
+  - build/**
+  - dist/**
+  - '*.o'
+  - '*.a'
+  - '*.so'
+  - '*.lib'
+  - sdkconfig
+  - sdkconfig.old
+  - managed_components/**
+  - dependencies.lock
+  - '*.elf'
+  - '*.bin'
+  - '*.map'
+  - .vscode/**
+  - .idea/**
+  - '*.swp'
+  - '*.swo'
+  - '*~'
+  - .DS_Store
+  - Thumbs.db
+  - docs/_build/**
+issues: https://github.com/esphome-libs/esp-hub75/issues
+license: MIT
+maintainers:
+- Stuart Parmenter <pavlov@pavlov.net>
+repository: git://github.com/esphome-libs/esp-hub75.git
+repository_info:
+  commit_sha: a087930a2d1d4b45f43dd8a0118a8804432ed11c
+  path: components/hub75
+tags:
+- led
+- matrix
+- hub75
+- display
+- dma
+- rgb
+targets:
+- esp32
+- esp32s2
+- esp32s3
+- esp32c6
+- esp32p4
+url: https://github.com/esphome-libs/esp-hub75
+version: 0.3.6

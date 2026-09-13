@@ -53,7 +53,7 @@ idf_component_register(
     INCLUDE_DIRS
         "."
     PRIV_REQUIRES
-        esphome__esp-hub75
+        esp-hub75
         animatedgif
         driver
         esp_timer
