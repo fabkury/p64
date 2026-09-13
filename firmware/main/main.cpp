@@ -24,6 +24,7 @@
 #include "net/clock.hpp"
 #include "net/makapix.hpp"
 #include "net/speedtest.hpp"
+#include "net/web.hpp"
 #include "net/wifi.hpp"
 #include "scene.hpp"
 #include "scenes/gif_show.hpp"
@@ -145,6 +146,7 @@ extern "C" void app_main() {
   p64::clock::start(CONFIG_P64_TZ, CONFIG_P64_NTP_SERVER);
   if (p64::wifi::start(CONFIG_P64_WIFI_SSID, CONFIG_P64_WIFI_PASSWORD)) {
     p64::makapix::start();
+    p64::web::start();
     p64::speedtest::start();
   }
 

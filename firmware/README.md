@@ -15,7 +15,8 @@ down, request failed, NTP not synced yet), a random embedded GIF fills the slot.
 play at their intended speed, looping as needed; frame delays are honoured with the
 browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a 70 % black box
 (the artwork shows through at 30 % brightness), a 24-hour clock (HH:MM) set from NTP
-over Wi-Fi; it reads `--:--` until the first sync.
+over Wi-Fi; it reads `--:--` until the first sync. A GIF requested over the network
+(see "Web control" below) pre-empts the rotation for its requested time.
 Pressing **BOOT** restarts the scene.
 
 ### Makapix Club client (`main/net/makapix.*`)
@@ -38,6 +39,45 @@ scene through a mutex. The scene logs title, artist and the page URL for each ar
 User agent: `p64/<git version>`. Menu `p64 > Makapix Club` can disable it or change
 the host.
 
+### Web control (`main/net/web.*`): play a GIF on command
+
+The device runs a small HTTP server on port 80 and announces itself over mDNS as
+**p64.local** (hostname and an `_http._tcp` service; the DHCP hostname is `p64` too).
+Endpoints:
+
+| Request | Effect |
+|---|---|
+| `GET /play?post=<Makapix post URL or sqid>[&seconds=N]` | download that post's GIF and play it |
+| `GET /play?url=<GIF URL>[&seconds=N]` | download any GIF (http or https) and play it |
+| `POST /play` with the same fields form-encoded | same |
+| `GET /stop` | end on-demand playback now; the rotation resumes |
+| `GET /status` | JSON: what is playing (name, source, size, seconds left), the last request (id, state, error), Wi-Fi IP and RSSI, heap |
+| `GET /` | a form for phones |
+
+`post` accepts `https://makapix.club/p/7fQw`, `makapix.club/p/7fQw` or just `7fQw`.
+`seconds` defaults to 60 (`P64_WEB_DEFAULT_SECONDS`); `0` keeps the GIF up until the
+next request or `/stop`. `/play` answers at once with `202 Accepted` and a JSON summary
+(`id`, `sqid` or `url`, `seconds`); the fetcher task then downloads the file ahead of
+the rotation's own requests and the scene switches as soon as it lands (3 to 10 s over
+TLS to Makapix, less for plain HTTP). Failures (bad sqid, 404, not a GIF, too large,
+offline) show up in `/status` under `request.error` and in the log. A newer request
+replaces one still waiting; when the time is up, the rotation continues with a fresh
+slot. Limits: files up to 4 MB and 512x512 px (`P64_WEB_MAX_BYTES`, `P64_WEB_MAX_DIMENSION`);
+larger frames are scaled down to the panel like everything else. Anything on the LAN
+can call these endpoints: there is no authentication.
+
+```
+curl "http://p64.local/play?post=https://makapix.club/p/Hqm"
+curl "http://p64.local/play?post=Hqm&seconds=120"
+curl "http://p64.local/play?url=https://vault.makapix.club/02/33/478727e5-b81c-4c4e-9742-0607fdb86d7f.gif&seconds=0"
+curl http://p64.local/status
+curl http://p64.local/stop
+```
+
+Windows 10+, macOS, iOS and Linux with Avahi resolve `p64.local`; Android's browser
+does not, so use the IP address from `/status` (or the router) there. Menu
+`p64 > Web control` can disable the server or change hostname, port and limits.
+
 Per GIF the log reports frames shown, fps, loops and decode+scale time per frame; every
 10 s the main loop logs frames presented, render / wait / copy times, late flips and
 sync timeouts. Frames are only presented when a GIF frame or the clock changed.
@@ -48,8 +88,9 @@ bars around the image. Transparent pixels show black.
 
 Menu `p64` in menuconfig (`.\tools\idf.ps1 menuconfig`) holds the knobs: brightness cap,
 Wi-Fi credentials, NTP server, timezone (POSIX TZ string, default New York), Makapix
-on/off, host and download cap, seconds per artwork, and two switches that turn the show
-back into the frame-rate test: ignore frame delays, and show the delivered fps top-right.
+on/off, host and download cap, the web control (on/off, hostname, port, default seconds,
+size limits), seconds per artwork, and two switches that turn the show back into the
+frame-rate test: ignore frame delays, and show the delivered fps top-right.
 
 Earlier scenes (bouncing ball, white fades, full-power white, the rotating square hue
 wheel) live in git history (`git log -- main/scenes`).
@@ -249,8 +290,8 @@ firmware/
   components/animatedgif/ vendored bitbank2/AnimatedGIF decoder (see its README)
   main/
     CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
-    idf_component.yml     dependencies (esphome/esp-hub75); dependencies.lock pins versions
-    Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, GIF dwell, test switches
+    idf_component.yml     dependencies (esphome/esp-hub75, espressif/mdns); dependencies.lock pins versions
+    Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, Makapix, web control, GIF dwell, test switches
     main.cpp              app_main: display, Wi-Fi + clock start, scene loop, BOOT restarts, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
@@ -259,11 +300,12 @@ firmware/
     gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
-    net/makapix.*         background fetcher: one random promoted GIF from Makapix Club
+    net/makapix.*         background fetcher: random promoted GIFs for the show, on-demand downloads for the web
+    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, / form
     net/speedtest.*       download throughput test (P64_SPEEDTEST, off by default)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
-    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, clock overlay
+    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, web requests, clock overlay
   sdkconfig.secrets.example  template for the git-ignored Wi-Fi credentials file
   tools/*.ps1             env activation and idf.py wrappers
   tools/gifcheck/         PC check of the GIF pipeline against Pillow

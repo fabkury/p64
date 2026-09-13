@@ -4,3 +4,4 @@
 dependencies:
   idf: ">=5.5"
   esphome/esp-hub75: "^0.3.6"
+  espressif/mdns: "^1.8"

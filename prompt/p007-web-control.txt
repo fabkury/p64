@@ -1,0 +1,9 @@
+I need to be able to trigger the device to play a specific GIFa from Makapix Club on command.
+
+Please implement a basic HTTP server, with mDNS address p64.local, that has endpoints that accept:
+ - A Makapix Club post URL or SQID: Eg.: https://makapix.club/p/7fQw, or just 7fQw
+ - A full URL to a GIF file to be played (from Makapix Club or elsewhere): Eg.: https://vault.makapix.club/02/33/478727e5-b81c-4c4e-9742-0607fdb86d7f.gif
+
+Once done, flash the new firmware and use the endpoint(s) you created to make p64 play https://makapix.club/p/Hqm.
+
+p64 should play an incoming animation for a default of 60 seconds, but additional parameters to the call to the endpoint(s) should allow changing that default.

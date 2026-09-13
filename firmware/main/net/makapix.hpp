@@ -1,11 +1,14 @@
-// p64 -- Makapix Club client: fetches one random promoted GIF that fits the panel.
+// p64 -- Makapix Club client and GIF downloader.
 //
-// Runs as a background task on the Wi-Fi core. The scene asks for the next artwork
-// with request_next() and later collects it with take_ready(); the task talks to
-// https://makapix.club anonymously:
-//   GET /api/post?promoted=true&sort=random&limit=1&width_max=W&height_max=H&file_format=gif
-//   GET /api/d/{public_sqid}.gif
-// TLS needs a valid clock, so the first fetch waits for the NTP sync.
+// A background task on the Wi-Fi core with two jobs:
+//  - the show's rotation: request_next() fetches one random promoted GIF that fits the
+//    panel, collected later with take_ready():
+//      GET /api/post?promoted=true&sort=random&limit=1&width_max=W&height_max=H&file_format=gif
+//      GET /api/d/{public_sqid}.gif
+//  - on-demand playback for the web control (net/web): request_play() downloads a given
+//    post's GIF or any GIF URL, collected with take_play(); a new request replaces one
+//    still waiting, and web requests go ahead of the rotation.
+// TLS needs a valid clock, so HTTPS fetches wait for the NTP sync.
 #pragma once
 
 #include <cstdint>
@@ -15,8 +18,9 @@
 namespace p64::makapix {
 
 struct Artwork {
-  std::string sqid;
-  std::string title;
+  std::string sqid;    // Makapix post; empty for a plain URL
+  std::string url;     // the GIF's URL for URL requests; empty for Makapix posts
+  std::string title;   // known for rotation picks only
   std::string artist;
   int width = 0;
   int height = 0;
@@ -37,5 +41,37 @@ bool take_ready(Artwork &out);
 // the speed test to keep the link to itself.
 void set_paused(bool paused);
 bool busy();  // a fetch is in progress
+
+// --- On-demand playback ---------------------------------------------------------
+
+struct PlayRequest {
+  std::string sqid;      // a Makapix post, or
+  std::string url;       // a GIF URL (http or https)
+  uint32_t seconds = 0;  // playback time; 0 = until the next request
+};
+
+enum class PlayState { idle, queued, downloading, ready, failed };
+
+struct PlayStatus {
+  uint32_t id = 0;  // of the latest request; 0 = none yet
+  PlayState state = PlayState::idle;
+  std::string target;  // sqid or URL of that request
+  std::string error;   // why it failed
+};
+
+// Queues the download and returns the request id (0 when the fetcher is not running).
+// A request still waiting, or a result nobody took yet, is replaced.
+uint32_t request_play(const PlayRequest &req);
+
+// Moves a finished on-demand download out; `seconds` and `id` are the request's.
+bool take_play(Artwork &out, uint32_t &seconds, uint32_t &id);
+
+// Drops a waiting request or result (used by /stop).
+void cancel_play();
+
+// The scene reports a downloaded file that does not decode.
+void set_play_error(uint32_t id, const char *error);
+
+PlayStatus play_status();
 
 }  // namespace p64::makapix

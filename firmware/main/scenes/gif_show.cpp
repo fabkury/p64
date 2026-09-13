@@ -13,6 +13,7 @@
 #include "font3x5.hpp"
 #include "gif_assets.hpp"
 #include "net/clock.hpp"
+#include "net/web.hpp"
 
 namespace p64 {
 namespace {
@@ -74,6 +75,7 @@ bool GifShowScene::open_current(const uint8_t *data, size_t size, uint32_t now_m
   gif_decode_us_ = 0;
   next_frame_ms_ = now_ms;
   single_frame_ = false;
+  current_bytes_ = size;
   if (!player_.open(data, size)) {
     ESP_LOGW(TAG, "%s: cannot open (AnimatedGIF error %d), skipped", current_name_.c_str(), player_.last_error());
     return false;
@@ -87,6 +89,7 @@ bool GifShowScene::open_current(const uint8_t *data, size_t size, uint32_t now_m
 bool GifShowScene::play_embedded(uint32_t now_ms) {
   if (kGifAssetCount == 0) return false;
   download_ = makapix::Artwork{};  // release any downloaded bytes
+  on_demand_ = false;              // an embedded GIF is never a web request
   for (size_t tries = 0; tries < kGifAssetCount; ++tries) {
     size_t index = esp_random() % kGifAssetCount;
     if (kGifAssetCount > 1 && index == embedded_index_) index = (index + 1) % kGifAssetCount;
@@ -96,6 +99,7 @@ bool GifShowScene::play_embedded(uint32_t now_ms) {
     if (open_current(asset.data, asset.size, now_ms)) {
       ESP_LOGI(TAG, "playing embedded %s (%dx%d, %zu bytes) at %dx%d", asset.name, player_.width(), player_.height(),
                asset.size, scaler_.out_w(), scaler_.out_h());
+      publish_now_playing();
       return true;
     }
   }
@@ -105,12 +109,22 @@ bool GifShowScene::play_embedded(uint32_t now_ms) {
 bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
   player_.close();  // it may still point into the previous download's bytes
   download_ = std::move(art);
-  current_name_ = "makapix " + download_.sqid;
+  current_name_ = download_.sqid.empty() ? download_.url : "makapix " + download_.sqid;
   if (!open_current(download_.gif.data(), download_.gif.size(), now_ms)) return false;
-  ESP_LOGI(TAG, "playing makapix %s \"%s\" by %s (%dx%d, %u bytes) at %dx%d, https://%s/p/%s", download_.sqid.c_str(),
-           download_.title.c_str(), download_.artist.c_str(), player_.width(), player_.height(),
-           static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h(), CONFIG_P64_MAKAPIX_HOST,
-           download_.sqid.c_str());
+  if (download_.sqid.empty()) {
+    ESP_LOGI(TAG, "playing %s (%dx%d, %u bytes) at %dx%d", download_.url.c_str(), player_.width(), player_.height(),
+             static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h());
+  } else if (download_.title.empty()) {  // on-demand posts come without metadata
+    ESP_LOGI(TAG, "playing makapix %s (%dx%d, %u bytes) at %dx%d, https://%s/p/%s", download_.sqid.c_str(),
+             player_.width(), player_.height(), static_cast<unsigned>(download_.gif.size()), scaler_.out_w(),
+             scaler_.out_h(), CONFIG_P64_MAKAPIX_HOST, download_.sqid.c_str());
+  } else {
+    ESP_LOGI(TAG, "playing makapix %s \"%s\" by %s (%dx%d, %u bytes) at %dx%d, https://%s/p/%s",
+             download_.sqid.c_str(), download_.title.c_str(), download_.artist.c_str(), player_.width(),
+             player_.height(), static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h(),
+             CONFIG_P64_MAKAPIX_HOST, download_.sqid.c_str());
+  }
+  publish_now_playing();
   return true;
 }
 
@@ -118,6 +132,8 @@ bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
 // then ask for the next download so it is ready when this slot ends.
 void GifShowScene::next_slot(uint32_t now_ms) {
   log_gif_stats(now_ms);
+  on_demand_ = false;
+  on_demand_indefinite_ = false;
   makapix::Artwork art;
   bool playing = false;
   if (makapix::take_ready(art)) playing = play_download(std::move(art), now_ms);
@@ -153,7 +169,26 @@ bool GifShowScene::decode_next(uint32_t now_ms) {
 bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
   bool dirty = false;
 
-  if (info.t_ms - gif_start_ms_ >= kDwellMs) {
+  // Web control: a downloaded request pre-empts whatever plays; /stop or its time
+  // running out hands the panel back to the rotation.
+  {
+    makapix::Artwork art;
+    uint32_t seconds = 0, id = 0;
+    if (makapix::take_play(art, seconds, id)) {
+      start_on_demand(std::move(art), seconds, id, info.t_ms);
+      dirty = true;
+    }
+  }
+  if (web::take_stop() && on_demand_) {
+    end_on_demand(info.t_ms, "stopped from the web");
+    dirty = true;
+  }
+  if (on_demand_) {
+    if (!on_demand_indefinite_ && static_cast<int32_t>(info.t_ms - on_demand_until_ms_) >= 0) {
+      end_on_demand(info.t_ms, "time is up");
+      dirty = true;
+    }
+  } else if (info.t_ms - gif_start_ms_ >= kDwellMs) {
     next_slot(info.t_ms);
     dirty = true;
   }
@@ -190,6 +225,56 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
     dirty = true;
   }
   return dirty;
+}
+
+// A web request arrived: play it for its time (0 = until the next request or /stop).
+void GifShowScene::start_on_demand(makapix::Artwork &&art, uint32_t seconds, uint32_t id, uint32_t now_ms) {
+  log_gif_stats(now_ms);
+  on_demand_ = true;
+  on_demand_id_ = id;
+  on_demand_indefinite_ = seconds == 0;
+  on_demand_until_ms_ = now_ms + seconds * 1000u;
+  on_demand_until_us_ = seconds ? esp_timer_get_time() + static_cast<int64_t>(seconds) * 1000000 : 0;
+  if (seconds == 0) {
+    ESP_LOGI(TAG, "web request #%lu: playing until the next request", static_cast<unsigned long>(id));
+  } else {
+    ESP_LOGI(TAG, "web request #%lu: playing for %lu s", static_cast<unsigned long>(id),
+             static_cast<unsigned long>(seconds));
+  }
+  if (!play_download(std::move(art), now_ms)) {
+    ESP_LOGW(TAG, "web request #%lu: the file does not decode as a GIF, back to the show",
+             static_cast<unsigned long>(id));
+    makapix::set_play_error(id, "the file does not decode as a GIF");
+    end_on_demand(now_ms, nullptr);
+  }
+}
+
+void GifShowScene::end_on_demand(uint32_t now_ms, const char *why) {
+  if (why) {
+    ESP_LOGI(TAG, "web request #%lu over (%s), back to the show", static_cast<unsigned long>(on_demand_id_), why);
+  }
+  next_slot(now_ms);  // clears the on-demand state and plays the rotation's next artwork
+}
+
+void GifShowScene::publish_now_playing() const {
+  web::NowPlaying now;
+  now.name = current_name_;
+  if (download_.gif.empty()) {
+    now.source = "embedded";
+  } else if (download_.sqid.empty()) {
+    now.source = "url";
+    now.url = download_.url;
+  } else {
+    now.source = "makapix";
+    now.url = std::string("https://") + CONFIG_P64_MAKAPIX_HOST + "/p/" + download_.sqid;
+  }
+  now.width = player_.width();
+  now.height = player_.height();
+  now.bytes = current_bytes_;
+  now.on_demand = on_demand_;
+  now.started_us = esp_timer_get_time();
+  now.until_us = on_demand_ ? on_demand_until_us_ : 0;
+  web::publish(now);
 }
 
 void GifShowScene::draw_overlays(Frame &frame, float fps) const {

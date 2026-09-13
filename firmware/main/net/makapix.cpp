@@ -31,6 +31,12 @@ constexpr size_t kRecentSize = 32;
 constexpr int kAttemptsPerRequest = 2;
 constexpr int kRedrawsOnRepeat = 3;
 constexpr uint32_t kNetworkWaitMs = 90 * 1000;  // give up waiting for Wi-Fi/NTP after this
+constexpr int kMaxRedirects = 3;
+// On-demand (web) requests.
+constexpr size_t kMaxPlayBytes = CONFIG_P64_WEB_MAX_BYTES;
+constexpr int kMaxPlayDim = CONFIG_P64_WEB_MAX_DIMENSION;
+constexpr uint32_t kPlayNetworkWaitMs = 10 * 1000;  // a web request fails fast when offline
+constexpr int kPlayAttempts = 2;
 
 std::mutex g_mutex;
 std::optional<Artwork> g_ready;
@@ -40,6 +46,15 @@ std::atomic<bool> g_fetching{false};
 TaskHandle_t g_task = nullptr;
 std::deque<std::string> g_recent;  // task-private
 char g_user_agent[48] = "p64";
+// On-demand requests, under g_mutex.
+std::optional<PlayRequest> g_play_request;
+uint32_t g_play_request_id = 0;
+std::optional<Artwork> g_play_ready;
+uint32_t g_play_ready_seconds = 0;
+uint32_t g_play_ready_id = 0;
+uint32_t g_play_cancelled_id = 0;  // results of requests up to this id are dropped
+uint32_t g_next_play_id = 0;
+PlayStatus g_play_status;
 
 // ---------------------------------------------------------------------------
 // HTTP
@@ -60,15 +75,24 @@ int http_get(const char *url, const char *accept, std::vector<uint8_t> &out, siz
   if (accept) esp_http_client_set_header(client, "Accept", accept);
 
   ESP_LOGD(TAG, "GET %s", url);
-  esp_err_t err = esp_http_client_open(client, 0);
-  if (err != ESP_OK) {
-    ESP_LOGW(TAG, "open failed: %s", esp_err_to_name(err));
-    esp_http_client_cleanup(client);
-    return -static_cast<int>(err);
+  int64_t content_length = 0;
+  int status = 0;
+  for (int hop = 0;; ++hop) {
+    const esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+      ESP_LOGW(TAG, "open failed: %s", esp_err_to_name(err));
+      esp_http_client_cleanup(client);
+      return -static_cast<int>(err);
+    }
+    content_length = esp_http_client_fetch_headers(client);
+    status = esp_http_client_get_status_code(client);
+    ESP_LOGD(TAG, "status %d, %lld bytes", status, static_cast<long long>(content_length));
+    const bool redirect = status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
+    if (!redirect || hop >= kMaxRedirects) break;
+    // Follow Location ourselves: esp_http_client only does so inside perform().
+    if (esp_http_client_set_redirection(client) != ESP_OK) break;
+    esp_http_client_close(client);
   }
-  const int64_t content_length = esp_http_client_fetch_headers(client);
-  const int status = esp_http_client_get_status_code(client);
-  ESP_LOGD(TAG, "status %d, %lld bytes", status, static_cast<long long>(content_length));
   if (content_length > static_cast<int64_t>(max_bytes)) {
     ESP_LOGW(TAG, "response of %lld bytes exceeds the %u byte cap", static_cast<long long>(content_length),
              static_cast<unsigned>(max_bytes));
@@ -221,36 +245,135 @@ bool fetch_one(Artwork &art) {
   return true;
 }
 
-// Waits until the network and the clock (TLS checks certificate dates) are usable.
-bool wait_for_network() {
-  const TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(kNetworkWaitMs);
-  while (!(wifi::connected() && clock::synced())) {
-    if (xTaskGetTickCount() >= deadline) {
-      ESP_LOGW(TAG, "network or time not ready after %lu s (wifi %d, ntp %d), trying anyway",
-               static_cast<unsigned long>(kNetworkWaitMs / 1000), wifi::connected() ? 1 : 0,
-               clock::synced() ? 1 : 0);
-      return wifi::connected();
-    }
+// Waits until Wi-Fi is up and, when `need_time`, the clock is set (TLS checks
+// certificate dates). False when that takes longer than `max_ms`.
+bool wait_for_network(bool need_time, uint32_t max_ms) {
+  const TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(max_ms);
+  while (!(wifi::connected() && (!need_time || clock::synced()))) {
+    if (xTaskGetTickCount() >= deadline) return false;
     vTaskDelay(pdMS_TO_TICKS(250));
   }
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// On-demand requests
+// ---------------------------------------------------------------------------
+
+// Reads the logical screen size from a GIF header.
+bool gif_size(const std::vector<uint8_t> &gif, int &w, int &h) {
+  if (gif.size() < 10 || std::memcmp(gif.data(), "GIF8", 4) != 0) return false;
+  w = gif[6] | (gif[7] << 8);
+  h = gif[8] | (gif[9] << 8);
+  return w > 0 && h > 0;
+}
+
+// Downloads a request into `art`; `error` explains a failure.
+bool fetch_play(const PlayRequest &req, Artwork &art, std::string &error) {
+  std::string url = req.url;
+  if (!req.sqid.empty()) url = std::string("https://") + CONFIG_P64_MAKAPIX_HOST + "/api/d/" + req.sqid + ".gif";
+  art = Artwork{};
+  art.sqid = req.sqid;
+  art.url = req.url;
+  const int status = http_get(url.c_str(), "image/gif", art.gif, kMaxPlayBytes);
+  if (status == -ESP_ERR_INVALID_SIZE) {
+    error = "file larger than " + std::to_string(kMaxPlayBytes) + " bytes";
+  } else if (status < 0) {
+    error = std::string("download failed: ") + esp_err_to_name(-status);
+  } else if (status == 404) {
+    error = req.sqid.empty() ? "not found (404)" : "no such post, or it has no GIF (404)";
+  } else if (status != 200) {
+    error = "HTTP " + std::to_string(status);
+  } else if (!gif_size(art.gif, art.width, art.height)) {
+    error = "not a GIF file";
+  } else if (art.width > kMaxPlayDim || art.height > kMaxPlayDim) {
+    error = std::to_string(art.width) + "x" + std::to_string(art.height) + " is larger than " +
+            std::to_string(kMaxPlayDim) + " px";
+  } else {
+    return true;
+  }
+  return false;
+}
+
+// Serves one request end to end: download, then hand the result (or the error) to the
+// scene and the status page. Dropped when /stop or a newer request came first.
+void serve_play(const PlayRequest &req, uint32_t id) {
+  const bool https = !req.sqid.empty() || req.url.rfind("https://", 0) == 0;
+  const char *target = req.sqid.empty() ? req.url.c_str() : req.sqid.c_str();
+  Artwork art;
+  std::string error;
+  bool ok = false;
+  if (!wait_for_network(https, kPlayNetworkWaitMs)) {
+    error = wifi::connected() ? "clock not synced yet (TLS needs it)" : "Wi-Fi not connected";
+  } else {
+    for (int attempt = 1; attempt <= kPlayAttempts && !ok; ++attempt) {
+      const TickType_t t0 = xTaskGetTickCount();
+      ok = fetch_play(req, art, error);
+      if (ok) {
+        ESP_LOGI(TAG, "request #%lu: fetched %s (%dx%d, %u bytes) in %lu ms", static_cast<unsigned long>(id), target,
+                 art.width, art.height, static_cast<unsigned>(art.gif.size()),
+                 static_cast<unsigned long>((xTaskGetTickCount() - t0) * portTICK_PERIOD_MS));
+      } else if (attempt < kPlayAttempts && error.rfind("download failed", 0) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(2000));  // transport trouble: one more try
+      } else {
+        break;
+      }
+    }
+  }
+  if (!ok) ESP_LOGW(TAG, "request #%lu (%s) failed: %s", static_cast<unsigned long>(id), target, error.c_str());
+  if (ok && !art.sqid.empty()) remember(art.sqid);
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (id <= g_play_cancelled_id) return;                 // /stop came first
+  if (g_play_request && g_play_request_id > id) return;  // superseded meanwhile
+  if (g_play_status.id == id) {
+    g_play_status.state = ok ? PlayState::ready : PlayState::failed;
+    g_play_status.error = ok ? "" : error;
+  }
+  if (ok) {
+    g_play_ready = std::move(art);
+    g_play_ready_seconds = req.seconds;
+    g_play_ready_id = id;
+  }
+}
+
 void fetcher_task(void *) {
   while (true) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    while (g_paused.load()) vTaskDelay(pdMS_TO_TICKS(250));
+
+    // Web requests first: someone is waiting for them.
+    while (true) {
+      std::optional<PlayRequest> req;
+      uint32_t id = 0;
+      {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (!g_play_request) break;
+        req = std::move(*g_play_request);
+        g_play_request.reset();
+        id = g_play_request_id;
+        g_play_status.state = PlayState::downloading;
+      }
+      g_fetching = true;
+      serve_play(*req, id);
+      g_fetching = false;
+    }
+
+    // Then the show's rotation.
     {
       std::lock_guard<std::mutex> lock(g_mutex);
-      if (g_ready) {
+      if (!g_in_flight || g_ready) {
         g_in_flight = false;
-        continue;  // still holding one nobody took; nothing to do
+        continue;  // no rotation request, or still holding one nobody took
       }
     }
-    while (g_paused.load()) vTaskDelay(pdMS_TO_TICKS(250));
     Artwork art;
     bool ok = false;
     g_fetching = true;
-    if (wait_for_network()) {
+    if (!wait_for_network(true, kNetworkWaitMs)) {
+      ESP_LOGW(TAG, "network or time not ready after %lu s (wifi %d, ntp %d), trying anyway",
+               static_cast<unsigned long>(kNetworkWaitMs / 1000), wifi::connected() ? 1 : 0, clock::synced() ? 1 : 0);
+    }
+    if (wifi::connected()) {
       for (int attempt = 1; attempt <= kAttemptsPerRequest && !ok; ++attempt) {
         const int64_t t0 = xTaskGetTickCount();
         ok = fetch_one(art);
@@ -311,5 +434,56 @@ bool take_ready(Artwork &out) {
 void set_paused(bool paused) { g_paused = paused; }
 
 bool busy() { return g_fetching.load(); }
+
+uint32_t request_play(const PlayRequest &req) {
+  if (!g_task) return 0;
+  uint32_t id;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    id = ++g_next_play_id;
+    g_play_request = req;
+    g_play_request_id = id;
+    g_play_ready.reset();  // a newer request supersedes a result nobody took yet
+    g_play_status = PlayStatus{};
+    g_play_status.id = id;
+    g_play_status.state = PlayState::queued;
+    g_play_status.target = req.sqid.empty() ? req.url : req.sqid;
+  }
+  xTaskNotifyGive(g_task);
+  return id;
+}
+
+bool take_play(Artwork &out, uint32_t &seconds, uint32_t &id) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_play_ready) return false;
+  out = std::move(*g_play_ready);
+  g_play_ready.reset();
+  seconds = g_play_ready_seconds;
+  id = g_play_ready_id;
+  return true;
+}
+
+void cancel_play() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_play_cancelled_id = g_next_play_id;
+  g_play_request.reset();
+  g_play_ready.reset();
+  if (g_play_status.state == PlayState::queued || g_play_status.state == PlayState::downloading) {
+    g_play_status.state = PlayState::idle;
+    g_play_status.error = "cancelled by /stop";
+  }
+}
+
+void set_play_error(uint32_t id, const char *error) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_play_status.id != id) return;
+  g_play_status.state = PlayState::failed;
+  g_play_status.error = error;
+}
+
+PlayStatus play_status() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return g_play_status;
+}
 
 }  // namespace p64::makapix

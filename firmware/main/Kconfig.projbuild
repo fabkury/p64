@@ -81,6 +81,51 @@ menu "p64"
 
     endmenu
 
+    menu "Web control"
+
+        config P64_WEB_ENABLE
+            bool "HTTP server for on-demand playback (p64.local)"
+            default y
+            help
+                GET or POST /play?post=<Makapix post URL or sqid> or /play?url=<GIF URL>,
+                with an optional seconds=N, queues a GIF for playback; /stop ends it;
+                /status reports; / is a form. Announced over mDNS as <hostname>.local.
+
+        config P64_WEB_HOSTNAME
+            string "mDNS hostname (without .local)"
+            default "p64"
+
+        config P64_WEB_PORT
+            int "HTTP port"
+            range 1 65535
+            default 80
+
+        config P64_WEB_DEFAULT_SECONDS
+            int "Default playback time of a requested GIF (seconds)"
+            range 0 604800
+            default 60
+            help
+                Used when the request carries no seconds parameter. 0 means the GIF
+                stays up until the next request or /stop.
+
+        config P64_WEB_MAX_BYTES
+            int "Largest requested GIF file (bytes)"
+            range 4096 8388608
+            default 4194304
+            help
+                Requested files land in PSRAM; larger ones are refused.
+
+        config P64_WEB_MAX_DIMENSION
+            int "Largest requested GIF width or height (pixels)"
+            range 64 2048
+            default 512
+            help
+                The decoder keeps a width x height x 3 byte canvas in PSRAM and the
+                scaler averages the frame down to the panel; very large frames also
+                take long to decode.
+
+    endmenu
+
     config P64_SPEEDTEST
         bool "Run a download speed test 45 s after boot (results in the log)"
         default n

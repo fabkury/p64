@@ -47,6 +47,7 @@ idf_component_register(
         "net/clock.cpp"
         "net/makapix.cpp"
         "net/speedtest.cpp"
+        "net/web.cpp"
         "scenes/gif_show.cpp"
         "${GIF_TABLE_SRC}"
     INCLUDE_DIRS
@@ -66,6 +67,8 @@ idf_component_register(
         mbedtls
         json
         esp_app_format
+        esp_http_server
+        espressif__mdns
     EMBED_FILES
         ${GIF_FILES}
 )

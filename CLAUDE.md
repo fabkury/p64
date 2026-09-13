@@ -99,6 +99,15 @@ height_max=..&file_format=gif`, then `/api/d/{sqid}.gif`), gated on Wi-Fi and NT
 (TLS needs the clock), handing bytes to the scene under a mutex. The server code is
 github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the contract.
 
+Web control (`main/net/web.*`): `esp_http_server` on port 80 plus mDNS (`espressif/mdns`,
+hostname `p64` -> p64.local). `/play?post=<Makapix URL or sqid>|url=<GIF URL>[&seconds=N]`
+answers 202 at once and queues a `makapix::PlayRequest`; the fetcher task serves those
+ahead of the rotation (one TLS session at a time, on purpose: two at once ran internal
+RAM out before), validates the GIF header and size (`P64_WEB_MAX_BYTES`,
+`P64_WEB_MAX_DIMENSION`), and the scene picks the result up with `take_play()`,
+pre-empting the 30 s slot until the time is up, `/stop`, or the next request (0 s =
+indefinite). The scene publishes `web::NowPlaying` for `/status`. No authentication.
+
 Network: `sdkconfig.defaults` sets a 64 KB TCP window, lwIP buffers in PSRAM and
 mbedTLS buffers internal + dynamic; measured numbers and the reasoning are in
 `firmware/README.md` "Network throughput". `P64_SPEEDTEST` (menuconfig, off) runs a
