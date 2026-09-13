@@ -196,6 +196,13 @@ class Hub75Driver {
    */
   uint16_t get_width() const;
 
+  /** @brief p64 patch: refresh period of one frame in microseconds (0 before begin()). */
+  float get_frame_period_us() const;
+  /** @brief p64 patch: DMA descriptors (row transmissions) per frame (0 before begin()). */
+  size_t get_descriptor_count() const;
+  /** @brief p64 patch: bit planes 0..n are sent once, with a shortened output-enable window. */
+  int get_lsb_msb_transition_bit() const;
+
   /**
    * @brief Get panel height in pixels
    * @return Height

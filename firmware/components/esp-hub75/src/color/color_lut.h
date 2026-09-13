@@ -135,6 +135,25 @@ template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_cie1931_
 }
 
 /**
+ * @brief p64 patch: x^2.2 for x in [0, 1] as x^2 * x^(1/5), the fifth root by Newton's
+ * method. Exact at 0 and 1 and monotonic, unlike constexpr_pow_frac(), whose log series
+ * only holds near 1 (it gave e^0 = 1 for x = 0, i.e. black mapped to full white, and a
+ * non-monotonic table elsewhere; the static checks in color_lut.cpp rejected it).
+ */
+constexpr double constexpr_pow22(double x) {
+  if (x <= 0.0) return 0.0;
+  if (x >= 1.0) return 1.0;
+  double r = 1.0;  // fifth root, from above: converges monotonically for x in (0, 1)
+  for (int i = 0; i < 200; i++) {
+    const double r4 = r * r * r * r;
+    const double next = r - (r4 * r - x) / (5.0 * r4);
+    if (next == r) break;
+    r = next;
+  }
+  return x * x * r;
+}
+
+/**
  * @brief Generate Gamma 2.2 lookup table at compile time
  */
 template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_gamma22_lut() {
@@ -145,7 +164,7 @@ template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_gamma22_
 
   for (int i = 0; i < 256; i++) {
     const double normalized = i / 255.0;
-    const double corrected = constexpr_pow_frac(normalized, 2.2);
+    const double corrected = constexpr_pow22(normalized);  // p64 patch (was constexpr_pow_frac)
     // Scale to target bit depth, round, and clamp to ensure no overflow
     const int rounded = constexpr_round(corrected * max_val);
     lut[i] = static_cast<uint16_t>(constexpr_clamp(rounded, 0, max_val));

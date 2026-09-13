@@ -36,12 +36,13 @@ constexpr int kStallTimeouts = 3;
 // Longest the main task may go without blocking (keeps the idle task and its watchdog fed).
 constexpr int64_t kForcedYieldUs = 1000 * 1000;
 
-// One descriptor chain (one buffer) of the driver: descriptors per frame x their size.
-constexpr uint32_t kChainBytes = kHub75ScanRows * kHub75DescriptorsPerRow * sizeof(dma_descriptor_t);
+// One descriptor chain (one buffer) of the driver with full binary code modulation:
+// descriptors per frame x their size. Fallback only; begin() asks the driver.
+constexpr uint32_t kNominalChainBytes = kHub75ScanRows * kHub75DescriptorsPerRow * sizeof(dma_descriptor_t);
 
-// Whether a descriptor address lies in the chain whose last descriptor is `last`.
-inline bool in_chain(uint32_t addr, uint32_t last) {
-  return (last - addr) < kChainBytes;  // unsigned: wraps when addr > last
+// Whether a descriptor address lies in the chain of `chain_bytes` whose last descriptor is `last`.
+inline bool in_chain(uint32_t addr, uint32_t last, uint32_t chain_bytes) {
+  return (last - addr) < chain_bytes;  // unsigned: wraps when addr > last
 }
 
 int find_lcd_dma_channel() {
@@ -258,6 +259,9 @@ bool Display::begin() {
     return false;
   }
   brightness_ = cfg.brightness;
+  period_us_ = driver_->get_frame_period_us();
+  chain_bytes_ = static_cast<uint32_t>(driver_->get_descriptor_count() * sizeof(dma_descriptor_t));
+  if (chain_bytes_ == 0) chain_bytes_ = kNominalChainBytes;
   driver_->clear();
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
   lcd_dma_channel_ = find_lcd_dma_channel();
@@ -267,13 +271,22 @@ bool Display::begin() {
 #endif
   last_flip_us_ = esp_timer_get_time();
   flip_pending_ = false;
-  ESP_LOGI(TAG, "HUB75 refresh running; expected refresh period %.1f us (%.1f Hz)", refresh_period_us(),
-           1e6 / refresh_period_us());
+  const int transition = driver_->get_lsb_msb_transition_bit();
+  if (transition > 0) {
+    ESP_LOGI(TAG,
+             "HUB75 refresh running: %d bit planes, planes 0..%d sent once with halving output-enable windows, "
+             "%u transmissions per frame; refresh period %.1f us (%.1f Hz)",
+             CONFIG_HUB75_BIT_DEPTH, transition, static_cast<unsigned>(driver_->get_descriptor_count()),
+             refresh_period_us(), 1e6 / refresh_period_us());
+  } else {
+    ESP_LOGI(TAG, "HUB75 refresh running: %d bit planes, full binary code modulation; refresh period %.1f us (%.1f Hz)",
+             CONFIG_HUB75_BIT_DEPTH, refresh_period_us(), 1e6 / refresh_period_us());
+  }
   if (lcd_dma_channel_ >= 0) {
     ESP_LOGI(TAG,
              "frame boundaries read from GDMA channel %d (%lu-byte descriptor chains ending at 0x%lx and 0x%lx): "
              "frame-locked rendering",
-             lcd_dma_channel_, static_cast<unsigned long>(kChainBytes), static_cast<unsigned long>(chain_last_[0]),
+             lcd_dma_channel_, static_cast<unsigned long>(chain_bytes_), static_cast<unsigned long>(chain_last_[0]),
              static_cast<unsigned long>(chain_last_[1]));
   } else if (cfg.double_buffer) {
     ESP_LOGW(TAG, "LCD GDMA channel not found: frames wait a full refresh period after each flip");
@@ -297,7 +310,7 @@ void Display::present(const Frame &frame) {
     // present within that frame, as at every artwork transition, then recorded the
     // wrong chain and every later check said "still old" until the timeout.)
     const uint32_t fetching = GDMA.channel[ch].out.dscr;
-    old_front_last_ = in_chain(fetching, chain_last_[1]) ? chain_last_[1] : chain_last_[0];
+    old_front_last_ = in_chain(fetching, chain_last_[1], chain_bytes_) ? chain_last_[1] : chain_last_[0];
     gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
   }
   driver_->flip_buffer();
@@ -364,7 +377,7 @@ bool Display::wait_for_dma_switch() {
     // is anywhere else, the old front buffer is free, however many boundaries ago
     // the switch happened.
     const uint32_t fetching = GDMA.channel[ch].out.dscr;
-    const bool still_old = in_chain(fetching, old_front_last_);
+    const bool still_old = in_chain(fetching, old_front_last_, chain_bytes_);
     if (!still_old) return true;
     ++stats_.late_flips;
     if (esp_timer_get_time() > deadline) {  // the flag being set on arrival must not bypass the deadline

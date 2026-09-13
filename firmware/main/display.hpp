@@ -78,8 +78,10 @@ class Display {
   // Returns the counters accumulated since the previous call and resets them.
   Stats take_stats();
 
-  // Panel refresh period implied by sdkconfig (standard two-scan wiring, full BCM).
-  static constexpr double refresh_period_us();
+  // Panel refresh period in microseconds: what the driver reports after begin(); before
+  // that, the value sdkconfig implies with full binary code modulation.
+  double refresh_period_us() const { return period_us_ > 0 ? period_us_ : nominal_refresh_period_us(); }
+  static constexpr double nominal_refresh_period_us();
 
  private:
   bool learn_chains();
@@ -90,6 +92,8 @@ class Display {
   Hub75Driver *driver_ = nullptr;
   uint8_t brightness_ = 0;
   int lcd_dma_channel_ = -1;
+  double period_us_ = 0;      // refresh period from the driver (0 until begin())
+  uint32_t chain_bytes_ = 0;  // one of the driver's descriptor chains, in bytes
   bool flip_pending_ = false;
   uint32_t chain_last_[2] = {0, 0};  // last descriptor of each of the driver's two chains (learned in begin())
   uint32_t old_front_last_ = 0;      // last descriptor of the chain that was front at the flip
@@ -107,8 +111,9 @@ class Display {
 //   rows (= panel_height / 2) x descriptors per row (2^(bits-1) for full BCM)
 //   x DMA line width (all chained panels) / actual LCD clock (160 MHz / integer).
 // 64x64, 8 bits, 20 MHz -> 32 x 128 x 64 / 20 MHz = 13107.2 us (76.3 Hz).
-// If the driver has to shorten low bit planes to meet HUB75_MIN_REFRESH_RATE the real
-// period is shorter than this, which only makes the timed fallback more conservative.
+// This is only the fallback: when HUB75_MIN_REFRESH_RATE makes the driver send the low
+// bit planes once each, the real chain is shorter, and Display takes the period and the
+// chain length from the driver's getters (p64 patch in components/esp-hub75) instead.
 // ---------------------------------------------------------------------------
 
 constexpr uint32_t kHub75RequestedClockHz =
@@ -140,7 +145,7 @@ constexpr uint32_t kHub75DescriptorsPerRow = 1u << (CONFIG_HUB75_BIT_DEPTH - 1);
 constexpr uint32_t kHub75DmaWidth =
     static_cast<uint32_t>(CONFIG_HUB75_PANEL_WIDTH) * CONFIG_HUB75_LAYOUT_COLS * CONFIG_HUB75_LAYOUT_ROWS;
 
-constexpr double Display::refresh_period_us() {
+constexpr double Display::nominal_refresh_period_us() {
   return static_cast<double>(kHub75ScanRows) * kHub75DescriptorsPerRow * kHub75DmaWidth * 1e6 /
          hub75_actual_clock_hz(kHub75RequestedClockHz);
 }

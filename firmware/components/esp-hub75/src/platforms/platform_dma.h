@@ -272,6 +272,11 @@ class PlatformDma {
   virtual void flip_buffer() {
     // Default: no-op (single buffer mode or not implemented)
   }
+
+  // p64 patch: timing facts for frame-locked rendering; 0 when the platform does not know.
+  virtual float get_frame_period_us() const { return 0.0f; }
+  virtual size_t get_descriptor_count() const { return 0; }
+  virtual int get_lsb_msb_transition_bit() const { return 0; }
 };
 
 }  // namespace hub75

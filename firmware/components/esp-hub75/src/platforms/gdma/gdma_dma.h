@@ -96,6 +96,11 @@ class GdmaDma : public PlatformDma {
    */
   void flip_buffer() override;
 
+  // p64 patch: timing facts for frame-locked rendering.
+  float get_frame_period_us() const override;
+  size_t get_descriptor_count() const override { return descriptor_count_; }
+  int get_lsb_msb_transition_bit() const override { return lsbMsbTransitionBit_; }
+
   // ============================================================================
   // Static Helper Functions (Public for compile-time validation)
   // ============================================================================
@@ -167,6 +172,13 @@ class GdmaDma : public PlatformDma {
   int active_idx_;  // CPU draws to buffers[active_idx_]
 
   size_t descriptor_count_;  // Number of descriptors per chain
+
+  // p64 patch: output-enable window (pixels) of each bit plane as last written by
+  // set_brightness_oe_internal(), and the resulting on-time weight per frame; the LUT is
+  // fitted to those weights by fit_lut_to_weights().
+  uint16_t plane_on_pixels_[16] = {};
+  uint32_t plane_weight_[16] = {};
+  void fit_lut_to_weights();
 
   // Brightness control (implementation of base class interface)
   uint8_t basis_brightness_;  // 1-255

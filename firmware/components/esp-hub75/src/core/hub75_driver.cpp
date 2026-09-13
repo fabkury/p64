@@ -208,6 +208,11 @@ void Hub75Driver::set_intensity(float intensity) {
 // Information
 // ============================================================================
 
+// p64 patch: timing facts from the platform layer.
+float Hub75Driver::get_frame_period_us() const { return dma_ ? dma_->get_frame_period_us() : 0.0f; }
+size_t Hub75Driver::get_descriptor_count() const { return dma_ ? dma_->get_descriptor_count() : 0; }
+int Hub75Driver::get_lsb_msb_transition_bit() const { return dma_ ? dma_->get_lsb_msb_transition_bit() : 0; }
+
 uint16_t Hub75Driver::get_width() const {
   // Return virtual width with rotation applied
   uint16_t phys_w = config_.panel_width * config_.layout_cols;

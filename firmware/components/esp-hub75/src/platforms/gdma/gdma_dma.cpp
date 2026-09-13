@@ -14,6 +14,9 @@
 #ifdef CONFIG_IDF_TARGET_ESP32S3
 
 #include "gdma_dma.h"
+#include "../../color/color_lut.h"  // p64 patch: get_lut() for fit_lut_to_weights()
+#include <cmath>                    // p64 patch
+#include <cstdio>                   // p64 patch
 #include "../../color/color_convert.h"    // For RGB565 scaling utilities
 #include "../../panels/scan_patterns.h"   // For scan pattern remapping
 #include "../../panels/panel_layout.h"    // For panel layout remapping
@@ -228,15 +231,10 @@ bool GdmaDma::init() {
   // Calculate BCM timing (determines lsbMsbTransitionBit for OE control)
   calculate_bcm_timings();
 
-  // Adjust LUT for BCM monotonicity (only needed when lsbMsbTransitionBit > 0)
-  // With transition=0, BCM weights are always monotonically non-decreasing
-#if HUB75_GAMMA_MODE == 1 || HUB75_GAMMA_MODE == 2
-  if (lsbMsbTransitionBit_ > 0) {
-    int adjusted = adjust_lut_for_bcm(lut_, bit_depth_, lsbMsbTransitionBit_);
-    ESP_LOGI(TAG, "Adjusted %d LUT entries for BCM monotonicity (lsbMsbTransitionBit=%d)", adjusted,
-             lsbMsbTransitionBit_);
-  }
-#endif
+  // p64 patch: upstream nudged the LUT here so that codes stay monotonic when the planes
+  // at or below lsbMsbTransitionBit all weigh one transmission. Those planes now get
+  // binary-weighted output-enable windows instead (set_brightness_oe_internal), and the
+  // LUT is fitted to the resulting on-times in set_brightness_oe() (fit_lut_to_weights).
 
   // Validate brightness OE configuration safety margins
   if (!validate_brightness_config()) {
@@ -996,10 +994,14 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t bri
     for (int bit = 0; bit < bit_depth_; bit++) {
       uint16_t *buf = (uint16_t *) (buffers[row].data + (bit * dma_width_ * 2));
 
-      // Uniform OE duty cycle: same display_pixels count for all bit planes.
-      // BCM ratios come from descriptor repetition, not OE timing.
+      // p64 patch: planes above the transition bit are sent 2^(bit - transition - 1)
+      // times with the full brightness window. Planes at or below it are sent once, so
+      // each gets half the window of the plane above it, which restores its binary
+      // weight. (Upstream gave every plane the full window, so the low planes all
+      // weighed one transmission and the distinct levels collapsed to transmissions + 1.)
       const int max_pixels = dma_width_ - latch_blanking;
       int display_pixels = (max_pixels * effective_brightness) >> 8;
+      if (bit <= lsbMsbTransitionBit_) display_pixels >>= (lsbMsbTransitionBit_ + 1 - bit);
 
       // Edge case fallback for very low brightness
       //
@@ -1021,6 +1023,7 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t bri
       // Without this margin, brightness=255 would enable all pixels including those
       // near the LAT pulse, potentially causing visible artifacts.
       display_pixels = std::min(display_pixels, max_pixels - 1);
+      plane_on_pixels_[bit] = static_cast<uint16_t>(display_pixels);  // p64 patch
 
       assert(max_pixels >= 2 && "max_pixels < 2: insufficient headroom for safety margin");
       assert(display_pixels >= 0 && "display_pixels underflow");
@@ -1086,8 +1089,66 @@ void GdmaDma::set_brightness_oe() {
     }
   }
 
+  // p64 patch: the planes' on-times changed, so refit the LUT to them.
+  if (brightness > 0) fit_lut_to_weights();
+
   ESP_LOGD(TAG, "Brightness OE configuration complete");
 }
+
+// p64 patch ---------------------------------------------------------------------------
+// Maps each 8-bit input to the code whose LED-on time per frame is nearest the gamma
+// table's target. A plane's weight is its output-enable window (pixel clocks) times the
+// number of times it is sent per frame. The windows halve downwards, so the weights are
+// superincreasing (each plane weighs at least the sum of the planes below it) and a
+// larger code never means less light: codes and targets can be walked together in order.
+void GdmaDma::fit_lut_to_weights() {
+  uint32_t total = 0;
+  for (int bit = 0; bit < bit_depth_; bit++) {
+    const uint32_t reps = bit <= lsbMsbTransitionBit_ ? 1u : (1u << (bit - lsbMsbTransitionBit_ - 1));
+    plane_weight_[bit] = plane_on_pixels_[bit] * reps;
+    total += plane_weight_[bit];
+  }
+  if (total == 0) return;
+  const uint16_t *ideal = get_lut();  // compile-time gamma table, values 0..2^depth-1
+  const uint32_t max_code = (1u << bit_depth_) - 1;
+  auto weight_of = [this](uint32_t code) {
+    uint32_t w = 0;
+    for (int bit = 0; bit < bit_depth_; bit++) {
+      if (code & (1u << bit)) w += plane_weight_[bit];
+    }
+    return w;
+  };
+  uint32_t code = 0;
+  double w_code = 0;
+  for (int i = 0; i < 256; i++) {
+    const double target = static_cast<double>(ideal[i]) * total / max_code;
+    while (code < max_code) {
+      const double w_next = weight_of(code + 1);
+      if (std::fabs(w_next - target) > std::fabs(w_code - target)) break;
+      code++;
+      w_code = w_next;
+    }
+    lut_[i] = static_cast<uint16_t>(code);
+  }
+  static bool logged = false;
+  if (!logged) {
+    logged = true;
+    char text[128];
+    int n = 0;
+    for (int bit = 0; bit < bit_depth_ && n < static_cast<int>(sizeof(text)) - 8; bit++) {
+      n += snprintf(text + n, sizeof(text) - static_cast<size_t>(n), "%s%u", bit ? " " : "",
+                    static_cast<unsigned>(plane_on_pixels_[bit]));
+    }
+    ESP_LOGI(TAG, "Bit-plane OE windows in pixel clocks, plane 0..%d: %s; LUT fitted to their on-times (full white %lu)",
+             bit_depth_ - 1, text, static_cast<unsigned long>(total));
+  }
+}
+
+float GdmaDma::get_frame_period_us() const {
+  if (descriptor_count_ == 0 || actual_clock_hz_ == 0) return 0.0f;
+  return static_cast<float>(descriptor_count_) * dma_width_ * 1000000.0f / static_cast<float>(actual_clock_hz_);
+}
+// -------------------------------------------------------------------------------------
 
 bool GdmaDma::build_descriptor_chain_internal(RowBitPlaneBuffer *buffers, dma_descriptor_t *descriptors) {
   if (!buffers || !descriptors) {
