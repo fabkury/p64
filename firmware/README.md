@@ -16,7 +16,9 @@ play at their intended speed, looping as needed; frame delays are honoured with 
 browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a 70 % black box
 (the artwork shows through at 30 % brightness), a 24-hour clock (HH:MM) set from NTP
 over Wi-Fi; it reads `--:--` until the first sync. A GIF requested over the network
-(see "Web control" below) pre-empts the rotation for its requested time.
+(see "Web control" below) pre-empts the rotation for its requested time, and GIF files
+copied to the microSD card can be played one at a time or as a playlist (see "microSD
+card").
 Pressing **BOOT** restarts the scene.
 
 ### Makapix Club client (`main/net/makapix.*`)
@@ -52,6 +54,11 @@ Endpoints:
 | `POST /play` with the same fields form-encoded | same |
 | `GET /stop` | end on-demand playback now; the rotation resumes |
 | `GET /pattern` | hold a tone test pattern (grey and colour ramps of the darkest quarter, a full ramp, two shaded spheres) until `/stop` or the next `/play` |
+| `GET /play?file=<name>[&seconds=N]` | play a GIF file from the microSD card |
+| `GET /sd` | JSON: card info and its GIF files |
+| `PUT /sd/<name>`, `GET /sd/<name>`, `DELETE /sd/<name>` | copy a GIF to the card, read it back, remove it |
+| `GET /sd/play[?seconds=N]` | play every GIF on the card in turn (30 s each by default) until `/stop` or another request |
+| `GET /sd/mount` | mount the card again after swapping it |
 | `GET /status` | JSON: what is playing (name, source, size, seconds left), the last request (id, state, error), Wi-Fi IP and RSSI, heap |
 | `GET /` | a form for phones |
 
@@ -73,6 +80,41 @@ curl "http://p64.local/play?post=Hqm&seconds=120"
 curl "http://p64.local/play?url=https://vault.makapix.club/02/33/478727e5-b81c-4c4e-9742-0607fdb86d7f.gif&seconds=0"
 curl http://p64.local/status
 curl http://p64.local/stop
+```
+
+### microSD card (`main/sdcard.*`)
+
+The board's card slot is wired to the ESP32-S3's SDMMC host in 1-bit mode (CLK GPIO 1,
+CMD 44, D0 17, from Waveshare's BSP), which has its own DMA engine. The card is mounted
+at boot as FAT at `/sdcard` with long file names; a card with no FAT file system (for
+example a 64 GB card that comes as exFAT) is formatted to FAT32 on the first failed
+mount (`P64_SD_FORMAT_IF_MOUNT_FAILED`, on by default: it erases the card). There is no
+card-detect line, so a swapped card needs `GET /sd/mount`. GIF files live in the card's
+root; other files are ignored.
+
+Copying files works over HTTP because the card sits in the board: `curl -T file.gif
+http://p64.local/sd/file.gif` for each file (any script, phone app or the front page's
+drag-and-drop zone does the same with a `PUT`). Uploads stream to a `.part` file, are
+checked for the GIF header, then renamed. Playback of a card file follows the same path
+as a Makapix post: the fetcher task reads the file into PSRAM (1 to 9 ms for the files
+tried) and the scene switches to it; `/sd/play` walks the whole card, one file per slot,
+keeping the current file up until the next has loaded, skipping files that fail, and
+looping until `/stop` or another request. `/status` shows the card (name, size, free
+space, GIF count) and the playlist position.
+
+Measured 2026-09-13 with a 32 GB card: the 64 Makapix GIFs (1.07 MB) copied in 38 s
+with one curl call per file (the per-request HTTP overhead dominates; a 124 KB file took
+1 s), a file read back byte-identical, the panel's frame pacing unaffected by card
+traffic (SDMMC does not use the GDMA that the panel uses). Menu `p64 > microSD card`
+holds the pins, the bus clock (20 MHz; lower it if the panel ever stalls during card
+traffic) and the format policy.
+
+```
+for f in assets/gifs/*.gif; do curl -T "$f" "http://p64.local/sd/$(basename "$f")"; done
+curl http://p64.local/sd
+curl "http://p64.local/sd/play?seconds=10"
+curl "http://p64.local/play?file=5PKj_32x32_piranha-plant.gif&seconds=20"
+curl -X DELETE http://p64.local/sd/5PKj_32x32_piranha-plant.gif
 ```
 
 Windows 10+, macOS, iOS and Linux with Avahi resolve `p64.local`; Android's browser
@@ -327,21 +369,22 @@ firmware/
   main/
     CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
     idf_component.yml     dependencies (espressif/mdns); dependencies.lock pins versions
-    Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, Makapix, web control, GIF dwell, test switches
+    Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, Makapix, web control, microSD, GIF dwell, tests
     main.cpp              app_main: display, Wi-Fi + clock start, scene loop, BOOT restarts, stats log
     display.hpp/.cpp      Frame (RGB888 buffer) and Display (owns the Hub75Driver, frame-locked presents)
     button.hpp/.cpp       debounced BOOT button (GPIO0)
     scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
     gif_player.hpp/.cpp   GifPlayer (decode + composite) and Scaler; no ESP-IDF dependencies
     gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
+    sdcard.hpp/.cpp       microSD card: SDMMC 1-bit mount, listing, read, remove
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
-    net/makapix.*         background fetcher: random promoted GIFs for the show, on-demand downloads for the web
-    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, /pattern, / form
+    net/makapix.*         background fetcher: random promoted GIFs for the show, on-demand downloads and card reads
+    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, /pattern, /sd..., / page
     net/speedtest.*       download throughput test (P64_SPEEDTEST, off by default)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
-    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, web requests, clock overlay
+    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, web requests, card playlist, clock
   sdkconfig.secrets.example  template for the git-ignored Wi-Fi credentials file
   tools/*.ps1             env activation and idf.py wrappers
   tools/gifcheck/         PC check of the GIF pipeline against Pillow
@@ -358,9 +401,10 @@ The main loop presents one frame per panel refresh.
 - Console on the native USB Serial/JTAG (the board has no UART bridge chip).
 - HUB75 pins (from the schematic, identical to Waveshare's example):
   R1=4 G1=5 B1=6 R2=7 G2=15 B2=16 A=18 B=8 C=3 D=42 E=9 LAT=40 OE=2 CLK=41.
+- microSD card: SDMMC 1-bit, CLK=1 CMD=44 D0=17 (D1-D3 not wired; CS=14 would be SPI
+  mode), mounted at boot; verified 2026-09-13 with a 32 GB card at 20 MHz.
 - Other board pins for later (schematic + Waveshare's `bsp/config.h`): I2C SDA=47 SCL=48;
-  I2S MCLK=12 SCLK=43 LRCK=38 DOUT=21 DIN=39, PA enable=11; SD card CLK=1 CMD=44 D0=17
-  (CS=14 for SPI mode); RTC INT=10; BOOT button=0.
+  I2S MCLK=12 SCLK=43 LRCK=38 DOUT=21 DIN=39, PA enable=11; RTC INT=10; BOOT button=0.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.

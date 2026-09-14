@@ -111,12 +111,20 @@ github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the con
 Web control (`main/net/web.*`): `esp_http_server` on port 80 plus mDNS (`espressif/mdns`,
 hostname `p64` -> p64.local). `/play?post=<Makapix URL or sqid>|url=<GIF URL>[&seconds=N]`
 answers 202 at once and queues a `makapix::PlayRequest` (`/pattern` holds a tone test
-pattern, `/stop` ends either); the fetcher task serves those
+pattern, `/stop` ends either; `file=<name>` plays a card file); the fetcher task serves those
 ahead of the rotation (one TLS session at a time, on purpose: two at once ran internal
 RAM out before), validates the GIF header and size (`P64_WEB_MAX_BYTES`,
 `P64_WEB_MAX_DIMENSION`), and the scene picks the result up with `take_play()`,
 pre-empting the 30 s slot until the time is up, `/stop`, or the next request (0 s =
 indefinite). The scene publishes `web::NowPlaying` for `/status`. No authentication.
+
+microSD card (`main/sdcard.*`): SDMMC 1-bit on CLK 1 / CMD 44 / D0 17 (the SDMMC host has
+its own DMA, so card traffic did not disturb the panel), FAT at `/sdcard`, long file
+names, formatted to FAT32 automatically when a card has no FAT (`P64_SD_FORMAT_IF_MOUNT_FAILED`).
+GIFs live in the card's root. The web module owns the file endpoints (`/sd`, `PUT|GET|DELETE
+/sd/<name>`, `/sd/play` playlist, `/sd/mount`); card reads for playback go through the
+fetcher task (`PlayRequest::file`), never the rendering task. No card-detect line: a swapped
+card needs `/sd/mount`.
 
 Network: `sdkconfig.defaults` sets a 64 KB TCP window, lwIP buffers in PSRAM and
 mbedTLS buffers internal + dynamic; measured numbers and the reasoning are in

@@ -1,0 +1,7 @@
+Now here's a stretch goal for you. The ESP32-S3 board already has a microSD card inserted in its slot. Your stretch goal is to:
+ - Copy some Makapix Club GIFs to that SD card.
+ - Demonstrate live GIF playback from the SD card. Imagine that the user had copied some GIFs to the microSD card, and now wanted to play them. This is the scenario we're trying to emulate.
+
+Remember to commit, flash the new firmware, and run a test or two.
+
+[Answers: copy over HTTP (PUT /sd/<name>) plus a drag-and-drop page; play via /play?file=<name> and an /sd/play playlist; format the card to FAT32 automatically if it does not mount; copy all 64 Makapix GIFs from assets/gifs.]
