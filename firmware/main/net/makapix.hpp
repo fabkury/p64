@@ -6,8 +6,9 @@
 //      GET /api/post?promoted=true&sort=random&limit=1&width_max=W&height_max=H&file_format=gif
 //      GET /api/d/{public_sqid}.gif
 //  - on-demand playback for the web control (net/web): request_play() downloads a given
-//    post's GIF or any GIF URL, collected with take_play(); a new request replaces one
-//    still waiting, and web requests go ahead of the rotation.
+//    post's GIF or any GIF URL, or reads a file from the microSD card, collected with
+//    take_play(); a new request replaces one still waiting, and web requests go ahead of
+//    the rotation.
 // TLS needs a valid clock, so HTTPS fetches wait for the NTP sync.
 #pragma once
 
@@ -20,6 +21,7 @@ namespace p64::makapix {
 struct Artwork {
   std::string sqid;    // Makapix post; empty for a plain URL
   std::string url;     // the GIF's URL for URL requests; empty for Makapix posts
+  std::string file;    // file name on the microSD card for card requests
   std::string title;   // known for rotation picks only
   std::string artist;
   int width = 0;
@@ -46,7 +48,8 @@ bool busy();  // a fetch is in progress
 
 struct PlayRequest {
   std::string sqid;      // a Makapix post, or
-  std::string url;       // a GIF URL (http or https)
+  std::string url;       // a GIF URL (http or https), or
+  std::string file;      // a GIF file in the microSD card's root
   uint32_t seconds = 0;  // playback time; 0 = until the next request
 };
 

@@ -19,6 +19,7 @@
 
 #include "display.hpp"
 #include "net/clock.hpp"
+#include "sdcard.hpp"
 #include "net/wifi.hpp"
 
 namespace p64::makapix {
@@ -268,6 +269,20 @@ bool gif_size(const std::vector<uint8_t> &gif, int &w, int &h) {
   return w > 0 && h > 0;
 }
 
+// Header and size checks shared by downloads and card files.
+bool validate_gif(Artwork &art, std::string &error) {
+  if (!gif_size(art.gif, art.width, art.height)) {
+    error = "not a GIF file";
+    return false;
+  }
+  if (art.width > kMaxPlayDim || art.height > kMaxPlayDim) {
+    error = std::to_string(art.width) + "x" + std::to_string(art.height) + " is larger than " +
+            std::to_string(kMaxPlayDim) + " px";
+    return false;
+  }
+  return true;
+}
+
 // Downloads a request into `art`; `error` explains a failure.
 bool fetch_play(const PlayRequest &req, Artwork &art, std::string &error) {
   std::string url = req.url;
@@ -284,26 +299,38 @@ bool fetch_play(const PlayRequest &req, Artwork &art, std::string &error) {
     error = req.sqid.empty() ? "not found (404)" : "no such post, or it has no GIF (404)";
   } else if (status != 200) {
     error = "HTTP " + std::to_string(status);
-  } else if (!gif_size(art.gif, art.width, art.height)) {
-    error = "not a GIF file";
-  } else if (art.width > kMaxPlayDim || art.height > kMaxPlayDim) {
-    error = std::to_string(art.width) + "x" + std::to_string(art.height) + " is larger than " +
-            std::to_string(kMaxPlayDim) + " px";
   } else {
-    return true;
+    return validate_gif(art, error);
   }
   return false;
+}
+
+// Reads a card file into `art`.
+bool load_card_file(const PlayRequest &req, Artwork &art, std::string &error) {
+  art = Artwork{};
+  art.file = req.file;
+  if (!sdcard::read_file(req.file, art.gif, kMaxPlayBytes, error)) return false;
+  return validate_gif(art, error);
 }
 
 // Serves one request end to end: download, then hand the result (or the error) to the
 // scene and the status page. Dropped when /stop or a newer request came first.
 void serve_play(const PlayRequest &req, uint32_t id) {
+  const bool from_card = !req.file.empty();
   const bool https = !req.sqid.empty() || req.url.rfind("https://", 0) == 0;
-  const char *target = req.sqid.empty() ? req.url.c_str() : req.sqid.c_str();
+  const char *target = from_card ? req.file.c_str() : (req.sqid.empty() ? req.url.c_str() : req.sqid.c_str());
   Artwork art;
   std::string error;
   bool ok = false;
-  if (!wait_for_network(https, kPlayNetworkWaitMs)) {
+  if (from_card) {
+    const TickType_t t0 = xTaskGetTickCount();
+    ok = load_card_file(req, art, error);
+    if (ok) {
+      ESP_LOGI(TAG, "request #%lu: read %s from the card (%dx%d, %u bytes) in %lu ms", static_cast<unsigned long>(id),
+               target, art.width, art.height, static_cast<unsigned>(art.gif.size()),
+               static_cast<unsigned long>((xTaskGetTickCount() - t0) * portTICK_PERIOD_MS));
+    }
+  } else if (!wait_for_network(https, kPlayNetworkWaitMs)) {
     error = wifi::connected() ? "clock not synced yet (TLS needs it)" : "Wi-Fi not connected";
   } else {
     for (int attempt = 1; attempt <= kPlayAttempts && !ok; ++attempt) {
@@ -447,7 +474,7 @@ uint32_t request_play(const PlayRequest &req) {
     g_play_status = PlayStatus{};
     g_play_status.id = id;
     g_play_status.state = PlayState::queued;
-    g_play_status.target = req.sqid.empty() ? req.url : req.sqid;
+    g_play_status.target = !req.file.empty() ? req.file : (req.sqid.empty() ? req.url : req.sqid);
   }
   xTaskNotifyGive(g_task);
   return id;

@@ -126,6 +126,43 @@ menu "p64"
 
     endmenu
 
+    menu "microSD card"
+
+        config P64_SD_ENABLE
+            bool "Mount the microSD card (GIF files in its root)"
+            default y
+            help
+                SDMMC 1-bit bus, FAT file system at /sdcard. The web control lists,
+                uploads, deletes and plays the .gif files in the card's root.
+
+        config P64_SD_PIN_CLK
+            int "SD CLK GPIO"
+            default 1
+        config P64_SD_PIN_CMD
+            int "SD CMD GPIO"
+            default 44
+        config P64_SD_PIN_D0
+            int "SD D0 GPIO"
+            default 17
+
+        config P64_SD_FREQ_KHZ
+            int "SD bus clock (kHz)"
+            range 400 40000
+            default 20000
+            help
+                The SDMMC host has its own DMA, but its transfers share the memory bus
+                with the panel's DMA stream; lower this if the panel ever stalls
+                during card traffic.
+
+        config P64_SD_FORMAT_IF_MOUNT_FAILED
+            bool "Format the card (FAT32) when it does not mount"
+            default y
+            help
+                Erases a card that has no FAT file system (for example exFAT) and
+                creates one, on the first failed mount.
+
+    endmenu
+
     config P64_SPEEDTEST
         bool "Run a download speed test 45 s after boot (results in the log)"
         default n

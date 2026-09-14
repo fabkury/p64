@@ -119,5 +119,10 @@ CONFIG_HUB75_BRIGHTNESS=255
 CONFIG_HUB75_DOUBLE_BUFFER=y
 CONFIG_HUB75_IRAM_OPTIMIZATION=y
 
+# --- microSD card (FAT): long file names, UTF-8 names, larger stdio buffers ---
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_API_ENCODING_UTF_8=y
+CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096
+
 # --- Network name: the DHCP hostname (router client list) matches the mDNS name p64.local ---
 CONFIG_LWIP_LOCAL_HOSTNAME="p64"

@@ -111,9 +111,14 @@ bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
   player_.close();  // it may still point into the previous download's bytes
   pattern_ = false;
   download_ = std::move(art);
-  current_name_ = download_.sqid.empty() ? download_.url : "makapix " + download_.sqid;
+  current_name_ = !download_.file.empty() ? "card " + download_.file
+                  : download_.sqid.empty() ? download_.url
+                                           : "makapix " + download_.sqid;
   if (!open_current(download_.gif.data(), download_.gif.size(), now_ms)) return false;
-  if (download_.sqid.empty()) {
+  if (!download_.file.empty()) {
+    ESP_LOGI(TAG, "playing card file %s (%dx%d, %u bytes) at %dx%d", download_.file.c_str(), player_.width(),
+             player_.height(), static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h());
+  } else if (download_.sqid.empty()) {
     ESP_LOGI(TAG, "playing %s (%dx%d, %u bytes) at %dx%d", download_.url.c_str(), player_.width(), player_.height(),
              static_cast<unsigned>(download_.gif.size()), scaler_.out_w(), scaler_.out_h());
   } else if (download_.title.empty()) {  // on-demand posts come without metadata
@@ -172,7 +177,26 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
   bool dirty = false;
 
   // Web control: a downloaded request pre-empts whatever plays; /stop or its time
-  // running out hands the panel back to the rotation.
+  // running out hands the panel back to the rotation (or to the next card file when a
+  // playlist is running).
+  {
+    std::vector<std::string> files;
+    uint32_t seconds = 0;
+    if (web::take_playlist(files, seconds)) start_playlist(std::move(files), seconds, info.t_ms);
+  }
+  if (playlist_active_ && playlist_request_id_ != 0) {
+    const makapix::PlayStatus ps = makapix::play_status();
+    if (ps.id == playlist_request_id_ && ps.state == makapix::PlayState::failed) {
+      ESP_LOGW(TAG, "playlist: %s cannot be played (%s), skipping", ps.target.c_str(), ps.error.c_str());
+      if (++playlist_failures_ >= playlist_.size()) {
+        end_playlist("no file on the card plays");
+        if (on_demand_) end_on_demand(info.t_ms, "playlist over");
+        dirty = true;
+      } else {
+        playlist_request_next();
+      }
+    }
+  }
   {
     makapix::Artwork art;
     uint32_t seconds = 0, id = 0;
@@ -191,8 +215,13 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
   }
   if (on_demand_) {
     if (!on_demand_indefinite_ && static_cast<int32_t>(info.t_ms - on_demand_until_ms_) >= 0) {
-      end_on_demand(info.t_ms, "time is up");
-      dirty = true;
+      if (playlist_active_) {
+        on_demand_indefinite_ = true;  // keep this file up until the next one has loaded
+        playlist_request_next();
+      } else {
+        end_on_demand(info.t_ms, "time is up");
+        dirty = true;
+      }
     }
   } else if (info.t_ms - gif_start_ms_ >= kDwellMs) {
     next_slot(info.t_ms);
@@ -238,6 +267,13 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
 
 // A web request arrived: play it for its time (0 = until the next request or /stop).
 void GifShowScene::start_on_demand(makapix::Artwork &&art, uint32_t seconds, uint32_t id, uint32_t now_ms) {
+  const bool from_playlist = playlist_active_ && id == playlist_request_id_;
+  if (from_playlist) {
+    playlist_request_id_ = 0;
+    playlist_failures_ = 0;
+  } else if (playlist_active_) {
+    end_playlist("a new request replaced it");
+  }
   log_gif_stats(now_ms);
   on_demand_ = true;
   on_demand_id_ = id;
@@ -251,14 +287,61 @@ void GifShowScene::start_on_demand(makapix::Artwork &&art, uint32_t seconds, uin
              static_cast<unsigned long>(seconds));
   }
   if (!play_download(std::move(art), now_ms)) {
+    makapix::set_play_error(id, "the file does not decode as a GIF");
+    if (from_playlist) {
+      ESP_LOGW(TAG, "playlist: %s does not decode as a GIF, skipping", playlist_[playlist_index_].c_str());
+      if (++playlist_failures_ >= playlist_.size()) {
+        end_playlist("no file on the card plays");
+        end_on_demand(now_ms, "playlist over");
+      } else {
+        on_demand_indefinite_ = true;
+        playlist_request_next();
+      }
+      return;
+    }
     ESP_LOGW(TAG, "web request #%lu: the file does not decode as a GIF, back to the show",
              static_cast<unsigned long>(id));
-    makapix::set_play_error(id, "the file does not decode as a GIF");
     end_on_demand(now_ms, nullptr);
   }
 }
 
+// /sd/play: every GIF on the card in turn, each for `seconds`, looping until /stop or
+// another request. Files are read by the fetcher task; the current one stays up until
+// the next has loaded.
+void GifShowScene::start_playlist(std::vector<std::string> &&files, uint32_t seconds, uint32_t now_ms) {
+  (void) now_ms;
+  playlist_ = std::move(files);
+  playlist_seconds_ = seconds;
+  playlist_active_ = !playlist_.empty();
+  playlist_failures_ = 0;
+  playlist_index_ = 0;
+  if (!playlist_active_) return;
+  ESP_LOGI(TAG, "card playlist: %u files, %lu s each, until /stop", static_cast<unsigned>(playlist_.size()),
+           static_cast<unsigned long>(seconds));
+  playlist_request(0);
+}
+
+void GifShowScene::playlist_request(size_t index) {
+  playlist_index_ = index;
+  makapix::PlayRequest r;
+  r.file = playlist_[index];
+  r.seconds = playlist_seconds_;
+  playlist_request_id_ = makapix::request_play(r);
+  if (playlist_request_id_ == 0) end_playlist("the fetcher task is not running");
+}
+
+void GifShowScene::playlist_request_next() { playlist_request((playlist_index_ + 1) % playlist_.size()); }
+
+void GifShowScene::end_playlist(const char *why) {
+  if (!playlist_active_) return;
+  if (why) ESP_LOGI(TAG, "card playlist over (%s)", why);
+  playlist_active_ = false;
+  playlist_request_id_ = 0;
+  playlist_.clear();
+}
+
 void GifShowScene::end_on_demand(uint32_t now_ms, const char *why) {
+  end_playlist(nullptr);
   if (why && pattern_) {
     ESP_LOGI(TAG, "test pattern over (%s), back to the show", why);
   } else if (why) {
@@ -272,6 +355,8 @@ void GifShowScene::publish_now_playing() const {
   now.name = current_name_;
   if (pattern_) {
     now.source = "pattern";
+  } else if (!download_.file.empty()) {
+    now.source = "sd";
   } else if (download_.gif.empty()) {
     now.source = "embedded";
   } else if (download_.sqid.empty()) {
@@ -287,6 +372,8 @@ void GifShowScene::publish_now_playing() const {
   now.on_demand = on_demand_;
   now.started_us = esp_timer_get_time();
   now.until_us = on_demand_ ? on_demand_until_us_ : 0;
+  now.playlist_index = playlist_active_ ? static_cast<int>(playlist_index_) : -1;
+  now.playlist_count = playlist_active_ ? static_cast<int>(playlist_.size()) : 0;
   web::publish(now);
 }
 
@@ -296,6 +383,7 @@ void GifShowScene::start_pattern(uint32_t now_ms) {
   log_gif_stats(now_ms);
   player_.close();
   download_ = makapix::Artwork{};
+  end_playlist("test pattern requested");
   current_name_ = "test pattern";
   current_bytes_ = 0;
   gif_start_ms_ = now_ms;

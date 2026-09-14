@@ -25,6 +25,7 @@
 #include "net/makapix.hpp"
 #include "net/speedtest.hpp"
 #include "net/web.hpp"
+#include "sdcard.hpp"
 #include "net/wifi.hpp"
 #include "scene.hpp"
 #include "scenes/gif_show.hpp"
@@ -141,6 +142,7 @@ extern "C" void app_main() {
   }
   static p64::Button boot;
   boot.begin();
+  p64::sdcard::mount();  // GIF files on the card; the web control lists and plays them
 
   // Network, clock and the Makapix fetcher come up in the background (core 0).
   p64::clock::start(CONFIG_P64_TZ, CONFIG_P64_NTP_SERVER);

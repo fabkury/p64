@@ -43,6 +43,7 @@ idf_component_register(
         "display.cpp"
         "button.cpp"
         "gif_player.cpp"
+        "sdcard.cpp"
         "net/wifi.cpp"
         "net/clock.cpp"
         "net/makapix.cpp"
@@ -69,6 +70,10 @@ idf_component_register(
         esp_app_format
         esp_http_server
         espressif__mdns
+        fatfs
+        sdmmc
+        esp_driver_sdmmc
+        vfs
     EMBED_FILES
         ${GIF_FILES}
 )
