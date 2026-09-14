@@ -163,6 +163,15 @@ menu "p64"
 
     endmenu
 
+    config P64_DEBUG_ENDPOINTS
+        bool "Debug endpoints: /debug, /debug/dma, /debug/stress, /debug/reboot"
+        default y
+        help
+            Panel DMA health and timing, live GDMA priority of the panel's channel,
+            an on-demand run of the download speed test (a heavy TLS load, about
+            12 MB per pass) and a reboot. For bus-contention experiments; anyone on
+            the LAN can call them, like every other endpoint.
+
     config P64_SPEEDTEST
         bool "Run a download speed test 45 s after boot (results in the log)"
         default n

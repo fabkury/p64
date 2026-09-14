@@ -78,6 +78,21 @@ class Display {
   // Returns the counters accumulated since the previous call and resets them.
   Stats take_stats();
 
+  // Cumulative facts since begin(), for the status and debug pages.
+  struct Health {
+    bool stalled = false;     // the DMA stall detector fired (needs a reboot)
+    uint32_t frames = 0;
+    uint32_t late_flips = 0;
+    uint32_t timeouts = 0;
+    int dma_priority = -1;    // GDMA arbitration priority of the panel's channel
+    int transition_bit = 0;   // bit planes 0..n sent once per frame
+  };
+  Health health() const;
+  // GDMA arbitration priority of the panel's channel, 0..5. Takes effect at once.
+  bool set_dma_priority(int priority);
+  // The one Display of the firmware (nullptr before begin()).
+  static Display *instance() { return s_instance_; }
+
   // Panel refresh period in microseconds: what the driver reports after begin(); before
   // that, the value sdkconfig implies with full binary code modulation.
   double refresh_period_us() const { return period_us_ > 0 ? period_us_ : nominal_refresh_period_us(); }
@@ -104,6 +119,9 @@ class Display {
   int64_t last_boundary_us_ = 0;  // 0 until the first frame boundary has been observed
   int64_t last_yield_us_ = 0;     // when the wait last blocked (lets the idle task run)
   Stats stats_;
+  Stats totals_;  // since begin()
+  bool stats_totals_valid_ = false;
+  static Display *s_instance_;
 };
 
 // ---------------------------------------------------------------------------

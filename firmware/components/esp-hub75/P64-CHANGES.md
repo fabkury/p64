@@ -32,6 +32,15 @@ Raised from 30-240 to 30-2000 Hz: with binary-weighted low planes a high minimum
 usable setting (p64 runs 250, which selects transition bit 4 and 271 Hz on a 64x64
 panel at 20 MHz).
 
+## GDMA channel priority (Kconfig HUB75_GDMA_PRIORITY, gdma_dma.cpp)
+
+The panel's GDMA transmit channel gets the arbitration priority `HUB75_GDMA_PRIORITY`
+(0-5, default 0 = upstream behaviour) right after `gdma_connect()`, and
+`Hub75Driver::set_dma_priority()` / `get_dma_priority()` change and read it at
+runtime. The panel's FIFO has no back-pressure: when other GDMA users (the hardware
+AES/SHA engines during TLS) burst at the same priority, the panel channel can be
+starved and the refresh stalls for good. See p64's README for the measurements.
+
 ## Timing getters (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
 
 `Hub75Driver::get_frame_period_us()`, `get_descriptor_count()` and

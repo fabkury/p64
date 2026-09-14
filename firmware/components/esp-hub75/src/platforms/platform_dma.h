@@ -277,6 +277,9 @@ class PlatformDma {
   virtual float get_frame_period_us() const { return 0.0f; }
   virtual size_t get_descriptor_count() const { return 0; }
   virtual int get_lsb_msb_transition_bit() const { return 0; }
+  // p64 patch: GDMA arbitration priority of the panel's channel (platforms without GDMA: false / -1).
+  virtual bool set_dma_priority(int priority) { return false; }
+  virtual int get_dma_priority() const { return -1; }
 };
 
 }  // namespace hub75

@@ -16,6 +16,9 @@
 #include "soc/soc_caps.h"
 
 namespace p64 {
+
+Display *Display::s_instance_ = nullptr;
+
 namespace {
 
 constexpr const char *TAG = "display";
@@ -291,6 +294,7 @@ bool Display::begin() {
   } else if (cfg.double_buffer) {
     ESP_LOGW(TAG, "LCD GDMA channel not found: frames wait a full refresh period after each flip");
   }
+  s_instance_ = this;
   return true;
 }
 
@@ -438,6 +442,19 @@ void Display::note_timeout(uint32_t fetching) {
   }
 }
 
+Display::Health Display::health() const {
+  Health h;
+  h.stalled = stall_reported_;
+  h.frames = totals_.frames + stats_.frames;
+  h.late_flips = totals_.late_flips + stats_.late_flips;
+  h.timeouts = totals_.timeouts + stats_.timeouts;
+  h.dma_priority = driver_ ? driver_->get_dma_priority() : -1;
+  h.transition_bit = driver_ ? driver_->get_lsb_msb_transition_bit() : 0;
+  return h;
+}
+
+bool Display::set_dma_priority(int priority) { return driver_ && driver_->set_dma_priority(priority); }
+
 void Display::set_brightness(uint8_t value) {
   if (!driver_) return;
   brightness_ = value;
@@ -446,6 +463,11 @@ void Display::set_brightness(uint8_t value) {
 
 Display::Stats Display::take_stats() {
   const Stats out = stats_;
+  totals_.frames += out.frames;
+  totals_.copy_us += out.copy_us;
+  totals_.wait_us += out.wait_us;
+  totals_.late_flips += out.late_flips;
+  totals_.timeouts += out.timeouts;
   stats_ = Stats{};
   return out;
 }

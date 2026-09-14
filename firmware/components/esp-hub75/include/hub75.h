@@ -202,6 +202,12 @@ class Hub75Driver {
   size_t get_descriptor_count() const;
   /** @brief p64 patch: bit planes 0..n are sent once, with a shortened output-enable window. */
   int get_lsb_msb_transition_bit() const;
+  /**
+   * @brief p64 patch: GDMA arbitration priority of the panel's channel, 0 (same as every
+   * other channel) to 5 (strict priority). Takes effect at once. False when unsupported.
+   */
+  bool set_dma_priority(int priority);
+  int get_dma_priority() const;  // -1 when unsupported or before begin()
 
   /**
    * @brief Get panel height in pixels

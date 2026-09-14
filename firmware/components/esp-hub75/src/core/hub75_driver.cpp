@@ -212,6 +212,8 @@ void Hub75Driver::set_intensity(float intensity) {
 float Hub75Driver::get_frame_period_us() const { return dma_ ? dma_->get_frame_period_us() : 0.0f; }
 size_t Hub75Driver::get_descriptor_count() const { return dma_ ? dma_->get_descriptor_count() : 0; }
 int Hub75Driver::get_lsb_msb_transition_bit() const { return dma_ ? dma_->get_lsb_msb_transition_bit() : 0; }
+bool Hub75Driver::set_dma_priority(int priority) { return dma_ ? dma_->set_dma_priority(priority) : false; }
+int Hub75Driver::get_dma_priority() const { return dma_ ? dma_->get_dma_priority() : -1; }
 
 uint16_t Hub75Driver::get_width() const {
   // Return virtual width with rotation applied

@@ -9,6 +9,10 @@
 //   PUT /sd/<name>  GET /sd/<name>  DELETE /sd/<name>   -> copy a GIF to the card, fetch it, remove it
 //   GET /sd/play[?seconds=N]                     -> plays every GIF on the card in turn until /stop
 //   GET /sd/mount                                -> mounts the card again (after a swap)
+//   GET /debug                                   -> panel DMA health, GDMA priority, timing (P64_DEBUG_ENDPOINTS)
+//   GET /debug/dma?priority=N                    -> GDMA priority of the panel's channel, 0..5, live
+//   GET /debug/stress[?loops=N]                  -> runs the download speed test now (heavy TLS load)
+//   GET /debug/reboot                            -> restarts the board
 //   GET /status                                  -> JSON: what is playing, last request, link
 //   GET /                                        -> a form for phones
 //

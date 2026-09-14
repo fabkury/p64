@@ -727,6 +727,26 @@ menu "HUB75 RGB LED Matrix Driver"
     endmenu
 
     # ========================================
+    # DMA arbitration (p64 patch)
+    # ========================================
+
+    menu "DMA (p64 patch)"
+
+        config HUB75_GDMA_PRIORITY
+            int "GDMA priority of the panel's channel (0-5 on ESP32-S3)"
+            range 0 5
+            default 0
+            help
+                Arbitration priority of the panel's GDMA transmit channel. 0 is the
+                upstream behaviour: the same as every other GDMA user, so long bursts
+                from another channel (the hardware AES/SHA engines during TLS) can
+                starve the panel's FIFO, which has no back-pressure, and stall the
+                refresh for good. 5 gives the panel strict priority over channels at
+                0. Adjustable at runtime through Hub75Driver::set_dma_priority().
+
+    endmenu
+
+    # ========================================
     # Color Settings
     # ========================================
 

@@ -1,5 +1,6 @@
 #include "net/speedtest.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -107,13 +108,15 @@ void log_link() {
   }
 }
 
-[[maybe_unused]] void task(void *) {  // only referenced when P64_SPEEDTEST is set
-  vTaskDelay(pdMS_TO_TICKS(kStartAfterMs));
-  while (!(wifi::connected() && clock::synced())) vTaskDelay(pdMS_TO_TICKS(500));
-  // Keep the link to ourselves: hold the artwork fetcher and let an in-flight fetch end.
-  makapix::set_paused(true);
-  while (makapix::busy()) vTaskDelay(pdMS_TO_TICKS(250));
-  ESP_LOGI(TAG, "starting; the show keeps running meanwhile, the artwork fetcher is held");
+struct Job {
+  uint32_t delay_ms;
+  uint32_t loops;
+};
+
+std::atomic<bool> g_running{false};
+
+// One full pass of the test.
+void run_once() {
   log_link();
 
   // Elsewhere on the Internet: a CDN endpoint that serves any size over HTTPS, and a
@@ -156,18 +159,51 @@ void log_link() {
     }
   }
   log_link();
+}
+
+void task(void *arg) {
+  Job *job = static_cast<Job *>(arg);
+  if (job->delay_ms) vTaskDelay(pdMS_TO_TICKS(job->delay_ms));
+  while (!(wifi::connected() && clock::synced())) vTaskDelay(pdMS_TO_TICKS(500));
+  // Keep the link to ourselves: hold the artwork fetcher and let an in-flight fetch end.
+  makapix::set_paused(true);
+  while (makapix::busy()) vTaskDelay(pdMS_TO_TICKS(250));
+  ESP_LOGI(TAG, "starting %lu pass(es); the show keeps running meanwhile, the artwork fetcher is held",
+           static_cast<unsigned long>(job->loops));
+  for (uint32_t i = 1; i <= job->loops; ++i) {
+    if (job->loops > 1) ESP_LOGI(TAG, "pass %lu of %lu", static_cast<unsigned long>(i), static_cast<unsigned long>(job->loops));
+    run_once();
+  }
   makapix::set_paused(false);
   ESP_LOGI(TAG, "done");
+  delete job;
+  g_running = false;
   vTaskDelete(nullptr);
+}
+
+bool launch(uint32_t delay_ms, uint32_t loops) {
+  if (g_running.exchange(true)) return false;
+  Job *job = new Job{delay_ms, loops == 0 ? 1u : loops};
+  if (xTaskCreatePinnedToCore(task, "speedtest", 12 * 1024, job, 3, nullptr, 0) != pdPASS) {
+    delete job;
+    g_running = false;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
 
 void start() {
 #if defined(CONFIG_P64_SPEEDTEST)
-  xTaskCreatePinnedToCore(task, "speedtest", 12 * 1024, nullptr, 3, nullptr, 0);
-  ESP_LOGI(TAG, "scheduled %lu s after boot", static_cast<unsigned long>(kStartAfterMs / 1000));
+  if (launch(kStartAfterMs, 1)) {
+    ESP_LOGI(TAG, "scheduled %lu s after boot", static_cast<unsigned long>(kStartAfterMs / 1000));
+  }
 #endif
 }
+
+bool run_now(uint32_t loops) { return launch(0, loops); }
+
+bool running() { return g_running.load(); }
 
 }  // namespace p64::speedtest

@@ -16,12 +16,15 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "mdns.h"
 #include "sdkconfig.h"
 
+#include "display.hpp"
 #include "net/makapix.hpp"
+#include "net/speedtest.hpp"
 #include "net/wifi.hpp"
 #include "sdcard.hpp"
 
@@ -579,6 +582,97 @@ esp_err_t handle_sd_file(httpd_req_t *req) {
   return sd_download(req, name);
 }
 
+#if defined(CONFIG_P64_DEBUG_ENDPOINTS)
+// ---------------------------------------------------------------------------
+// Handlers: debug (bus contention experiments)
+// ---------------------------------------------------------------------------
+
+void add_debug_info(cJSON *root) {
+  Display *d = Display::instance();
+  cJSON *panel = cJSON_AddObjectToObject(root, "panel");
+  if (d) {
+    const Display::Health h = d->health();
+    cJSON_AddBoolToObject(panel, "stalled", h.stalled);
+    cJSON_AddNumberToObject(panel, "frames", h.frames);
+    cJSON_AddNumberToObject(panel, "late_flips", h.late_flips);
+    cJSON_AddNumberToObject(panel, "timeouts", h.timeouts);
+    cJSON_AddNumberToObject(panel, "dma_priority", h.dma_priority);
+    cJSON_AddNumberToObject(panel, "transition_bit", h.transition_bit);
+    cJSON_AddNumberToObject(panel, "refresh_hz", 1e6 / d->refresh_period_us());
+    cJSON_AddNumberToObject(panel, "period_us", d->refresh_period_us());
+  }
+  cJSON_AddNumberToObject(panel, "clock_hz", static_cast<double>(hub75_actual_clock_hz(kHub75RequestedClockHz)));
+  cJSON_AddNumberToObject(panel, "bit_depth", CONFIG_HUB75_BIT_DEPTH);
+#if defined(CONFIG_MBEDTLS_HARDWARE_AES)
+  cJSON_AddBoolToObject(root, "hardware_aes", true);
+#else
+  cJSON_AddBoolToObject(root, "hardware_aes", false);
+#endif
+#if defined(CONFIG_MBEDTLS_HARDWARE_SHA)
+  cJSON_AddBoolToObject(root, "hardware_sha", true);
+#else
+  cJSON_AddBoolToObject(root, "hardware_sha", false);
+#endif
+  cJSON_AddBoolToObject(root, "stress_running", speedtest::running());
+  cJSON_AddNumberToObject(root, "uptime_s", static_cast<double>(esp_timer_get_time() / 1000000));
+}
+
+esp_err_t handle_debug(httpd_req_t *req) {
+  cJSON *root = cJSON_CreateObject();
+  add_debug_info(root);
+  return send_json(req, "200 OK", root);
+}
+
+esp_err_t handle_debug_dma(httpd_req_t *req) {
+  std::string text;
+  if (!get_param(query_of(req), "priority", text)) return send_error(req, "400 Bad Request", "give priority=0..5");
+  char *end = nullptr;
+  const long p = std::strtol(text.c_str(), &end, 10);
+  if (*end != '\0' || p < 0 || p > 5) return send_error(req, "400 Bad Request", "priority must be 0..5");
+  Display *d = Display::instance();
+  if (!d || !d->set_dma_priority(static_cast<int>(p))) {
+    return send_error(req, "500 Internal Server Error", "the driver refused the priority");
+  }
+  ESP_LOGI(TAG, "panel GDMA priority set to %ld from the web", p);
+  cJSON *root = cJSON_CreateObject();
+  add_debug_info(root);
+  return send_json(req, "200 OK", root);
+}
+
+esp_err_t handle_debug_stress(httpd_req_t *req) {
+  uint32_t loops = 1;
+  std::string text;
+  if (get_param(query_of(req), "loops", text) && (!parse_seconds(text, loops) || loops < 1 || loops > 20)) {
+    return send_error(req, "400 Bad Request", "loops must be 1..20");
+  }
+  if (!wifi::connected()) return send_error(req, "503 Service Unavailable", "Wi-Fi is not connected");
+  if (!speedtest::run_now(loops)) return send_error(req, "409 Conflict", "a stress run is already going");
+  ESP_LOGI(TAG, "stress run requested: %lu pass(es) of the speed test", static_cast<unsigned long>(loops));
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddBoolToObject(root, "started", true);
+  cJSON_AddNumberToObject(root, "loops", loops);
+  cJSON_AddStringToObject(root, "note", "about 12 MB of HTTPS/HTTP downloads per pass; results in the log, health at /debug");
+  return send_json(req, "202 Accepted", root);
+}
+
+void reboot_cb(void *) { esp_restart(); }
+
+esp_err_t handle_debug_reboot(httpd_req_t *req) {
+  ESP_LOGW(TAG, "reboot requested from the web");
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddBoolToObject(root, "rebooting", true);
+  const esp_err_t rc = send_json(req, "200 OK", root);
+  static esp_timer_handle_t timer = nullptr;
+  if (!timer) {
+    const esp_timer_create_args_t args = {.callback = reboot_cb, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK,
+                                          .name = "reboot", .skip_unhandled_events = false};
+    esp_timer_create(&args, &timer);
+  }
+  if (timer) esp_timer_start_once(timer, 500 * 1000);
+  return rc;
+}
+#endif  // CONFIG_P64_DEBUG_ENDPOINTS
+
 void start_mdns() {
   esp_err_t err = mdns_init();
   if (err != ESP_OK) {
@@ -607,7 +701,7 @@ void start() {
   cfg.stack_size = 10 * 1024;  // handlers use std::string and cJSON
   cfg.core_id = 0;             // keep the network side away from the rendering core
   cfg.lru_purge_enable = true;
-  cfg.max_uri_handlers = 16;
+  cfg.max_uri_handlers = 20;
   cfg.uri_match_fn = httpd_uri_match_wildcard;  // for /sd/<name>
   const esp_err_t err = httpd_start(&g_server, &cfg);
   if (err != ESP_OK) {
@@ -629,6 +723,12 @@ void start() {
       {.uri = "/sd/*", .method = HTTP_GET, .handler = handle_sd_file, .user_ctx = nullptr},
       {.uri = "/sd/*", .method = HTTP_PUT, .handler = handle_sd_file, .user_ctx = nullptr},
       {.uri = "/sd/*", .method = HTTP_DELETE, .handler = handle_sd_file, .user_ctx = nullptr},
+#if defined(CONFIG_P64_DEBUG_ENDPOINTS)
+      {.uri = "/debug", .method = HTTP_GET, .handler = handle_debug, .user_ctx = nullptr},
+      {.uri = "/debug/dma", .method = HTTP_GET, .handler = handle_debug_dma, .user_ctx = nullptr},
+      {.uri = "/debug/stress", .method = HTTP_GET, .handler = handle_debug_stress, .user_ctx = nullptr},
+      {.uri = "/debug/reboot", .method = HTTP_GET, .handler = handle_debug_reboot, .user_ctx = nullptr},
+#endif
   };
   for (const httpd_uri_t &r : routes) httpd_register_uri_handler(g_server, &r);
   ESP_LOGI(TAG,

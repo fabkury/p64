@@ -175,6 +175,15 @@ bool GdmaDma::init() {
   // Connect GDMA to LCD peripheral
   gdma_connect(dma_chan_, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0));
 
+  // p64 patch: arbitration priority of this channel among the GDMA users (see Kconfig).
+  dma_priority_ = CONFIG_HUB75_GDMA_PRIORITY;
+  if (gdma_set_priority(dma_chan_, static_cast<uint32_t>(dma_priority_)) != ESP_OK) {
+    ESP_LOGW(TAG, "GDMA priority %d could not be applied", dma_priority_);
+  } else {
+    ESP_LOGI(TAG, "GDMA channel priority %d (0 = same as every other channel, %d = highest)", dma_priority_,
+             GDMA_LL_CHANNEL_MAX_PRIORITY);
+  }
+
   // Configure GDMA strategy
   // owner_check = false: Static descriptors, no dynamic ownership handshaking needed
   // auto_update_desc = false: No descriptor writeback - prevents corruption with infinite ring
@@ -1142,6 +1151,14 @@ void GdmaDma::fit_lut_to_weights() {
     ESP_LOGI(TAG, "Bit-plane OE windows in pixel clocks, plane 0..%d: %s; LUT fitted to their on-times (full white %lu)",
              bit_depth_ - 1, text, static_cast<unsigned long>(total));
   }
+}
+
+bool GdmaDma::set_dma_priority(int priority) {
+  if (!dma_chan_ || priority < 0 || priority > GDMA_LL_CHANNEL_MAX_PRIORITY) return false;
+  if (gdma_set_priority(dma_chan_, static_cast<uint32_t>(priority)) != ESP_OK) return false;
+  dma_priority_ = priority;
+  ESP_LOGI(TAG, "GDMA channel priority set to %d", priority);
+  return true;
 }
 
 float GdmaDma::get_frame_period_us() const {
