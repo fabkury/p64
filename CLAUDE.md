@@ -126,6 +126,11 @@ GIFs live in the card's root. The web module owns the file endpoints (`/sd`, `PU
 fetcher task (`PlayRequest::file`), never the rendering task. No card-detect line: a swapped
 card needs `/sd/mount`.
 
+Debug endpoints (`P64_DEBUG_ENDPOINTS`, on): `/debug` (panel health via `Display::health()`,
+GDMA priority, timing), `/debug/dma?priority=N` (live), `/debug/stress[?loops=N]` (runs
+`speedtest::run_now()`), `/debug/reboot`. `Display::instance()` gives the web module the
+one Display.
+
 Network: `sdkconfig.defaults` sets a 64 KB TCP window, lwIP buffers in PSRAM and
 mbedTLS buffers internal + dynamic; measured numbers and the reasoning are in
 `firmware/README.md` "Network throughput". `P64_SPEEDTEST` (menuconfig, off) runs a
@@ -133,16 +138,18 @@ download test 45 s after boot and logs it; it downloads ~12 MB, so never leave i
 Makapix Club is ~220 ms away and its throughput is erratic (20-220 KB/s); that is the
 path, not the device.
 
-GDMA lesson (hard-won, 2026-09-12): the hardware AES/SHA engines stream through GDMA and
-their bursts starve the panel's LCD_CAM FIFO when the panel's DMA stream is fast; at
-32 MHz the panel's DMA freezes mid-frame (descriptor pointer stuck, OUT_DONE set, no
-EOF) and only a reboot recovers it. The user chose hardware crypto with the panel at
-20 MHz (verified stall-free); 32 MHz requires `CONFIG_MBEDTLS_HARDWARE_AES=n` and
-`_SHA=n`. Never raise the HUB75 clock without revisiting that. Expect the same from any
-other heavy GDMA user (audio, SD). Things that were tried and do not help: reserving the
-panel pair's receive channel; stopping and restarting the Hub75Driver in place (the DMA
-does not come back). `Display` logs "panel DMA stalled" once when it detects the
-frozen pointer.
+GDMA lesson (2026-09-12, resolved 2026-09-13): the panel's LCD_CAM FIFO has no
+back-pressure, so its GDMA channel must never lose arbitration for longer than the FIFO
+lasts. The hardware AES/SHA engines also stream through GDMA, and with every channel at
+priority 0 their bursts starved the panel at 32 MHz (descriptor pointer frozen, OUT_DONE
+set, no EOF; only a reboot recovers). Fix: the vendored driver sets the panel channel to
+GDMA priority 5 (`HUB75_GDMA_PRIORITY`); measured at 32 MHz under three passes of the
+speed test with hardware crypto: zero timeouts, unchanged throughput, while priority 0
+stalled within 2.6 s. The clock is 20 MHz by choice (LED pulse widths), not necessity.
+The SD host has its own DMA and never disturbed the panel. Any new GDMA user (SPI, I2S)
+should be checked with `/debug/stress` and `/debug`. Things that do not help: reserving
+the panel pair's receive channel; restarting the Hub75Driver in place. `Display` logs
+"panel DMA stalled" once when it detects the frozen pointer; `/debug` shows the flag.
 
 GIF playback (`main/gif_player.*`): bitbank2/AnimatedGIF, vendored as
 `firmware/components/animatedgif` (Apache-2.0, one documented local patch), used in

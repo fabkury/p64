@@ -23,13 +23,16 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # --- Console: the board's USB port is wired to the ESP32-S3's native USB (no UART bridge) ---
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
-# --- TLS: hardware AES and SHA (ESP-IDF defaults), which constrains the HUB75 clock ---
-# The hardware AES/SHA engines stream through GDMA and their bursts starve the panel's
-# LCD_CAM FIFO when the panel's own DMA stream is fast; the panel then stops for good.
-# Verified on 2026-09-12: at 32 MHz (64 MB/s) stalls within seconds of the first HTTPS
-# request with either engine on; none at 20 MHz (40 MB/s); none at 32 MHz with
-# software crypto. Keep the panel at 20 MHz while these are on, or set both to n
-# before raising the clock.
+# --- TLS: hardware AES and SHA (ESP-IDF defaults) ---
+# The hardware AES/SHA engines stream through GDMA. Their bursts starved the panel's
+# LCD_CAM FIFO (no back-pressure) and stalled the refresh for good whenever the panel
+# ran at 32 MHz (2026-09-12). Root cause, found 2026-09-13: GDMA arbitration. Every
+# channel sat at priority 0, so the crypto channels' long bursts could hold the panel's
+# channel off for longer than its FIFO lasts. With the panel's channel at priority 5
+# (HUB75_GDMA_PRIORITY below) 32 MHz survived three passes of the download speed test
+# (36 MB of TLS/HTTP) plus the Makapix fetches with zero timeouts, while a channel set
+# back to 0 stalled 2.6 s into the next fetch. Throughput was unchanged (531 KB/s HTTPS
+# from a nearby CDN). Hardware crypto therefore no longer constrains the panel clock.
 CONFIG_MBEDTLS_HARDWARE_AES=y
 CONFIG_MBEDTLS_HARDWARE_SHA=y
 
@@ -106,14 +109,20 @@ CONFIG_HUB75_ROTATE_0=y
 # 1/270 s or longer. Before (8 bits, T=0, 76 Hz) dark artwork showed 2-3 shades: the
 # darkest quarter of the input range had 11 codes, now 25-49. Gamma 2.2 matches the
 # sRGB monitors the artwork was made on (CIE 1931 rendered the mid-tones darker).
-# 20 MHz stays: the hardware AES/SHA engines (TLS) and, later, the SD card share the
-# GDMA/AHB bandwidth, and 32 MHz stalled the panel with hardware crypto (TLS section).
-# Next steps if ever wanted: min refresh 400 -> T=5, 465 Hz, plane 0 without a window
-# and plane 1 at 50 ns (dark quarter 13-25 codes); 600 -> T=6, 698 Hz (7-14 codes).
+# 20 MHz stays by choice: 32 MHz would shorten every LED pulse 1.6x (plane 0 to 31 ns).
+# It is no longer forced by the crypto engines (TLS section: GDMA priority 5 fixed the
+# stall) nor by the SD card (its host has its own DMA; card traffic never touched the
+# panel). Next steps if ever wanted: min refresh 400 -> T=5, 465 Hz, plane 0 without a
+# window and plane 1 at 50 ns (dark quarter 13-25 codes); 600 -> T=6, 698 Hz (7-14
+# codes); or 32 MHz for 1.6x any of these at the cost of one more low plane.
 CONFIG_HUB75_BIT_DEPTH_10=y
 CONFIG_HUB75_GAMMA_2_2=y
 CONFIG_HUB75_CLK_20MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=250
+# The panel's GDMA channel wins arbitration against every other GDMA user (crypto, SPI,
+# I2S). Its FIFO has no back-pressure, so it must never wait; the others can. Verified
+# 2026-09-13 at 32 MHz under TLS load (see the TLS section). Vendored-driver option.
+CONFIG_HUB75_GDMA_PRIORITY=5
 CONFIG_HUB75_LATCH_BLANKING=1
 CONFIG_HUB75_BRIGHTNESS=255
 CONFIG_HUB75_DOUBLE_BUFFER=y

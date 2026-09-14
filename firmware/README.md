@@ -59,6 +59,10 @@ Endpoints:
 | `PUT /sd/<name>`, `GET /sd/<name>`, `DELETE /sd/<name>` | copy a GIF to the card, read it back, remove it |
 | `GET /sd/play[?seconds=N]` | play every GIF on the card in turn (30 s each by default) until `/stop` or another request |
 | `GET /sd/mount` | mount the card again after swapping it |
+| `GET /debug` | panel DMA health (stall flag, cumulative timeouts and late flips), GDMA priority, timing, crypto settings |
+| `GET /debug/dma?priority=N` | GDMA priority of the panel's channel, 0 to 5, applied at once |
+| `GET /debug/stress[?loops=N]` | run the download speed test now (about 12 MB per pass, a heavy TLS load) |
+| `GET /debug/reboot` | restart the board |
 | `GET /status` | JSON: what is playing (name, source, size, seconds left), the last request (id, state, error), Wi-Fi IP and RSSI, heap |
 | `GET /` | a form for phones |
 
@@ -148,15 +152,40 @@ runs offline and the clock stays at `--:--`. The network stack, lwIP and SNTP ru
 core 0; the main task (rendering) is pinned to core 1 so traffic never delays a frame.
 First sync after boot takes 5 to 30 s (Wi-Fi join, DNS, SNTP's own start-up delay).
 
-TLS uses the hardware AES and SHA engines (ESP-IDF's defaults), and that is why the
-panel runs at 20 MHz. The engines stream through GDMA, and their bursts starve the
-panel's LCD_CAM FIFO when the panel's own DMA stream is fast: at 32 MHz (64 MB/s) the
-LCD stops, the panel's DMA freezes mid-frame, and only a reboot recovers it (verified:
-stalls within seconds of the first HTTPS request with either engine on; none at 20 MHz,
-40 MB/s; none at 32 MHz with software crypto; stopping and restarting the panel driver
-in place does not bring the DMA back). To run the panel at 32 MHz again, set
-`CONFIG_MBEDTLS_HARDWARE_AES=n` and `_SHA=n`. The same stall can come from any other
-heavy GDMA user; the display logs "panel DMA stalled" once if it ever happens.
+TLS uses the hardware AES and SHA engines (ESP-IDF's defaults). They stream through
+GDMA, the shared DMA block that also feeds the panel, and on 2026-09-12 their bursts
+stalled the panel whenever it ran at 32 MHz: the LCD FIFO underran, the DMA descriptor
+pointer froze mid-frame and only a reboot recovered it (none at 20 MHz, none with
+software crypto, and restarting the driver in place did not help). The root cause,
+found on 2026-09-13, is GDMA arbitration: every channel sat at priority 0, so a long
+crypto burst could hold the panel's channel off for longer than the panel's FIFO
+lasts; the FIFO has no back-pressure, so it must never wait. The vendored driver now
+sets the panel's channel to priority 5 (`HUB75_GDMA_PRIORITY`, see "GDMA priority
+experiment" below), which made 32 MHz survive three passes of the download speed test
+with hardware crypto. The display still logs "panel DMA stalled" once if a stall ever
+happens, and `/debug` reports it.
+
+#### GDMA priority experiment (2026-09-13)
+
+32 MHz, 10 bit planes, transition bit 4 (434 Hz), hardware AES and SHA on. Health read
+from `/debug` (cumulative timeouts and the stall flag), load from `/debug/stress` (one
+pass = about 12 MB: two 1 MB and one 5 MB HTTPS download from Cloudflare, a 5 MB HTTP
+download, seven Makapix downloads).
+
+| Panel channel priority | Load | Result |
+|---|---|---|
+| 5 | 50 s of the show with its Makapix fetches | 0 timeouts |
+| 5 | 2 stress passes back to back (about 140 s of TLS) | 0 timeouts, no stall |
+| 5 | reboot, 1 more stress pass | 0 timeouts, no stall |
+| 0 (switched live) | the show's next Makapix fetch | stalled after 2.6 s, every wait timed out from then on |
+
+Throughput at priority 5 matched the earlier measurements: 531 KB/s for the 5 MB HTTPS
+download, 476 KB/s HTTP, 360 KB/s per file from Makapix on a kept-alive connection. So
+the panel's priority costs the network nothing measurable. The clock stays at 20 MHz
+regardless, because 32 MHz shortens every LED pulse 1.6x (plane 0 would be 31 ns); the
+option is open now, with or without hardware crypto. One side note: while the speed
+test saturated the link, the web server stopped answering for about 30 s; the panel
+was unaffected.
 
 ### GIF pipeline
 
@@ -275,8 +304,9 @@ merge neighbouring codes: the darkest quarter has 49 codes on paper and at least
 (it had 11 at 8 bits). The step below, minimum 140 Hz -> T = 3, 145.8 Hz, keeps all
 ten planes at 150 ns or longer (48 dark codes); the steps above are 465 Hz (T = 5,
 plane 0 without a window, 13-25 dark codes) and 698 Hz (T = 6, 7-14, the old 8-bit
-look). The clock stays at 20 MHz because the hardware crypto engines and, later, the SD
-card share the DMA bandwidth. The tone curve is gamma 2.2 (the released driver's gamma
+look). The clock stays at 20 MHz by choice: 32 MHz would shorten every pulse 1.6x. It is
+no longer forced by the crypto engines (the panel's GDMA channel now has priority, see
+"Wi-Fi credentials") nor by the SD card (its host has its own DMA). The tone curve is gamma 2.2 (the released driver's gamma
 2.2 table was broken: black mapped to full white; fixed in the patch), matching the
 sRGB monitors the artwork is made on. Photos need an exposure of one refresh or longer,
 1/270 s. Use `/pattern` to judge the darks against a monitor. Brightness below 255
@@ -380,8 +410,8 @@ firmware/
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
     net/makapix.*         background fetcher: random promoted GIFs for the show, on-demand downloads and card reads
-    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, /pattern, /sd..., / page
-    net/speedtest.*       download throughput test (P64_SPEEDTEST, off by default)
+    net/web.*             HTTP server + mDNS (p64.local): /play, /stop, /status, /pattern, /sd..., /debug..., / page
+    net/speedtest.*       download throughput test (P64_SPEEDTEST at boot, or /debug/stress on demand)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
     scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, web requests, card playlist, clock

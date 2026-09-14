@@ -1,0 +1,4 @@
+please go ahead and test that now (raising the GDMA priority of the panel's channel above the crypto channels). If necessary, implement new endpoints to allow you to test it (I leave the design up to you).
+
+[Context: the previous answer explained that the 32 MHz stall with hardware AES/SHA is GDMA arbitration and that raising the panel channel's priority was an untested lever.]
+[Answers: test only, leave the firmware at 20 MHz / 271 Hz whatever the outcome; keep the debug endpoints (/debug, /debug/dma, /debug/stress, /debug/reboot) behind a menuconfig switch that is on.]
