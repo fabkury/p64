@@ -54,6 +54,18 @@ the 30 s slot; all 24 intervals were 30.0 s, no fetcher warning, no panel sync t
 The slowest three fetches (19.6, 10.8, 9.2 s) were the server's erratic throughput, not
 retries. So the 30 s slot has 10 s of margin at the worst seen; a slot under ~20 s would
 start to run late.
+
+Same measurement the same day with the rotation restricted to 128x128 artworks only
+(`P64_MAKAPIX_MAX_DIMENSION` 128 plus a temporary `width_min=128&height_min=128` in the
+query; window from the first 30 s swap, 24 swaps, all 128x128, 3 KB to 443 KB, median
+32 KB): ready 5.2 to 20.5 s after the swap (median 5.9 s, mean 7.3 s, standard deviation
+3.4 s), never late, every interval 30.0 s, no warning, no sync timeout. The first
+download took 20.5 s from boot (a 211 KB file; 10.7 s at 64 px). Decode plus box-average
+downscale of a 128x128 frame to 64x64 cost 1.2 to 5.4 ms (median 2.3 ms) against 0.3 to
+1.3 ms for 64x64 sources; the delivered GIF frame rates were unchanged (median 10 fps).
+The stats line's "render ms per frame" reads 280 ms on a still image: that field sums
+the render calls of a whole 10 s window over the frames presented (one), so it is an
+accounting artifact, not a slow frame. Reverted to 64 afterwards.
 User agent: `p64/<git version>`. Menu `p64 > Makapix Club` can disable it or change
 the host.
 
