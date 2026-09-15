@@ -42,6 +42,15 @@ does the work: it waits for Wi-Fi and the NTP sync (TLS checks certificate dates
 skips artworks shown in the last 32 picks (re-drawing up to three times), caps the
 download at `P64_MAKAPIX_MAX_BYTES` (1 MB), retries once, and hands the bytes to the
 scene through a mutex. The scene logs title, artist and the page URL for each artwork.
+
+Measured 2026-09-15 over 12 minutes of the show (serial log, 24 swaps, device already
+running, home Wi-Fi at -49 dBm): the next artwork was ready 5.1 to 19.6 s after each
+swap (median 5.9 s, mean 6.8 s, standard deviation 3.0 s; the fetch starts within a
+millisecond of the swap, so this is the two HTTPS requests end to end), never late for
+the 30 s slot; all 24 intervals were 30.0 s, no fetcher warning, no panel sync timeout.
+The slowest three fetches (19.6, 10.8, 9.2 s) were the server's erratic throughput, not
+retries. So the 30 s slot has 10 s of margin at the worst seen; a slot under ~20 s would
+start to run late.
 User agent: `p64/<git version>`. Menu `p64 > Makapix Club` can disable it or change
 the host.
 
