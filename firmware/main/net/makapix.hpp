@@ -2,7 +2,8 @@
 //
 // A background task on the Wi-Fi core with two jobs:
 //  - the show's rotation: request_next() fetches one random promoted GIF that fits the
-//    panel, collected later with take_ready(); the scene calls it again (every few
+//    panel (P64_MAKAPIX_MAX_DIMENSION, 64 by default; larger values exercise the
+//    downscaler), collected later with take_ready(); the scene calls it again (every few
 //    seconds while it waits) after a fetch came back empty, so failures retry forever:
 //      GET /api/post?promoted=true&sort=random&limit=1&width_max=W&height_max=H&file_format=gif
 //      GET /api/d/{public_sqid}.gif

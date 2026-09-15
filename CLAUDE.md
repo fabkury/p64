@@ -111,7 +111,8 @@ distinct enumerator). Brightness 0 blanks the panel; 1-255 go through a curve fl
 
 Makapix Club (`main/net/makapix.*`): a fetcher task on core 0 does two anonymous
 HTTPS GETs per artwork (`/api/post?promoted=true&sort=random&limit=1&width_max=..&
-height_max=..&file_format=gif`, then `/api/d/{sqid}.gif`), gated on Wi-Fi and NTP
+height_max=..&file_format=gif` with `P64_MAKAPIX_MAX_DIMENSION`, default 64; the API
+also takes `width_min`/`height_min`; then `/api/d/{sqid}.gif`), gated on Wi-Fi and NTP
 (TLS needs the clock), handing bytes to the scene under a mutex. The server code is
 github.com/fabkury/makapix (the user's own); `api/openapi.json` there is the contract.
 

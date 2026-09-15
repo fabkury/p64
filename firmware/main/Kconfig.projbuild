@@ -53,6 +53,17 @@ menu "p64"
             string "Makapix Club host"
             default "makapix.club"
 
+        config P64_MAKAPIX_MAX_DIMENSION
+            int "Largest artwork side to ask for (pixels)"
+            range 8 512
+            default 64
+            help
+                The rotation asks Makapix Club for GIFs no wider or taller than
+                this (width_max/height_max in the query). 64 is the panel size:
+                no scaling. Larger values exercise the box-average downscaler
+                (128 doubles the decode work per frame); the panel still shows
+                64x64.
+
         config P64_MAKAPIX_MAX_BYTES
             int "Largest GIF file to download (bytes)"
             range 4096 4194304

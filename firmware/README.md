@@ -35,9 +35,12 @@ GET /api/post?promoted=true&sort=random&limit=1&width_max=64&height_max=64&file_
 GET /api/d/{public_sqid}.gif
 ```
 
-The first returns one random promoted post with a GIF variant no larger than the panel
-(the JSON carries sqid, title, artist, size and the files list; 143 candidates at the
-time of writing); the second is the GIF file itself. A fetcher task on the Wi-Fi core
+The first returns one random promoted post with a GIF variant no larger than
+`P64_MAKAPIX_MAX_DIMENSION` (64, the panel size, by default; the JSON carries sqid,
+title, artist, size and the files list; 143 candidates at the time of writing); the
+second is the GIF file itself. The API also takes `width_min`/`height_min`, which is
+how the 128x128-only test below was run (of the first 200 promoted GIFs up to 128 px on
+2026-09-15: 82 were 128x128, 82 64x64, 20 32x32, 16 16x16). A fetcher task on the Wi-Fi core
 does the work: it waits for Wi-Fi and the NTP sync (TLS checks certificate dates),
 skips artworks shown in the last 32 picks (re-drawing up to three times), caps the
 download at `P64_MAKAPIX_MAX_BYTES` (1 MB), retries once, and hands the bytes to the

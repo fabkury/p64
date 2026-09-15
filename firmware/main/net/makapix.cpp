@@ -28,6 +28,7 @@ namespace {
 constexpr const char *TAG = "makapix";
 constexpr size_t kMaxJsonBytes = 64 * 1024;
 constexpr size_t kMaxGifBytes = CONFIG_P64_MAKAPIX_MAX_BYTES;
+constexpr int kMaxDim = CONFIG_P64_MAKAPIX_MAX_DIMENSION;  // width_max/height_max of the rotation query
 constexpr size_t kRecentSize = 32;
 constexpr int kAttemptsPerRequest = 2;
 constexpr int kRedrawsOnRepeat = 3;
@@ -151,7 +152,7 @@ bool query_random(Candidate &c) {
   char url[256];
   std::snprintf(url, sizeof(url),
                 "https://%s/api/post?promoted=true&sort=random&limit=1&width_max=%d&height_max=%d&file_format=gif",
-                CONFIG_P64_MAKAPIX_HOST, kWidth, kHeight);
+                CONFIG_P64_MAKAPIX_HOST, kMaxDim, kMaxDim);
   std::vector<uint8_t> body;
   const int status = http_get(url, "application/json", body, kMaxJsonBytes);
   if (status != 200) {
@@ -228,8 +229,8 @@ bool fetch_one(Artwork &art) {
   if (!found) {
     ESP_LOGI(TAG, "only recent picks came back, taking %s anyway", c.sqid.c_str());
   }
-  if (c.width > kWidth || c.height > kHeight) {
-    ESP_LOGW(TAG, "%s is %dx%d, larger than the panel; skipped", c.sqid.c_str(), c.width, c.height);
+  if (c.width > kMaxDim || c.height > kMaxDim) {
+    ESP_LOGW(TAG, "%s is %dx%d, larger than %d px; skipped", c.sqid.c_str(), c.width, c.height, kMaxDim);
     return false;
   }
   if (c.gif_bytes > kMaxGifBytes) {
@@ -437,7 +438,7 @@ void start() {
     return;
   }
   ESP_LOGI(TAG, "fetcher ready: https://%s, GIFs up to %dx%d and %u bytes, user agent \"%s\"",
-           CONFIG_P64_MAKAPIX_HOST, kWidth, kHeight, static_cast<unsigned>(kMaxGifBytes), g_user_agent);
+           CONFIG_P64_MAKAPIX_HOST, kMaxDim, kMaxDim, static_cast<unsigned>(kMaxGifBytes), g_user_agent);
 }
 
 void request_next() {
