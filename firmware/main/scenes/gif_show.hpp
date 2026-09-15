@@ -1,10 +1,11 @@
-// p64 -- the GIF show: starts on a random embedded GIF, then every 30 s switches to
-// the artwork the Makapix fetcher downloaded in the meantime (a random promoted GIF
-// that fits the panel), or to another embedded GIF when nothing arrived. Plays at the
-// GIFs' intended speed, with the wall clock top-left. A GIF requested through the web
-// control (net/web) pre-empts the rotation for its requested time, or until /stop or
-// the next request. Menuconfig can turn the show into the frame-rate test (ignore
-// delays, show fps top-right).
+// p64 -- the GIF show: starts on a random GIF from the microSD card (black with the
+// clock when the card has none), switches to the first Makapix Club artwork the moment
+// it has downloaded, then to a fresh one every 30 s, or as soon as the next download
+// lands when it is late (the current artwork stays up meanwhile; nothing but fresh
+// downloads play after the startup one). Plays at the GIFs' intended speed, with the
+// wall clock top-left. A GIF requested through the web control (net/web) pre-empts the
+// rotation for its requested time, or until /stop or the next request. Menuconfig can
+// turn the show into the frame-rate test (ignore delays, show fps top-right).
 #pragma once
 
 #include <cstdint>
@@ -26,10 +27,12 @@ class GifShowScene : public Scene {
   bool render(Display &display, Frame &frame, const FrameInfo &info) override;
 
  private:
-  bool play_embedded(uint32_t now_ms);
+  bool play_card_random(uint32_t now_ms);
   bool play_download(makapix::Artwork &&art, uint32_t now_ms);
   bool open_current(const uint8_t *data, size_t size, uint32_t now_ms);
+  bool rotate(uint32_t now_ms);
   void next_slot(uint32_t now_ms);
+  void drop_current(uint32_t now_ms);
   void start_on_demand(makapix::Artwork &&art, uint32_t seconds, uint32_t id, uint32_t now_ms);
   void start_pattern(uint32_t now_ms);
   void start_playlist(std::vector<std::string> &&files, uint32_t seconds, uint32_t now_ms);
@@ -43,10 +46,13 @@ class GifShowScene : public Scene {
   bool decode_next(uint32_t now_ms);
   void draw_overlays(Frame &frame, float fps) const;
 
-  std::string current_name_;     // for the log: asset file name or Makapix sqid
-  size_t embedded_index_ = 0;    // last embedded GIF shown (avoid repeating it)
+  std::string current_name_;     // for the log: card file name, Makapix sqid or URL
   makapix::Artwork download_;    // owns the bytes of the artwork being played, if any
+  makapix::Artwork rotation_;    // the rotation's artwork set aside while a web request plays
   size_t current_bytes_ = 0;     // size of the GIF being played (for the status page)
+  bool swap_asap_ = true;        // switch to the next download the moment it lands (no 30 s wait)
+  bool waiting_logged_ = false;  // "slot over, download not ready" logged for this slot
+  uint32_t next_request_ms_ = 0;  // when to nudge the fetcher again while waiting
   bool on_demand_ = false;       // playing a web request rather than the rotation
   bool pattern_ = false;         // showing the tone test pattern (a web request too)
   // Card playlist (/sd/play): the files play in turn as on-demand requests until /stop.

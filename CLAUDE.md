@@ -47,7 +47,9 @@ Environment facts that bite:
 - The board is native USB Serial/JTAG (VID 303A, PID 1001), COM13 on this laptop; the
   machine also has several Bluetooth COM ports, so always pass or detect an explicit
   port. To capture a boot log non-interactively, open the port with pyserial (dtr/rts
-  false), pulse `rts` true for 0.1 s to reset, then read; `idf.py monitor` wants a TTY.
+  false) and read; `idf.py monitor` wants a TTY. Pulsing `rts` true for 0.1 s did not
+  reset the board on 2026-09-15; what worked was keeping the port open and reading
+  while `GET /debug/reboot` restarts the firmware (no lines lost).
 - `sdkconfig.defaults` is the source of truth (board, panel, pins, driver options);
   `sdkconfig` is generated and ignored. `dependencies.lock` is committed. Wi-Fi
   credentials live only in the git-ignored `firmware/sdkconfig.secrets` (template:
@@ -60,7 +62,12 @@ Environment facts that bite:
 
 ## Firmware: architecture
 
-`main.cpp` runs an array of `Scene`s in a loop (BOOT button skips ahead). A `Scene`
+`main.cpp` runs an array of `Scene`s in a loop (BOOT button skips ahead). The one scene,
+`GifShowScene`, plays a random card GIF at boot (read directly in `enter()`, before the
+loop runs), swaps to the first Makapix download the instant it lands, then to a fresh
+download every 30 s or as soon as the next lands when late; nothing is embedded in the
+binary any more and nothing but fresh downloads plays after the startup GIF (offline: the
+current artwork stays up, the scene re-requests every 5 s). A `Scene`
 (`scene.hpp`) implements `enter()` (must present its first frame) and `render()`, which
 draws into a RAM `Frame` (RGB888, `display.hpp`) and returns whether the frame changed.
 `Display` owns the `Hub75Driver`, builds its config entirely from `CONFIG_HUB75_*`, and
@@ -159,9 +166,8 @@ into an RGB888 canvas (transparency, all four disposal modes, black background) 
 `gif_player.*` must stay free of ESP-IDF includes: `tools/gifcheck/gifcheck.py` builds
 it natively with the harness in that folder and compares every frame of every GIF in
 `assets/gifs/` against Pillow, pixel-exact; run it after touching the decoder, the
-compositor, the scaler, or the assets. The GIFs are embedded by `main/CMakeLists.txt`
-(glob over `assets/gifs/*.gif`, generated `gif_assets.cpp` table); dropping a file in
-the folder and rebuilding is all it takes.
+compositor, the scaler, or the assets. `assets/gifs/` is only that test corpus (and
+the set the README's copy loop uploads to the card); it is not embedded in the firmware.
 
 Orientation: the firmware drives the panel in native orientation (`ROTATE_0`): row 63 is
 the native bottom, and the controller's USB-C ports sit behind the native right edge. The

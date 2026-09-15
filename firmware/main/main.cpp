@@ -1,9 +1,10 @@
 // p64 -- firmware for the Waveshare ESP32-S3-RGB-Matrix + P2 64x64 panel.
 //
-// Starts on an embedded GIF (assets/gifs), then plays a random promoted Makapix Club
-// artwork every 30 s, fetched in the background (embedded GIFs fill in when offline),
-// at the GIFs' intended speed, with an NTP-synced clock top-left. Press BOOT to
-// restart the scene. Menuconfig (menu "p64") can turn it back into the frame-rate test.
+// Starts on a random GIF from the microSD card, switches to a random promoted Makapix
+// Club artwork as soon as one has downloaded, then to a fresh one every 30 s (or as
+// soon as the next download lands when it is late), at the GIFs' intended speed, with
+// an NTP-synced clock top-left. Press BOOT to restart the scene. Menuconfig (menu
+// "p64") can turn it back into the frame-rate test.
 //
 // Frame pacing: a scene renders the next frame into RAM right after the previous one
 // was flipped in, so rendering overlaps the panel's buffer switch; the loop then waits

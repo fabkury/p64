@@ -44,9 +44,10 @@ menu "p64"
             bool "Fetch promoted artwork from Makapix Club"
             default y
             help
-                Every slot the device asks makapix.club for a random promoted GIF
-                that fits the panel and plays it in the next slot. Off: only the
-                embedded GIFs play.
+                The device asks makapix.club for a random promoted GIF that fits
+                the panel and plays it as soon as it has downloaded, then a fresh
+                one every slot. Off: only the startup GIF from the microSD card
+                plays (and web requests).
 
         config P64_MAKAPIX_HOST
             string "Makapix Club host"

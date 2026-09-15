@@ -11,15 +11,21 @@
 #include "esp_timer.h"
 
 #include "font3x5.hpp"
-#include "gif_assets.hpp"
 #include "net/clock.hpp"
 #include "net/web.hpp"
+#include "sdcard.hpp"
 
 namespace p64 {
 namespace {
 
 constexpr const char *TAG = "gif";
 constexpr uint32_t kDwellMs = static_cast<uint32_t>(CONFIG_P64_GIF_DWELL_S) * 1000;
+// While a slot is over and no download is ready, the fetcher is nudged this often (a
+// nudge is a no-op while it is still trying; after it gave up, this is the retry rate).
+constexpr uint32_t kRetryMs = 5000;
+// Same caps as the fetcher applies to card requests.
+constexpr size_t kMaxCardBytes = CONFIG_P64_WEB_MAX_BYTES;
+constexpr int kMaxCardDim = CONFIG_P64_WEB_MAX_DIMENSION;
 constexpr Rgb kText{255, 255, 255};
 
 #if defined(CONFIG_P64_GIF_MAX_SPEED)
@@ -54,11 +60,14 @@ void draw_boxed_text(Frame &frame, int x, int y, const char *text) {
 const char *GifShowScene::name() const { return kMaxSpeed ? "gif playback, max speed" : "gif show"; }
 
 void GifShowScene::enter(Display &display, Frame &frame) {
-  ESP_LOGI(TAG, "%u GIFs embedded; %lu s per artwork, frame delays %s", static_cast<unsigned>(kGifAssetCount),
-           static_cast<unsigned long>(kDwellMs / 1000), kMaxSpeed ? "ignored" : "honoured (min 100 ms when under 20)");
+  ESP_LOGI(TAG, "%lu s per artwork, frame delays %s", static_cast<unsigned long>(kDwellMs / 1000),
+           kMaxSpeed ? "ignored" : "honoured (min 100 ms when under 20)");
   display.set_brightness(max_brightness());
-  embedded_index_ = kGifAssetCount ? esp_random() % kGifAssetCount : 0;
-  play_embedded(0);
+  // The startup artwork is read from the card right here: nothing renders yet, so the
+  // read (a few ms) cannot stall the panel, and the fetcher may not even be running
+  // (it needs Wi-Fi). From now on only fresh Makapix downloads play.
+  if (!play_card_random(0)) ESP_LOGI(TAG, "nothing to show until the first Makapix artwork arrives");
+  swap_asap_ = true;
   makapix::request_next();
   frame.clear();
   if (player_.is_open()) {
@@ -84,29 +93,42 @@ bool GifShowScene::open_current(const uint8_t *data, size_t size, uint32_t now_m
   return true;
 }
 
-// Plays a random embedded GIF other than the last one shown. Tries a few if a file
-// refuses to open; false only when none opens.
-bool GifShowScene::play_embedded(uint32_t now_ms) {
-  if (kGifAssetCount == 0) return false;
-  download_ = makapix::Artwork{};  // release any downloaded bytes
-  on_demand_ = false;              // an embedded GIF is never a web request
-  pattern_ = false;
-  for (size_t tries = 0; tries < kGifAssetCount; ++tries) {
-    size_t index = esp_random() % kGifAssetCount;
-    if (kGifAssetCount > 1 && index == embedded_index_) index = (index + 1) % kGifAssetCount;
-    embedded_index_ = index;
-    const GifAsset &asset = kGifAssets[index];
-    current_name_ = asset.name;
-    if (open_current(asset.data, asset.size, now_ms)) {
-      ESP_LOGI(TAG, "playing embedded %s (%dx%d, %zu bytes) at %dx%d", asset.name, player_.width(), player_.height(),
-               asset.size, scaler_.out_w(), scaler_.out_h());
-      publish_now_playing();
-      return true;
-    }
+// Plays a random GIF from the card's root, trying the others in turn if the pick does
+// not read or open; false when the card has no playable GIF.
+bool GifShowScene::play_card_random(uint32_t now_ms) {
+  const std::vector<sdcard::FileInfo> files = sdcard::list_gifs();
+  if (files.empty()) {
+    ESP_LOGI(TAG, "no GIF on the card (%s)", sdcard::mounted() ? "empty" : "not mounted");
+    return false;
   }
+  const size_t first = esp_random() % files.size();
+  for (size_t i = 0; i < files.size(); ++i) {
+    const std::string &name = files[(first + i) % files.size()].name;
+    makapix::Artwork art;
+    art.file = name;
+    std::string error;
+    if (!sdcard::read_file(name, art.gif, kMaxCardBytes, error)) {
+      ESP_LOGW(TAG, "card %s: %s, skipped", name.c_str(), error.c_str());
+      continue;
+    }
+    if (art.gif.size() < 10 || std::memcmp(art.gif.data(), "GIF8", 4) != 0) {
+      ESP_LOGW(TAG, "card %s: not a GIF file, skipped", name.c_str());
+      continue;
+    }
+    art.width = art.gif[6] | (art.gif[7] << 8);
+    art.height = art.gif[8] | (art.gif[9] << 8);
+    if (art.width > kMaxCardDim || art.height > kMaxCardDim) {
+      ESP_LOGW(TAG, "card %s: %dx%d is larger than %d px, skipped", name.c_str(), art.width, art.height, kMaxCardDim);
+      continue;
+    }
+    if (play_download(std::move(art), now_ms)) return true;
+  }
+  ESP_LOGW(TAG, "none of the %u GIFs on the card plays", static_cast<unsigned>(files.size()));
   return false;
 }
 
+// Plays `art` (a card file, a Makapix post or a URL download), taking ownership of
+// its bytes.
 bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
   player_.close();  // it may still point into the previous download's bytes
   pattern_ = false;
@@ -135,21 +157,69 @@ bool GifShowScene::play_download(makapix::Artwork &&art, uint32_t now_ms) {
   return true;
 }
 
-// End of a 30 s slot: the downloaded artwork if one is waiting, else an embedded GIF;
-// then ask for the next download so it is ready when this slot ends.
+// The rotation, called every frame while no web request plays: once the slot is over
+// (30 s, or at once while swap_asap_), switch to the download the moment one is ready;
+// meanwhile keep the current artwork up and keep the fetcher trying. True when what
+// plays changed.
+bool GifShowScene::rotate(uint32_t now_ms) {
+  const bool slot_over = swap_asap_ || now_ms - gif_start_ms_ >= kDwellMs;
+  if (!slot_over) return false;
+  makapix::Artwork art;
+  if (makapix::take_ready(art)) {
+    log_gif_stats(now_ms);
+    if (play_download(std::move(art), now_ms)) {
+      swap_asap_ = false;
+    } else {
+      drop_current(now_ms);
+    }
+    waiting_logged_ = false;
+    makapix::request_next();  // start on the one after, so it is ready when this slot ends
+    return true;
+  }
+  if (!waiting_logged_ && !swap_asap_) {
+    ESP_LOGI(TAG, "slot over, next artwork not downloaded yet; %s stays up until it lands", current_name_.c_str());
+    waiting_logged_ = true;
+  }
+  if (static_cast<int32_t>(now_ms - next_request_ms_) >= 0) {
+    makapix::request_next();
+    next_request_ms_ = now_ms + kRetryMs;
+  }
+  return false;
+}
+
+// A web request ended: the fresh download if one is waiting, else the rotation's
+// artwork that was set aside (to be replaced as soon as a download lands), else black.
 void GifShowScene::next_slot(uint32_t now_ms) {
   log_gif_stats(now_ms);
   on_demand_ = false;
   on_demand_indefinite_ = false;
+  pattern_ = false;
   makapix::Artwork art;
-  bool playing = false;
-  if (makapix::take_ready(art)) playing = play_download(std::move(art), now_ms);
-  if (!playing) {
-    ESP_LOGI(TAG, "no downloaded artwork ready, using an embedded GIF");
-    playing = play_embedded(now_ms);
+  if (makapix::take_ready(art) && play_download(std::move(art), now_ms)) {
+    swap_asap_ = false;
+  } else if (!rotation_.gif.empty()) {
+    ESP_LOGI(TAG, "back to the rotation's artwork until the next download lands");
+    swap_asap_ = true;
+    if (!play_download(std::move(rotation_), now_ms)) drop_current(now_ms);
+  } else {
+    drop_current(now_ms);
   }
-  if (!playing) player_.close();
+  rotation_ = makapix::Artwork{};
+  waiting_logged_ = false;
   makapix::request_next();
+}
+
+// Nothing plays: black until the next download.
+void GifShowScene::drop_current(uint32_t now_ms) {
+  player_.close();
+  download_ = makapix::Artwork{};
+  current_name_.clear();
+  current_bytes_ = 0;
+  gif_start_ms_ = now_ms;
+  gif_frames_ = 0;
+  single_frame_ = true;
+  swap_asap_ = true;
+  publish_now_playing();
 }
 
 void GifShowScene::log_gif_stats(uint32_t now_ms) const {
@@ -223,8 +293,7 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
         dirty = true;
       }
     }
-  } else if (info.t_ms - gif_start_ms_ >= kDwellMs) {
-    next_slot(info.t_ms);
+  } else if (rotate(info.t_ms)) {
     dirty = true;
   }
   const bool due = kMaxSpeed || static_cast<int32_t>(info.t_ms - next_frame_ms_) >= 0;
@@ -234,7 +303,11 @@ bool GifShowScene::render(Display &, Frame &frame, const FrameInfo &info) {
     } else {
       ESP_LOGW(TAG, "%s: decode error %d after %" PRIu32 " frames, moving on", current_name_.c_str(),
                player_.last_error(), gif_frames_);
-      if (!play_embedded(info.t_ms)) player_.close();
+      if (on_demand_) {
+        end_on_demand(info.t_ms, "decode error");
+      } else {
+        drop_current(info.t_ms);
+      }
       frame.clear();
       if (player_.is_open() && decode_next(info.t_ms)) scaler_.scale(player_.canvas(), frame.pixels());
     }
@@ -275,6 +348,7 @@ void GifShowScene::start_on_demand(makapix::Artwork &&art, uint32_t seconds, uin
     end_playlist("a new request replaced it");
   }
   log_gif_stats(now_ms);
+  if (!on_demand_) rotation_ = std::move(download_);  // the rotation resumes it after the request
   on_demand_ = true;
   on_demand_id_ = id;
   on_demand_indefinite_ = seconds == 0;
@@ -358,7 +432,7 @@ void GifShowScene::publish_now_playing() const {
   } else if (!download_.file.empty()) {
     now.source = "sd";
   } else if (download_.gif.empty()) {
-    now.source = "embedded";
+    now.source = "none";
   } else if (download_.sqid.empty()) {
     now.source = "url";
     now.url = download_.url;
@@ -382,6 +456,7 @@ void GifShowScene::publish_now_playing() const {
 void GifShowScene::start_pattern(uint32_t now_ms) {
   log_gif_stats(now_ms);
   player_.close();
+  if (!on_demand_) rotation_ = std::move(download_);
   download_ = makapix::Artwork{};
   end_playlist("test pattern requested");
   current_name_ = "test pattern";

@@ -1,0 +1,8 @@
+I have p64 connected to this laptop via USB-C (and to 27 W power as well).
+
+Please change the firmware to:
+ 0. Startup: display a random artwork from the SD card.
+ 1. As soon as possible: play a random artwork freshly downloaded from Makapix Club.
+ 2. Change artwork every 30 seconds or as soon as possible thereafter if not ready yet. Only use freshly downloaded artworks (do not use the pre-baked artworks anymore after startup).
+
+[Answers: drop the embedded GIFs from the build (black with the clock when the card has nothing); when downloads fail keep the current artwork and retry forever; do not save downloads to the card; first download swaps in the instant it lands, later ones at 30 s or the moment they land.]

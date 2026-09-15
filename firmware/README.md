@@ -7,11 +7,15 @@ by the IDF component manager); no Arduino, no LVGL.
 
 ## What it does today: Makapix Club artwork with a clock
 
-At boot the firmware plays one of the GIFs embedded from `assets/gifs/` (64 Makapix
-Club artworks, 1.1 MB), picked at random. In the background it asks Makapix Club for a
-random promoted GIF that fits the panel and downloads it; every 30 s the panel switches
-to the artwork that arrived and the next one is requested. When nothing arrived (Wi-Fi
-down, request failed, NTP not synced yet), a random embedded GIF fills the slot. GIFs
+At boot the firmware plays a random GIF from the microSD card's root (black, with the
+clock, when the card has none). In the background it asks Makapix Club for a random
+promoted GIF that fits the panel and downloads it; the panel switches to that artwork
+the moment it lands, and from then on to a fresh download every 30 s, or as soon as
+the next one lands when it is late (Wi-Fi down, request failed, NTP not synced yet):
+the current artwork stays up meanwhile and the fetcher keeps trying every few
+seconds. Nothing but fresh downloads plays after the startup one; no GIF is embedded in
+the firmware any more (the 64 in `assets/gifs/` are the test corpus of `gifcheck`, and
+the copy loop under "microSD card" puts them on a card). GIFs
 play at their intended speed, looping as needed; frame delays are honoured with the
 browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a 70 % black box
 (the artwork shows through at 30 % brightness), a 24-hour clock (HH:MM) set from NTP
@@ -207,8 +211,8 @@ python tools\gifcheck\gifcheck.py          # all GIFs; exit code 0 when everythi
 python tools\gifcheck\gifcheck.py a.gif    # specific files
 ```
 
-Adding artwork: drop the `.gif` into `assets/gifs/` and rebuild; `main/CMakeLists.txt`
-globs the folder, embeds the files in flash and generates the `kGifAssets` table.
+Adding artwork to the device: copy the `.gif` to the microSD card (see "microSD
+card"); `assets/gifs/` is only the test corpus and is not embedded in the firmware.
 
 The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`).
 
@@ -393,11 +397,11 @@ firmware/
   CMakeLists.txt          ESP-IDF project "p64"
   sdkconfig.defaults      every setting that differs from ESP-IDF defaults (board, panel, pins)
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
-  assets/gifs/            the GIFs embedded in the firmware (+ Makapix manifest.json, not embedded)
+  assets/gifs/            64 Makapix GIFs: the gifcheck test corpus, and what the card copy loop uploads
   components/animatedgif/ vendored bitbank2/AnimatedGIF decoder (see its README)
   components/esp-hub75/   vendored esphome/esp-hub75 0.3.6 with the p64 patch (see P64-CHANGES.md)
   main/
-    CMakeLists.txt        sources, embeds assets/gifs/*.gif, generates the gif_assets table
+    CMakeLists.txt        sources and component requirements
     idf_component.yml     dependencies (espressif/mdns); dependencies.lock pins versions
     Kconfig.projbuild     menu "p64": brightness cap, Wi-Fi/NTP/TZ, Makapix, web control, microSD, GIF dwell, tests
     main.cpp              app_main: display, Wi-Fi + clock start, scene loop, BOOT restarts, stats log
@@ -405,7 +409,6 @@ firmware/
     button.hpp/.cpp       debounced BOOT button (GPIO0)
     scene.hpp             Scene interface: enter() + render(FrameInfo) per frame
     gif_player.hpp/.cpp   GifPlayer (decode + composite) and Scaler; no ESP-IDF dependencies
-    gif_assets.hpp        the embedded-GIF table (generated .cpp lives in build/)
     sdcard.hpp/.cpp       microSD card: SDMMC 1-bit mount, listing, read, remove
     net/wifi.*            Wi-Fi station with reconnect
     net/clock.*           timezone + SNTP, local time of day
@@ -414,7 +417,7 @@ firmware/
     net/speedtest.*       download throughput test (P64_SPEEDTEST at boot, or /debug/stress on demand)
     color.hpp             HSV to RGB
     font3x5.hpp           3x5 font (digits, colon, dash) for on-panel text
-    scenes/gif_show.*     the show: embedded GIF first, then Makapix artwork per slot, web requests, card playlist, clock
+    scenes/gif_show.*     the show: card GIF at boot, then fresh Makapix artwork per slot, web requests, card playlist, clock
   sdkconfig.secrets.example  template for the git-ignored Wi-Fi credentials file
   tools/*.ps1             env activation and idf.py wrappers
   tools/gifcheck/         PC check of the GIF pipeline against Pillow

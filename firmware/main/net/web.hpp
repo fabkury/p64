@@ -30,7 +30,7 @@ namespace p64::web {
 // What the scene is showing, published by the scene for /status.
 struct NowPlaying {
   std::string name;        // log name: asset file, "makapix <sqid>" or the URL
-  std::string source;      // "embedded", "makapix" or "url"
+  std::string source;      // "sd", "makapix", "url", "pattern" or "none"
   std::string url;         // Makapix page or the GIF URL, when known
   int width = 0;
   int height = 0;
