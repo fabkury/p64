@@ -1,6 +1,3 @@
-# Upstream clones kept locally for reference (see README.md)
-reference/
-
 # ESP-IDF build products (firmware/)
 firmware/build/
 firmware/sdkconfig
@@ -9,6 +6,9 @@ firmware/sdkconfig.secrets
 firmware/managed_components/
 firmware/dependencies.lock.old
 firmware/tools/gifcheck/build/
+
+# Upstream clones kept locally for reference (see firmware/README.md)
+firmware/reference/
 
 # Editors and OS
 .vscode/

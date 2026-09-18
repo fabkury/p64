@@ -23,13 +23,7 @@ terminals feed the panel's VH4 socket.
 | `enclosure/` | The 3D-printed back shell: OpenSCAD source, ready-to-print STL/3MF, renders and the Waveshare drawings it was checked against. See `enclosure/README.md`. |
 | `enclosure/archive/2026-09-dhruv-solidworks/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
 | `prompt/` | The task prompts that drove each development session, numbered in order. |
-| `reference/` | Local clones of upstream repositories used for reference (git-ignored). Clone them with the commands below. |
-
-### Reference clones
-
-```
-git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S3-RGB-Matrix
-```
+| `firmware/reference/` | Local clones of upstream repositories the firmware was written against (git-ignored). The clone command is in `firmware/README.md`. |
 
 ## Status
 

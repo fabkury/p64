@@ -14,11 +14,11 @@ of work live here, each with its own README that is the detailed reference:
 - `enclosure/` — the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
 
-Also: `reference/` is git-ignored upstream clones (Waveshare's example repo; the
-re-clone command is in the root README). `prompt/pNNN-*.txt` are the user's task prompts,
-one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a friend's
-separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked staging area
-for incoming material; do not commit it unless asked.
+Also: `firmware/reference/` is git-ignored upstream clones (Waveshare's example repo;
+the re-clone command is in `firmware/README.md`). `prompt/pNNN-*.txt` are the user's task
+prompts, one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a
+friend's separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked
+staging area for incoming material; do not commit it unless asked.
 
 ## Firmware: commands
 
