@@ -34,6 +34,7 @@ the version lives in the folder name (and in the source file name under `src/`).
 | `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
 | `input/*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
 | `archive/2026-08-stand-concept/` | Earlier, abandoned concept (detachable stand, wall keyholes). Kept for reference only. |
+| `archive/2026-09-dhruv-solidworks/` | Dhruv's separate SolidWorks take on the enclosure (`p64.SLDPRT` and its STEP export). Kept as-is, never edited here. |
 
 ## What the design does
 

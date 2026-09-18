@@ -16,9 +16,9 @@ of work live here, each with its own README that is the detailed reference:
 
 Also: `reference/` is git-ignored upstream clones (Waveshare's example repo; the
 re-clone command is in the root README). `prompt/pNNN-*.txt` are the user's task prompts,
-one per session, committed. `dhruv/` is a friend's separate SolidWorks work: never move
-or edit it. `enclosure/inbox/` is an untracked staging area for incoming material; do not
-commit it unless asked.
+one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a friend's
+separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked staging area
+for incoming material; do not commit it unless asked.
 
 ## Firmware: commands
 

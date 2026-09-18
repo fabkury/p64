@@ -21,7 +21,7 @@ terminals feed the panel's VH4 socket.
 |---|---|
 | `firmware/` | ESP-IDF (v5.5) firmware for the driver board. See `firmware/README.md` for setup, build and flash. |
 | `enclosure/` | The 3D-printed back shell: OpenSCAD source, ready-to-print STL/3MF, renders and the Waveshare drawings it was checked against. See `enclosure/README.md`. |
-| `dhruv/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
+| `enclosure/archive/2026-09-dhruv-solidworks/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
 | `prompt/` | The task prompts that drove each development session, numbered in order. |
 | `reference/` | Local clones of upstream repositories used for reference (git-ignored). Clone them with the commands below. |
 
