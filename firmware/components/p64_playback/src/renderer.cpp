@@ -68,11 +68,13 @@ void Renderer::log_window(int64_t window_start_us, uint32_t frames, uint32_t lat
   const float n = frames > 0 ? static_cast<float>(frames) : 1.0f;
   const float pn = p.frames > 0 ? static_cast<float>(p.frames) : 1.0f;
   ESP_LOGI(TAG,
-           "%" PRIu32 " frames in %.1f s = %.1f fps; decode %.2f ms, copy %.2f ms, wait %.2f ms per frame; late %" PRIu32
-           " (decode late %" PRIu32 "), skipped %" PRIu32 ", late flips %" PRIu32 ", timeouts %" PRIu32 " (%s)",
+           "%" PRIu32 " frames in %.1f s = %.1f fps; decode %.2f ms (max %.1f), copy %.2f ms, wait %.2f ms per frame; "
+           "late %" PRIu32 " (decode late %" PRIu32 "), skipped %" PRIu32 ", late flips %" PRIu32 ", timeouts %" PRIu32
+           " (%s)",
            frames, seconds, static_cast<float>(frames) / seconds, static_cast<float>(p.decode_us) / pn / 1000.0f,
-           static_cast<float>(d.copy_us) / n / 1000.0f, static_cast<float>(d.wait_us) / n / 1000.0f, late, p.late,
-           skipped, d.late_flips, d.timeouts, display_->dma_sync() ? "frame-locked" : "timed fallback");
+           static_cast<float>(p.max_decode_us) / 1000.0f, static_cast<float>(d.copy_us) / n / 1000.0f,
+           static_cast<float>(d.wait_us) / n / 1000.0f, late, p.late, skipped, d.late_flips, d.timeouts,
+           display_->dma_sync() ? "frame-locked" : "timed fallback");
 }
 
 void Renderer::run() {
@@ -124,10 +126,16 @@ void Renderer::run() {
     display_->present(slot->frame);
     const int64_t t_end = esp_timer_get_time();
     copy_lead_us_ = (copy_lead_us_ * 7 + (t_end - t_start)) / 8;
-    // The frame is visible from the flip on (plus up to one refresh period); a present
-    // that started late pushes the schedule of everything after it.
-    const int64_t visible = std::max<int64_t>(target, t_end);
-    const bool late = scheduled && t_end > schedule_us + period_us;
+    // The schedule carries durations exactly (spec 4.3: no cumulative drift): the next
+    // target is this target plus the delay, even though the flip lands on the refresh
+    // grid up to one period after it. Only a present that missed by more than a period
+    // re-anchors the schedule for everything after it (the frame was late; no catch-up).
+    // Anchoring on the copy's end time instead drifted 1 % slow (0.5 ms per frame), which
+    // let the player run out of its three-frame lead and report every frame late.
+    const int64_t visible = t_end > target + period_us ? t_end : target;
+    // A frame the player produced late re-anchored the timeline and cannot be on the
+    // old schedule; the player counts those. Here only presentation lateness counts.
+    const bool late = scheduled && !slot->decoded_late && t_end > schedule_us + period_us;
     last_present_us_ = t_end;
     last_visible_us_ = visible;
     last_delay_us_ = slot->delay_us;

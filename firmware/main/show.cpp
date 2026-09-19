@@ -1,0 +1,902 @@
+#include "show.hpp"
+
+#include <algorithm>
+#include <memory>
+#include <mutex>
+#include <new>
+#include <vector>
+
+#include "esp_heap_caps.h"
+#include "esp_log.h"
+#include "esp_random.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
+#include "boot_animation.hpp"
+#include "loader.hpp"
+#include "p64/content/history.hpp"
+#include "p64/content/local_index.hpp"
+#include "p64/content/playset.hpp"
+#include "p64/content/playset_json.hpp"
+#include "p64/content/playset_store.hpp"
+#include "p64/content/psram.hpp"
+#include "p64/content/scheduler.hpp"
+#include "p64/playback/frame_source.hpp"
+#include "p64/storage/card.hpp"
+#include "p64/system/event_bus.hpp"
+#include "p64/system/settings.hpp"
+#include "p64/system/state_store.hpp"
+#include "status_screens.hpp"
+
+namespace p64::show {
+namespace {
+
+constexpr const char *TAG = "show";
+constexpr const char *kActiveKey = "playset";
+constexpr int64_t kSecond = 1000000;
+constexpr int64_t kRescanDebounceUs = 2 * kSecond;   // after file manager changes
+constexpr int64_t kRetryUs = 5 * kSecond;            // while nothing can be shown
+constexpr int64_t kIdleRescanUs = 30 * kSecond;      // rescan period while nothing can be shown
+constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
+
+// --- commands -------------------------------------------------------------------------
+
+enum class Cmd : uint8_t {
+  Next,
+  Previous,
+  GoTo,
+  Pause,
+  Resume,
+  ResetTimer,
+  Refresh,
+  PlayFile,
+  Activate,
+  Loaded,
+  Scanned,
+  CardChanged,
+  FilesChanged,
+  Settings,
+};
+
+struct Command {
+  Cmd type;
+  uint32_t number;
+  std::string *text;
+  loader::LoadResult *load;
+  loader::ScanResult *scan;
+};
+
+// The boot animation as a source: runs its course, then holds its last frame until the
+// first artwork replaces it.
+class BootSource : public playback::FrameSource {
+ public:
+  explicit BootSource(uint32_t duration_ms) : duration_ms_(duration_ms), t0_(esp_timer_get_time()) {}
+  const std::string &name() const override { return name_; }
+  bool next_frame(gfx::Frame &out, uint32_t &delay_ms, int64_t due_us) override {
+    const int64_t at = due_us ? due_us : esp_timer_get_time();
+    uint32_t t_ms = at > t0_ ? static_cast<uint32_t>((at - t0_) / 1000) : 0;
+    const bool over = t_ms + 1 >= duration_ms_;
+    if (over) t_ms = duration_ms_ - 1;
+    animation_.render(out, t_ms, duration_ms_);
+    // 30 fps: the procedural render (about 7 ms) plus the 7.5 ms panel copy share
+    // core 1, so 60 fps would run late on every frame and pollute the counters.
+    delay_ms = over ? 100 : 33;
+    return true;
+  }
+  bool is_static() const override { return false; }
+
+ private:
+  std::string name_ = "boot";
+  BootAnimation animation_;
+  uint32_t duration_ms_;
+  int64_t t0_;
+};
+
+struct ChannelRuntime {
+  content::ChannelSpec spec;
+  content::LocalEntries entries;
+  uint32_t available = 0;  // entries neither missing nor rejected
+  std::string status;      // "" when the channel can supply artworks, else why not
+};
+
+struct Pick {
+  uint32_t generation = 0;  // the playset generation it was made against
+  int channel = -1;
+  int entry = -1;
+  std::string path;
+  std::string name;
+  std::string channel_name;
+};
+
+struct Pending {
+  enum class Purpose : uint8_t { None, Navigate, PlayThis, Resume } purpose = Purpose::None;
+  uint32_t load_id = 0;
+  int direction = 0;  // navigation: -1 previous, +1 next, 0 exact
+  content::HistoryItem item;
+};
+
+// The state. Owned by the main task; g_mutex makes it readable by the API's tasks.
+std::mutex g_mutex;
+QueueHandle_t g_commands = nullptr;
+playback::Player *g_player = nullptr;
+playback::Renderer *g_renderer = nullptr;
+gfx::Frame *g_scratch = nullptr;  // PSRAM; status screens are drawn here
+
+content::Playset g_playset;
+std::vector<ChannelRuntime> g_channels;
+content::Scheduler g_scheduler;
+content::History g_history;
+uint32_t g_generation = 0;  // bumps per scan request; results carry it back
+
+bool g_paused = false;
+int64_t g_swap_at_us = 0;                    // when the current item went up
+int64_t g_boot_until_us = 0;                 // the boot animation holds the panel until then
+std::shared_ptr<playback::Artwork> g_current;  // the artwork on the panel (null: status screen or pause)
+std::string g_status_reason;                 // the "no artwork" reason on the panel ("" when none)
+std::string g_last_error;                    // the last load or activation failure, for the UI
+
+Pick g_prepared_pick;
+std::shared_ptr<playback::Artwork> g_prepared;
+uint32_t g_prepared_load_id = 0;
+bool g_want_prepared_now = false;
+uint32_t g_prepare_failures = 0;
+Pending g_pending;
+
+bool g_scan_running = false;
+bool g_scan_again = false;
+bool g_activate_after_scan = false;
+int64_t g_rescan_due_us = 0;
+int64_t g_retry_at_us = 0;
+uint32_t g_swaps = 0;
+uint32_t g_load_failures = 0;
+uint32_t g_last_scan_ms = 0;
+
+int64_t now_us() { return esp_timer_get_time(); }
+
+template <typename T, typename... Args>
+std::shared_ptr<T> psram_shared(Args &&...args) {
+  return std::allocate_shared<T>(content::PsramAllocator<T>(), std::forward<Args>(args)...);
+}
+
+void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
+          loader::ScanResult *scan = nullptr) {
+  Command c{type, number, text, load, scan};
+  if (!g_commands || xQueueSend(g_commands, &c, pdMS_TO_TICKS(500)) != pdTRUE) {
+    ESP_LOGW(TAG, "command queue full; dropped command %d", static_cast<int>(type));
+    delete text;
+    delete load;
+    delete scan;
+  }
+}
+
+std::string relative_path(const std::string &absolute) {
+  const std::string prefix = storage::root() + "/";
+  return absolute.rfind(prefix, 0) == 0 ? absolute.substr(prefix.size()) : absolute;
+}
+
+std::string basename_of(const std::string &path) { return path.substr(path.rfind('/') + 1); }
+
+std::string channel_dir(const content::ChannelSpec &spec) {
+  return spec.identifier.empty() ? storage::animations_dir() : storage::animations_dir() + "/" + spec.identifier;
+}
+
+const char *channel_status(const content::ChannelSpec &spec) {
+  if (!spec.supported()) return "not supported yet";
+  if (spec.kind == content::ChannelKind::Local) return storage::mounted() ? "" : "no card";
+  if (spec.kind == content::ChannelKind::MakapixPromoted) return "Makapix not available yet";
+  return "needs pairing";
+}
+
+// Why nothing can be shown: the first reason among the channels, "empty" when a usable
+// channel simply has no files.
+std::string no_artwork_reason() {
+  std::string reason;
+  for (const ChannelRuntime &ch : g_channels) {
+    if (ch.status.empty()) {
+      if (ch.available > 0) return "";
+      if (reason.empty()) reason = "empty";
+    } else if (reason.empty() || reason == "empty") {
+      if (reason.empty()) reason = ch.status;
+    }
+  }
+  return reason.empty() ? "empty" : reason;
+}
+
+bool can_swap_now() { return now_us() >= g_boot_until_us; }
+
+void apply_scheduler_modes(const system::Settings &s) {
+  g_scheduler.set_pick_mode(s.pick_mode == system::PickMode::Recency ? content::PickMode::Recency
+                                                                      : content::PickMode::Random);
+  g_scheduler.set_channel_select(s.channel_select == system::ChannelSelect::Swrr ? content::ChannelSelect::Swrr
+                                                                                  : content::ChannelSelect::Stochastic);
+}
+
+// --- picking and playing --------------------------------------------------------------
+
+bool pick_fresh(Pick &out) {
+  uint32_t attempts = g_scheduler.available_channels();
+  const content::HistoryItem *cur = g_history.current();
+  while (attempts-- > 0) {
+    const int c = g_scheduler.select_channel();
+    if (c < 0 || static_cast<size_t>(c) >= g_channels.size()) return false;
+    ChannelRuntime &ch = g_channels[c];
+    const int avoid = (cur && cur->channel_index == c && cur->playset == g_playset.name) ? cur->entry_index : -1;
+    const size_t tries = std::min<size_t>(ch.entries.size(), 16);
+    for (size_t t = 0; t < tries; ++t) {
+      const int e = g_scheduler.pick_entry(c, avoid);
+      if (e < 0 || static_cast<size_t>(e) >= ch.entries.size()) break;
+      const content::LocalEntry &entry = ch.entries[e];
+      if (entry.missing || entry.rejected) continue;
+      out.generation = g_generation;
+      out.channel = c;
+      out.entry = e;
+      out.path = channel_dir(ch.spec) + "/" + entry.name;
+      out.name = entry.name;
+      out.channel_name = ch.spec.display_name.empty() ? ch.spec.default_display_name() : ch.spec.display_name;
+      return true;
+    }
+  }
+  return false;
+}
+
+void mark_entry(const Pick &pick, bool missing) {
+  if (pick.generation != g_generation || pick.channel < 0 || static_cast<size_t>(pick.channel) >= g_channels.size()) return;
+  ChannelRuntime &ch = g_channels[pick.channel];
+  if (pick.entry < 0 || static_cast<size_t>(pick.entry) >= ch.entries.size()) return;
+  content::LocalEntry &entry = ch.entries[pick.entry];
+  if (pick.name != entry.name || entry.missing || entry.rejected) return;
+  if (missing) {
+    entry.missing = 1;
+  } else {
+    entry.rejected = 1;
+  }
+  if (ch.available > 0) --ch.available;
+  if (ch.available == 0) g_scheduler.set_count(pick.channel, 0);
+}
+
+void request_prepare() {
+  if (g_prepared || g_prepared_load_id) return;
+  Pick p;
+  if (!pick_fresh(p)) return;
+  g_prepared_pick = p;
+  g_prepared_load_id = loader::load(p.path, system::settings().background);
+}
+
+void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem item, bool push) {
+  const int64_t now = now_us();
+  g_player->play(art);
+  g_current = std::move(art);
+  g_status_reason.clear();
+  g_paused = false;
+  g_swap_at_us = now;
+  item.shown_at_us = now;
+  if (push) {
+    g_history.push(std::move(item));
+  } else if (content::HistoryItem *cur = g_history.current()) {
+    cur->shown_at_us = now;
+  }
+  ++g_swaps;
+  const decode::Info &info = g_current->info();
+  ESP_LOGI(TAG, "playing %s (%s %dx%d, %u bytes%s) from %s, history %u/%u", g_current->name().c_str(),
+           decode::format_name(g_current->format()), info.width, info.height,
+           static_cast<unsigned>(g_current->file_bytes()), info.animated ? "" : ", static",
+           g_history.current() ? (g_history.current()->channel.empty() ? "play-this" : g_history.current()->channel.c_str())
+                               : "?",
+           static_cast<unsigned>(g_history.position() + 1), static_cast<unsigned>(g_history.size()));
+  system::publish(system::Event::PlaybackSwapped, static_cast<int32_t>(g_history.position()));
+}
+
+void play_prepared() {
+  content::HistoryItem item;
+  item.kind = content::ItemKind::Artwork;
+  item.source = content::Source::Channel;
+  item.path = g_prepared_pick.path;
+  item.name = g_prepared_pick.name;
+  item.channel = g_prepared_pick.channel_name;
+  item.channel_index = g_prepared_pick.channel;
+  item.entry_index = g_prepared_pick.entry;
+  item.playset = g_playset.name;
+  play_artwork(std::move(g_prepared), std::move(item), true);
+  g_prepared.reset();
+  g_want_prepared_now = false;
+  request_prepare();
+}
+
+void show_status(const std::string &reason) {
+  if (!g_current && !g_paused && g_status_reason == reason) return;
+  status_screens::no_artwork(*g_scratch, reason);
+  g_player->play(psram_shared<playback::StaticSource>("no artwork", *g_scratch));
+  g_current.reset();
+  g_paused = false;
+  g_status_reason = reason;
+  g_retry_at_us = now_us() + kRetryUs;
+  if (!g_rescan_due_us) g_rescan_due_us = now_us() + kIdleRescanUs;
+  ESP_LOGW(TAG, "no artwork: %s", reason.c_str());
+  system::publish(system::Event::PlaybackSwapped, -1);
+}
+
+// A fresh pick goes up now (auto-swap, next at the end of history, activation). When
+// nothing is ready, whatever is on the panel stays until something is (spec 4.5).
+void swap_fresh() {
+  if (g_prepared) {
+    if (can_swap_now()) {
+      play_prepared();
+    } else {
+      g_want_prepared_now = true;
+    }
+    return;
+  }
+  if (g_prepared_load_id) {
+    g_want_prepared_now = true;
+    return;
+  }
+  Pick p;
+  if (pick_fresh(p)) {
+    g_prepared_pick = p;
+    g_prepared_load_id = loader::load(p.path, system::settings().background);
+    g_want_prepared_now = true;
+    return;
+  }
+  if (!g_current) {
+    show_status(no_artwork_reason());
+  } else if (!g_rescan_due_us) {
+    g_rescan_due_us = now_us() + kRetryUs;  // the index may be stale; look again soon
+  }
+}
+
+void load_current_history_item(Pending::Purpose purpose, int direction) {
+  const content::HistoryItem *item = g_history.current();
+  if (!item) return;
+  g_pending.purpose = purpose;
+  g_pending.direction = direction;
+  g_pending.item = *item;
+  g_pending.load_id = loader::load(item->path, system::settings().background);
+}
+
+// --- scans and playsets ---------------------------------------------------------------
+
+void start_scan(const content::Playset &playset, bool activation) {
+  ++g_generation;
+  g_scan_running = true;
+  if (activation) g_activate_after_scan = true;
+  loader::scan(g_generation, playset);
+}
+
+bool same_channels(const content::Playset &a, const content::Playset &b) {
+  if (a.name != b.name || a.channels.size() != b.channels.size()) return false;
+  for (size_t i = 0; i < a.channels.size(); ++i) {
+    const content::ChannelSpec &x = a.channels[i], &y = b.channels[i];
+    if (x.kind != y.kind || x.identifier != y.identifier || x.weight != y.weight || x.offset != y.offset) return false;
+  }
+  return true;
+}
+
+void install(loader::ScanResult &r) {
+  const bool fresh = g_activate_after_scan || !same_channels(g_playset, r.playset) ||
+                     g_channels.size() != r.playset.channels.size();
+  g_playset = r.playset;
+  std::vector<ChannelRuntime> channels(g_playset.channels.size());
+  size_t entries = 0;
+  for (size_t i = 0; i < channels.size(); ++i) {
+    ChannelRuntime &ch = channels[i];
+    ch.spec = g_playset.channels[i];
+    if (i < r.entries.size()) ch.entries = std::move(r.entries[i]);
+    ch.available = static_cast<uint32_t>(ch.entries.size());
+    ch.status = channel_status(ch.spec);
+    if (ch.status.empty() && i < r.errors.size() && !r.errors[i].empty()) ch.status = r.errors[i];
+    entries += ch.entries.size();
+  }
+  g_channels = std::move(channels);
+  if (fresh) {
+    std::vector<uint32_t> weights, offsets;
+    for (const content::ChannelSpec &c : g_playset.channels) {
+      weights.push_back(c.weight);
+      offsets.push_back(c.offset);
+    }
+    const uint64_t seed = (static_cast<uint64_t>(esp_random()) << 32) | esp_random();
+    g_scheduler.configure(weights, offsets, seed);
+  }
+  apply_scheduler_modes(system::settings());
+  for (size_t i = 0; i < g_channels.size(); ++i) {
+    g_scheduler.set_count(i, g_channels[i].available ? static_cast<uint32_t>(g_channels[i].entries.size()) : 0);
+  }
+  g_last_scan_ms = r.took_ms;
+  ESP_LOGI(TAG, "playset %s: %u channels, %u entries%s, scan %u ms%s", g_playset.name.c_str(),
+           static_cast<unsigned>(g_channels.size()), static_cast<unsigned>(entries),
+           r.skipped ? (", " + std::to_string(r.skipped) + " skipped").c_str() : "", r.took_ms, fresh ? " (fresh)" : "");
+  if (fresh) {
+    // The prepared artwork was picked against the old playset or index: drop it.
+    g_prepared.reset();
+    g_prepared_load_id = 0;
+    g_prepared_pick = Pick{};
+    g_want_prepared_now = false;
+  }
+  if (g_activate_after_scan) {
+    g_activate_after_scan = false;
+    swap_fresh();
+  } else if (!g_current && !g_paused) {
+    swap_fresh();
+  } else {
+    request_prepare();
+  }
+}
+
+bool resolve_playset(const std::string &name, content::Playset &out, std::string &error) {
+  content::Builtin b;
+  if (content::builtin_from_name(name, b)) {
+    out = content::builtin_playset(b, {});
+    return true;
+  }
+  return content::store::load(name, out, error);
+}
+
+void activate(const std::string &name, bool persist) {
+  content::Playset p;
+  std::string error;
+  if (!resolve_playset(name, p, error)) {
+    ESP_LOGW(TAG, "cannot activate %s: %s", name.c_str(), error.c_str());
+    g_last_error = "playset " + name + ": " + error;
+    return;
+  }
+  ESP_LOGI(TAG, "activating playset %s", name.c_str());
+  if (persist) system::state::set(kActiveKey, p.name);
+  g_playset.name = p.name;  // status shows the new name while the scan runs
+  g_playset.builtin = p.builtin;
+  start_scan(p, true);
+}
+
+// --- command handling -----------------------------------------------------------------
+
+void on_loaded(loader::LoadResult *raw) {
+  std::unique_ptr<loader::LoadResult> res(raw);
+  if (res->id == g_prepared_load_id) {
+    g_prepared_load_id = 0;
+    if (!res->artwork) {
+      ESP_LOGW(TAG, "%s: %s", res->path.c_str(), res->error.c_str());
+      ++g_load_failures;
+      g_last_error = basename_of(res->path) + ": " + res->error;
+      mark_entry(g_prepared_pick, res->missing);
+      if (++g_prepare_failures < kMaxPrepareFailures) {
+        request_prepare();
+        if (g_want_prepared_now && g_prepared_load_id) return;
+      }
+      if (!g_current && !g_paused) show_status(no_artwork_reason());
+      return;
+    }
+    g_prepare_failures = 0;
+    g_prepared = res->artwork;
+    ESP_LOGD(TAG, "prepared %s (read %u ms, open %u ms)", res->artwork->name().c_str(), res->read_ms, res->open_ms);
+    if (g_want_prepared_now && can_swap_now()) play_prepared();
+    return;
+  }
+  if (res->id == g_pending.load_id) {
+    g_pending.load_id = 0;
+    const Pending::Purpose purpose = g_pending.purpose;
+    g_pending.purpose = Pending::Purpose::None;
+    if (!res->artwork) {
+      ESP_LOGW(TAG, "%s: %s", res->path.c_str(), res->error.c_str());
+      ++g_load_failures;
+      g_last_error = basename_of(res->path) + ": " + res->error;
+      if (purpose == Pending::Purpose::PlayThis) return;  // the current picture stays (spec 4.5)
+      // A history item whose file is gone is dropped and the walk continues (spec 4.6).
+      const size_t pos = g_history.position();
+      if (g_history.size() && g_history.at(pos).path == res->path) g_history.remove(pos);
+      if (purpose == Pending::Purpose::Navigate && g_pending.direction < 0 && g_history.can_back()) {
+        g_history.back();
+        load_current_history_item(purpose, -1);
+      } else if (purpose == Pending::Purpose::Navigate && g_pending.direction > 0 && g_history.can_forward()) {
+        g_history.forward();
+        load_current_history_item(purpose, 1);
+      } else if (!g_current || purpose == Pending::Purpose::Resume || g_pending.direction > 0) {
+        swap_fresh();
+      }
+      return;
+    }
+    play_artwork(res->artwork, g_pending.item, purpose == Pending::Purpose::PlayThis);
+    return;
+  }
+  // A result for a request that was superseded (playset changed, newer navigation).
+  ESP_LOGD(TAG, "stale load result for %s ignored", res->path.c_str());
+}
+
+void on_scanned(loader::ScanResult *raw) {
+  std::unique_ptr<loader::ScanResult> res(raw);
+  g_scan_running = false;
+  if (res->generation != g_generation) {
+    ESP_LOGD(TAG, "stale scan result ignored");
+  } else {
+    install(*res);
+  }
+  if (g_scan_again) {
+    g_scan_again = false;
+    g_rescan_due_us = now_us();
+  }
+}
+
+void do_next() {
+  if (g_paused) g_paused = false;
+  if (g_history.can_forward()) {
+    g_history.forward();
+    load_current_history_item(Pending::Purpose::Navigate, 1);
+    return;
+  }
+  swap_fresh();
+}
+
+void do_previous() {
+  if (g_paused) g_paused = false;
+  if (!g_history.can_back()) {
+    ESP_LOGI(TAG, "previous: at the start of history");
+    return;
+  }
+  g_history.back();
+  load_current_history_item(Pending::Purpose::Navigate, -1);
+}
+
+void do_go_to(size_t index) {
+  if (!g_history.go_to(index)) return;
+  if (g_paused) g_paused = false;
+  load_current_history_item(Pending::Purpose::Navigate, 0);
+}
+
+void do_pause() {
+  if (g_paused) return;
+  status_screens::black(*g_scratch);
+  g_player->play(psram_shared<playback::StaticSource>("paused", *g_scratch));
+  g_current.reset();
+  g_paused = true;
+  ESP_LOGI(TAG, "paused");
+  system::publish(system::Event::PlaybackSwapped, -1);
+}
+
+void do_resume() {
+  if (!g_paused) return;
+  if (g_history.current()) {
+    load_current_history_item(Pending::Purpose::Resume, 0);
+  } else {
+    g_paused = false;
+    swap_fresh();
+  }
+}
+
+void do_play_file(const std::string &path) {
+  content::HistoryItem item;
+  item.kind = content::ItemKind::Artwork;
+  item.source = content::Source::PlayThisFile;
+  item.path = path;
+  item.name = basename_of(path);
+  item.playset = g_playset.name;
+  g_pending.purpose = Pending::Purpose::PlayThis;
+  g_pending.direction = 0;
+  g_pending.item = std::move(item);
+  g_pending.load_id = loader::load(path, system::settings().background);
+}
+
+void handle(Command &c) {
+  switch (c.type) {
+    case Cmd::Next: do_next(); break;
+    case Cmd::Previous: do_previous(); break;
+    case Cmd::GoTo: do_go_to(c.number); break;
+    case Cmd::Pause: do_pause(); break;
+    case Cmd::Resume: do_resume(); break;
+    case Cmd::ResetTimer: g_swap_at_us = now_us(); break;
+    case Cmd::Refresh: g_rescan_due_us = now_us(); break;
+    case Cmd::PlayFile:
+      if (c.text) do_play_file(*c.text);
+      break;
+    case Cmd::Activate:
+      if (c.text) activate(*c.text, true);
+      break;
+    case Cmd::Loaded: on_loaded(c.load); break;
+    case Cmd::Scanned: on_scanned(c.scan); break;
+    case Cmd::CardChanged: g_rescan_due_us = now_us() + kSecond / 5; break;
+    case Cmd::FilesChanged: g_rescan_due_us = now_us() + kRescanDebounceUs; break;
+    case Cmd::Settings: {
+      const system::Settings s = system::settings();
+      apply_scheduler_modes(s);
+      if (g_current) g_current->set_background(s.background);
+      if (g_prepared) g_prepared->set_background(s.background);
+      break;
+    }
+  }
+  delete c.text;
+}
+
+// Periodic work: the auto-swap timer, the boot hold, rescans, retries.
+void tick() {
+  const int64_t now = now_us();
+  const system::Settings s = system::settings();
+  if (g_want_prepared_now && g_prepared && can_swap_now()) play_prepared();
+  if (!g_paused && g_current && s.auto_swap_seconds > 0 &&
+      now - g_swap_at_us >= static_cast<int64_t>(s.auto_swap_seconds) * kSecond) {
+    swap_fresh();
+  }
+  if (g_rescan_due_us && now >= g_rescan_due_us) {
+    if (g_scan_running) {
+      g_scan_again = true;
+    } else {
+      start_scan(g_playset, false);
+    }
+    g_rescan_due_us = 0;
+  }
+  if (!g_current && !g_paused && !g_status_reason.empty() && now >= g_retry_at_us) {
+    g_retry_at_us = now + kRetryUs;
+    swap_fresh();
+    if (!g_current && !g_rescan_due_us && !g_scan_running) g_rescan_due_us = now + kIdleRescanUs;
+  }
+}
+
+// How long the loop may sleep before tick() has something to do.
+TickType_t wait_ticks() {
+  const int64_t now = now_us();
+  int64_t wait = kSecond;  // settings changes and the like are noticed within a second
+  auto consider = [&](int64_t at) {
+    if (at > 0) wait = std::min(wait, std::max<int64_t>(at - now, 0));
+  };
+  const system::Settings s = system::settings();
+  if (!g_paused && g_current && s.auto_swap_seconds > 0) {
+    consider(g_swap_at_us + static_cast<int64_t>(s.auto_swap_seconds) * kSecond);
+  }
+  if (g_want_prepared_now && g_prepared) consider(g_boot_until_us);
+  consider(g_rescan_due_us);
+  if (!g_current && !g_paused && !g_status_reason.empty()) consider(g_retry_at_us);
+  const TickType_t ticks = pdMS_TO_TICKS(wait / 1000 + 1);
+  return ticks ? ticks : 1;
+}
+
+cJSON *item_json(const content::HistoryItem &item, size_t index, bool current) {
+  cJSON *o = cJSON_CreateObject();
+  cJSON_AddNumberToObject(o, "index", static_cast<double>(index));
+  cJSON_AddStringToObject(o, "kind", item.kind == content::ItemKind::Interlude ? "interlude" : "artwork");
+  const char *source = "channel";
+  switch (item.source) {
+    case content::Source::Channel: source = "channel"; break;
+    case content::Source::PlayThisFile: source = "file"; break;
+    case content::Source::PlayThisUrl: source = "url"; break;
+    case content::Source::PlayThisMakapix: source = "makapix"; break;
+  }
+  cJSON_AddStringToObject(o, "source", source);
+  cJSON_AddStringToObject(o, "name", item.name.c_str());
+  cJSON_AddStringToObject(o, "path", relative_path(item.path).c_str());
+  cJSON_AddStringToObject(o, "channel", item.channel.c_str());
+  cJSON_AddNumberToObject(o, "channel_index", item.channel_index);
+  cJSON_AddStringToObject(o, "playset", item.playset.c_str());
+  cJSON_AddNumberToObject(o, "shown_s_ago", static_cast<double>((now_us() - item.shown_at_us) / kSecond));
+  cJSON_AddBoolToObject(o, "current", current);
+  return o;
+}
+
+}  // namespace
+
+// --- public API -----------------------------------------------------------------------
+
+bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_animation_ms) {
+  g_player = &player;
+  g_renderer = &renderer;
+  void *mem = heap_caps_malloc(sizeof(gfx::Frame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  g_scratch = mem ? new (mem) gfx::Frame() : new gfx::Frame();
+  g_commands = xQueueCreate(16, sizeof(Command));
+  if (!g_commands) return false;
+  if (!loader::start([](loader::LoadResult *r) { send(Cmd::Loaded, 0, nullptr, r, nullptr); },
+                     [](loader::ScanResult *r) { send(Cmd::Scanned, 0, nullptr, nullptr, r); })) {
+    ESP_LOGE(TAG, "loader task failed to start");
+    return false;
+  }
+  // The boot animation holds the panel until it has run its course (spec 15.1).
+  if (boot_animation_ms > 0) {
+    g_boot_until_us = now_us() + static_cast<int64_t>(boot_animation_ms) * 1000;
+    g_player->play(psram_shared<BootSource>(boot_animation_ms));
+  } else {
+    status_screens::black(*g_scratch);
+    g_player->play(psram_shared<playback::StaticSource>("boot", *g_scratch));
+  }
+  system::subscribe(system::Event::CardMounted, [](const system::Message &) { send(Cmd::CardChanged); });
+  system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
+  system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
+  system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { send(Cmd::Settings); });
+  return true;
+}
+
+void restore() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  std::string name;
+  system::state::get(kActiveKey, name);
+  content::Playset p;
+  std::string error;
+  if (name.empty() || !resolve_playset(name, p, error)) {
+    if (!name.empty()) ESP_LOGW(TAG, "saved playset %s cannot be restored (%s)", name.c_str(), error.c_str());
+    // Spec 5.2: Promoted, or Local when there is no network. Makapix arrives with M6, so
+    // until then a card means Local.
+    name = storage::mounted() ? content::builtin_name(content::Builtin::Local)
+                              : content::builtin_name(content::Builtin::Promoted);
+  }
+  activate(name, false);
+}
+
+[[noreturn]] void run() {
+  ESP_LOGI(TAG, "show loop running");
+  while (true) {
+    Command c{};
+    const bool got = xQueueReceive(g_commands, &c, wait_ticks()) == pdTRUE;
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (got) handle(c);
+    tick();
+  }
+}
+
+void next() { send(Cmd::Next); }
+void previous() { send(Cmd::Previous); }
+void go_to(size_t history_index) { send(Cmd::GoTo, static_cast<uint32_t>(history_index)); }
+void pause() { send(Cmd::Pause); }
+void resume() { send(Cmd::Resume); }
+void reset_timer() { send(Cmd::ResetTimer); }
+void refresh() { send(Cmd::Refresh); }
+
+bool play_file(const std::string &absolute_path, std::string &error) {
+  if (!storage::exists(absolute_path) || storage::is_directory(absolute_path)) {
+    error = "no such file";
+    return false;
+  }
+  if (!content::artwork_extension(absolute_path.c_str())) {
+    error = "not an artwork file (.gif, .png, .apng, .webp, .bmp)";
+    return false;
+  }
+  send(Cmd::PlayFile, 0, new std::string(absolute_path));
+  return true;
+}
+
+bool activate_playset(const std::string &name, std::string &error) {
+  content::Builtin b;
+  if (!content::builtin_from_name(name, b) && !content::store::exists(name)) {
+    error = "no such playset";
+    return false;
+  }
+  send(Cmd::Activate, 0, new std::string(name));
+  return true;
+}
+
+cJSON *status_json() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  const system::Settings s = system::settings();
+  const int64_t now = now_us();
+  cJSON *p = cJSON_CreateObject();
+  cJSON_AddStringToObject(p, "state", "animation_show");
+  cJSON_AddBoolToObject(p, "paused", g_paused);
+  cJSON *ps = cJSON_AddObjectToObject(p, "playset");
+  cJSON_AddStringToObject(ps, "name", g_playset.name.c_str());
+  cJSON_AddBoolToObject(ps, "builtin", g_playset.builtin);
+  cJSON_AddNumberToObject(ps, "channels", static_cast<double>(g_channels.size()));
+  cJSON_AddBoolToObject(ps, "scanning", g_scan_running);
+  if (g_current) {
+    cJSON *a = cJSON_AddObjectToObject(p, "artwork");
+    cJSON_AddStringToObject(a, "name", g_current->name().c_str());
+    cJSON_AddStringToObject(a, "format", decode::format_name(g_current->format()));
+    cJSON_AddNumberToObject(a, "width", g_current->info().width);
+    cJSON_AddNumberToObject(a, "height", g_current->info().height);
+    cJSON_AddNumberToObject(a, "bytes", static_cast<double>(g_current->file_bytes()));
+    cJSON_AddBoolToObject(a, "animated", g_current->info().animated);
+    cJSON_AddNumberToObject(a, "frames_decoded", g_current->frames_decoded());
+    cJSON_AddNumberToObject(a, "since_s", static_cast<double>((now - g_swap_at_us) / kSecond));
+    if (const content::HistoryItem *cur = g_history.current()) {
+      cJSON_AddStringToObject(a, "path", relative_path(cur->path).c_str());
+      cJSON_AddStringToObject(a, "channel", cur->channel.c_str());
+      cJSON_AddNumberToObject(a, "channel_index", cur->channel_index);
+      cJSON_AddStringToObject(a, "source", cur->source == content::Source::Channel ? "channel" : "play_this");
+    }
+  }
+  cJSON_AddStringToObject(p, "no_artwork", g_current || g_paused ? "" : g_status_reason.c_str());
+  cJSON_AddStringToObject(p, "last_error", g_last_error.c_str());
+  cJSON *h = cJSON_AddObjectToObject(p, "history");
+  cJSON_AddNumberToObject(h, "count", static_cast<double>(g_history.size()));
+  cJSON_AddNumberToObject(h, "position", g_history.size() ? static_cast<double>(g_history.position()) : -1);
+  cJSON_AddBoolToObject(h, "can_back", g_history.can_back());
+  cJSON_AddBoolToObject(h, "can_forward", g_history.can_forward());
+  cJSON *as = cJSON_AddObjectToObject(p, "auto_swap");
+  cJSON_AddNumberToObject(as, "interval_s", s.auto_swap_seconds);
+  const int64_t remaining =
+      (!g_paused && g_current && s.auto_swap_seconds) ? g_swap_at_us + s.auto_swap_seconds * kSecond - now : -kSecond;
+  cJSON_AddNumberToObject(as, "remaining_s", remaining < 0 ? -1 : static_cast<double>(remaining / kSecond));
+  cJSON_AddBoolToObject(p, "prepared", static_cast<bool>(g_prepared));
+  cJSON_AddNumberToObject(p, "swaps", g_swaps);
+  cJSON_AddNumberToObject(p, "load_failures", g_load_failures);
+  if (g_renderer) {
+    const playback::Renderer::Stats r = g_renderer->totals();
+    cJSON_AddNumberToObject(p, "frames", r.frames);
+    cJSON_AddNumberToObject(p, "late", r.late);
+    cJSON_AddNumberToObject(p, "skipped", r.skipped);
+  }
+  return p;
+}
+
+cJSON *channels_json() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddStringToObject(root, "playset", g_playset.name.c_str());
+  cJSON_AddBoolToObject(root, "scanning", g_scan_running);
+  cJSON_AddNumberToObject(root, "last_scan_ms", g_last_scan_ms);
+  cJSON *arr = cJSON_AddArrayToObject(root, "channels");
+  for (size_t i = 0; i < g_channels.size(); ++i) {
+    const ChannelRuntime &ch = g_channels[i];
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddNumberToObject(o, "index", static_cast<double>(i));
+    cJSON_AddStringToObject(o, "kind", content::kind_name(ch.spec.kind));
+    cJSON_AddStringToObject(o, "identifier", ch.spec.identifier.c_str());
+    cJSON_AddStringToObject(o, "display_name",
+                            (ch.spec.display_name.empty() ? ch.spec.default_display_name() : ch.spec.display_name).c_str());
+    cJSON_AddNumberToObject(o, "weight", ch.spec.weight);
+    cJSON_AddNumberToObject(o, "offset", ch.spec.offset);
+    cJSON_AddNumberToObject(o, "entries", static_cast<double>(ch.entries.size()));
+    cJSON_AddNumberToObject(o, "available", ch.available);
+    cJSON_AddStringToObject(o, "status", ch.status.c_str());
+    if (i < g_scheduler.size()) {
+      const content::Scheduler::Channel &sc = g_scheduler.channel(i);
+      cJSON_AddNumberToObject(o, "share", static_cast<double>(sc.weight) / content::Scheduler::kWeightSum);
+      cJSON_AddNumberToObject(o, "credit", sc.credit);
+      cJSON_AddNumberToObject(o, "cursor", sc.cursor);
+    }
+    cJSON_AddItemToArray(arr, o);
+  }
+  return root;
+}
+
+cJSON *history_json() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddNumberToObject(root, "count", static_cast<double>(g_history.size()));
+  cJSON_AddNumberToObject(root, "position", g_history.size() ? static_cast<double>(g_history.position()) : -1);
+  cJSON *arr = cJSON_AddArrayToObject(root, "items");
+  for (size_t i = 0; i < g_history.size(); ++i) {
+    cJSON_AddItemToArray(arr, item_json(g_history.at(i), i, i == g_history.position() && (g_current || g_paused)));
+  }
+  return root;
+}
+
+cJSON *playsets_json() {
+  std::vector<content::store::Summary> stored;
+  std::string error;
+  const bool listed = content::store::list(stored, error);  // card I/O, outside the lock
+  cJSON *root = cJSON_CreateObject();
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    cJSON_AddStringToObject(root, "active", g_playset.name.c_str());
+  }
+  cJSON *arr = cJSON_AddArrayToObject(root, "playsets");
+  for (const content::store::Summary &s : stored) {
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "name", s.name.c_str());
+    cJSON_AddNumberToObject(o, "channels", static_cast<double>(s.channels));
+    cJSON_AddItemToArray(arr, o);
+  }
+  if (!listed) cJSON_AddStringToObject(root, "error", error.c_str());
+  cJSON *builtins = cJSON_AddArrayToObject(root, "builtins");
+  for (size_t i = 0; i < content::kBuiltinCount; ++i) {
+    const content::Builtin b = static_cast<content::Builtin>(i);
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "name", content::builtin_name(b));
+    bool enabled = false;
+    const char *reason = "";
+    switch (b) {
+      case content::Builtin::Promoted: reason = "Makapix not available yet"; break;
+      case content::Builtin::All:
+      case content::Builtin::Followed: reason = "needs pairing"; break;
+      case content::Builtin::Local:
+        enabled = storage::mounted();
+        reason = enabled ? "" : "no card";
+        break;
+    }
+    cJSON_AddBoolToObject(o, "enabled", enabled);
+    cJSON_AddStringToObject(o, "reason", reason);
+    cJSON_AddItemToArray(builtins, o);
+  }
+  cJSON_AddNumberToObject(root, "max_playsets", static_cast<double>(content::kMaxPlaysets));
+  return root;
+}
+
+std::string active_playset_name() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return g_playset.name;
+}
+
+}  // namespace p64::show

@@ -32,6 +32,9 @@ Hooks g_hooks;
 namespace files {
 void register_routes();
 }
+namespace content {
+void register_routes();
+}  // namespace content
 namespace ws {
 void register_routes();
 void start();
@@ -446,6 +449,8 @@ esp_err_t diag_bench(httpd_req_t *req) {
 
 }  // namespace
 
+const Hooks &hooks() { return g_hooks; }
+
 void init(const Hooks &hooks) {
   g_hooks = hooks;
   const httpd_uri_t routes[] = {
@@ -468,6 +473,7 @@ void init(const Hooks &hooks) {
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
   files::register_routes();
+  content::register_routes();
   ws::register_routes();
   ws::start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { ws::notify(); });

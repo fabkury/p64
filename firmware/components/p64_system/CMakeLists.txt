@@ -5,6 +5,7 @@ idf_component_register(
         "src/settings.cpp"
         "src/event_bus.cpp"
         "src/log_ring.cpp"
+        "src/state_store.cpp"
     INCLUDE_DIRS
         "include"
     REQUIRES

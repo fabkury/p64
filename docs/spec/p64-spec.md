@@ -167,9 +167,12 @@ diagnostics), and the item is skipped without stopping playback.
   matches what artists see in a browser and the server's own duration metadata.
 - Static images have no delay; they stay until the swap.
 - Loop counts in files are ignored: every animation loops forever.
-- Timeline: each frame is shown for at least its delay, measured on the device clock,
-  with no cumulative drift while decoding keeps up (durations are carried, not rounded
-  away).
+- Timeline: frame targets carry the stored durations exactly on the device clock, so
+  there is no cumulative drift while decoding keeps up (a 40-frame loop measures
+  40 x delay per loop). A frame lands on the first panel refresh at or after its
+  target, so one stay can differ from its delay by up to one refresh period (3.7 ms
+  in Quality mode); only a frame that misses by more than a period re-anchors the
+  timeline (no catch-up burst).
 
 ### 4.4 Decode budget and the no-drop rule
 
@@ -569,7 +572,10 @@ p3a's client is the reference implementation. p64 uses:
 - Layout under a configurable root, default `/sdcard/p64/`:
   `animations/` (local files and folders, the user's), `downloads/` (transient URL plays,
   capped), `cache/` (channel artworks, sharded), `channels/` (indexes and playsets),
-  `state/` (active playset). Existing files are never moved when the root changes.
+  `state/` (reserved for larger on-card state). Existing files are never moved when the
+  root changes. The active playset's name lives in NVS (namespace `p64state`), not on
+  the card, so a device without a card still remembers which built-in it plays
+  (ADR 0006).
 - Every write is atomic (temporary file, sync, rename); nothing is deleted because a read
   failed (a dying card misreads healthy files); card failures latch a "card failed" state
   that stops writes, keeps playing from memory, and is shown in the web UI.

@@ -1,9 +1,10 @@
 // p64 -- the web layer: /api/v1 routes on the one HTTP server, a WebSocket that pushes
-// status, the live preview, the file manager and the embedded UI. The application hands
-// it hooks for everything that belongs to the show and the display, so this component
-// depends on no application code.
+// status, the live preview, the file manager, playsets and the embedded UI. The
+// application hands it hooks for everything that belongs to the show and the display,
+// so this component depends on no application code.
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <string>
 
@@ -15,16 +16,30 @@
 namespace p64::web {
 
 struct Hooks {
-  std::function<void()> next;                                                  // next artwork now
+  // Show commands (queued to the main task; they return at once).
+  std::function<void()> next;
+  std::function<void()> previous;
+  std::function<void()> pause;
+  std::function<void()> resume;
+  std::function<void()> reset_timer;
+  std::function<void()> refresh;
+  std::function<void(size_t history_index)> go_to;
   std::function<bool(const std::string &absolute_path, std::string &error)> play_file;
-  std::function<cJSON *()> playback_status;      // a fresh object describing playback
-  std::function<bool(gfx::Frame &)> snapshot;    // the frame on the panel (live preview)
+  std::function<bool(const std::string &name, std::string &error)> activate_playset;
+  // Snapshots: each returns a new object the caller owns.
+  std::function<cJSON *()> playback_status;  // the status document's "playback" object
+  std::function<cJSON *()> channels;
+  std::function<cJSON *()> history;
+  std::function<cJSON *()> playsets;
+  // Display.
+  std::function<bool(gfx::Frame &)> snapshot;  // the frame on the panel (live preview)
   std::function<void(display::Mode)> request_mode;
   std::function<display::Display *()> display;
 };
 
 // Registers every route and starts the WebSocket push task. Call after the HTTP server.
 void init(const Hooks &hooks);
+const Hooks &hooks();
 // Pushes a status update to the WebSocket clients now (otherwise every 2 s).
 void notify();
 // Builds the status document (also used by the WebSocket push).

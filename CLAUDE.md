@@ -11,7 +11,9 @@ folders of work live here, each with its own README that is the detailed referen
 - `firmware/` — the p64 product firmware, started from zero on 2026-09-19. Its behaviour is
   fixed by the product specification `docs/spec/p64-spec.md` (settled with the user on
   2026-09-19, settings and limits tables included) and the decisions in `docs/adr/`; the
-  vocabulary is `CONTEXT.md`. No code yet: the architecture is the next step. Do not carry
+  vocabulary is `CONTEXT.md`. Its design is `firmware/docs/architecture.md`, its state of
+  progress `firmware/docs/PROGRESS.md` (read that first when resuming), its API
+  `firmware/docs/api.md`. The "Firmware" section below has the commands. Do not carry
   code or patterns over from `hardware-tests/` on your own initiative.
 - `hardware-tests/` — the former `firmware/` (renamed on 2026-09-19; git history follows
   the rename, `git log --follow` works on its files): ESP-IDF v5.5 test firmware, C++20,
@@ -31,6 +33,41 @@ Club server, github.com/fabkury/makapix, the device contract in its `docs/player
 prompts, one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a
 friend's separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked
 staging area for incoming material; do not commit it unless asked.
+
+## Firmware
+
+ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_decode`,
+`p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
+`p64_web`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
+and the application in `firmware/main/` (`main.cpp` wiring, `show.cpp` the state
+machine, `loader.cpp` the card I/O worker). Milestones M0 to M5 are done (2026-09-19):
+display, decoders, storage, settings, Wi-Fi with setup mode, API v1 with WebSocket and
+web UI, the content model (playsets, channels, scheduler, history). Makapix (M6),
+widgets and fonts (M7), streams (M8), IMU/OTA/PIN (M9) and the full web UI (M10) are
+pending; `firmware/docs/PROGRESS.md` has the table and the log with what was verified
+on the device.
+
+Commands, all from `firmware/` in PowerShell 7 (same scripts as the hardware tests):
+`.\tools\build.ps1`, `.\tools\flash.ps1` (auto-detects COM13), `.\tools\monitor.ps1`,
+`.\tools\idf.ps1 <args>`. Non-interactive console reads: `tools\serial_peek.py COM13
+<seconds>` with the IDF venv's python (`C:\Espressif\tools\python\v5.5.4\venv`); it does
+not reset the board, so to capture a boot log keep it open while
+`POST /api/v1/action/reboot` restarts the firmware. Tests: `python tests\host\run.py`
+(host build of the ESP-IDF-free components: unit tests plus the image corpora checked
+pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
+`python tests\device\api_smoke.py http://<ip> [--corpus]` and
+`python tests\device\content_smoke.py http://<ip>` against the live device (the
+development device answers at http://p64.local; its IP is in the boot log).
+
+Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
+`firmware/sdkconfig` deleted; Wi-Fi credentials live only in the git-ignored
+`firmware/sdkconfig.secrets` (`CONFIG_P64_DEV_WIFI_SSID/PASSWORD`, seeded into NVS when
+NVS has none) and are never echoed into summaries; `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL`
+is 4096, so anything large or long-lived (frames, indexes, task stacks of I/O tasks)
+is placed in PSRAM explicitly; the core-1 idle watchdog is off on purpose (a slow
+artwork keeps the player busy by design); both playback tasks live on core 1, all
+network and storage tasks on core 0; the main task is the show loop and never does card
+I/O.
 
 ## Hardware tests: commands
 

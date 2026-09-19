@@ -2,6 +2,9 @@ idf_component_register(
     SRCS
         "main.cpp"
         "boot_animation.cpp"
+        "show.cpp"
+        "loader.cpp"
+        "status_screens.cpp"
     INCLUDE_DIRS
         "."
     PRIV_REQUIRES
@@ -11,6 +14,7 @@ idf_component_register(
         p64_playback
         p64_storage
         p64_system
+        p64_content
         p64_net
         p64_web
         json

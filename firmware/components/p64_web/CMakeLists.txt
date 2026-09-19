@@ -4,6 +4,7 @@ idf_component_register(
     SRCS
         "src/api.cpp"
         "src/files.cpp"
+        "src/content.cpp"
         "src/ws.cpp"
         "src/ui.cpp"
     INCLUDE_DIRS
@@ -18,6 +19,7 @@ idf_component_register(
         json
     PRIV_REQUIRES
         p64_storage
+        p64_content
         p64_decode
         p64_playback
         esp_timer

@@ -14,6 +14,12 @@ What the device does is fixed by `docs/spec/p64-spec.md` at the repository root,
 the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`. This folder's README will
 describe how the firmware is built and flashed once it exists.
 
+## HTTP API
+
+Route reference: `docs/api.md`. Device tests: `tests/device/api_smoke.py` and
+`tests/device/content_smoke.py` (both need a card with files; `--corpus` uploads the
+host corpus).
+
 ## Decode benchmark (2026-09-19, first firmware milestone of spec 4.4)
 
 Measured on the device with `GET /api/v1/diag/bench` (decode plus scaling to 64x64, per

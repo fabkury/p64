@@ -19,9 +19,9 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
 | `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | no |
 | `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly |
-| `p64_playback` | `Artwork` (bytes + decoder + scaler), `Player` (timeline, no-drop rule), `Show` (current + next artwork, seamless swap, history) | `p64_decode`, `p64_gfx`, `p64_system` | partly |
+| `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (queue) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
-| `p64_content` | channels, playsets, scheduler (SWRR/stochastic, recency/random), channel indexes and cache, downloads | `p64_storage`, `p64_system`, `p64_net` | partly (scheduler) |
+| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history) |
 | `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP, time zone table, HTTP fetch helper with the TLS gate | IDF | no |
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | no |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | no |
@@ -29,7 +29,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_stream` | DDP and raw UDP receivers, frame assembly, the stream sink | `p64_gfx`, IDF | partly (parsers) |
 | `p64_inputs` | BOOT button, IMU (tap, orientation), encoder abstraction | IDF | no |
 | `p64_ops` | OTA, factory reset, diagnostics endpoints' data | IDF | no |
-| `main` | boot sequence, the main-state machine (Animation show, Widget, Stream), wiring | all | no |
+| `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | no |
 
 Host-testable components keep every file free of ESP-IDF includes; `tools/hosttest/`
 builds them with the PC's g++ and runs their tests (the hardware tests' `gifcheck`
@@ -64,15 +64,27 @@ render task         -> rotation + RGB gains into the physical buffer
                     -> flip on the next DMA frame boundary
 ```
 
-Two ready slots per source and two sources (current, next) are enough for seamless
-swaps: the next artwork is opened and its first frame decoded and scaled while the
-current one plays; the swap is the render task switching source at a boundary.
+Three ready slots and one source at a time (M5): the show prepares the next artwork
+(file read into PSRAM, decoder opened) while the current one plays; a swap hands the
+prepared source to the player, whose first frame goes into the queue with a new
+generation; the render task cuts to it at the next boundary and drops older slots. The
+previous picture stays up until that first frame exists, which is what makes every
+swap seamless (spec 3.6). Status screens, the pause frame and the boot animation are
+`FrameSource`s played the same way.
 
 Timing: each ready slot carries its due time (previous due + frame delay after the
-browser rule, at least one 60 Hz period). The render task presents a slot when the panel
-boundary at or after its due time arrives. If the slot is not ready by then, the current
-frame stays; the late slot is presented when it lands and the timeline re-anchors there
-(ADR 0003). Late frames are counted per artwork and in totals.
+browser rule, at least one 60 Hz period). The render task keeps its own schedule
+(target = max(due, previous target + previous delay)) and starts the 7.7 ms copy that
+far ahead so the flip lands on the boundary at or after the target. Targets carry
+durations exactly: a flip that lands up to one refresh period after its target does
+not move the schedule (anchoring on the copy's end time drifted 1.2 % slow and ate the
+player's lead, M5); only a miss beyond a period re-anchors. If a slot is not ready by
+its target, the current frame stays; the late slot is presented when it lands and the
+timeline re-anchors there (ADR 0003). The player flags frames it produced late
+(`decoded_late`); the renderer counts only presentation lateness of the others. Both
+playback tasks share core 1, so an artwork whose frames decode slower than their delays
+keeps the player busy for as long as it plays: the core-1 idle watchdog is off for that
+reason (`CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n`).
 
 ## 4. Display
 
@@ -159,3 +171,35 @@ this project; `tools/serial_peek.py` reads the console without resetting the boa
 ## 10. Milestones
 
 See `PROGRESS.md`.
+
+## 11. Content and the show (M5)
+
+`p64_content` is the model: `Playset`/`ChannelSpec` with validation and JSON
+(p3a's channel shape accepted on input), `Scheduler` (p3a's semantics: weights
+normalised to 65536 among the channels that have entries, all-zero means equal; SWRR
+adds each channel's weight to its credit per pick, chooses the highest credit with random
+ties and subtracts 65536; stochastic samples in proportion to weight x clamp(1 + 0.8 x
+credit/65536, 0.1, 3) with the same credit moves; random picks avoid an immediate repeat;
+recency walks a cursor from the channel offset and wraps), `History` (32 items, a
+position; a push from the middle discards what was ahead), the local folder index
+(`LocalEntry` 140 bytes in PSRAM, newest first, caps of 4096 per channel and 16384 per
+playset) and the playset store (`channels/playsets/<name>.json`, atomic writes). The
+built-in playsets are synthesised: Local gets one channel per folder found under
+`animations/` (the root first).
+
+`main/show.cpp` runs on the main task and owns the runtime: the active playset and one
+`ChannelRuntime` per channel (spec, entries, available count, a status string such as
+"no card", "needs pairing" or "Makapix not available yet"), the scheduler, the history,
+the auto-swap deadline, the pause flag. Everything reaches it through a FreeRTOS queue of
+commands; the API's readers take a mutex and build JSON from the state. Card I/O never
+runs on the main task: `main/loader.cpp` (core 0, priority 4, PSRAM stack) reads files
+and opens their decoders (`LoadResult`) and scans the playset's local folders
+(`ScanResult`, which also rebuilds the Local built-in's channel list); results come back
+as commands. Activation and refresh are scans carrying a generation number, so stale
+results are ignored. A fresh pick is made and its file loaded right after each swap
+(`prepared`), so the auto-swap and "next at the end of history" swaps are immediate;
+navigation loads on demand. The boot animation is a `FrameSource` played first, and the
+show holds its first swap until the animation has run its course.
+
+Makapix channels exist in playsets from M5 on but supply nothing until M6; the
+channel status says so and the scheduler gives them no share.

@@ -64,6 +64,10 @@ const char *event_name(Event type) {
       return "card failed";
     case Event::PlaybackSwapped:
       return "playback swapped";
+    case Event::LocalFilesChanged:
+      return "local files changed";
+    case Event::PlaysetsChanged:
+      return "playsets changed";
     case Event::MakapixStateChanged:
       return "makapix state changed";
   }

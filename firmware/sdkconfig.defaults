@@ -29,11 +29,15 @@ CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 # --- Console: the board's USB port is the ESP32-S3's native USB Serial/JTAG ---
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
-# --- Crash handling: core dump to flash (ELF), watchdog on both idle tasks ---
+# --- Crash handling: core dump to flash (ELF); task watchdog on the core-0 idle task only.
+# Core 1 is the playback core: an artwork whose frames decode slower than their delays
+# keeps the player task busy for as long as it plays (the no-drop rule slows playback
+# instead of skipping), so the core-1 idle task legitimately starves. ---
 CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
 CONFIG_ESP_COREDUMP_CHECKSUM_CRC32=y
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n
 CONFIG_ESP_BROWNOUT_DET=y
 
 # --- TLS: hardware AES and SHA; the panel's GDMA channel outranks them (HUB75_GDMA_PRIORITY) ---

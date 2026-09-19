@@ -22,7 +22,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | done except the on-device benchmark (needs files on the card: M4 upload) | 2026-09-19: host tests 86 files / 1531 frames exact; device builds and plays GIFs unchanged |
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | done (RTC chip deferred to M9) | 2026-09-19: settings in NVS, dev seed, STA join, mDNS, SNTP + zone table, HTTP server, portal page, scan, captive probes, erase -> setup mode (AP+STA, captive DNS) all seen on the device |
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
-| M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | pending | |
+| M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | pending | |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | pending | |
 | M8 | Streams: DDP, raw UDP, takeover | pending | |
@@ -125,5 +125,41 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   lossy 28.7 ms (35-45 fps sustainable, so 128x128 stays best effort as the spec
   allows); 256x256 PNG static 15.9 ms. Details in `README.md`.
 - Setup-mode visibility from a phone and the portal flow remain for the user to confirm.
-- Next: M5, the content model (local channels, playsets, scheduler, history, auto-swap,
-  play-this as the state machine's commands).
+- M5: `p64_content` (channels and playsets with validation and p3a-compatible JSON;
+  the scheduler ported from p3a's play scheduler: SWRR and stochastic selection over
+  weights normalised to 65536 with credit correction, random and recency picks with
+  per-channel offsets, PCG32; a history ring of 32 with a position; the local folder
+  index, newest first, entries in PSRAM; the playset store as JSON files under
+  `channels/playsets/`), host-tested (1115 checks: exact 3:1 SWRR shares, stochastic
+  within 5 %, cursor offset and wrap, history navigation, JSON round trips).
+  `main/show.cpp` is the state machine on the main task: a command queue (next,
+  previous, go-to, pause, resume, reset timer, refresh, play file, activate playset)
+  and a loader task on core 0 that reads files and scans folders. The next artwork is
+  prepared (read and decoder opened) while the current one plays, so auto-swap and
+  next cost nothing visible; history navigation drops items whose file vanished and
+  walks on; play-this enters history; pause is a black frame; activation persists the
+  name in NVS (`p64state`), and the restore at boot falls back to Local with a card
+  (Promoted once Makapix exists); a "no artwork" status screen (a symbol until the
+  fonts land in M7) shows the reason. The player now plays any `FrameSource`
+  (Artwork, StaticSource, BootSource): the boot animation runs through it at 30 fps
+  while the card mounts and the playset is scanned; first artwork 3.3 s after
+  power-on (card at 1.65 s, Local scan of 22 files 12 to 225 ms). API: playsets
+  (GET/PUT/DELETE `/api/v1/playsets[/name]`), `action/play_playset`, `channels`,
+  `history`, `folders`, actions previous/pause/resume/reset_timer/refresh/history_go
+  (`docs/api.md`); the dev UI got playset pills, transport buttons, the history and a
+  JSON playset editor. `tests/device/content_smoke.py` (38 checks) passes.
+- Found on the device and fixed: (1) the task watchdog fired on core 1's idle task
+  while a 128x128 lossy WebP (30 to 37 ms per 16 ms frame) kept the player busy; that
+  is the no-drop rule at work, so `CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n`
+  (documented in `sdkconfig.defaults`). (2) The render schedule was anchored on each
+  copy's end time and drifted 1.2 % slow (a 40 ms APNG measured 24.7 fps), which ate
+  the player's three-frame lead until every frame was "decode late" by 0.1 to 2 ms;
+  targets now carry durations exactly and only a miss beyond one refresh period
+  re-anchors (spec 4.3 reworded): 25.0 fps, late 0, decode late 0. The renderer no
+  longer counts player-late frames as its own. (3) The boot animation at 60 fps through
+  the player was late on every frame (7 ms render plus the 7.7 ms copy on one core);
+  30 fps now, late 0. Best-effort figures with the render task sharing core 1: 128x128
+  APNG 28 fps (decode 16.5 ms, max 33), 128x128 lossy WebP 27 fps (36.6 ms, max 40).
+- Next: M6, Makapix Club (promoted channel without pairing, pairing, MQTT commands,
+  channel indexes and the artwork cache, downloads, views, likes; TLS memory budget
+  per ADR 0009).

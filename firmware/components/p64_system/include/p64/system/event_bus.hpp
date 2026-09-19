@@ -17,8 +17,10 @@ enum class Event : uint16_t {
   TimeSynced,           // NTP delivered the time (first time: arg 1)
   CardMounted,
   CardFailed,
-  PlaybackSwapped,      // arg: history position
+  PlaybackSwapped,      // arg: history position (or -1 for a status screen / pause)
   MakapixStateChanged,
+  LocalFilesChanged,    // the file manager changed the card's animations tree
+  PlaysetsChanged,      // a user playset was created, changed or deleted
 };
 
 struct Message {

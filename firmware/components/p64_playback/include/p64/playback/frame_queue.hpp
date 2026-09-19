@@ -22,6 +22,7 @@ struct ReadySlot {
   uint32_t delay_us = 0;    // the frame stays up at least this long
   uint32_t generation = 0;  // artwork generation; 0 = boot/status content
   bool first = false;       // first frame of its generation
+  bool decoded_late = false;  // produced after its due time: the timeline re-anchored here
 };
 
 class FrameQueue {

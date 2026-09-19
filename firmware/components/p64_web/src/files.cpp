@@ -9,6 +9,7 @@
 #include "p64/net/http_server.hpp"
 #include "p64/playback/artwork.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/event_bus.hpp"
 #include "p64/web/web.hpp"
 
 namespace p64::web::files {
@@ -71,6 +72,7 @@ esp_err_t upload_handler(httpd_req_t *req) {
   }
   if (!storage::write_file(abs, bytes.data(), bytes.size(), error)) return reply_error(req, "500 Internal Server Error", "WRITE_FAILED", error);
   ESP_LOGI(TAG, "uploaded %s (%u bytes, %s)", rel.c_str(), static_cast<unsigned>(bytes.size()), decode::format_name(format));
+  system::publish(system::Event::LocalFilesChanged);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "path", rel.c_str());
   cJSON_AddNumberToObject(d, "size", static_cast<double>(bytes.size()));
@@ -110,6 +112,7 @@ esp_err_t delete_handler(httpd_req_t *req) {
     return reply_error(req, "403 Forbidden", "PROTECTED", "the p64 folders cannot be deleted");
   }
   if (!storage::remove_path(abs, error)) return reply_error(req, "404 Not Found", "NOT_FOUND", error);
+  system::publish(system::Event::LocalFilesChanged);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "path", rel.c_str());
   return reply_ok(req, d);
@@ -120,6 +123,7 @@ esp_err_t mkdir_handler(httpd_req_t *req) {
   if (!query_param(req, "path", rel) || rel.empty()) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
   if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
   if (!storage::make_dir(abs, error)) return reply_error(req, "500 Internal Server Error", "MKDIR_FAILED", error);
+  system::publish(system::Event::LocalFilesChanged);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "path", rel.c_str());
   return reply_ok(req, d);
@@ -138,6 +142,7 @@ esp_err_t rename_handler(httpd_req_t *req) {
     return reply_error(req, "400 Bad Request", "INVALID_PATH", "from and to required");
   }
   if (!storage::rename_path(from_abs, to_abs, error)) return reply_error(req, "409 Conflict", "RENAME_FAILED", error);
+  system::publish(system::Event::LocalFilesChanged);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "from", from_rel.c_str());
   cJSON_AddStringToObject(d, "to", to_rel.c_str());

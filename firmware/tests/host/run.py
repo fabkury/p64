@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""Host tests for the ESP-IDF-free components (p64_gfx, p64_decode).
+r"""Host tests for the ESP-IDF-free components (p64_gfx, p64_decode, p64_content).
 
 Builds tests/host/main.cpp with the component sources and the vendored libraries
 (AnimatedGIF, the APNG-patched libpng, zlib from managed_components, libwebp) using the
@@ -32,6 +32,9 @@ COMPONENTS = os.path.join(FIRMWARE, "components")
 ZLIB = os.path.join(FIRMWARE, "managed_components", "espressif__zlib", "zlib")
 LIBPNG = os.path.join(COMPONENTS, "libpng")
 LIBWEBP = os.path.join(COMPONENTS, "libwebp", "libwebp")
+# cJSON comes from the ESP-IDF tree (the playset JSON code uses it on the device too).
+IDF_PATH = os.environ.get("IDF_PATH", r"C:\esp\v5.5.4\esp-idf")
+CJSON = os.path.join(IDF_PATH, "components", "json", "cJSON")
 DST_W, DST_H = 64, 64
 
 CXX_SOURCES = [
@@ -44,6 +47,10 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_decode", "src", "webp_decoder.cpp"),
     os.path.join(COMPONENTS, "p64_decode", "src", "bmp_decoder.cpp"),
     os.path.join(COMPONENTS, "animatedgif", "src", "AnimatedGIF.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "playset.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "playset_json.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "scheduler.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
 ]
 ZLIB_SOURCES = [os.path.join(ZLIB, f) for f in (
     "adler32.c", "crc32.c", "inffast.c", "inflate.c", "inftrees.c", "zutil.c",
@@ -54,11 +61,13 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "dsp", "*.c"))
     + glob.glob(os.path.join(LIBWEBP, "src", "utils", "*.c"))
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
-C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES
+C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
+    os.path.join(COMPONENTS, "p64_content", "include"),
+    CJSON,
     os.path.join(COMPONENTS, "animatedgif", "src"),
     LIBPNG,                               # pnglibconf.h
     os.path.join(LIBPNG, "libpng"),
@@ -70,6 +79,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
+    os.path.join(COMPONENTS, "p64_content", "include"),
 ]
 
 
@@ -97,6 +107,8 @@ def compile_object(src, obj, is_cxx, header_mtime):
 
 
 def build(build_dir):
+    if not os.path.isdir(CJSON):
+        sys.exit("cJSON not found under IDF_PATH (" + CJSON + ")")
     if not os.path.isdir(ZLIB):
         sys.exit("managed_components/espressif__zlib is missing: run a firmware build first (tools\\build.ps1)")
     exe = os.path.join(build_dir, "p64_hosttest.exe" if os.name == "nt" else "p64_hosttest")

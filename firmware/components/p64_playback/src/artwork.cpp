@@ -38,7 +38,7 @@ bool Artwork::open(std::vector<uint8_t> bytes, std::string name, gfx::Rgb backgr
   return true;
 }
 
-bool Artwork::next_frame(gfx::Frame &out, uint32_t &delay_ms) {
+bool Artwork::next_frame(gfx::Frame &out, uint32_t &delay_ms, int64_t) {
   if (!decoder_ || !decoder_->is_open()) {
     error_ = "not open";
     return false;
