@@ -1,9 +1,9 @@
 // p64 -- firmware entry point.
 //
-// Milestone M1: boot animation, then a show of the GIF files on the card, swapped every
-// 30 s, through the player and render tasks on core 1 (docs/architecture.md). The main
-// task (core 0) plays the part the state machine will take over: it picks files, reads
-// them and hands artworks to the player.
+// Milestone M3: settings from NVS, the event bus, Wi-Fi with setup mode, the HTTP server
+// with the setup portal, SNTP with the time zone table. The show still plays random
+// card artworks at the auto-swap interval from the settings; the state machine and the
+// content model come with M5.
 
 #include <cinttypes>
 #include <memory>
@@ -23,18 +23,21 @@
 #include "boot_animation.hpp"
 #include "p64/display/display.hpp"
 #include "p64/gfx/frame.hpp"
+#include "p64/net/clock.hpp"
+#include "p64/net/http_server.hpp"
+#include "p64/net/setup_portal.hpp"
+#include "p64/net/wifi.hpp"
 #include "p64/playback/artwork.hpp"
 #include "p64/playback/frame_queue.hpp"
 #include "p64/playback/player.hpp"
 #include "p64/playback/renderer.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/event_bus.hpp"
+#include "p64/system/settings.hpp"
 
 namespace {
 
 constexpr const char *TAG = "p64";
-constexpr uint32_t kBootAnimationMs = 2000;  // a setting with the settings store (M3)
-constexpr uint8_t kBrightness = 255;         // the user brightness setting arrives with M3
-constexpr uint32_t kAutoSwapSeconds = 30;    // the auto-swap interval setting arrives with M3
 constexpr uint32_t kFrameUs = 16667;
 
 // Off the task stacks and in internal RAM (.bss): the queue holds three 12 KB frames.
@@ -55,8 +58,6 @@ void init_nvs() {
 }
 
 void mark_image_valid() {
-  // This image booted far enough to run: cancel the bootloader's rollback. A later
-  // milestone moves this behind a self-test (display up, settings readable).
   esp_ota_img_states_t state;
   const esp_partition_t *running = esp_ota_get_running_partition();
   if (running && esp_ota_get_state_partition(running, &state) == ESP_OK && state == ESP_OTA_IMG_PENDING_VERIFY) {
@@ -65,14 +66,21 @@ void mark_image_valid() {
   }
 }
 
-// The main task produces the boot animation into the queue before the player starts
-// (the queue has one producer at a time).
-void play_boot_animation() {
+// The picture settings the display applies directly. Panel mode switching goes through
+// the renderer (a driver restart between frames) once the API can request it.
+void apply_display_settings(const p64::system::Settings &s) {
+  g_display.set_rotation(static_cast<p64::gfx::Rotation>(s.rotation));
+  g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
+  g_display.set_brightness(std::min(s.brightness, s.brightness_ceiling));
+}
+
+// The main task produces the boot animation into the queue before the player starts.
+void play_boot_animation(uint32_t duration_ms) {
   const p64::BootAnimation boot;
   const int64_t t0 = esp_timer_get_time();
   while (true) {
     const uint32_t t_ms = static_cast<uint32_t>((esp_timer_get_time() - t0) / 1000);
-    if (!boot.render(g_scratch, t_ms, kBootAnimationMs)) break;
+    if (!boot.render(g_scratch, t_ms, duration_ms)) break;
     p64::playback::ReadySlot *slot = g_queue.producer_slot();
     if (!slot) {
       vTaskDelay(1);
@@ -94,7 +102,7 @@ bool supported_extension(const std::string &ext) {
 
 // Artwork files in the card's animations folder, or in the card root when that folder
 // is empty (the test card from the hardware tests keeps its files there).
-std::vector<std::string> find_gifs() {
+std::vector<std::string> find_artworks() {
   std::vector<std::string> paths;
   for (const std::string &dir : {p64::storage::animations_dir(), std::string(p64::storage::mount_point())}) {
     for (const p64::storage::FileInfo &f : p64::storage::list(dir)) {
@@ -108,7 +116,7 @@ std::vector<std::string> find_gifs() {
   return paths;
 }
 
-std::shared_ptr<p64::playback::Artwork> load_artwork(const std::string &path) {
+std::shared_ptr<p64::playback::Artwork> load_artwork(const std::string &path, p64::gfx::Rgb background) {
   std::vector<uint8_t> bytes;
   std::string error;
   const int64_t t0 = esp_timer_get_time();
@@ -119,7 +127,7 @@ std::shared_ptr<p64::playback::Artwork> load_artwork(const std::string &path) {
   const int64_t t1 = esp_timer_get_time();
   auto art = std::make_shared<p64::playback::Artwork>();
   const std::string name = path.substr(path.rfind('/') + 1);
-  if (!art->open(std::move(bytes), name, p64::gfx::kBlack, error)) {
+  if (!art->open(std::move(bytes), name, background, error)) {
     ESP_LOGW(TAG, "%s: rejected: %s", name.c_str(), error.c_str());
     return nullptr;
   }
@@ -139,27 +147,51 @@ extern "C" void app_main() {
 
   init_nvs();
   mark_image_valid();
+  p64::system::event_bus_init();
+  p64::system::settings_init();
+  p64::system::Settings s = p64::system::settings();
+  ESP_LOGI(TAG, "settings: %s", s.to_json().c_str());
 
   if (!g_display.begin()) {
     ESP_LOGE(TAG, "display failed to start; nothing to do");
     return;
   }
-  g_display.set_rotation(p64::gfx::Rotation::R90);  // the printed shell's orientation; a setting with M3
-  g_display.set_brightness(kBrightness);
+  apply_display_settings(s);
+  p64::system::subscribe(p64::system::Event::SettingsChanged,
+                         [](const p64::system::Message &) { apply_display_settings(p64::system::settings()); });
   g_renderer.start(g_display, g_queue, &g_player);
 
-  play_boot_animation();
+  play_boot_animation(s.boot_animation_ms);
   g_player.start(g_queue);
 
-  p64::storage::mount();
-  std::vector<std::string> gifs = find_gifs();
-  if (gifs.empty()) {
-    ESP_LOGW(TAG, "no GIF files on the card; the panel stays on the last boot frame");
+  // Network: Wi-Fi start creates the TCP/IP stack, so the HTTP server (and the portal
+  // routes on it) come right after; SNTP waits for the network on its own.
+  p64::net::wifi::start(s.hostname());
+  p64::net::http::start();
+  p64::net::portal::init(nullptr);
+  p64::net::clock::start(s.ntp_server, s.timezone);
+  p64::system::subscribe(p64::system::Event::SettingsChanged, [](const p64::system::Message &) {
+    const p64::system::Settings now = p64::system::settings();
+    p64::net::clock::set_timezone(now.timezone);
+    p64::net::clock::set_ntp_server(now.ntp_server);
+    p64::net::wifi::set_hostname(now.hostname());
+  });
+
+  if (p64::storage::mount()) {
+    p64::system::publish(p64::system::Event::CardMounted);
+  } else {
+    p64::system::publish(p64::system::Event::CardFailed);
+  }
+  std::vector<std::string> files = find_artworks();
+  if (files.empty()) {
+    ESP_LOGW(TAG, "no artwork files on the card; the panel stays on the last boot frame");
     return;
   }
   while (true) {
-    const std::string &path = gifs[esp_random() % gifs.size()];
-    if (auto art = load_artwork(path)) g_player.play(art);
-    vTaskDelay(pdMS_TO_TICKS(kAutoSwapSeconds * 1000));
+    s = p64::system::settings();
+    const std::string &path = files[esp_random() % files.size()];
+    if (auto art = load_artwork(path, s.background)) g_player.play(art);
+    const uint32_t seconds = s.auto_swap_seconds == 0 ? 3600 : s.auto_swap_seconds;
+    vTaskDelay(pdMS_TO_TICKS(seconds * 1000));
   }
 }

@@ -49,6 +49,9 @@ CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 CONFIG_MBEDTLS_DEFAULT_MEM_ALLOC=y
 CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 CONFIG_LWIP_LOCAL_HOSTNAME="p64"
+# Sockets: the HTTP server (API, web UI, WebSocket), mDNS, SNTP, MQTT, one download,
+# two UDP stream listeners; lwIP's default 10 leaves the server only 7.
+CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_HTTPD_WS_SUPPORT=y
 
 # --- CPU / RTOS / compiler ---
