@@ -3,6 +3,10 @@
 // task. Each slot carries its frame, the time it is due on the timeline, how long it must
 // stay up, and the artwork generation it belongs to (a newer generation cuts older,
 // unpresented slots: a swap is a hard cut, spec 4.5).
+//
+// The slots (12 KB frames) are provided by the owner, so the firmware can put them in
+// PSRAM; the indices stay in this object, which must live in internal RAM (atomic
+// read-modify-write is not available on PSRAM addresses).
 #pragma once
 
 #include <atomic>
@@ -23,6 +27,9 @@ struct ReadySlot {
 class FrameQueue {
  public:
   static constexpr unsigned kSlots = 3;
+
+  // `slots` must point at kSlots constructed ReadySlots that outlive the queue.
+  explicit FrameQueue(ReadySlot *slots) : slots_(slots) {}
 
   // Producer side: the slot to fill next, or nullptr while the ring is full.
   ReadySlot *producer_slot() {
@@ -51,7 +58,7 @@ class FrameQueue {
   uint32_t latest_generation() const { return latest_generation_.load(std::memory_order_relaxed); }
 
  private:
-  ReadySlot slots_[kSlots];
+  ReadySlot *slots_;
   std::atomic<unsigned> head_{0};  // next slot to consume
   std::atomic<unsigned> tail_{0};  // next slot to produce
   std::atomic<uint32_t> latest_generation_{0};

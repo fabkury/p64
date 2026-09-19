@@ -2,8 +2,10 @@
 
 #include <algorithm>
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/idf_additions.h"
 
 namespace p64::playback {
 namespace {
@@ -19,7 +21,10 @@ bool Player::start(FrameQueue &queue) {
   queue_ = &queue;
   commands_ = xQueueCreate(4, sizeof(std::shared_ptr<Artwork> *));
   if (!commands_) return false;
-  const BaseType_t ok = xTaskCreatePinnedToCore(&Player::task_entry, "player", 12288, this, 15, &task_, 1);
+  // Stack in PSRAM: the decoders keep their state on the heap and this task never
+  // writes flash, so internal RAM stays for Wi-Fi and TLS.
+  const BaseType_t ok = xTaskCreatePinnedToCoreWithCaps(&Player::task_entry, "player", 12288, this, 15, &task_, 1,
+                                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   return ok == pdPASS;
 }
 

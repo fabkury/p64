@@ -6,11 +6,13 @@
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
+#include <fcntl.h>
 #include <mutex>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include "driver/sdmmc_host.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "sdkconfig.h"
@@ -24,7 +26,8 @@ constexpr const char *kMountPoint = "/sdcard";
 constexpr const char *kRootName = "p64";
 constexpr size_t kMaxNameChars = 128;
 
-std::mutex g_mutex;  // mount state
+std::mutex g_mutex;     // mount state
+std::mutex g_io_mutex;  // the shared bounce buffer
 sdmmc_card_t *g_card = nullptr;
 std::string g_error;
 
@@ -171,6 +174,137 @@ bool exists(const std::string &path) {
   return stat(path.c_str(), &st) == 0;
 }
 
+bool resolve(const std::string &relative, std::string &absolute, std::string &error) {
+  std::string rel = relative;
+  while (!rel.empty() && rel.front() == '/') rel.erase(0, 1);
+  while (!rel.empty() && rel.back() == '/') rel.pop_back();
+  // Every segment must be a valid name.
+  size_t pos = 0;
+  while (pos <= rel.size() && !rel.empty()) {
+    const size_t slash = rel.find('/', pos);
+    const std::string seg = rel.substr(pos, slash == std::string::npos ? std::string::npos : slash - pos);
+    if (!valid_name(seg)) {
+      error = "invalid path";
+      return false;
+    }
+    if (slash == std::string::npos) break;
+    pos = slash + 1;
+  }
+  absolute = rel.empty() ? root() : root() + "/" + rel;
+  return true;
+}
+
+bool is_directory(const std::string &path) {
+  struct stat st = {};
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool remove_path(const std::string &path, std::string &error) {
+  if (!mounted()) {
+    error = "no card mounted";
+    return false;
+  }
+  struct stat st = {};
+  if (stat(path.c_str(), &st) != 0) {
+    error = "no such file or folder";
+    return false;
+  }
+  const int rc = S_ISDIR(st.st_mode) ? rmdir(path.c_str()) : unlink(path.c_str());
+  if (rc != 0) {
+    error = errno == ENOTEMPTY ? "folder not empty" : std::strerror(errno);
+    return false;
+  }
+  return true;
+}
+
+bool make_dir(const std::string &path, std::string &error) {
+  if (!mounted()) {
+    error = "no card mounted";
+    return false;
+  }
+  if (mkdir(path.c_str(), 0777) != 0 && errno != EEXIST) {
+    error = std::strerror(errno);
+    return false;
+  }
+  return true;
+}
+
+bool rename_path(const std::string &from, const std::string &to, std::string &error) {
+  if (!mounted()) {
+    error = "no card mounted";
+    return false;
+  }
+  if (!exists(from)) {
+    error = "no such file or folder";
+    return false;
+  }
+  if (exists(to)) {
+    error = "the destination exists";
+    return false;
+  }
+  if (rename(from.c_str(), to.c_str()) != 0) {
+    error = std::strerror(errno);
+    return false;
+  }
+  return true;
+}
+
+// Card I/O goes through POSIX read()/write() with a bounce buffer in internal DMA-capable
+// RAM: newlib's stdio buffer landed in PSRAM once allocations of 4 KB and more went there
+// (CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL), and the partial-block flush then wrote zeros
+// through the SDMMC path (found 2026-09-19: every uploaded file ended in zeros past its
+// last full 4 KB block). p3a's loader records the same lesson for reads.
+constexpr size_t kIoChunk = 16 * 1024;
+
+uint8_t *io_buffer() {
+  static uint8_t *buf = static_cast<uint8_t *>(heap_caps_malloc(kIoChunk, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT));
+  return buf;
+}
+
+bool write_file(const std::string &path, const uint8_t *data, size_t len, std::string &error) {
+  if (!mounted()) {
+    error = "no card mounted";
+    return false;
+  }
+  uint8_t *buf = io_buffer();
+  if (!buf) {
+    error = "no internal memory for the write buffer";
+    return false;
+  }
+  const std::string tmp = path + ".tmp";
+  const int fd = open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  if (fd < 0) {
+    error = std::string("cannot create: ") + std::strerror(errno);
+    return false;
+  }
+  size_t written = 0;
+  bool ok = true;
+  {
+    std::lock_guard<std::mutex> lock(g_io_mutex);
+    while (ok && written < len) {
+      const size_t n = std::min(kIoChunk, len - written);
+      std::memcpy(buf, data + written, n);
+      const ssize_t w = write(fd, buf, n);
+      if (w != static_cast<ssize_t>(n)) ok = false;
+      written += n;
+    }
+  }
+  if (ok && fsync(fd) != 0) ok = false;
+  close(fd);
+  if (!ok) {
+    unlink(tmp.c_str());
+    error = "write failed (card full or faulty)";
+    return false;
+  }
+  unlink(path.c_str());  // FAT rename does not replace
+  if (rename(tmp.c_str(), path.c_str()) != 0) {
+    unlink(tmp.c_str());
+    error = std::string("rename failed: ") + std::strerror(errno);
+    return false;
+  }
+  return true;
+}
+
 bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_bytes, std::string &error) {
   out.clear();
   if (!mounted()) {
@@ -186,19 +320,28 @@ bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_by
     error = "file larger than " + std::to_string(max_bytes) + " bytes";
     return false;
   }
-  FILE *f = std::fopen(path.c_str(), "rb");
-  if (!f) {
+  uint8_t *buf = io_buffer();
+  if (!buf) {
+    error = "no internal memory for the read buffer";
+    return false;
+  }
+  const int fd = open(path.c_str(), O_RDONLY);
+  if (fd < 0) {
     error = std::string("cannot open: ") + std::strerror(errno);
     return false;
   }
   out.resize(static_cast<size_t>(st.st_size));
   size_t got = 0;
-  while (got < out.size()) {
-    const size_t n = std::fread(out.data() + got, 1, std::min<size_t>(64 * 1024, out.size() - got), f);
-    if (n == 0) break;
-    got += n;
+  {
+    std::lock_guard<std::mutex> lock(g_io_mutex);
+    while (got < out.size()) {
+      const ssize_t n = read(fd, buf, std::min(kIoChunk, out.size() - got));
+      if (n <= 0) break;
+      std::memcpy(out.data() + got, buf, static_cast<size_t>(n));
+      got += static_cast<size_t>(n);
+    }
   }
-  std::fclose(f);
+  close(fd);
   if (got != out.size()) {
     error = "short read from the card";
     out.clear();

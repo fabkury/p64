@@ -208,6 +208,14 @@ class Hub75Driver {
    */
   bool set_dma_priority(int priority);
   int get_dma_priority() const;  // -1 when unsupported or before begin()
+  /** @brief p64 patch: the GDMA channel number the panel streams on (-1 when unsupported or before begin()). */
+  int get_dma_channel_id() const;
+  /**
+   * @brief p64 patch: changes the minimum refresh rate in place. The transition bit, the
+   * output-enable windows, the LUT and the descriptor chains are rebuilt and the DMA
+   * restarted on the same channel; the picture stays. False when unsupported or refused.
+   */
+  bool set_min_refresh_rate(uint16_t hz);
 
   /**
    * @brief Get panel height in pixels

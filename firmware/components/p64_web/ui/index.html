@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>p64</title>
+<style>
+:root{color-scheme:dark;--bg:#0e0a1a;--card:#171229;--line:#2c2544;--ink:#eee;--muted:#9a93b3;--primary:#8b5cff;--accent:#ff4d97;--ok:#42d86e;--danger:#ff4d4d}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+h1{font-size:30px;margin:8px 0 0;background:linear-gradient(90deg,var(--accent),var(--primary),#33a6ff);-webkit-background-clip:text;color:transparent}
+.sub{color:var(--muted);margin:0 0 16px;font-size:13px}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.preview{display:flex;gap:14px;align-items:center}
+.preview img{width:192px;height:192px;image-rendering:pixelated;background:#000;border-radius:8px;border:1px solid var(--line)}
+.kv{font-size:13px;color:var(--muted)}.kv b{color:var(--ink);font-weight:500}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+input,select,button{font:inherit}
+input[type=text],input[type=password],input[type=number],select{width:100%;box-sizing:border-box;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+input[type=range]{width:100%}
+button{background:var(--primary);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:4px 4px 0 0}
+button.secondary{background:var(--line)}button.danger{background:#7a2130}button.small{padding:5px 9px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.files{list-style:none;margin:8px 0 0;padding:0}.files li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.files li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;max-height:280px;overflow:auto;white-space:pre-wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:var(--line)}.badge.ok{background:#1e4d2b;color:var(--ok)}.badge.warn{background:#5a3d10;color:#ffb347}
+</style></head><body><main>
+<h1>p64</h1><p class="sub">development web interface (milestone M4); the full interface comes later</p>
+
+<div class="card"><h2>Now playing</h2>
+<div class="preview"><img id="frame" alt="panel"><div class="kv" id="playing">…</div></div>
+<div class="row" style="margin-top:10px"><button onclick="act('next')">Next</button><span class="badge" id="netbadge">…</span><span class="badge" id="timebadge">…</span></div>
+</div>
+
+<div class="card"><h2>Display</h2>
+<label>Brightness <b id="bval"></b> (1-255)</label><input type="range" id="brightness" min="1" max="255" oninput="document.getElementById('bval').textContent=this.value" onchange="setting({display:{brightness:+this.value}})">
+<div class="row"><div style="flex:1"><label>Panel mode</label><select id="panel_mode" onchange="setting({display:{panel_mode:this.value}})"><option value="quality">Quality (271 Hz, 1024 codes)</option><option value="photo">Photo (about 700 Hz)</option></select></div>
+<div style="flex:1"><label>Rotation</label><select id="rotation" onchange="setting({display:{rotation:+this.value}})"><option>0</option><option>90</option><option>180</option><option>270</option></select></div></div>
+<div class="row"><div style="flex:1"><label>Auto-swap (s, 0 = never)</label><input type="number" id="auto_swap" min="0" max="86400" onchange="setting({show:{auto_swap_seconds:+this.value}})"></div>
+<div style="flex:1"><label>Background</label><input type="color" id="background" onchange="var v=this.value;setting({display:{background:{r:parseInt(v.substr(1,2),16),g:parseInt(v.substr(3,2),16),b:parseInt(v.substr(5,2),16)}}})"></div></div>
+</div>
+
+<div class="card"><h2>Files <span class="kv" id="cardinfo"></span></h2>
+<div class="row"><input type="text" id="dir" value="animations" style="flex:1"><button class="secondary small" onclick="listFiles()">Open</button></div>
+<ul class="files" id="files"></ul>
+<div class="row" style="margin-top:8px"><input type="file" id="upload" multiple accept=".gif,.png,.apng,.webp,.bmp"><button class="small" onclick="uploadFiles()">Upload to this folder</button></div>
+<div class="kv" id="uploadstatus"></div>
+</div>
+
+<div class="card"><h2>Network</h2>
+<div class="kv" id="netinfo">…</div>
+<label>Time zone</label><input type="text" id="timezone" list="tzlist" onchange="setting({network:{timezone:this.value}})"><datalist id="tzlist"></datalist>
+<label>Device name (p64-&lt;name&gt;.local)</label><input type="text" id="device_name" maxlength="16" onchange="setting({network:{device_name:this.value}})">
+<details style="margin-top:10px"><summary class="kv">Change Wi-Fi network</summary>
+<label>SSID</label><div class="row"><input type="text" id="ssid" list="nets" style="flex:1"><button class="secondary small" onclick="scan()">Scan</button></div><datalist id="nets"></datalist>
+<label>Password</label><input type="password" id="wpass">
+<button onclick="saveWifi()">Connect</button><button class="danger" onclick="if(confirm('Forget the Wi-Fi network? The device drops into setup mode.'))post('/api/v1/wifi/erase')">Erase Wi-Fi</button></details>
+</div>
+
+<div class="card"><h2>Diagnostics</h2>
+<div class="kv" id="diag">…</div>
+<div class="row" style="margin-top:8px"><button class="secondary small" onclick="loadLog()">Show log</button><button class="secondary small" onclick="bench()">Benchmark file…</button><button class="danger small" onclick="if(confirm('Reboot p64?'))post('/api/v1/action/reboot')">Reboot</button></div>
+<pre id="log" style="display:none"></pre>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var S={};
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show')},3000)}
+function api(path,opt){return fetch(path,opt).then(function(r){return r.json()}).then(function(j){if(!j.ok)throw new Error(j.error||'error');return j.data})}
+function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}).then(function(d){toast('ok');refresh();return d}).catch(function(e){toast(e.message)})}
+function act(a){return post('/api/v1/action/'+a)}
+function setting(patch){return api('/api/v1/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(function(s){fillSettings(s);toast('saved')}).catch(function(e){toast(e.message)})}
+function fmt(n){return n>1e9?(n/1e9).toFixed(1)+' GB':n>1e6?(n/1e6).toFixed(1)+' MB':n>1e3?(n/1e3).toFixed(0)+' KB':n+' B'}
+function fillSettings(s){S=s;var d=s.display;document.getElementById('brightness').value=d.brightness;document.getElementById('bval').textContent=d.brightness;document.getElementById('panel_mode').value=d.panel_mode;document.getElementById('rotation').value=d.rotation;document.getElementById('auto_swap').value=s.show.auto_swap_seconds;var b=d.background;document.getElementById('background').value='#'+[b.r,b.g,b.b].map(function(v){return ('0'+v.toString(16)).slice(-2)}).join('');document.getElementById('timezone').value=s.network.timezone;document.getElementById('device_name').value=s.network.device_name}
+function fillStatus(d){var p=d.playback||{};var a=p.artwork;document.getElementById('playing').innerHTML=a?('<b>'+a.name+'</b><br>'+a.format+' '+a.width+'x'+a.height+', '+fmt(a.bytes)+'<br>frames '+(p.frames||0)+', late '+(p.late||0)):'nothing playing';var n=d.network;document.getElementById('netbadge').textContent=n.connected?('Wi-Fi '+n.rssi+' dBm'):(n.setup_mode?'setup mode':'offline');document.getElementById('netbadge').className='badge '+(n.connected?'ok':'warn');document.getElementById('timebadge').textContent=d.time.synced?d.time.local.replace('T',' '):'time unknown';document.getElementById('netinfo').innerHTML='<b>'+n.hostname+'.local</b> · '+(n.connected?('IP '+n.ip+', gateway '+n.gateway+', '+n.rssi+' dBm'):'not connected')+(d.network.ssid?(' · network <b>'+n.ssid+'</b>'):'');var c=d.card;document.getElementById('cardinfo').textContent=c.mounted?('card '+fmt(c.free_bytes)+' free of '+fmt(c.total_bytes)):('no card: '+c.error);var pn=d.panel||{};document.getElementById('diag').innerHTML='firmware <b>'+d.firmware.version+'</b> (IDF '+d.firmware.idf+'), up '+Math.floor(d.uptime_s/60)+' min · panel <b>'+(pn.refresh_hz||0).toFixed(1)+' Hz</b> '+pn.mode+', frames '+pn.frames+', late flips '+pn.late_flips+', timeouts '+pn.timeouts+(pn.stalled?' <b style="color:#f66">STALLED</b>':'')+' · heap internal <b>'+fmt(d.heap.internal_free)+'</b> (largest '+fmt(d.heap.internal_largest)+'), PSRAM '+fmt(d.heap.psram_free)}
+function refresh(){api('/api/v1/status').then(fillStatus).catch(function(){})}
+function tick(){document.getElementById('frame').src='/api/v1/frame?t='+Date.now()}
+function listFiles(){var dir=document.getElementById('dir').value;api('/api/v1/files?path='+encodeURIComponent(dir)).then(function(d){var ul=document.getElementById('files');ul.innerHTML='';if(dir){var up=document.createElement('li');up.innerHTML='<span>..</span>';up.onclick=function(){document.getElementById('dir').value=dir.split('/').slice(0,-1).join('');listFiles()};ul.appendChild(up)}d.entries.forEach(function(e){var li=document.createElement('li');var p=(dir?dir+'/':'')+e.name;li.innerHTML='<span>'+(e.dir?'📁 ':'')+e.name+(e.dir?'':' <small class="kv">'+fmt(e.size)+'</small>')+'</span><span></span>';var btns=li.lastChild;if(e.dir){var o=document.createElement('button');o.className='secondary small';o.textContent='Open';o.onclick=function(){document.getElementById('dir').value=p;listFiles()};btns.appendChild(o)}else{var b=document.createElement('button');b.className='small';b.textContent='Play';b.onclick=function(){post('/api/v1/action/play',{path:p})};btns.appendChild(b)}var x=document.createElement('button');x.className='danger small';x.textContent='✕';x.onclick=function(){if(confirm('Delete '+p+'?'))api('/api/v1/files?path='+encodeURIComponent(p),{method:'DELETE'}).then(listFiles).catch(function(e){toast(e.message)})};btns.appendChild(x);ul.appendChild(li)})}).catch(function(e){toast(e.message)})}
+function uploadFiles(){var inp=document.getElementById('upload');var dir=document.getElementById('dir').value;var files=Array.prototype.slice.call(inp.files);if(!files.length){toast('choose files first');return}var st=document.getElementById('uploadstatus');var i=0;function next(){if(i>=files.length){st.textContent='done';listFiles();return}var f=files[i++];st.textContent='uploading '+f.name+' ('+i+'/'+files.length+')';fetch('/api/v1/files?path='+encodeURIComponent((dir?dir+'/':'')+f.name),{method:'POST',body:f}).then(function(r){return r.json()}).then(function(j){if(!j.ok)toast(f.name+': '+j.error);next()}).catch(function(e){toast(e.message);next()})}next()}
+function scan(){api('/api/v1/wifi/scan').then(function(l){var d=document.getElementById('nets');d.innerHTML='';l.forEach(function(n){var o=document.createElement('option');o.value=n.ssid;d.appendChild(o)});toast(l.length+' networks')}).catch(function(e){toast(e.message)})}
+function saveWifi(){var s=document.getElementById('ssid').value,p=document.getElementById('wpass').value;if(!s){toast('SSID required');return}post('/api/v1/wifi',{ssid:s,password:p}).then(function(){toast('connecting; reload in a few seconds')})}
+function loadLog(){fetch('/api/v1/diag/log?bytes=16384').then(function(r){return r.text()}).then(function(t){var p=document.getElementById('log');p.style.display='block';p.textContent=t;p.scrollTop=p.scrollHeight})}
+function bench(){var p=prompt('Path of a file on the card (relative to the p64 folder)','animations/');if(!p)return;toast('benchmarking…');api('/api/v1/diag/bench?path='+encodeURIComponent(p)+'&loops=2').then(function(d){alert(d.format+' '+d.width+'x'+d.height+', '+d.frames+' frames: first '+d.first_frame_ms.toFixed(2)+' ms, average '+d.avg_frame_ms.toFixed(2)+' ms, max '+d.max_frame_ms.toFixed(2)+' ms, sustainable '+d.sustainable_fps.toFixed(1)+' fps (stored delay avg '+d.avg_delay_ms.toFixed(0)+' ms)')}).catch(function(e){toast(e.message)})}
+api('/api/v1/settings').then(fillSettings).catch(function(){});refresh();listFiles();
+fetch('/api/v1/timezones').then(function(r){return r.json()}).then(function(l){var d=document.getElementById('tzlist');l.forEach(function(z){var o=document.createElement('option');o.value=z;d.appendChild(o)})}).catch(function(){});
+setInterval(tick,400);tick();
+try{var ws=new WebSocket('ws://'+location.host+'/api/v1/ws');ws.onmessage=function(m){try{var j=JSON.parse(m.data);if(j.type==='status')fillStatus(j.data)}catch(e){}};ws.onclose=function(){setInterval(refresh,3000)}}catch(e){setInterval(refresh,3000)}
+</script></main></body></html>

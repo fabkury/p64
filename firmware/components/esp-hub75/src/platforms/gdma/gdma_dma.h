@@ -102,6 +102,8 @@ class GdmaDma : public PlatformDma {
   int get_lsb_msb_transition_bit() const override { return lsbMsbTransitionBit_; }
   bool set_dma_priority(int priority) override;
   int get_dma_priority() const override { return dma_priority_; }
+  int get_dma_channel_id() const override;
+  bool set_min_refresh_rate(uint16_t hz) override;
 
   // ============================================================================
   // Static Helper Functions (Public for compile-time validation)
@@ -179,6 +181,7 @@ class GdmaDma : public PlatformDma {
   // set_brightness_oe_internal(), and the resulting on-time weight per frame; the LUT is
   // fitted to those weights by fit_lut_to_weights().
   int dma_priority_ = 0;  // p64 patch: GDMA arbitration priority of dma_chan_
+  uint16_t min_refresh_hz_ = 0;  // p64 patch: the minimum refresh rate in force (config_ is const)
   uint16_t plane_on_pixels_[16] = {};
   uint32_t plane_weight_[16] = {};
   void fit_lut_to_weights();

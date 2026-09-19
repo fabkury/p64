@@ -280,6 +280,11 @@ class PlatformDma {
   // p64 patch: GDMA arbitration priority of the panel's channel (platforms without GDMA: false / -1).
   virtual bool set_dma_priority(int priority) { return false; }
   virtual int get_dma_priority() const { return -1; }
+  // p64 patch: the GDMA channel number the panel streams on (-1 without GDMA or before begin()).
+  virtual int get_dma_channel_id() const { return -1; }
+  // p64 patch: changes the minimum refresh rate in place (new transition bit, descriptor
+  // chains rebuilt, DMA restarted, pixel data kept). False when unsupported.
+  virtual bool set_min_refresh_rate(uint16_t hz) { return false; }
 };
 
 }  // namespace hub75

@@ -201,7 +201,8 @@ void test_frame_blend() {
 }
 
 void test_frame_queue() {
-  p64::playback::FrameQueue q;
+  static p64::playback::ReadySlot slots[p64::playback::FrameQueue::kSlots];
+  p64::playback::FrameQueue q(slots);
   CHECK(q.consumer_peek() == nullptr);
   for (unsigned i = 0; i < p64::playback::FrameQueue::kSlots; ++i) {
     auto *s = q.producer_slot();

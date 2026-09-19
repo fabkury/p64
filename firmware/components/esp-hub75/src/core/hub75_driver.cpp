@@ -214,6 +214,12 @@ size_t Hub75Driver::get_descriptor_count() const { return dma_ ? dma_->get_descr
 int Hub75Driver::get_lsb_msb_transition_bit() const { return dma_ ? dma_->get_lsb_msb_transition_bit() : 0; }
 bool Hub75Driver::set_dma_priority(int priority) { return dma_ ? dma_->set_dma_priority(priority) : false; }
 int Hub75Driver::get_dma_priority() const { return dma_ ? dma_->get_dma_priority() : -1; }
+int Hub75Driver::get_dma_channel_id() const { return dma_ ? dma_->get_dma_channel_id() : -1; }
+bool Hub75Driver::set_min_refresh_rate(uint16_t hz) {
+  if (!dma_ || !running_ || !dma_->set_min_refresh_rate(hz)) return false;
+  config_.min_refresh_rate = hz;
+  return true;
+}
 
 uint16_t Hub75Driver::get_width() const {
   // Return virtual width with rotation applied

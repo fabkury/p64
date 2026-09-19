@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "esp_log.h"
+#include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -183,7 +184,11 @@ bool Display::start_driver(unsigned min_refresh_hz) {
   stall_dscr_ = 0;
   stall_count_ = 0;
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
-  lcd_dma_channel_ = find_lcd_dma_channel();
+  // The driver says which GDMA channel it streams on (p64 patch). A register scan for
+  // the LCD peripheral found a stale channel after a driver restart: the old channel's
+  // selector still read "LCD" while the new driver ran on another channel.
+  lcd_dma_channel_ = driver_->get_dma_channel_id();
+  if (lcd_dma_channel_ < 0) lcd_dma_channel_ = find_lcd_dma_channel();
   if (lcd_dma_channel_ >= 0 && !learn_chains()) lcd_dma_channel_ = -1;
   if (lcd_dma_channel_ < 0) driver_->flip_buffer();
   driver_->clear();
@@ -202,7 +207,7 @@ bool Display::start_driver(unsigned min_refresh_hz) {
     ESP_LOGI(TAG, "frame boundaries read from GDMA channel %d (%lu-byte descriptor chains): frame-locked rendering",
              lcd_dma_channel_, static_cast<unsigned long>(chain_bytes_));
   } else if (cfg.double_buffer) {
-    ESP_LOGW(TAG, "LCD GDMA channel not found: frames wait a full refresh period after each flip");
+    ESP_LOGW(TAG, "no frame-boundary signal from the DMA: frames wait a full refresh period after each flip");
   }
   return true;
 }
@@ -216,29 +221,39 @@ void Display::stop_driver() {
   flip_pending_ = false;
 }
 
+// The mode changes the minimum refresh rate in place (p64 driver patch): the DMA stops,
+// the descriptor chains are rebuilt for the new transition bit and the DMA restarts on
+// the same channel with the picture still in the row buffers. A full driver re-creation
+// was tried first and left the DMA stalled (2026-09-19).
 bool Display::set_mode(Mode mode) {
+  std::lock_guard<std::mutex> lock(driver_mutex_);
   if (!driver_) return false;
   if (mode == mode_) return true;
-  const Mode previous = mode_;
   const int64_t t0 = esp_timer_get_time();
-  stop_driver();
-  mode_ = mode;
-  ++restarts_;
-  if (!start_driver(mode == Mode::Photo ? kPhotoMinRefreshHz : kQualityMinRefreshHz)) {
-    ESP_LOGE(TAG, "mode switch failed; restoring the previous mode");
-    mode_ = previous;
-    if (!start_driver(previous == Mode::Photo ? kPhotoMinRefreshHz : kQualityMinRefreshHz)) return false;
+  const unsigned hz = mode == Mode::Photo ? kPhotoMinRefreshHz : kQualityMinRefreshHz;
+  if (!driver_->set_min_refresh_rate(static_cast<uint16_t>(hz))) {
+    ESP_LOGE(TAG, "mode switch refused by the driver");
     return false;
   }
-  // Put the last picture back so the blank is as short as the restart itself.
-  driver_->draw_pixels(0, 0, gfx::kPanelWidth, gfx::kPanelHeight, physical_, Hub75PixelFormat::RGB888,
-                       Hub75ColorOrder::RGB, false);
+  mode_ = mode;
+  ++restarts_;
+  period_us_ = driver_->get_frame_period_us();
+  chain_bytes_ = static_cast<uint32_t>(driver_->get_descriptor_count() * sizeof(dma_descriptor_t));
+  if (chain_bytes_ == 0) chain_bytes_ = kNominalChainBytes;
+  last_boundary_us_ = 0;
+  stall_dscr_ = 0;
+  stall_count_ = 0;
+  flip_pending_ = false;
 #if defined(CONFIG_HUB75_DOUBLE_BUFFER)
-  driver_->flip_buffer();
-  flip_pending_ = true;
+  // The chains moved: learn their ends again on the same channel.
+  const int ch = driver_->get_dma_channel_id();
+  lcd_dma_channel_ = ch >= 0 ? ch : find_lcd_dma_channel();
+  if (lcd_dma_channel_ >= 0 && !learn_chains()) lcd_dma_channel_ = -1;
 #endif
   last_flip_us_ = esp_timer_get_time();
-  ESP_LOGI(TAG, "panel mode switched in %lld ms", static_cast<long long>((esp_timer_get_time() - t0) / 1000));
+  ESP_LOGI(TAG, "panel mode switched to %s in %lld ms: %.1f Hz, transition bit %d, %s", mode == Mode::Photo ? "photo" : "quality",
+           static_cast<long long>((esp_timer_get_time() - t0) / 1000), 1e6 / refresh_period_us(),
+           driver_->get_lsb_msb_transition_bit(), lcd_dma_channel_ >= 0 ? "frame-locked" : "timed waits");
   return true;
 }
 
@@ -340,13 +355,20 @@ bool Display::learn_chains() {
   const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
   const TickType_t settle = pdMS_TO_TICKS(static_cast<uint32_t>(3 * refresh_period_us() / 1000) + 2);
   vTaskDelay(settle);
+  const uint32_t dscr_a = GDMA.channel[ch].out.dscr;
   chain_last_[0] = GDMA.channel[ch].out.eof_des_addr;
   driver_->flip_buffer();
   vTaskDelay(settle);
+  const uint32_t dscr_b = GDMA.channel[ch].out.dscr;
   chain_last_[1] = GDMA.channel[ch].out.eof_des_addr;
   if (chain_last_[0] == 0 || chain_last_[1] == 0 || chain_last_[0] == chain_last_[1]) {
-    ESP_LOGW(TAG, "could not identify both descriptor chains (0x%lx, 0x%lx): timed waits instead",
-             static_cast<unsigned long>(chain_last_[0]), static_cast<unsigned long>(chain_last_[1]));
+    ESP_LOGW(TAG,
+             "could not identify both descriptor chains on GDMA channel %lu (eof 0x%lx / 0x%lx, dscr 0x%lx -> 0x%lx, "
+             "eof flag %d): timed waits instead",
+             static_cast<unsigned long>(ch), static_cast<unsigned long>(chain_last_[0]),
+             static_cast<unsigned long>(chain_last_[1]), static_cast<unsigned long>(dscr_a),
+             static_cast<unsigned long>(dscr_b),
+             (gdma_ll_tx_get_interrupt_status(&GDMA, ch, true) & GDMA_LL_EVENT_TX_EOF) ? 1 : 0);
     return false;
   }
   return true;
@@ -380,6 +402,7 @@ void Display::note_timeout(uint32_t fetching) {
 }
 
 Display::Health Display::health() const {
+  std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(driver_mutex_));
   Health h;
   h.stalled = stall_reported_;
   h.frames = totals_.frames + stats_.frames;
@@ -391,6 +414,15 @@ Display::Health Display::health() const {
   h.refresh_hz = period_us_ > 0 ? 1e6 / period_us_ : 0;
   h.mode = mode_;
   h.restarts = restarts_;
+  h.dma_sync = lcd_dma_channel_ >= 0;
+  // Probe: a streaming DMA advances its descriptor pointer every few microseconds.
+  int ch = lcd_dma_channel_ >= 0 ? lcd_dma_channel_ : (driver_ ? driver_->get_dma_channel_id() : -1);
+  if (ch >= 0) {
+    const uint32_t a = GDMA.channel[ch].out.dscr;
+    esp_rom_delay_us(200);
+    const uint32_t b = GDMA.channel[ch].out.dscr;
+    h.dma_moving = a != b;
+  }
   return h;
 }
 
@@ -400,9 +432,13 @@ double Display::refresh_period_us() const {
          kRequestedClockHz;
 }
 
-bool Display::set_dma_priority(int priority) { return driver_ && driver_->set_dma_priority(priority); }
+bool Display::set_dma_priority(int priority) {
+  std::lock_guard<std::mutex> lock(driver_mutex_);
+  return driver_ && driver_->set_dma_priority(priority);
+}
 
 void Display::set_brightness(uint8_t value) {
+  std::lock_guard<std::mutex> lock(driver_mutex_);
   brightness_ = value;
   if (driver_) driver_->set_brightness(value);
 }

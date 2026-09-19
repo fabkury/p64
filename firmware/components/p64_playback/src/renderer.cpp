@@ -1,7 +1,9 @@
 #include "p64/playback/renderer.hpp"
 
 #include <cinttypes>
+#include <new>
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "p64/playback/player.hpp"
@@ -19,6 +21,10 @@ bool Renderer::start(display::Display &display, FrameQueue &queue, Player *playe
   display_ = &display;
   queue_ = &queue;
   player_ = player;
+  void *mem = heap_caps_malloc(sizeof(gfx::Frame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!mem) mem = malloc(sizeof(gfx::Frame));
+  preview_ = mem ? new (mem) gfx::Frame() : nullptr;
+  // The render task keeps its stack in internal RAM: it is the real-time task.
   const BaseType_t ok = xTaskCreatePinnedToCore(&Renderer::task_entry, "render", 6144, this, 20, &task_, 1);
   return ok == pdPASS;
 }
@@ -26,8 +32,29 @@ bool Renderer::start(display::Display &display, FrameQueue &queue, Player *playe
 Renderer::Stats Renderer::take_stats() {
   std::lock_guard<std::mutex> lock(mutex_);
   const Stats out = stats_;
+  totals_.frames += out.frames;
+  totals_.late += out.late;
+  totals_.skipped += out.skipped;
   stats_ = Stats{};
   return out;
+}
+
+Renderer::Stats Renderer::totals() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  Stats t = totals_;
+  t.frames += stats_.frames;
+  t.late += stats_.late;
+  t.skipped += stats_.skipped;
+  return t;
+}
+
+void Renderer::request_mode(display::Mode mode) { pending_mode_.store(static_cast<int>(mode)); }
+
+bool Renderer::snapshot(gfx::Frame &out) {
+  std::lock_guard<std::mutex> lock(preview_mutex_);
+  if (!have_preview_ || !preview_) return false;
+  out.copy_from(*preview_);
+  return true;
 }
 
 void Renderer::task_entry(void *arg) { static_cast<Renderer *>(arg)->run(); }
@@ -58,6 +85,12 @@ void Renderer::run() {
       log_window(window_start, window_frames, window_late, window_skipped);
       window_start = now;
       window_frames = window_late = window_skipped = 0;
+    }
+    // A requested panel mode switch happens here, between frames: the driver is
+    // re-created and the last picture put back (Display::set_mode).
+    const int pending = pending_mode_.exchange(-1);
+    if (pending >= 0 && static_cast<display::Mode>(pending) != display_->mode()) {
+      display_->set_mode(static_cast<display::Mode>(pending));
     }
     ReadySlot *slot = queue_->consumer_peek();
     if (!slot) {
@@ -99,6 +132,11 @@ void Renderer::run() {
     last_visible_us_ = visible;
     last_delay_us_ = slot->delay_us;
     last_generation_ = slot->generation;
+    if (preview_) {
+      std::lock_guard<std::mutex> lock(preview_mutex_);
+      preview_->copy_from(slot->frame);
+      have_preview_ = true;
+    }
     queue_->consumer_release();
     if (player_) player_->notify_slot_free();
     ++window_frames;

@@ -21,7 +21,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | done (panel modes untested) | 2026-09-19: card GIFs play through player + renderer at their stored delays, late 0, decode 1.1-1.5 ms, copy 7.5 ms, swap drops the old queued frame |
 | M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | done except the on-device benchmark (needs files on the card: M4 upload) | 2026-09-19: host tests 86 files / 1531 frames exact; device builds and plays GIFs unchanged |
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | done (RTC chip deferred to M9) | 2026-09-19: settings in NVS, dev seed, STA join, mDNS, SNTP + zone table, HTTP server, portal page, scan, captive probes, erase -> setup mode (AP+STA, captive DNS) all seen on the device |
-| M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | pending | |
+| M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | pending | |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | pending | |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | pending | |
@@ -96,5 +96,34 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   AP+STA mode, captive DNS; a hard reset re-seeds and reconnects. Windows' netsh scan
   did not list `p64-setup` (its scan cache), so the AP's visibility and the portal
   flow from a phone remain for the user to confirm.
-- Next: M4, the API v1 with WebSocket push, live preview, a minimal web UI, and the
-  card file manager (which unblocks the decode benchmark and PNG/WebP on the device).
+- M4: `p64_web` (/api/v1: status, settings GET/PUT with clamping, actions next/play/
+  reboot, frame as PNG or raw, Wi-Fi scan/set/erase, time zones, diagnostics: log ring,
+  memory with task stacks, DMA priority, decode benchmark; file manager: list, get,
+  upload with sniff-and-decode validation, delete, mkdir, rename; WebSocket status push
+  every 2 s and on events; embedded single-page UI), `p64_system::logring`, a minimal
+  PNG encoder in `p64_gfx`, the renderer's preview snapshot and in-loop panel mode
+  switch, a show controller in main (command queue: next, play this file; the API drives
+  it). `tests/device/api_smoke.py` exercises the API on a live device (uploads of sizes
+  around the 4 KB and 512 B boundaries read back byte for byte).
+- Bugs found on the device and fixed: (1) the settings-change handler called the display
+  while the render task re-created the driver (crash; the display now has a driver
+  mutex); (2) uploaded files came back as zeros past their last full 4 KB block: newlib's
+  stdio buffer had moved to PSRAM with `SPIRAM_MALLOC_ALWAYSINTERNAL=4096` and the
+  partial-block flush wrote zeros through the SDMMC path; card I/O now uses POSIX
+  read/write with an internal DMA-capable bounce buffer; (3) a driver re-creation for the
+  panel mode switch left the DMA stalled for good (descriptor pointer frozen, in either
+  mode; a status probe `dma_moving` now shows it); the vendored driver gained
+  `set_min_refresh_rate()` which rebuilds the descriptor chains in place, and
+  `get_dma_channel_id()` so the display watches the right channel; switches now keep
+  the DMA streaming and the frame lock in both directions; (4) out-of-range settings
+  values wrapped before clamping.
+- Internal RAM: 32 KB free became 96 KB free (largest block 59 KB) after moving the
+  ready frames, the boot scratch and the preview to PSRAM and giving the player,
+  events, WebSocket push and DNS tasks PSRAM stacks (the render task stays internal).
+- Decode benchmark on the device (decode + scale per frame, HTTP task on core 0):
+  64x64 GIF 1.0 ms, APNG 4.7 ms, WebP lossless 5.7 ms; 128x128 APNG 22.3 ms, WebP
+  lossy 28.7 ms (35-45 fps sustainable, so 128x128 stays best effort as the spec
+  allows); 256x256 PNG static 15.9 ms. Details in `README.md`.
+- Setup-mode visibility from a phone and the portal flow remain for the user to confirm.
+- Next: M5, the content model (local channels, playsets, scheduler, history, auto-swap,
+  play-this as the state machine's commands).

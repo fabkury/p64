@@ -53,4 +53,15 @@ bool exists(const std::string &path);
 // Reads a whole file into `out` (cleared first); refuses files above `max_bytes`.
 bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_bytes, std::string &error);
 
+// Resolves a path given relative to the card root ("animations/x.gif") into an absolute
+// one, refusing anything with ".." or control characters. Empty relative = the root.
+bool resolve(const std::string &relative, std::string &absolute, std::string &error);
+bool is_directory(const std::string &path);
+bool remove_path(const std::string &path, std::string &error);  // files and empty folders
+bool make_dir(const std::string &path, std::string &error);
+bool rename_path(const std::string &from, const std::string &to, std::string &error);
+// Atomic write: the data goes to a temporary name next to `path` and is renamed over it
+// when complete (partial uploads never appear as files).
+bool write_file(const std::string &path, const uint8_t *data, size_t len, std::string &error);
+
 }  // namespace p64::storage

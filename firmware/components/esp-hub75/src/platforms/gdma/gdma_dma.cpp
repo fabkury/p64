@@ -238,6 +238,7 @@ bool GdmaDma::init() {
            (unsigned int) (static_cast<uint32_t>(config_.output_clock_speed) / 1000000));
 
   // Calculate BCM timing (determines lsbMsbTransitionBit for OE control)
+  min_refresh_hz_ = config_.min_refresh_rate;  // p64 patch: changeable later
   calculate_bcm_timings();
 
   // p64 patch: upstream nudged the LUT here so that codes stay monotonic when the planes
@@ -1161,6 +1162,42 @@ bool GdmaDma::set_dma_priority(int priority) {
   return true;
 }
 
+// p64 patch: a different minimum refresh rate means a different transition bit, so the
+// output-enable windows, the LUT and the descriptor chains change while the pixel data in
+// the row buffers stays. The DMA is stopped and restarted on the same channel and the
+// LCD_CAM peripheral is left configured (a full shutdown() + init() left the DMA stalled).
+bool GdmaDma::set_min_refresh_rate(uint16_t hz) {
+  if (!dma_chan_ || !row_buffers_[0] || hz == 0) return false;
+  if (hz == min_refresh_hz_) return true;
+  const uint16_t previous = min_refresh_hz_;
+  const uint8_t previous_transition = lsbMsbTransitionBit_;
+  stop_transfer();
+  min_refresh_hz_ = hz;
+  calculate_bcm_timings();
+  if (!validate_brightness_config()) {
+    ESP_LOGW(TAG, "min refresh %u Hz rejected by the brightness check; keeping %u Hz", hz, previous);
+    min_refresh_hz_ = previous;
+    lsbMsbTransitionBit_ = previous_transition;
+  }
+  set_brightness_oe();
+  if (!build_descriptor_chain()) {
+    ESP_LOGE(TAG, "descriptor chains could not be rebuilt; panel stopped");
+    return false;
+  }
+  gdma_reset(dma_chan_);
+  esp_rom_delay_us(100);
+  LCD_CAM.lcd_misc.lcd_afifo_reset = 1;
+  start_transfer();
+  return min_refresh_hz_ == hz;
+}
+
+int GdmaDma::get_dma_channel_id() const {
+  // p64 patch: lets the application watch this channel's registers for frame boundaries.
+  int id = -1;
+  if (!dma_chan_ || gdma_get_channel_id(dma_chan_, &id) != ESP_OK) return -1;
+  return id;
+}
+
 float GdmaDma::get_frame_period_us() const {
   if (descriptor_count_ == 0 || actual_clock_hz_ == 0) return 0.0f;
   return static_cast<float>(descriptor_count_) * dma_width_ * 1000000.0f / static_cast<float>(actual_clock_hz_);
@@ -1314,8 +1351,8 @@ void GdmaDma::calculate_bcm_timings() {
   ESP_LOGI(TAG, "Buffer transmission time: %.2f µs (%u pixels @ %lu Hz)", buffer_time_us, (unsigned) buffer_pixels,
            (unsigned long) actual_clock_hz_);
 
-  // Target refresh rate from config
-  const uint32_t target_hz = config_.min_refresh_rate;
+  // Target refresh rate from config (p64 patch: or the rate set later in place)
+  const uint32_t target_hz = min_refresh_hz_ ? min_refresh_hz_ : config_.min_refresh_rate;
 
   // Calculate optimal lsbMsbTransitionBit to achieve target refresh rate
   lsbMsbTransitionBit_ = 0;

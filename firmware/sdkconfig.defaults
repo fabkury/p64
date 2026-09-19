@@ -58,6 +58,11 @@ CONFIG_HTTPD_WS_SUPPORT=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# Task list with stack headroom for the diagnostics (spec 15.5).
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+# Tasks that never touch the flash cache may keep their stacks in PSRAM (internal RAM
+# is the scarce resource on this board).
+CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY=y
 # The main task (state machine) runs on core 0 with the network; the render and player
 # tasks are created on core 1 by the firmware itself (docs/architecture.md section 2).
 CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0=y

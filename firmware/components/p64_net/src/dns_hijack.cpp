@@ -3,8 +3,10 @@
 #include <atomic>
 #include <cstring>
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
 
@@ -74,7 +76,7 @@ void task(void *) {
 void start() {
   if (g_task) return;
   g_run = true;
-  xTaskCreatePinnedToCore(task, "dns", 3072, nullptr, 4, &g_task, 0);
+  xTaskCreatePinnedToCoreWithCaps(task, "dns", 3072, nullptr, 4, &g_task, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   ESP_LOGI(TAG, "captive DNS answering every name with 192.168.4.1");
 }
 

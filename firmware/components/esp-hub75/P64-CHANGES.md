@@ -41,6 +41,26 @@ runtime. The panel's FIFO has no back-pressure: when other GDMA users (the hardw
 AES/SHA engines during TLS) burst at the same priority, the panel channel can be
 starved and the refresh stalls for good. See p64's README for the measurements.
 
+## GDMA channel id getter (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
+
+`Hub75Driver::get_dma_channel_id()` returns the GDMA channel the panel streams on (-1 on
+other platforms or before `begin()`), from `gdma_get_channel_id()`. p64's display layer
+watches that channel's registers for frame boundaries; it used to scan the channels for
+the LCD peripheral selector, which found a stale channel after a driver restart (the
+panel mode switch re-creates the driver) because the old channel's selector still read
+"LCD".
+
+## Minimum refresh rate changed in place (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
+
+`Hub75Driver::set_min_refresh_rate(hz)` recomputes the transition bit for a new minimum
+refresh rate and applies it without tearing the driver down: the DMA stops, the
+output-enable windows and the LUT are refitted, the descriptor chains are rebuilt for the
+new transmission pattern, and the DMA restarts on the same channel with the picture still
+in the row buffers. p64 switches between its Quality (250 Hz minimum -> 271 Hz) and Photo
+(600 Hz minimum -> 698 Hz) panel modes this way. Re-creating the driver (`end()` then a
+new `begin()`) leaves the DMA stalled on this board: the descriptor pointer never moves
+again, in either mode.
+
 ## Timing getters (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
 
 `Hub75Driver::get_frame_period_us()`, `get_descriptor_count()` and

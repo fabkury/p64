@@ -4,8 +4,10 @@
 #include <utility>
 #include <vector>
 
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
@@ -72,7 +74,9 @@ bool event_bus_init() {
   if (g_task) return true;
   g_queue = xQueueCreate(32, sizeof(Message));
   if (!g_queue) return false;
-  const BaseType_t ok = xTaskCreatePinnedToCore(dispatcher, "events", 6144, nullptr, 5, &g_task, 0);
+  // Handlers write NVS (settings) through the main task, never here: PSRAM stack is fine.
+  const BaseType_t ok = xTaskCreatePinnedToCoreWithCaps(dispatcher, "events", 6144, nullptr, 5, &g_task, 0,
+                                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   return ok == pdPASS;
 }
 

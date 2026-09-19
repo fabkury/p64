@@ -1,0 +1,27 @@
+# p64_web: the HTTP API (/api/v1), the WebSocket status push, the live preview, the card
+# file manager, and the embedded web UI. docs/architecture.md section 8, spec 11-12.
+idf_component_register(
+    SRCS
+        "src/api.cpp"
+        "src/files.cpp"
+        "src/ws.cpp"
+        "src/ui.cpp"
+    INCLUDE_DIRS
+        "include"
+    EMBED_TXTFILES
+        "ui/index.html"
+    REQUIRES
+        p64_gfx
+        p64_display
+        p64_net
+        p64_system
+        json
+    PRIV_REQUIRES
+        p64_storage
+        p64_decode
+        p64_playback
+        esp_timer
+        esp_app_format
+        app_update
+        heap
+)

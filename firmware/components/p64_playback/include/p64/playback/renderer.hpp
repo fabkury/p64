@@ -4,6 +4,7 @@
 // line every 10 s.
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 
@@ -27,8 +28,14 @@ class Renderer {
   // Starts the task on core 1. The player pointer may be null (nobody to wake).
   bool start(display::Display &display, FrameQueue &queue, Player *player);
   Stats take_stats();
-  // The frame presented last (for the live preview, later).
+  // Cumulative counters since start (for status).
+  Stats totals();
   int64_t last_present_us() const { return last_present_us_; }
+  // Asks for a panel mode switch; the render task performs the driver restart between
+  // two frames (the panel blanks briefly, spec 3.1).
+  void request_mode(display::Mode mode);
+  // Copies the frame presented last (the live preview). False before the first frame.
+  bool snapshot(gfx::Frame &out);
 
  private:
   static void task_entry(void *arg);
@@ -41,6 +48,11 @@ class Renderer {
   TaskHandle_t task_ = nullptr;
   std::mutex mutex_;
   Stats stats_;
+  Stats totals_;
+  std::atomic<int> pending_mode_{-1};  // -1 = none, else display::Mode
+  std::mutex preview_mutex_;
+  gfx::Frame *preview_ = nullptr;  // allocated in PSRAM by start()
+  bool have_preview_ = false;
   int64_t last_present_us_ = 0;  // when the last copy finished (the flip was issued)
   int64_t last_visible_us_ = 0;  // when the last frame became visible on the schedule
   int64_t copy_lead_us_ = 7500;  // running average of the copy time; the copy starts this early

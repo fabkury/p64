@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <mutex>
 
 #include "cJSON.h"
@@ -55,11 +56,19 @@ const cJSON *sub(const cJSON *parent, const char *name) {
   return (o && cJSON_IsObject(o)) ? o : nullptr;
 }
 
+// Numbers are clamped into the target type's range first, so an out-of-range value
+// like 999 for a uint8_t clamps to 255 instead of wrapping.
 template <typename T>
 void get_num(const cJSON *o, const char *name, T &out) {
   if (!o) return;
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, name);
-  if (v && cJSON_IsNumber(v)) out = static_cast<T>(v->valuedouble);
+  if (!v || !cJSON_IsNumber(v)) return;
+  double d = v->valuedouble;
+  const double lo = static_cast<double>(std::numeric_limits<T>::min());
+  const double hi = static_cast<double>(std::numeric_limits<T>::max());
+  if (d < lo) d = lo;
+  if (d > hi) d = hi;
+  out = static_cast<T>(d);
 }
 
 void get_bool(const cJSON *o, const char *name, bool &out) {

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
 
 #include "p64/gfx/frame.hpp"
 #include "p64/gfx/geometry.hpp"
@@ -47,7 +48,9 @@ class Display {
     int bit_depth = 0;
     double refresh_hz = 0;
     Mode mode = Mode::Quality;
-    int restarts = 0;  // driver re-creations (mode switches)
+    int restarts = 0;      // driver re-creations (mode switches)
+    bool dma_sync = false;  // frame boundaries come from the DMA (else timed waits)
+    bool dma_moving = false;  // the DMA descriptor pointer advanced during the probe
   };
 
   // Builds the driver from sdkconfig (pins, panel, timing) in Quality mode and starts
@@ -99,6 +102,9 @@ class Display {
   void wait_timed();
   void note_timeout(uint32_t fetching);  // stall detection (warns once)
 
+  // Guards driver_ across the re-creation in set_mode(): the setters and health() may
+  // be called from other tasks while the render task restarts the driver.
+  std::mutex driver_mutex_;
   Hub75Driver *driver_ = nullptr;
   Mode mode_ = Mode::Quality;
   uint8_t brightness_ = 0;

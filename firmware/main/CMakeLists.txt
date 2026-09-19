@@ -12,6 +12,8 @@ idf_component_register(
         p64_storage
         p64_system
         p64_net
+        p64_web
+        json
         esp_timer
         app_update
         esp_app_format
