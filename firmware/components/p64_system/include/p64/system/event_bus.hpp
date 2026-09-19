@@ -18,9 +18,10 @@ enum class Event : uint16_t {
   CardMounted,
   CardFailed,
   PlaybackSwapped,      // arg: history position (or -1 for a status screen / pause)
-  MakapixStateChanged,
+  MakapixStateChanged,  // arg: the new makapix::State (pairing, paired, ...) or MQTT connection changes
   LocalFilesChanged,    // the file manager changed the card's animations tree
   PlaysetsChanged,      // a user playset was created, changed or deleted
+  MakapixChannelChanged,  // a Makapix channel index or its cache changed
 };
 
 struct Message {

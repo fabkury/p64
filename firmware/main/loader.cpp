@@ -11,6 +11,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "p64/makapix/makapix.hpp"
 #include "p64/storage/card.hpp"
 
 namespace p64::loader {
@@ -43,7 +44,14 @@ void do_load(Request &r) {
   const int64_t t0 = esp_timer_get_time();
   std::vector<uint8_t> bytes;
   std::string error;
-  if (!storage::read_file(r.path, bytes, playback::kMaxFileBytes, error)) {
+  if (r.path.rfind("mem:", 0) == 0) {  // the memory cache used without a card
+    if (!makapix::memory_bytes(r.path, bytes)) {
+      res->missing = true;
+      res->error = "no longer in the memory cache";
+      g_on_load(res);
+      return;
+    }
+  } else if (!storage::read_file(r.path, bytes, playback::kMaxFileBytes, error)) {
     struct stat st = {};
     res->missing = stat(r.path.c_str(), &st) != 0;
     res->error = error;

@@ -56,6 +56,22 @@ Channel kinds: `local` (identifier = folder under `animations/`, "" = the root),
 (sqid); `url_list` and `pinned` are reserved. p3a's shape (`type`/`name`, `sdcard`,
 `user`, `named`) is accepted on input.
 
+## Makapix Club (M6)
+
+| Route | Method | Body | What |
+|---|---|---|---|
+| `/api/v1/makapix` | GET | | `{state: unpaired|pairing|paired|invalid, host, player_key, code, code_seconds_left, online, mqtt_connected, activity, last_error, cert_expires_at, refreshes, downloads, download_failures, views_sent, commands}` (also under `makapix` in the status document) |
+| `/api/v1/makapix/pair` | POST | | asks the server for a pairing code; `code` appears in the status within seconds and on the panel |
+| `/api/v1/makapix/pair/cancel` | POST | | drops the code |
+| `/api/v1/makapix/unpair` | POST | | erases the credentials, closes the MQTT session |
+| `/api/v1/makapix/like` | POST | `{"post_id":n,"like":true|false}` | reacts as the owner (needs pairing; blocks up to 20 s) |
+| `/api/v1/action/play` | POST | `{"post":"<sqid or makapix.club/p/<sqid>>"}` | play-this of a Makapix post (looked up and downloaded, then played) |
+| `/api/v1/action/play` | POST | `{"url":"http(s)://..."}` | play-this of an arbitrary artwork URL (downloaded into `downloads/`) |
+
+Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refresh`
+(epoch seconds), `refreshing` and `error`. History items and the status artwork carry
+`post_id` and `sqid` for Makapix artworks.
+
 ## Files (M4)
 
 | Route | Method | What |

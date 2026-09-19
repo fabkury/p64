@@ -1,10 +1,11 @@
 // p64 -- the web layer: /api/v1 routes on the one HTTP server, a WebSocket that pushes
-// status, the live preview, the file manager, playsets and the embedded UI. The
-// application hands it hooks for everything that belongs to the show and the display,
-// so this component depends on no application code.
+// status, the live preview, the file manager, playsets, Makapix and the embedded UI.
+// The application hands it hooks for everything that belongs to the show and the
+// display, so this component depends on no application code.
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -25,6 +26,9 @@ struct Hooks {
   std::function<void()> refresh;
   std::function<void(size_t history_index)> go_to;
   std::function<bool(const std::string &absolute_path, std::string &error)> play_file;
+  std::function<bool(const std::string &sqid_or_url, std::string &error)> play_post;  // Makapix post
+  std::function<bool(const std::string &url, std::string &error)> play_url;           // arbitrary URL
+  std::function<bool(int32_t post_id, bool liked, std::string &error)> like;          // blocks briefly
   std::function<bool(const std::string &name, std::string &error)> activate_playset;
   // Snapshots: each returns a new object the caller owns.
   std::function<cJSON *()> playback_status;  // the status document's "playback" object

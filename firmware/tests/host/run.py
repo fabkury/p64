@@ -51,6 +51,8 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_content", "src", "playset_json.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "scheduler.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "makapix_index.cpp"),
+    os.path.join(COMPONENTS, "p64_gfx", "src", "text.cpp"),
 ]
 ZLIB_SOURCES = [os.path.join(ZLIB, f) for f in (
     "adler32.c", "crc32.c", "inffast.c", "inflate.c", "inftrees.c", "zutil.c",

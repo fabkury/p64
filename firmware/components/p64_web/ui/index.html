@@ -30,7 +30,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .toast.show{opacity:1}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:var(--line)}.badge.ok{background:#1e4d2b;color:var(--ok)}.badge.warn{background:#5a3d10;color:#ffb347}
 </style></head><body><main>
-<h1>p64</h1><p class="sub">development web interface (milestone M5); the full interface comes later</p>
+<h1>p64</h1><p class="sub">development web interface (milestone M6); the full interface comes later</p>
 
 <div class="card"><h2>Now playing</h2>
 <div class="preview"><img id="frame" alt="panel"><div class="kv" id="playing">…</div></div>
@@ -41,6 +41,13 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 </div>
 
 <div class="card"><h2>History</h2><ul class="files" id="history"></ul></div>
+
+<div class="card"><h2>Makapix Club</h2>
+<div class="kv" id="mkinfo">&hellip;</div>
+<div id="mkcode" style="display:none;font-size:30px;letter-spacing:8px;text-align:center;margin:10px 0;font-family:ui-monospace,monospace"></div>
+<div class="row"><button id="mkpair" onclick="post('/api/v1/makapix/pair')">Pair with Makapix</button><button class="secondary" id="mkcancel" onclick="post('/api/v1/makapix/pair/cancel')">Cancel</button><button class="danger" id="mkunpair" onclick="if(confirm('Unpair from Makapix Club? The credentials are erased.'))post('/api/v1/makapix/unpair')">Unpair</button></div>
+<label>Play a Makapix post (sqid or link) or an artwork URL</label><div class="row"><input type="text" id="playref" placeholder="BVLa, makapix.club/p/BVLa or https://.../art.gif" style="flex:1"><button class="small" onclick="playRef()">Play</button></div>
+</div>
 
 <div class="card"><h2>Playsets <span class="kv" id="pscount"></span></h2>
 <ul class="files" id="playsets"></ul>
@@ -94,13 +101,16 @@ function api(path,opt){return fetch(path,opt).then(function(r){return r.json()})
 function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}).then(function(d){refresh();return d}).catch(function(e){toast(e.message)})}
 function act(a){return post('/api/v1/action/'+a)}
 function togglePause(){act(paused?'resume':'pause')}
+function likePost(id,like){api('/api/v1/makapix/like',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({post_id:id,like:like})}).then(function(){toast(like?'liked':'unliked')}).catch(function(e){toast(e.message)})}
+function playRef(){var v=document.getElementById('playref').value.trim();if(!v)return;var body=/^https?:\/\//.test(v)&&v.indexOf('makapix.club/p/')<0?{url:v}:{post:v};post('/api/v1/action/play',body).then(function(){toast('queued')})}
 function setting(patch){return api('/api/v1/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(function(s){fillSettings(s);toast('saved')}).catch(function(e){toast(e.message)})}
 function fmt(n){return n>1e9?(n/1e9).toFixed(1)+' GB':n>1e6?(n/1e6).toFixed(1)+' MB':n>1e3?(n/1e3).toFixed(0)+' KB':n+' B'}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function fillSettings(s){S=s;var d=s.display;document.getElementById('brightness').value=d.brightness;document.getElementById('bval').textContent=d.brightness;document.getElementById('panel_mode').value=d.panel_mode;document.getElementById('rotation').value=d.rotation;document.getElementById('auto_swap').value=s.show.auto_swap_seconds;document.getElementById('pick_mode').value=s.show.pick_mode;document.getElementById('channel_select').value=s.show.channel_select;var b=d.background;document.getElementById('background').value='#'+[b.r,b.g,b.b].map(function(v){return ('0'+v.toString(16)).slice(-2)}).join('');document.getElementById('timezone').value=s.network.timezone;document.getElementById('device_name').value=s.network.device_name}
 function fillStatus(d){var p=d.playback||{};var a=p.artwork;paused=!!p.paused;document.getElementById('pausebtn').textContent=paused?'▶ Resume':'⏸ Pause';document.getElementById('prevbtn').disabled=!(p.history&&p.history.can_back);
 var txt=a?('<b>'+esc(a.name)+'</b><br>'+a.format+' '+a.width+'x'+a.height+', '+fmt(a.bytes)+(a.animated?'':', static')+'<br>'+(a.channel?('channel <b>'+esc(a.channel)+'</b>'):'play-this')+' · playset <b>'+esc(p.playset?p.playset.name:'')+'</b>'):(paused?'<b>paused</b>':'<b>no artwork</b>'+(p.no_artwork?': '+esc(p.no_artwork):''));
-if(p.last_error)txt+='<br><span style="color:#f88">'+esc(p.last_error)+'</span>';txt+='<br>frames '+(p.frames||0)+', late '+(p.late||0)+', swaps '+(p.swaps||0);document.getElementById('playing').innerHTML=txt;
+if(a&&a.post_id!=null){txt+='<br>Makapix post '+a.post_id+(a.sqid?(' <a href="https://makapix.club/p/'+esc(a.sqid)+'" target="_blank" style="color:#8b5cff">open</a>'):'')+' <button class="small secondary" onclick="likePost('+a.post_id+',true)">&#9829; Like</button><button class="small secondary" onclick="likePost('+a.post_id+',false)">Unlike</button>'}if(p.last_error)txt+='<br><span style="color:#f88">'+esc(p.last_error)+'</span>';txt+='<br>frames '+(p.frames||0)+', late '+(p.late||0)+', swaps '+(p.swaps||0);document.getElementById('playing').innerHTML=txt;
+var m=d.makapix||{};var mi='state <b>'+esc(m.state)+'</b>'+(m.online?'':' · offline')+(m.mqtt_connected?' · MQTT connected':'')+(m.activity?(' · '+esc(m.activity)):'')+'<br>refreshes '+m.refreshes+', downloads '+m.downloads+(m.download_failures?(' ('+m.download_failures+' failed)'):'')+', views '+m.views_sent+', commands '+m.commands+(m.player_key?('<br>player '+esc(m.player_key)):'')+(m.cert_expires_at?('<br>certificate until '+new Date(m.cert_expires_at*1000).toISOString().slice(0,10)):'')+(m.last_error?('<br><span style="color:#f88">'+esc(m.last_error)+'</span>'):'');document.getElementById('mkinfo').innerHTML=mi;var mc=document.getElementById('mkcode');if(m.state==='pairing'&&m.code){mc.style.display='block';mc.textContent=m.code;document.getElementById('mkinfo').innerHTML+='<br>enter this code at makapix.club (Settings, Players, Add device); '+Math.floor(m.code_seconds_left/60)+' min left'}else mc.style.display='none';document.getElementById('mkpair').style.display=(m.state==='unpaired'||m.state==='invalid')?'':'none';document.getElementById('mkcancel').style.display=m.state==='pairing'?'':'none';document.getElementById('mkunpair').style.display=(m.state==='paired'||m.state==='invalid')?'':'none';
 var as=p.auto_swap||{};document.getElementById('swapbadge').textContent=as.interval_s?('swap in '+(as.remaining_s<0?'-':as.remaining_s+' s')):'no auto-swap';
 var n=d.network;document.getElementById('netbadge').textContent=n.connected?('Wi-Fi '+n.rssi+' dBm'):(n.setup_mode?'setup mode':'offline');document.getElementById('netbadge').className='badge '+(n.connected?'ok':'warn');document.getElementById('timebadge').textContent=d.time.synced?d.time.local.replace('T',' '):'time unknown';document.getElementById('netinfo').innerHTML='<b>'+n.hostname+'.local</b> · '+(n.connected?('IP '+n.ip+', gateway '+n.gateway+', '+n.rssi+' dBm'):'not connected')+(d.network.ssid?(' · network <b>'+esc(n.ssid)+'</b>'):'');var c=d.card;document.getElementById('cardinfo').textContent=c.mounted?('card '+fmt(c.free_bytes)+' free of '+fmt(c.total_bytes)):('no card: '+c.error);var pn=d.panel||{};document.getElementById('diag').innerHTML='firmware <b>'+d.firmware.version+'</b> (IDF '+d.firmware.idf+'), up '+Math.floor(d.uptime_s/60)+' min · panel <b>'+(pn.refresh_hz||0).toFixed(1)+' Hz</b> '+pn.mode+', frames '+pn.frames+', late flips '+pn.late_flips+', timeouts '+pn.timeouts+(pn.stalled?' <b style="color:#f66">STALLED</b>':'')+' · heap internal <b>'+fmt(d.heap.internal_free)+'</b> (largest '+fmt(d.heap.internal_largest)+'), PSRAM '+fmt(d.heap.psram_free);
 var pos=p.history?p.history.position:-1;if(pos!==lastPos||(p.history&&p.history.count!==(window._hc||-1))){lastPos=pos;window._hc=p.history?p.history.count:0;loadHistory();loadChannels()}

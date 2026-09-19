@@ -23,7 +23,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | done (RTC chip deferred to M9) | 2026-09-19: settings in NVS, dev seed, STA join, mDNS, SNTP + zone table, HTTP server, portal page, scan, captive probes, erase -> setup mode (AP+STA, captive DNS) all seen on the device |
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
-| M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | pending | |
+| M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | pending | |
 | M8 | Streams: DDP, raw UDP, takeover | pending | |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | pending | |
@@ -160,6 +160,48 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   the player was late on every frame (7 ms render plus the 7.7 ms copy on one core);
   30 fps now, late 0. Best-effort figures with the render task sharing core 1: 128x128
   APNG 28 fps (decode 16.5 ms, max 33), 128x128 lossy WebP 27 fps (36.6 ms, max 40).
-- Next: M6, Makapix Club (promoted channel without pairing, pairing, MQTT commands,
-  channel indexes and the artwork cache, downloads, views, likes; TLS memory budget
-  per ADR 0009).
+- M6: `p64_makapix` (docs/architecture.md section 12): credentials in NVS, pairing
+  (provision, code on the panel and in the UI, credential polling every 3 s for 15 min),
+  the anonymous promoted feed and the player RPC over HTTPS with the bearer token,
+  channel indexes (`content::MakapixEntry`, 64 bytes, binary files under `channels/`,
+  merge rules host-tested), the artwork cache on the card (`cache/<xx>/<uuid>.<ext>`,
+  plain HTTP from the vault over a kept-alive connection, sniffed before storing) or in
+  PSRAM without a card, one worker task for every outbound request, esp-mqtt over mutual
+  TLS (commands, acks, capabilities and state retained, presence every 30 s, last will),
+  views after 5 s on the panel, likes, certificate renewal with token rotation. The
+  built-in 5x7 font (`gfx::text`) draws the status screens: no-artwork reasons, the
+  pairing code, "paired", the hostname and IP after joining. `net::fetch` is the one
+  HTTP(S) client (User-Agent `p64/<version>`, manual redirects, size caps, `Session`
+  for keep-alive). The show maps Makapix channels onto cached index entries, hears
+  `MakapixChannelChanged`, reports what it shows, and takes the site's commands as
+  transient playsets and play-this downloads. API: `/api/v1/makapix` (status, pair,
+  cancel, unpair, like) and `action/play` with `post` or `url`; the dev UI has a Makapix
+  card, a like button and a play-from box. `tests/device/makapix_smoke.py`.
+- Verified on the device: Promoted listed 290 posts in 6 pages anonymously, downloads
+  at about one per second (30 to 200 KB/s from the vault), first artwork 1.4 s after the
+  first download; the index reloads from the card at boot (2048-entry All index in
+  5.6 s after power-on). Pairing with code TDPCHB: credentials stored 38 s after the
+  code (the owner's typing), MQTT connected 1.5 s later, views published (6 in the first
+  minutes), like and unlike over HTTPS next to the MQTT session, play-this of a post by
+  sqid and by link, the All channel walked to its 2048 cap, a hashtag channel and the
+  owner's channel installed their first page within 2 s of activation while downloads
+  interleaved. Commands from the site (next, previous, show artwork, brightness, pause)
+  are wired and acknowledged but still wait for the owner to send them.
+- Memory (the spec's risk 2): with the MQTT session up and downloads running the
+  internal heap was 15 KB free before trimming and 25 to 30 KB after (largest block
+  24 KB, minimum seen 20 KB): `MBEDTLS_DYNAMIC_FREE_CONFIG_DATA` and `_FREE_CA_CERT`
+  free the parsed certificates once a handshake is done, the MQTT task stack is 6 KB
+  (2.7 KB used at the handshake peak), Wi-Fi static receive buffers 8. A transient TLS
+  session (likes, RPC pages) succeeded at that level. Anything new that needs internal
+  RAM must be measured against this.
+- Design choices recorded in the spec (section 13): listings over HTTPS RPC rather than
+  MQTT request topics; vault downloads over plain HTTP with Content-Length and decode
+  checks (`P64_MAKAPIX_VAULT_TLS` switches them to HTTPS); a channel with no index plays
+  its first page before the walk completes.
+- Fixed on the way: a channel refresh that walked all 41 pages before installing
+  anything (now one page per worker step, connection kept open, progressive install); a
+  prepared pick chosen from a one-file cache that replayed the same artwork; a stale
+  resume after a status screen that showed one artwork while history named another;
+  esp-mqtt logging an error when started twice.
+- Next: M7, widgets (the bundled fonts from `assets/fonts`, the clock overlay, the
+  clock, weather and temperature widgets, interludes).

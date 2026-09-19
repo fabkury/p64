@@ -18,11 +18,14 @@
 #include "loader.hpp"
 #include "p64/content/history.hpp"
 #include "p64/content/local_index.hpp"
+#include "p64/content/makapix_index.hpp"
 #include "p64/content/playset.hpp"
 #include "p64/content/playset_json.hpp"
 #include "p64/content/playset_store.hpp"
 #include "p64/content/psram.hpp"
 #include "p64/content/scheduler.hpp"
+#include "p64/makapix/makapix.hpp"
+#include "p64/net/wifi.hpp"
 #include "p64/playback/frame_source.hpp"
 #include "p64/storage/card.hpp"
 #include "p64/system/event_bus.hpp"
@@ -39,6 +42,7 @@ constexpr int64_t kSecond = 1000000;
 constexpr int64_t kRescanDebounceUs = 2 * kSecond;   // after file manager changes
 constexpr int64_t kRetryUs = 5 * kSecond;            // while nothing can be shown
 constexpr int64_t kIdleRescanUs = 30 * kSecond;      // rescan period while nothing can be shown
+constexpr int64_t kPairedScreenUs = 10 * kSecond;    // spec 6.4
 constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
 
 // --- commands -------------------------------------------------------------------------
@@ -52,20 +56,27 @@ enum class Cmd : uint8_t {
   ResetTimer,
   Refresh,
   PlayFile,
+  PlayDownloaded,
   Activate,
+  ActivateTransient,
   Loaded,
   Scanned,
   CardChanged,
   FilesChanged,
   Settings,
+  MakapixChanged,
+  MakapixState,
+  WifiConnected,
 };
 
 struct Command {
   Cmd type;
   uint32_t number;
   std::string *text;
+  std::string *text2;
   loader::LoadResult *load;
   loader::ScanResult *scan;
+  content::Playset *playset;
 };
 
 // The boot animation as a source: runs its course, then holds its last frame until the
@@ -96,15 +107,21 @@ class BootSource : public playback::FrameSource {
 
 struct ChannelRuntime {
   content::ChannelSpec spec;
-  content::LocalEntries entries;
-  uint32_t available = 0;  // entries neither missing nor rejected
-  std::string status;      // "" when the channel can supply artworks, else why not
+  bool makapix = false;
+  content::LocalEntries entries;      // local channels
+  content::MakapixEntries mk_entries; // Makapix channels: the index
+  std::vector<uint16_t> mk_cached;    // indexes into mk_entries of the cached ones (pickable)
+  uint32_t available = 0;             // entries neither missing nor rejected (local) or cached (Makapix)
+  std::string status;                 // "" when the channel can supply artworks, else why not
 };
 
 struct Pick {
   uint32_t generation = 0;  // the playset generation it was made against
   int channel = -1;
-  int entry = -1;
+  int entry = -1;  // index in the channel's pickable list
+  uint32_t pool = 0;  // pickable entries in the channel at pick time
+  bool makapix = false;
+  content::MakapixEntry mk_entry = {};
   std::string path;
   std::string name;
   std::string channel_name;
@@ -116,6 +133,8 @@ struct Pending {
   int direction = 0;  // navigation: -1 previous, +1 next, 0 exact
   content::HistoryItem item;
 };
+
+enum class Screen : uint8_t { None, Pairing, Paired, Connected };
 
 // The state. Owned by the main task; g_mutex makes it readable by the API's tasks.
 std::mutex g_mutex;
@@ -136,6 +155,8 @@ int64_t g_boot_until_us = 0;                 // the boot animation holds the pan
 std::shared_ptr<playback::Artwork> g_current;  // the artwork on the panel (null: status screen or pause)
 std::string g_status_reason;                 // the "no artwork" reason on the panel ("" when none)
 std::string g_last_error;                    // the last load or activation failure, for the UI
+Screen g_screen = Screen::None;              // a status screen that holds the panel
+int64_t g_screen_until_us = 0;               // when a timed screen ends (0 = until its cause ends)
 
 Pick g_prepared_pick;
 std::shared_ptr<playback::Artwork> g_prepared;
@@ -161,13 +182,15 @@ std::shared_ptr<T> psram_shared(Args &&...args) {
 }
 
 void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
-          loader::ScanResult *scan = nullptr) {
-  Command c{type, number, text, load, scan};
+          loader::ScanResult *scan = nullptr, std::string *text2 = nullptr, content::Playset *playset = nullptr) {
+  Command c{type, number, text, text2, load, scan, playset};
   if (!g_commands || xQueueSend(g_commands, &c, pdMS_TO_TICKS(500)) != pdTRUE) {
     ESP_LOGW(TAG, "command queue full; dropped command %d", static_cast<int>(type));
     delete text;
+    delete text2;
     delete load;
     delete scan;
+    delete playset;
   }
 }
 
@@ -182,11 +205,25 @@ std::string channel_dir(const content::ChannelSpec &spec) {
   return spec.identifier.empty() ? storage::animations_dir() : storage::animations_dir() + "/" + spec.identifier;
 }
 
-const char *channel_status(const content::ChannelSpec &spec) {
+makapix::ChannelRef ref_of(const content::ChannelSpec &spec) { return makapix::ChannelRef{spec.kind, spec.identifier}; }
+
+std::string display_name(const content::ChannelSpec &spec) {
+  return spec.display_name.empty() ? spec.default_display_name() : spec.display_name;
+}
+
+// Why a channel cannot supply artworks right now ("" when it can).
+std::string channel_status(const ChannelRuntime &ch) {
+  const content::ChannelSpec &spec = ch.spec;
   if (!spec.supported()) return "not supported yet";
   if (spec.kind == content::ChannelKind::Local) return storage::mounted() ? "" : "no card";
-  if (spec.kind == content::ChannelKind::MakapixPromoted) return "Makapix not available yet";
-  return "needs pairing";
+  const makapix::Status ms = makapix::status();
+  if (spec.needs_pairing() && ms.state != makapix::State::Paired) return "needs pairing";
+  if (ch.mk_cached.empty()) {
+    if (!ch.mk_entries.empty()) return "downloading";
+    if (!ms.online) return "offline";
+    return "no listing yet";
+  }
+  return "";
 }
 
 // Why nothing can be shown: the first reason among the channels, "empty" when a usable
@@ -197,20 +234,51 @@ std::string no_artwork_reason() {
     if (ch.status.empty()) {
       if (ch.available > 0) return "";
       if (reason.empty()) reason = "empty";
-    } else if (reason.empty() || reason == "empty") {
-      if (reason.empty()) reason = ch.status;
+    } else if (reason.empty()) {
+      reason = ch.status;
     }
   }
   return reason.empty() ? "empty" : reason;
 }
 
-bool can_swap_now() { return now_us() >= g_boot_until_us; }
+bool can_swap_now() { return now_us() >= g_boot_until_us && g_screen == Screen::None; }
+
+bool has_local_channels() {
+  for (const ChannelRuntime &ch : g_channels) {
+    if (!ch.makapix) return true;
+  }
+  return false;
+}
 
 void apply_scheduler_modes(const system::Settings &s) {
   g_scheduler.set_pick_mode(s.pick_mode == system::PickMode::Recency ? content::PickMode::Recency
                                                                       : content::PickMode::Random);
   g_scheduler.set_channel_select(s.channel_select == system::ChannelSelect::Swrr ? content::ChannelSelect::Swrr
                                                                                   : content::ChannelSelect::Stochastic);
+}
+
+void update_counts() {
+  for (size_t i = 0; i < g_channels.size(); ++i) {
+    ChannelRuntime &ch = g_channels[i];
+    ch.status = channel_status(ch);
+    const uint32_t count = ch.makapix ? static_cast<uint32_t>(ch.mk_cached.size())
+                                      : (ch.available ? static_cast<uint32_t>(ch.entries.size()) : 0);
+    g_scheduler.set_count(i, ch.status.empty() ? count : 0);
+  }
+}
+
+// Pulls the Makapix channels' indexes from the Makapix component.
+void snapshot_makapix(ChannelRuntime &ch) {
+  makapix::ChannelSnapshot snap;
+  ch.mk_entries.clear();
+  ch.mk_cached.clear();
+  if (makapix::snapshot(ref_of(ch.spec), snap)) {
+    ch.mk_entries = std::move(snap.entries);
+    for (size_t i = 0; i < ch.mk_entries.size() && i < 65535; ++i) {
+      if (ch.mk_entries[i].flags & content::kMakapixCached) ch.mk_cached.push_back(static_cast<uint16_t>(i));
+    }
+  }
+  ch.available = static_cast<uint32_t>(ch.mk_cached.size());
 }
 
 // --- picking and playing --------------------------------------------------------------
@@ -223,18 +291,29 @@ bool pick_fresh(Pick &out) {
     if (c < 0 || static_cast<size_t>(c) >= g_channels.size()) return false;
     ChannelRuntime &ch = g_channels[c];
     const int avoid = (cur && cur->channel_index == c && cur->playset == g_playset.name) ? cur->entry_index : -1;
-    const size_t tries = std::min<size_t>(ch.entries.size(), 16);
+    const size_t pool = ch.makapix ? ch.mk_cached.size() : ch.entries.size();
+    const size_t tries = std::min<size_t>(pool, 16);
     for (size_t t = 0; t < tries; ++t) {
       const int e = g_scheduler.pick_entry(c, avoid);
-      if (e < 0 || static_cast<size_t>(e) >= ch.entries.size()) break;
-      const content::LocalEntry &entry = ch.entries[e];
-      if (entry.missing || entry.rejected) continue;
+      if (e < 0 || static_cast<size_t>(e) >= pool) break;
       out.generation = g_generation;
       out.channel = c;
       out.entry = e;
-      out.path = channel_dir(ch.spec) + "/" + entry.name;
-      out.name = entry.name;
-      out.channel_name = ch.spec.display_name.empty() ? ch.spec.default_display_name() : ch.spec.display_name;
+      out.pool = static_cast<uint32_t>(pool);
+      out.channel_name = display_name(ch.spec);
+      if (ch.makapix) {
+        const content::MakapixEntry &entry = ch.mk_entries[ch.mk_cached[e]];
+        out.makapix = true;
+        out.mk_entry = entry;
+        out.path = makapix::artwork_path(entry);
+        out.name = entry.sqid[0] ? std::string(entry.sqid) : "post " + std::to_string(entry.post_id);
+      } else {
+        const content::LocalEntry &entry = ch.entries[e];
+        if (entry.missing || entry.rejected) continue;
+        out.makapix = false;
+        out.path = channel_dir(ch.spec) + "/" + entry.name;
+        out.name = entry.name;
+      }
       return true;
     }
   }
@@ -244,6 +323,12 @@ bool pick_fresh(Pick &out) {
 void mark_entry(const Pick &pick, bool missing) {
   if (pick.generation != g_generation || pick.channel < 0 || static_cast<size_t>(pick.channel) >= g_channels.size()) return;
   ChannelRuntime &ch = g_channels[pick.channel];
+  if (pick.makapix) {
+    makapix::note_load_failed(pick.mk_entry, missing);
+    snapshot_makapix(ch);
+    update_counts();
+    return;
+  }
   if (pick.entry < 0 || static_cast<size_t>(pick.entry) >= ch.entries.size()) return;
   content::LocalEntry &entry = ch.entries[pick.entry];
   if (pick.name != entry.name || entry.missing || entry.rejected) return;
@@ -264,11 +349,22 @@ void request_prepare() {
   g_prepared_load_id = loader::load(p.path, system::settings().background);
 }
 
+void report_shown(const content::HistoryItem &item) {
+  if (item.post_id < 0) {
+    makapix::note_hidden();
+    return;
+  }
+  makapix::ChannelRef ref{static_cast<content::ChannelKind>(item.channel_kind), item.channel_identifier};
+  const bool from_channel = item.source == content::Source::Channel;
+  makapix::note_shown(item.post_id, from_channel ? &ref : nullptr, item.source == content::Source::PlayThisMakapix);
+}
+
 void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem item, bool push) {
   const int64_t now = now_us();
   g_player->play(art);
   g_current = std::move(art);
   g_status_reason.clear();
+  g_screen = Screen::None;
   g_paused = false;
   g_swap_at_us = now;
   item.shown_at_us = now;
@@ -279,12 +375,13 @@ void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem i
   }
   ++g_swaps;
   const decode::Info &info = g_current->info();
+  const content::HistoryItem *cur = g_history.current();
   ESP_LOGI(TAG, "playing %s (%s %dx%d, %u bytes%s) from %s, history %u/%u", g_current->name().c_str(),
            decode::format_name(g_current->format()), info.width, info.height,
            static_cast<unsigned>(g_current->file_bytes()), info.animated ? "" : ", static",
-           g_history.current() ? (g_history.current()->channel.empty() ? "play-this" : g_history.current()->channel.c_str())
-                               : "?",
+           cur ? (cur->channel.empty() ? "play-this" : cur->channel.c_str()) : "?",
            static_cast<unsigned>(g_history.position() + 1), static_cast<unsigned>(g_history.size()));
+  if (cur) report_shown(*cur);
   system::publish(system::Event::PlaybackSwapped, static_cast<int32_t>(g_history.position()));
 }
 
@@ -298,24 +395,58 @@ void play_prepared() {
   item.channel_index = g_prepared_pick.channel;
   item.entry_index = g_prepared_pick.entry;
   item.playset = g_playset.name;
+  if (g_prepared_pick.channel >= 0 && static_cast<size_t>(g_prepared_pick.channel) < g_channels.size()) {
+    const content::ChannelSpec &spec = g_channels[g_prepared_pick.channel].spec;
+    item.channel_kind = static_cast<uint8_t>(spec.kind);
+    item.channel_identifier = spec.identifier;
+  }
+  if (g_prepared_pick.makapix) {
+    item.post_id = g_prepared_pick.mk_entry.post_id;
+    item.sqid = g_prepared_pick.mk_entry.sqid;
+  }
   play_artwork(std::move(g_prepared), std::move(item), true);
   g_prepared.reset();
   g_want_prepared_now = false;
   request_prepare();
 }
 
-void show_status(const std::string &reason) {
-  if (!g_current && !g_paused && g_status_reason == reason) return;
-  status_screens::no_artwork(*g_scratch, reason);
-  g_player->play(psram_shared<playback::StaticSource>("no artwork", *g_scratch));
+void show_frame(const char *name) {
+  g_player->play(psram_shared<playback::StaticSource>(name, *g_scratch));
   g_current.reset();
   g_paused = false;
-  g_status_reason = reason;
-  g_retry_at_us = now_us() + kRetryUs;
-  if (!g_rescan_due_us) g_rescan_due_us = now_us() + kIdleRescanUs;
-  ESP_LOGW(TAG, "no artwork: %s", reason.c_str());
+  makapix::note_hidden();
   system::publish(system::Event::PlaybackSwapped, -1);
 }
+
+void show_status(const std::string &reason) {
+  if (g_screen != Screen::None) return;  // a screen with a purpose holds the panel
+  if (!g_current && !g_paused && g_status_reason == reason) return;
+  status_screens::no_artwork(*g_scratch, reason);
+  g_status_reason = reason;
+  g_retry_at_us = now_us() + kRetryUs;
+  if (!g_rescan_due_us && has_local_channels()) g_rescan_due_us = now_us() + kIdleRescanUs;
+  ESP_LOGW(TAG, "no artwork: %s", reason.c_str());
+  show_frame("no artwork");
+}
+
+void show_screen(Screen screen, int64_t for_us) {
+  switch (screen) {
+    case Screen::Pairing: status_screens::pairing_code(*g_scratch, makapix::status().code); break;
+    case Screen::Paired: status_screens::paired(*g_scratch); break;
+    case Screen::Connected: {
+      const net::wifi::Status w = net::wifi::status();
+      status_screens::connected(*g_scratch, w.hostname, w.ip);
+      break;
+    }
+    case Screen::None: return;
+  }
+  g_screen = screen;
+  g_screen_until_us = for_us ? now_us() + for_us : 0;
+  g_status_reason.clear();
+  show_frame("status");
+}
+
+void load_current_history_item(Pending::Purpose purpose, int direction);
 
 // A fresh pick goes up now (auto-swap, next at the end of history, activation). When
 // nothing is ready, whatever is on the panel stays until something is (spec 4.5).
@@ -341,8 +472,19 @@ void swap_fresh() {
   }
   if (!g_current) {
     show_status(no_artwork_reason());
-  } else if (!g_rescan_due_us) {
+  } else if (!g_rescan_due_us && has_local_channels()) {
     g_rescan_due_us = now_us() + kRetryUs;  // the index may be stale; look again soon
+  }
+}
+
+// Ends a timed status screen: back to the artwork that was up, or a fresh one.
+void end_screen() {
+  g_screen = Screen::None;
+  g_screen_until_us = 0;
+  if (g_history.current() && !g_paused) {
+    load_current_history_item(Pending::Purpose::Resume, 0);
+  } else {
+    swap_fresh();
   }
 }
 
@@ -378,17 +520,26 @@ void install(loader::ScanResult &r) {
                      g_channels.size() != r.playset.channels.size();
   g_playset = r.playset;
   std::vector<ChannelRuntime> channels(g_playset.channels.size());
+  std::vector<makapix::ChannelRef> refs;
   size_t entries = 0;
   for (size_t i = 0; i < channels.size(); ++i) {
     ChannelRuntime &ch = channels[i];
     ch.spec = g_playset.channels[i];
-    if (i < r.entries.size()) ch.entries = std::move(r.entries[i]);
-    ch.available = static_cast<uint32_t>(ch.entries.size());
-    ch.status = channel_status(ch.spec);
-    if (ch.status.empty() && i < r.errors.size() && !r.errors[i].empty()) ch.status = r.errors[i];
+    ch.makapix = ch.spec.is_makapix();
+    if (ch.makapix) {
+      refs.push_back(ref_of(ch.spec));
+    } else {
+      if (i < r.entries.size()) ch.entries = std::move(r.entries[i]);
+      ch.available = static_cast<uint32_t>(ch.entries.size());
+      if (i < r.errors.size() && !r.errors[i].empty() && storage::mounted()) ch.status = r.errors[i];
+    }
     entries += ch.entries.size();
   }
   g_channels = std::move(channels);
+  makapix::set_active_channels(refs);
+  for (ChannelRuntime &ch : g_channels) {
+    if (ch.makapix) snapshot_makapix(ch);
+  }
   if (fresh) {
     std::vector<uint32_t> weights, offsets;
     for (const content::ChannelSpec &c : g_playset.channels) {
@@ -399,11 +550,9 @@ void install(loader::ScanResult &r) {
     g_scheduler.configure(weights, offsets, seed);
   }
   apply_scheduler_modes(system::settings());
-  for (size_t i = 0; i < g_channels.size(); ++i) {
-    g_scheduler.set_count(i, g_channels[i].available ? static_cast<uint32_t>(g_channels[i].entries.size()) : 0);
-  }
+  update_counts();
   g_last_scan_ms = r.took_ms;
-  ESP_LOGI(TAG, "playset %s: %u channels, %u entries%s, scan %u ms%s", g_playset.name.c_str(),
+  ESP_LOGI(TAG, "playset %s: %u channels, %u local entries%s, scan %u ms%s", g_playset.name.c_str(),
            static_cast<unsigned>(g_channels.size()), static_cast<unsigned>(entries),
            r.skipped ? (", " + std::to_string(r.skipped) + " skipped").c_str() : "", r.took_ms, fresh ? " (fresh)" : "");
   if (fresh) {
@@ -433,6 +582,19 @@ bool resolve_playset(const std::string &name, content::Playset &out, std::string
 }
 
 void activate(const std::string &name, bool persist) {
+  content::Builtin b;
+  if (content::builtin_from_name(name, b) && b == content::Builtin::Followed) {
+    // The server generates this one; the Makapix component hands it back through
+    // activate_transient() when it lands.
+    std::string error;
+    if (!makapix::play_followed(error)) {
+      ESP_LOGW(TAG, "cannot activate Followed: %s", error.c_str());
+      g_last_error = "Followed: " + error;
+      return;
+    }
+    if (persist) system::state::set(kActiveKey, name);
+    return;
+  }
   content::Playset p;
   std::string error;
   if (!resolve_playset(name, p, error)) {
@@ -443,6 +605,14 @@ void activate(const std::string &name, bool persist) {
   ESP_LOGI(TAG, "activating playset %s", name.c_str());
   if (persist) system::state::set(kActiveKey, p.name);
   g_playset.name = p.name;  // status shows the new name while the scan runs
+  g_playset.builtin = p.builtin;
+  start_scan(p, true);
+}
+
+void do_activate_transient(const content::Playset &p) {
+  ESP_LOGI(TAG, "activating playset %s (%u channels, from the site)", p.name.c_str(),
+           static_cast<unsigned>(p.channels.size()));
+  g_playset.name = p.name;
   g_playset.builtin = p.builtin;
   start_scan(p, true);
 }
@@ -494,6 +664,13 @@ void on_loaded(loader::LoadResult *raw) {
       }
       return;
     }
+    if (purpose == Pending::Purpose::Resume) {
+      const content::HistoryItem *cur = g_history.current();
+      if (g_current || !cur || cur->path != g_pending.item.path) {
+        ESP_LOGD(TAG, "stale resume of %s ignored", res->path.c_str());
+        return;  // something else went up meanwhile
+      }
+    }
     play_artwork(res->artwork, g_pending.item, purpose == Pending::Purpose::PlayThis);
     return;
   }
@@ -515,8 +692,52 @@ void on_scanned(loader::ScanResult *raw) {
   }
 }
 
+void on_makapix_changed() {
+  bool any = false;
+  for (ChannelRuntime &ch : g_channels) {
+    if (!ch.makapix) continue;
+    snapshot_makapix(ch);
+    any = true;
+  }
+  if (!any) return;
+  update_counts();
+  // A pick prepared while the cache was still tiny (the same artwork again, or one of
+  // a handful) is replaced once there is something to choose from.
+  if (g_prepared && g_prepared_pick.makapix && g_prepared_pick.channel >= 0 &&
+      static_cast<size_t>(g_prepared_pick.channel) < g_channels.size()) {
+    const uint32_t pool = static_cast<uint32_t>(g_channels[g_prepared_pick.channel].mk_cached.size());
+    const content::HistoryItem *cur = g_history.current();
+    const bool repeat = cur && g_current && cur->post_id == g_prepared_pick.mk_entry.post_id;
+    if (repeat || (g_prepared_pick.pool < 8 && pool > g_prepared_pick.pool)) {
+      g_prepared.reset();
+      g_prepared_pick = Pick{};
+    }
+  }
+  if (!g_current && !g_paused && g_screen == Screen::None) {
+    swap_fresh();
+  } else if (!g_prepared && !g_prepared_load_id) {
+    request_prepare();
+  }
+}
+
+void on_makapix_state(uint32_t state) {
+  const auto s = static_cast<makapix::State>(state);
+  if (s == makapix::State::Pairing) {
+    show_screen(Screen::Pairing, 0);
+  } else if (g_screen == Screen::Pairing) {
+    if (s == makapix::State::Paired) {
+      show_screen(Screen::Paired, kPairedScreenUs);
+    } else {
+      end_screen();
+    }
+  }
+  update_counts();
+  if (s == makapix::State::Paired) g_rescan_due_us = now_us();  // channels that needed pairing can refresh
+}
+
 void do_next() {
   if (g_paused) g_paused = false;
+  if (g_screen != Screen::None) end_screen();
   if (g_history.can_forward()) {
     g_history.forward();
     load_current_history_item(Pending::Purpose::Navigate, 1);
@@ -547,6 +768,7 @@ void do_pause() {
   g_player->play(psram_shared<playback::StaticSource>("paused", *g_scratch));
   g_current.reset();
   g_paused = true;
+  makapix::note_hidden();
   ESP_LOGI(TAG, "paused");
   system::publish(system::Event::PlaybackSwapped, -1);
 }
@@ -561,13 +783,17 @@ void do_resume() {
   }
 }
 
-void do_play_file(const std::string &path) {
+void do_play_file(const std::string &path, int32_t post_id, const std::string &name) {
   content::HistoryItem item;
   item.kind = content::ItemKind::Artwork;
-  item.source = content::Source::PlayThisFile;
+  item.source = post_id >= 0 ? content::Source::PlayThisMakapix
+                             : (path.rfind(storage::downloads_dir(), 0) == 0 || path.rfind("mem:dl-", 0) == 0)
+                                   ? content::Source::PlayThisUrl
+                                   : content::Source::PlayThisFile;
   item.path = path;
-  item.name = basename_of(path);
+  item.name = name.empty() ? basename_of(path) : name;
   item.playset = g_playset.name;
+  item.post_id = post_id;
   g_pending.purpose = Pending::Purpose::PlayThis;
   g_pending.direction = 0;
   g_pending.item = std::move(item);
@@ -584,10 +810,16 @@ void handle(Command &c) {
     case Cmd::ResetTimer: g_swap_at_us = now_us(); break;
     case Cmd::Refresh: g_rescan_due_us = now_us(); break;
     case Cmd::PlayFile:
-      if (c.text) do_play_file(*c.text);
+      if (c.text) do_play_file(*c.text, -1, "");
+      break;
+    case Cmd::PlayDownloaded:
+      if (c.text) do_play_file(*c.text, static_cast<int32_t>(c.number), c.text2 ? *c.text2 : "");
       break;
     case Cmd::Activate:
       if (c.text) activate(*c.text, true);
+      break;
+    case Cmd::ActivateTransient:
+      if (c.playset) do_activate_transient(*c.playset);
       break;
     case Cmd::Loaded: on_loaded(c.load); break;
     case Cmd::Scanned: on_scanned(c.scan); break;
@@ -600,14 +832,24 @@ void handle(Command &c) {
       if (g_prepared) g_prepared->set_background(s.background);
       break;
     }
+    case Cmd::MakapixChanged: on_makapix_changed(); break;
+    case Cmd::MakapixState: on_makapix_state(c.number); break;
+    case Cmd::WifiConnected:
+      // The IP goes on the panel only when nothing is playing yet (spec 15.1).
+      if (!g_current && !g_paused && g_screen == Screen::None) show_screen(Screen::Connected, 15 * kSecond);
+      update_counts();
+      break;
   }
   delete c.text;
+  delete c.text2;
+  delete c.playset;
 }
 
 // Periodic work: the auto-swap timer, the boot hold, rescans, retries.
 void tick() {
   const int64_t now = now_us();
   const system::Settings s = system::settings();
+  if (g_screen != Screen::None && g_screen_until_us && now >= g_screen_until_us) end_screen();
   if (g_want_prepared_now && g_prepared && can_swap_now()) play_prepared();
   if (!g_paused && g_current && s.auto_swap_seconds > 0 &&
       now - g_swap_at_us >= static_cast<int64_t>(s.auto_swap_seconds) * kSecond) {
@@ -621,11 +863,12 @@ void tick() {
     }
     g_rescan_due_us = 0;
   }
-  if (!g_current && !g_paused && !g_status_reason.empty() && now >= g_retry_at_us) {
+  if (!g_current && !g_paused && g_screen == Screen::None && !g_status_reason.empty() && now >= g_retry_at_us) {
     g_retry_at_us = now + kRetryUs;
     swap_fresh();
-    if (!g_current && !g_rescan_due_us && !g_scan_running) g_rescan_due_us = now + kIdleRescanUs;
+    if (!g_current && !g_rescan_due_us && !g_scan_running && has_local_channels()) g_rescan_due_us = now + kIdleRescanUs;
   }
+  if (g_screen == Screen::Connected && g_screen_until_us == 0) end_screen();
 }
 
 // How long the loop may sleep before tick() has something to do.
@@ -641,6 +884,7 @@ TickType_t wait_ticks() {
   }
   if (g_want_prepared_now && g_prepared) consider(g_boot_until_us);
   consider(g_rescan_due_us);
+  consider(g_screen_until_us);
   if (!g_current && !g_paused && !g_status_reason.empty()) consider(g_retry_at_us);
   const TickType_t ticks = pdMS_TO_TICKS(wait / 1000 + 1);
   return ticks ? ticks : 1;
@@ -663,6 +907,8 @@ cJSON *item_json(const content::HistoryItem &item, size_t index, bool current) {
   cJSON_AddStringToObject(o, "channel", item.channel.c_str());
   cJSON_AddNumberToObject(o, "channel_index", item.channel_index);
   cJSON_AddStringToObject(o, "playset", item.playset.c_str());
+  if (item.post_id >= 0) cJSON_AddNumberToObject(o, "post_id", item.post_id);
+  if (!item.sqid.empty()) cJSON_AddStringToObject(o, "sqid", item.sqid.c_str());
   cJSON_AddNumberToObject(o, "shown_s_ago", static_cast<double>((now_us() - item.shown_at_us) / kSecond));
   cJSON_AddBoolToObject(o, "current", current);
   return o;
@@ -696,6 +942,12 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
   system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { send(Cmd::Settings); });
+  system::subscribe(system::Event::MakapixChannelChanged, [](const system::Message &) { send(Cmd::MakapixChanged); });
+  system::subscribe(system::Event::MakapixStateChanged,
+                    [](const system::Message &m) { send(Cmd::MakapixState, static_cast<uint32_t>(m.arg)); });
+  system::subscribe(system::Event::WifiConnected, [](const system::Message &) { send(Cmd::WifiConnected); });
+  system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { send(Cmd::MakapixChanged); });
+  system::subscribe(system::Event::TimeSynced, [](const system::Message &) { send(Cmd::MakapixChanged); });
   return true;
 }
 
@@ -705,10 +957,12 @@ void restore() {
   system::state::get(kActiveKey, name);
   content::Playset p;
   std::string error;
-  if (name.empty() || !resolve_playset(name, p, error)) {
+  content::Builtin b;
+  const bool followed = content::builtin_from_name(name, b) && b == content::Builtin::Followed;
+  if (name.empty() || (!followed && !resolve_playset(name, p, error)) || (followed && !makapix::paired())) {
     if (!name.empty()) ESP_LOGW(TAG, "saved playset %s cannot be restored (%s)", name.c_str(), error.c_str());
-    // Spec 5.2: Promoted, or Local when there is no network. Makapix arrives with M6, so
-    // until then a card means Local.
+    // Spec 5.2: Promoted, or Local when there is no network. Promoted plays anonymously
+    // from its cache once the first refresh ran; Local is the safe start with a card.
     name = storage::mounted() ? content::builtin_name(content::Builtin::Local)
                               : content::builtin_name(content::Builtin::Promoted);
   }
@@ -731,6 +985,7 @@ void previous() { send(Cmd::Previous); }
 void go_to(size_t history_index) { send(Cmd::GoTo, static_cast<uint32_t>(history_index)); }
 void pause() { send(Cmd::Pause); }
 void resume() { send(Cmd::Resume); }
+void set_paused(bool paused) { send(paused ? Cmd::Pause : Cmd::Resume); }
 void reset_timer() { send(Cmd::ResetTimer); }
 void refresh() { send(Cmd::Refresh); }
 
@@ -747,14 +1002,39 @@ bool play_file(const std::string &absolute_path, std::string &error) {
   return true;
 }
 
+void play_downloaded(const std::string &path, int32_t post_id, const std::string &name) {
+  send(Cmd::PlayDownloaded, static_cast<uint32_t>(post_id), new std::string(path), nullptr, nullptr,
+       new std::string(name));
+}
+
 bool activate_playset(const std::string &name, std::string &error) {
   content::Builtin b;
-  if (!content::builtin_from_name(name, b) && !content::store::exists(name)) {
+  if (content::builtin_from_name(name, b)) {
+    if (b == content::Builtin::Followed && !makapix::paired()) {
+      error = "the Followed playset needs pairing";
+      return false;
+    }
+  } else if (!content::store::exists(name)) {
     error = "no such playset";
     return false;
   }
   send(Cmd::Activate, 0, new std::string(name));
   return true;
+}
+
+void activate_transient(const content::Playset &playset) {
+  send(Cmd::ActivateTransient, 0, nullptr, nullptr, nullptr, nullptr, new content::Playset(playset));
+}
+
+bool is_paused() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return g_paused;
+}
+
+int32_t current_post_id() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  const content::HistoryItem *cur = g_history.current();
+  return (g_current && cur) ? cur->post_id : -1;
 }
 
 cJSON *status_json() {
@@ -783,10 +1063,16 @@ cJSON *status_json() {
       cJSON_AddStringToObject(a, "path", relative_path(cur->path).c_str());
       cJSON_AddStringToObject(a, "channel", cur->channel.c_str());
       cJSON_AddNumberToObject(a, "channel_index", cur->channel_index);
-      cJSON_AddStringToObject(a, "source", cur->source == content::Source::Channel ? "channel" : "play_this");
+      const char *source = cur->source == content::Source::Channel ? "channel" : "play_this";
+      cJSON_AddStringToObject(a, "source", source);
+      if (cur->post_id >= 0) cJSON_AddNumberToObject(a, "post_id", cur->post_id);
+      if (!cur->sqid.empty()) cJSON_AddStringToObject(a, "sqid", cur->sqid.c_str());
     }
   }
-  cJSON_AddStringToObject(p, "no_artwork", g_current || g_paused ? "" : g_status_reason.c_str());
+  const char *screen = g_screen == Screen::Pairing ? "pairing" : g_screen == Screen::Paired ? "paired"
+                       : g_screen == Screen::Connected ? "connected" : "";
+  cJSON_AddStringToObject(p, "screen", screen);
+  cJSON_AddStringToObject(p, "no_artwork", g_current || g_paused || g_screen != Screen::None ? "" : g_status_reason.c_str());
   cJSON_AddStringToObject(p, "last_error", g_last_error.c_str());
   cJSON *h = cJSON_AddObjectToObject(p, "history");
   cJSON_AddNumberToObject(h, "count", static_cast<double>(g_history.size()));
@@ -823,13 +1109,21 @@ cJSON *channels_json() {
     cJSON_AddNumberToObject(o, "index", static_cast<double>(i));
     cJSON_AddStringToObject(o, "kind", content::kind_name(ch.spec.kind));
     cJSON_AddStringToObject(o, "identifier", ch.spec.identifier.c_str());
-    cJSON_AddStringToObject(o, "display_name",
-                            (ch.spec.display_name.empty() ? ch.spec.default_display_name() : ch.spec.display_name).c_str());
+    cJSON_AddStringToObject(o, "display_name", display_name(ch.spec).c_str());
     cJSON_AddNumberToObject(o, "weight", ch.spec.weight);
     cJSON_AddNumberToObject(o, "offset", ch.spec.offset);
-    cJSON_AddNumberToObject(o, "entries", static_cast<double>(ch.entries.size()));
+    cJSON_AddNumberToObject(o, "entries", static_cast<double>(ch.makapix ? ch.mk_entries.size() : ch.entries.size()));
     cJSON_AddNumberToObject(o, "available", ch.available);
     cJSON_AddStringToObject(o, "status", ch.status.c_str());
+    if (ch.makapix) {
+      makapix::ChannelSnapshot snap;
+      if (makapix::snapshot(ref_of(ch.spec), snap)) {
+        cJSON_AddNumberToObject(o, "cached", snap.cached);
+        cJSON_AddNumberToObject(o, "last_refresh", snap.last_refresh);
+        cJSON_AddBoolToObject(o, "refreshing", snap.refreshing);
+        cJSON_AddStringToObject(o, "error", snap.error.c_str());
+      }
+    }
     if (i < g_scheduler.size()) {
       const content::Scheduler::Channel &sc = g_scheduler.channel(i);
       cJSON_AddNumberToObject(o, "share", static_cast<double>(sc.weight) / content::Scheduler::kWeightSum);
@@ -857,6 +1151,8 @@ cJSON *playsets_json() {
   std::vector<content::store::Summary> stored;
   std::string error;
   const bool listed = content::store::list(stored, error);  // card I/O, outside the lock
+  const bool paired = makapix::paired();
+  const bool online = makapix::status().online;
   cJSON *root = cJSON_CreateObject();
   {
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -878,9 +1174,15 @@ cJSON *playsets_json() {
     bool enabled = false;
     const char *reason = "";
     switch (b) {
-      case content::Builtin::Promoted: reason = "Makapix not available yet"; break;
+      case content::Builtin::Promoted:
+        enabled = true;  // anonymous; plays from its cache when offline
+        reason = online ? "" : "offline";
+        break;
       case content::Builtin::All:
-      case content::Builtin::Followed: reason = "needs pairing"; break;
+      case content::Builtin::Followed:
+        enabled = paired;
+        reason = paired ? "" : "needs pairing";
+        break;
       case content::Builtin::Local:
         enabled = storage::mounted();
         reason = enabled ? "" : "no card";

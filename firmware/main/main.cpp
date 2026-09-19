@@ -1,8 +1,8 @@
 // p64 -- firmware entry point.
 //
-// Milestone M5: the show (main/show.cpp) is the state machine; app_main wires the
-// display, the playback tasks, the network and the web layer, mounts the card, restores
-// the active playset and hands the main task to the show loop.
+// Milestone M6: app_main wires the display, the playback tasks, the network, the web
+// layer and Makapix Club, mounts the card, restores the active playset and hands the
+// main task to the show loop (main/show.cpp, the state machine).
 
 #include <cinttypes>
 #include <memory>
@@ -22,6 +22,7 @@
 
 #include "p64/display/display.hpp"
 #include "p64/gfx/frame.hpp"
+#include "p64/makapix/makapix.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/http_server.hpp"
 #include "p64/net/setup_portal.hpp"
@@ -132,6 +133,9 @@ extern "C" void app_main() {
   hooks.refresh = p64::show::refresh;
   hooks.go_to = p64::show::go_to;
   hooks.play_file = p64::show::play_file;
+  hooks.play_post = p64::makapix::play_post;
+  hooks.play_url = p64::makapix::play_url;
+  hooks.like = p64::makapix::like;
   hooks.activate_playset = p64::show::activate_playset;
   hooks.playback_status = p64::show::status_json;
   hooks.channels = p64::show::channels_json;
@@ -149,11 +153,29 @@ extern "C" void app_main() {
     p64::net::wifi::set_hostname(now.hostname());
   });
 
+  // Makapix Club: commands from the site drive the show; downloads come back as
+  // play-this requests; the Followed playset arrives as a transient activation.
+  p64::makapix::Hooks mk;
+  mk.next = p64::show::next;
+  mk.previous = p64::show::previous;
+  mk.set_paused = p64::show::set_paused;
+  mk.set_brightness = [](uint8_t b) {
+    p64::system::settings_update([b](p64::system::Settings &st) { st.brightness = b; });
+  };
+  mk.set_rotation = [](uint16_t r) {
+    p64::system::settings_update([r](p64::system::Settings &st) { st.rotation = r; });
+  };
+  mk.play_artwork = p64::show::play_downloaded;
+  mk.play_playset = p64::show::activate_transient;
+  mk.current_post_id = p64::show::current_post_id;
+  mk.is_paused = p64::show::is_paused;
+
   if (p64::storage::mount()) {
     p64::system::publish(p64::system::Event::CardMounted);
   } else {
     p64::system::publish(p64::system::Event::CardFailed);
   }
+  p64::makapix::start(mk);
   p64::show::restore();
   p64::show::run();
 }

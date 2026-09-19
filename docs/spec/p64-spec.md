@@ -548,10 +548,17 @@ p3a's client is the reference implementation. p64 uses:
   API token. Token-based certificate renewal within the server's renewal window; the
   "registration invalid" state after repeated authentication failures, with re-pairing
   from the web UI. Unpairing deletes the credentials.
-- Listing: the player RPC (`query_posts`) over the persistent MQTT connection, or over
-  HTTPS with the token when MQTT is down; Promoted without pairing through the public
-  promoted feed. Pages of 50, within the server's per-device rate limits.
-- Files: downloaded from the server's file store in the artwork's native format.
+- Listing: the player RPC (`query_posts`) over HTTPS with the token (the same contract
+  the MQTT request topics carry; HTTPS spares the device the 128 KB reassembly of
+  fragmented MQTT replies and keeps one transient TLS session at a time); Promoted
+  without pairing through the public promoted feed. Pages of 50 over a kept-alive
+  connection, within the server's per-device rate limits; the first pages of a channel
+  that has no index yet play before the walk completes.
+- Files: downloaded from the server's file store in the artwork's native format, over
+  plain HTTP as the server offers players (`docs/player/displaying-artwork.md`): the
+  files are public, every download is checked against its Content-Length and decoded
+  before use, and a TLS session per file would cost internal RAM the device does not
+  have. `P64_MAKAPIX_VAULT_TLS` switches to HTTPS.
 - Push: MQTT over mutual TLS: commands (show artwork, play channel, play playset, next,
   previous, pause, brightness, rotation, background colour), presence (status every 30 s
   and a last-will "offline"), advertised capabilities (pause, brightness 1 to 255,

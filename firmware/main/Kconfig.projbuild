@@ -39,4 +39,33 @@ menu "p64"
 
     endmenu
 
+    menu "Makapix Club"
+
+        config P64_MAKAPIX_HOST
+            string "API host"
+            default "makapix.club"
+            help
+                Provisioning, credentials, the promoted feed and the player RPC live at
+                https://<host>/api; the MQTT broker at <host>:P64_MAKAPIX_MQTT_PORT.
+                "development.makapix.club" is the server team's staging environment.
+
+        config P64_MAKAPIX_VAULT_HOST
+            string "Artwork file host"
+            default "vault.makapix.club"
+
+        config P64_MAKAPIX_VAULT_TLS
+            bool "Download artworks over HTTPS"
+            default n
+            help
+                The server offers the file store over plain HTTP for players
+                (docs/player/displaying-artwork.md) because the files are public and a
+                TLS session costs the ESP32 tens of kilobytes of internal RAM. Downloads
+                are checked against Content-Length and decoded before use either way.
+
+        config P64_MAKAPIX_MQTT_PORT
+            int "MQTT broker port"
+            default 8883
+
+    endmenu
+
 endmenu

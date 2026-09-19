@@ -24,6 +24,8 @@
 #include "p64/content/playset.hpp"
 #include "p64/content/playset_json.hpp"
 #include "p64/content/scheduler.hpp"
+#include "p64/content/makapix_index.hpp"
+#include "p64/gfx/text.hpp"
 
 namespace {
 
@@ -477,6 +479,129 @@ void test_history() {
   CHECK(h.current()->name == "8");
 }
 
+// --- M6: the 5x7 font and the Makapix index ----------------------------------------
+
+void test_text_font() {
+  using namespace p64::gfx::text;
+  CHECK(has_glyph('A'));
+  CHECK(has_glyph('z'));
+  CHECK(has_glyph('7'));
+  CHECK(has_glyph('.'));
+  CHECK(!has_glyph('~'));
+  CHECK_EQ(text_width("", 1, 1), 0);
+  CHECK_EQ(text_width("AB", 1, 1), 11);
+  CHECK_EQ(text_width("AB", 2, 1), 22);
+  CHECK_EQ(text_width("ABC", 1, 0), 15);
+  Frame f;
+  f.clear(Rgb{0, 0, 0});
+  const int w = draw_text(f, 1, 1, "I", Rgb{255, 255, 255}, 1, 1);
+  CHECK_EQ(w, 5);
+  // 'I': top row all but the corners, middle column, bottom row.
+  CHECK(f.get(1, 1) == (Rgb{0, 0, 0}));
+  CHECK(f.get(2, 1) == (Rgb{255, 255, 255}));
+  CHECK(f.get(3, 4) == (Rgb{255, 255, 255}));
+  CHECK(f.get(1, 4) == (Rgb{0, 0, 0}));
+  CHECK(f.get(3, 7) == (Rgb{255, 255, 255}));
+  CHECK(f.get(3, 8) == (Rgb{0, 0, 0}));
+  // Scale 2 doubles every pixel.
+  f.clear(Rgb{0, 0, 0});
+  draw_char(f, 0, 0, '1', Rgb{9, 9, 9}, 2);
+  CHECK(f.get(4, 0) == (Rgb{9, 9, 9}));
+  CHECK(f.get(5, 1) == (Rgb{9, 9, 9}));
+  CHECK(f.get(0, 0) == (Rgb{0, 0, 0}));
+  // Centred text lands in the middle.
+  f.clear(Rgb{0, 0, 0});
+  draw_centred(f, 20, "0", Rgb{1, 2, 3}, 1, 1);
+  CHECK(f.get(29, 20) == (Rgb{0, 0, 0}));
+  CHECK(f.get(30, 20) == (Rgb{1, 2, 3}));
+}
+
+void test_makapix_index() {
+  using namespace p64::content;
+  uint8_t key[16];
+  CHECK(parse_uuid("550e8400-e29b-41d4-a716-446655440000", key));
+  CHECK_EQ(key[0], 0x55);
+  CHECK_EQ(key[15], 0x00);
+  CHECK(format_uuid(key) == "550e8400-e29b-41d4-a716-446655440000");
+  CHECK(parse_uuid("550E8400E29B41D4A716446655440000", key));
+  CHECK(!parse_uuid("550e8400-e29b-41d4-a716-44665544000", key));
+  CHECK(!parse_uuid("zz0e8400-e29b-41d4-a716-446655440000", key));
+  std::string shard, file;
+  MakapixFormat fmt;
+  CHECK(split_art_url("https://vault.makapix.club/21/32/abc-def.png", shard, file, fmt));
+  CHECK(shard == "21/32");
+  CHECK(file == "abc-def.png");
+  CHECK(fmt == MakapixFormat::Png);
+  CHECK(split_art_url("http://vault.makapix.club/a1/b2/c3/k.webp?x=1", shard, file, fmt));
+  CHECK(shard == "a1/b2/c3");
+  CHECK(file == "k.webp");
+  CHECK(fmt == MakapixFormat::WebP);
+  CHECK(!split_art_url("nonsense", shard, file, fmt));
+  CHECK_EQ(parse_iso8601_utc("1970-01-01T00:00:10Z"), 10u);
+  CHECK_EQ(parse_iso8601_utc("2024-01-15T09:00:00Z"), 1705309200u);
+  CHECK_EQ(parse_iso8601_utc("2024-01-15T09:00:00.123456+00:00"), 1705309200u);
+  CHECK_EQ(parse_iso8601_utc("2024-01-15T10:00:00+01:00"), 1705309200u);
+  CHECK_EQ(parse_iso8601_utc("garbage"), 0u);
+
+  MakapixEntry a = {};
+  a.post_id = 1;
+  parse_uuid("550e8400-e29b-41d4-a716-446655440000", a.storage_key);
+  std::snprintf(a.sqid, sizeof(a.sqid), "k5fNx");
+  std::snprintf(a.shard, sizeof(a.shard), "21/32");
+  a.format = static_cast<uint8_t>(MakapixFormat::Gif);
+  a.flags = kMakapixCached;
+  a.width = a.height = 64;
+  a.modified_at = 100;
+  MakapixEntry b = a;
+  b.post_id = 2;
+  b.flags = kMakapixMissing;
+  b.storage_key[0] = 0xAB;
+  CHECK(cache_relative_path(b) == "cache/ab/ab0e8400-e29b-41d4-a716-446655440000.gif");
+  MakapixEntries prev;
+  prev.push_back(a);
+  prev.push_back(b);
+  const std::vector<uint8_t> bytes = serialize_index(prev);
+  CHECK_EQ(bytes.size(), 16u + 2 * 64u);
+  MakapixEntries back;
+  std::string e;
+  CHECK(deserialize_index(bytes.data(), bytes.size(), back, e));
+  CHECK_EQ(back.size(), 2u);
+  CHECK_EQ(back[1].post_id, 2);
+  CHECK(std::string(back[0].sqid) == "k5fNx");
+  std::vector<uint8_t> corrupt = bytes;
+  corrupt[20] ^= 1;
+  CHECK(!deserialize_index(corrupt.data(), corrupt.size(), back, e));
+  CHECK(!deserialize_index(bytes.data(), bytes.size() - 1, back, e));
+  CHECK(!deserialize_index(bytes.data(), 3, back, e));
+  MakapixEntries empty;
+  const std::vector<uint8_t> none = serialize_index(empty);
+  CHECK(deserialize_index(none.data(), none.size(), back, e) && back.empty());
+
+  // Merge: a fresh listing without post 1, with post 2 unchanged and a new post 3.
+  MakapixEntries fresh;
+  MakapixEntry b2 = b;
+  b2.flags = 0;
+  b2.sqid[0] = 0;  // the RPC listing carries no sqid: keep the old one
+  fresh.push_back(b2);
+  MakapixEntry c = a;
+  c.post_id = 3;
+  c.flags = 0;
+  fresh.push_back(c);
+  CHECK_EQ(merge_index(prev, fresh), 1u);  // post 1 dropped
+  CHECK_EQ(fresh.size(), 2u);
+  CHECK_EQ(fresh[0].flags, kMakapixMissing);
+  CHECK(std::string(fresh[0].sqid) == "k5fNx");
+  CHECK_EQ(fresh[1].flags, 0);
+  // A changed file (modified_at) loses its flags.
+  MakapixEntries fresh2;
+  MakapixEntry a2 = a;
+  a2.flags = 0;
+  a2.modified_at = 200;
+  fresh2.push_back(a2);
+  CHECK_EQ(merge_index(prev, fresh2), 1u);
+  CHECK_EQ(fresh2[0].flags, 0);
+}
+
 int run_unit() {
   test_delay_rule();
   test_sniff();
@@ -490,6 +615,8 @@ int run_unit() {
   test_scheduler_weights();
   test_scheduler_picks();
   test_history();
+  test_text_font();
+  test_makapix_index();
   std::printf("unit tests: %d checks, %d failures\n", g_checks, g_failures);
   return g_failures ? 1 : 0;
 }

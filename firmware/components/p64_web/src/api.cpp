@@ -35,6 +35,10 @@ void register_routes();
 namespace content {
 void register_routes();
 }  // namespace content
+namespace makapix_routes {
+void register_routes();
+cJSON *makapix_status();
+}  // namespace makapix_routes
 namespace ws {
 void register_routes();
 void start();
@@ -187,6 +191,7 @@ cJSON *build_status() {
     cJSON_AddNumberToObject(panel, "rotation", static_cast<int>(g_hooks.display()->rotation()));
   }
   if (g_hooks.playback_status) cJSON_AddItemToObject(d, "playback", g_hooks.playback_status());
+  cJSON_AddItemToObject(d, "makapix", makapix_routes::makapix_status());
   return d;
 }
 
@@ -228,10 +233,30 @@ esp_err_t action_play(httpd_req_t *req) {
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
   const cJSON *p = cJSON_GetObjectItemCaseSensitive(body, "path");
+  const cJSON *post = cJSON_GetObjectItemCaseSensitive(body, "post");
+  const cJSON *url = cJSON_GetObjectItemCaseSensitive(body, "url");
   std::string rel = (p && cJSON_IsString(p) && p->valuestring) ? p->valuestring : "";
+  const std::string post_ref = (post && cJSON_IsString(post) && post->valuestring) ? post->valuestring : "";
+  const std::string url_ref = (url && cJSON_IsString(url) && url->valuestring) ? url->valuestring : "";
   cJSON_Delete(body);
   std::string abs, error;
-  if (rel.empty() || !storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
+  if (!post_ref.empty()) {
+    if (!g_hooks.play_post) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no Makapix");
+    if (!g_hooks.play_post(post_ref, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    cJSON *d = cJSON_CreateObject();
+    cJSON_AddStringToObject(d, "post", post_ref.c_str());
+    cJSON_AddBoolToObject(d, "queued", true);
+    return reply_ok(req, d);
+  }
+  if (!url_ref.empty()) {
+    if (!g_hooks.play_url) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no downloads");
+    if (!g_hooks.play_url(url_ref, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    cJSON *d = cJSON_CreateObject();
+    cJSON_AddStringToObject(d, "url", url_ref.c_str());
+    cJSON_AddBoolToObject(d, "queued", true);
+    return reply_ok(req, d);
+  }
+  if (rel.empty() || !storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path, post or url required");
   if (!g_hooks.play_file) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no player");
   if (!g_hooks.play_file(abs, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
   cJSON *d = cJSON_CreateObject();
@@ -474,6 +499,7 @@ void init(const Hooks &hooks) {
   for (const httpd_uri_t &r : routes) net::http::add(r);
   files::register_routes();
   content::register_routes();
+  makapix_routes::register_routes();
   ws::register_routes();
   ws::start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { ws::notify(); });

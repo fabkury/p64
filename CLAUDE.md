@@ -38,14 +38,16 @@ staging area for incoming material; do not commit it unless asked.
 
 ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_decode`,
 `p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
-`p64_web`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
-and the application in `firmware/main/` (`main.cpp` wiring, `show.cpp` the state
-machine, `loader.cpp` the card I/O worker). Milestones M0 to M5 are done (2026-09-19):
-display, decoders, storage, settings, Wi-Fi with setup mode, API v1 with WebSocket and
-web UI, the content model (playsets, channels, scheduler, history). Makapix (M6),
-widgets and fonts (M7), streams (M8), IMU/OTA/PIN (M9) and the full web UI (M10) are
-pending; `firmware/docs/PROGRESS.md` has the table and the log with what was verified
-on the device.
+`p64_web`,
+`p64_makapix`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
+`p64_makapix`) and the application in `firmware/main/` (`main.cpp` wiring, `show.cpp`
+the state machine, `loader.cpp` the card I/O worker). Milestones M0 to M6 are done
+(2026-09-19): display, decoders, storage, settings, Wi-Fi with setup mode, API v1 with
+WebSocket and web UI, the content model (playsets, channels, scheduler, history), and
+Makapix Club (pairing, indexes, cache, MQTT commands, views, likes; the development
+device is paired as player 7e983c9a...). Widgets and fonts (M7), streams (M8),
+IMU/OTA/PIN (M9) and the full web UI (M10) are pending; `firmware/docs/PROGRESS.md` has
+the table and the log with what was verified on the device.
 
 Commands, all from `firmware/` in PowerShell 7 (same scripts as the hardware tests):
 `.\tools\build.ps1`, `.\tools\flash.ps1` (auto-detects COM13), `.\tools\monitor.ps1`,
@@ -55,8 +57,9 @@ not reset the board, so to capture a boot log keep it open while
 `POST /api/v1/action/reboot` restarts the firmware. Tests: `python tests\host\run.py`
 (host build of the ESP-IDF-free components: unit tests plus the image corpora checked
 pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
-`python tests\device\api_smoke.py http://<ip> [--corpus]` and
-`python tests\device\content_smoke.py http://<ip>` against the live device (the
+`python tests\device\api_smoke.py http://<ip> [--corpus]`,
+`python tests\device\content_smoke.py http://<ip>` and
+`python tests\device\makapix_smoke.py http://<ip> [--paired]` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
@@ -67,7 +70,10 @@ is 4096, so anything large or long-lived (frames, indexes, task stacks of I/O ta
 is placed in PSRAM explicitly; the core-1 idle watchdog is off on purpose (a slow
 artwork keeps the player busy by design); both playback tasks live on core 1, all
 network and storage tasks on core 0; the main task is the show loop and never does card
-I/O.
+I/O. Internal RAM is the scarce resource: with the Makapix MQTT session up the heap
+sits at 25 to 30 KB free (largest block 24 KB), so anything new that wants internal
+RAM (a task stack, a TLS session, a buffer) must be measured on the device
+(`GET /api/v1/diag/memory`) before it is kept.
 
 ## Hardware tests: commands
 

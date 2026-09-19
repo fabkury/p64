@@ -15,6 +15,7 @@ idf_component_register(
         p64_storage
         p64_system
         p64_content
+        p64_makapix
         p64_net
         p64_web
         json

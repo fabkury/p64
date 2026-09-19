@@ -16,12 +16,16 @@ enum class Source : uint8_t { Channel = 0, PlayThisFile, PlayThisUrl, PlayThisMa
 struct HistoryItem {
   ItemKind kind = ItemKind::Artwork;
   Source source = Source::Channel;
-  std::string path;         // absolute file path (artworks)
+  std::string path;         // absolute file path (artworks), or "mem:<key>" for the memory cache
   std::string name;         // what the UI shows: file name or title
   std::string channel;      // channel display name ("" for play-this)
   int channel_index = -1;   // index in the playset at pick time, -1 for play-this
   int entry_index = -1;     // index in the channel's entries at pick time
+  uint8_t channel_kind = 0;         // content::ChannelKind of the channel (Makapix views need it)
+  std::string channel_identifier;   // the channel's identifier (sqid, tag, folder)
   std::string playset;      // active playset name at pick time
+  int32_t post_id = -1;     // Makapix post id, -1 for anything else
+  std::string sqid;         // Makapix public sqid when known
   uint8_t widget = 0;       // interludes: which widget
   int64_t shown_at_us = 0;  // when it went up (monotonic)
 };

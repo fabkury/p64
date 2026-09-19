@@ -5,6 +5,7 @@ idf_component_register(
         "src/api.cpp"
         "src/files.cpp"
         "src/content.cpp"
+        "src/makapix_routes.cpp"
         "src/ws.cpp"
         "src/ui.cpp"
     INCLUDE_DIRS
@@ -20,6 +21,7 @@ idf_component_register(
     PRIV_REQUIRES
         p64_storage
         p64_content
+        p64_makapix
         p64_decode
         p64_playback
         esp_timer

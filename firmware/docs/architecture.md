@@ -203,3 +203,58 @@ show holds its first swap until the animation has run its course.
 
 Makapix channels exist in playsets from M5 on but supply nothing until M6; the
 channel status says so and the scheduler gives them no share.
+
+## 12. Makapix Club (M6)
+
+`p64_makapix` holds the pairing state and credentials (NVS namespace `makapix`: player
+key, the three PEMs, the API token, the broker), the channel indexes and the artwork
+cache, and the MQTT session. One worker task on core 0 (`fetcher.cpp`, internal 10 KB
+stack because TLS runs on it) performs every outbound HTTPS request in turn, so at most
+one transient TLS session exists next to the persistent MQTT one (ADR 0009). Its loop:
+a queued job (pairing, play-this, likes, views over HTTPS, the Followed playset,
+certificate renewal), else the pairing poll, else one page of a channel refresh, then
+one artwork download, then a short sleep.
+
+- Listings: the anonymous promoted feed (`GET /api/feed/promoted`) before pairing, the
+  player RPC `query_posts` over HTTPS with the bearer token after it (the same contract
+  the MQTT request topics offer; HTTPS spares the 128 KB fragment reassembly the MQTT
+  path needs). A refresh walks pages of 50 newest-first up to the channel cache size,
+  one page per worker step over a kept-alive connection, and installs the first pages
+  at once when the channel was empty so downloads and playback start within seconds;
+  the full walk is then merged (`content::merge_index`: flags survive for unchanged
+  entries, changed files re-download, vanished entries drop) and saved as
+  `channels/<id>.p64x` (64-byte records, CRC32). Refresh failures back off 30 s to
+  15 min.
+- Downloads: round-robin over the active playset's Makapix channels, each channel's
+  entries newest first, one file at a time over a kept-alive plain-HTTP connection to
+  the vault (the server offers it for players; TLS would cost tens of kilobytes of
+  internal RAM per session). Files are sniffed before they land in `cache/<xx>/<uuid>.<ext>`
+  (atomic write); 404s and undecodable files are flagged in the index and not retried
+  until the entry changes. Without a card a PSRAM memory cache (48 files, 6 MB) takes
+  their place and the loader reads `mem:` paths from it.
+- The show treats a Makapix channel like a local one whose pickable entries are the
+  cached ones; `MakapixChannelChanged` events make it re-read the index snapshot and
+  update the scheduler's counts, and a pick prepared from a tiny cache is replaced as
+  the cache grows.
+- MQTT: esp-mqtt over mutual TLS (`mqtts://makapix.club:8883`, client id and username =
+  player key, last will `offline`, keep-alive 60 s, 6 KB task stack). On connect it
+  publishes status, the retained capabilities (pause, brightness 1 to 255, rotation
+  0/90/180/270) and the retained state; status every 30 s. Commands: `swap_next`,
+  `swap_back`, `show_artwork` (downloaded into `downloads/` then played as play-this),
+  `play_channel` and `play_playset` (transient playsets through the show), `set_paused`,
+  `set_brightness`, `set_rotation` (acknowledged on `command/ack`), `set_mirror`
+  (unsupported). Eight refusals in a row mark the pairing invalid.
+- Views: an artwork counts as viewed after 5 s on the panel (one timer, restarted on
+  every swap); published on the MQTT view topic when connected, else posted over HTTPS.
+  Presence carries the current post id.
+- Certificates: the notAfter of the stored certificate is checked daily; inside 45 days
+  of expiry the worker calls `POST /player/renew-cert` with the token (rotating the token
+  first on a 401), stores the new PEMs and restarts the MQTT session.
+
+Memory, measured on 2026-09-19 with MQTT connected and downloads running: internal heap
+25 to 30 KB free, largest block 24 KB, minimum seen 20 KB, after freeing the parsed
+certificates of each TLS session once its handshake is done
+(`CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA`, `_FREE_CA_CERT`), trimming the MQTT task
+stack to 6 KB and the Wi-Fi static receive buffers to 8. Likes (a transient TLS session)
+succeeded next to the MQTT session at that level. This is the tightest budget in the
+firmware; anything new that wants internal RAM must be measured against it.
