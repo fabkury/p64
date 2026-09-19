@@ -23,3 +23,14 @@ on its files). It is the technical reference for this project, not the architect
   the device we want to build.
 
 Its README, `hardware-tests/README.md`, holds the details and the measured numbers.
+
+## Reference clones
+
+`reference/` (git-ignored) holds local clones of upstream repositories, the way
+`hardware-tests/reference/` did until 2026-09-19. Waveshare's example repository for the
+driver board (schematic, examples, pin map) is the one the hardware tests were written
+against; to re-create it, from `firmware/`:
+
+```
+git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S3-RGB-Matrix
+```

@@ -488,13 +488,8 @@ The main loop presents one frame per panel refresh.
 ## Upstream references
 
 - Board: <https://docs.waveshare.com/ESP32-S3-RGB-Matrix>, examples and schematic in
-  <https://github.com/waveshareteam/ESP32-S3-RGB-Matrix> (cloned under `reference/`, git-ignored).
+  <https://github.com/waveshareteam/ESP32-S3-RGB-Matrix> (cloned under `../firmware/reference/`, git-ignored; the
+  clone command is in `firmware/README.md`).
 - Panel: <https://docs.waveshare.com/RGB-Matrix-Px-64x64>.
 - Driver: <https://github.com/esphome-libs/esp-hub75> (docs/ has menuconfig, troubleshooting
   and multi-panel guides).
-
-To re-create the local clone (from `hardware-tests/`):
-
-```
-git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S3-RGB-Matrix
-```

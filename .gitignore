@@ -7,9 +7,6 @@ hardware-tests/managed_components/
 hardware-tests/dependencies.lock.old
 hardware-tests/tools/gifcheck/build/
 
-# Upstream clones kept locally for reference (see hardware-tests/README.md)
-hardware-tests/reference/
-
 # The product firmware (firmware/): same ESP-IDF layout assumed until the project
 # takes shape; credentials must never be committed from either folder.
 firmware/build/
@@ -18,6 +15,8 @@ firmware/sdkconfig.old
 firmware/sdkconfig.secrets
 firmware/managed_components/
 firmware/dependencies.lock.old
+
+# Upstream clones kept locally for reference (see firmware/README.md)
 firmware/reference/
 
 # Editors and OS

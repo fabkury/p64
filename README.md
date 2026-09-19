@@ -24,7 +24,7 @@ terminals feed the panel's VH4 socket.
 | `enclosure/` | The 3D-printed back shell: OpenSCAD source, ready-to-print STL/3MF, renders and the Waveshare drawings it was checked against. See `enclosure/README.md`. |
 | `enclosure/archive/2026-09-dhruv-solidworks/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
 | `prompt/` | The task prompts that drove each development session, numbered in order. |
-| `hardware-tests/reference/` | Local clones of upstream repositories the hardware tests were written against (git-ignored). The clone command is in `hardware-tests/README.md`. |
+| `firmware/reference/` | Local clones of upstream repositories (git-ignored): Waveshare's examples, which the hardware tests were written against, and other material for the firmware. The clone command is in `firmware/README.md`. |
 
 ## Status
 
