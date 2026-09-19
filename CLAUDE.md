@@ -40,16 +40,18 @@ ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_
 `p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
 `p64_web`,
 `p64_makapix`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
-`p64_makapix`, `p64_widgets`) and the application in `firmware/main/` (`main.cpp`
+`p64_makapix`, `p64_widgets`, `p64_stream`) and the application in `firmware/main/` (`main.cpp`
 wiring, `show.cpp` the state machine, `loader.cpp` the card I/O worker). Milestones M0
-to M7 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
+to M8 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
 mode, API v1 with WebSocket and web UI, the content model (playsets, channels,
 scheduler, history), Makapix Club (pairing, indexes, cache, MQTT commands, views, likes;
-the development device is paired as player 7e983c9a...), and the widgets (bundled
+the development device is paired as player 7e983c9a...), the widgets (bundled
 fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
-`tools/gen_weather_icons.py`, SHTC3 temperature, interludes, main states). Streams
-(M8), IMU/OTA/PIN (M9) and the full web UI (M10) are pending; `firmware/docs/PROGRESS.md`
-has the table and the log with what was verified on the device.
+`tools/gen_weather_icons.py`, SHTC3 temperature, interludes, main states) and the
+streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
+`tools/stream_send.py` sends). IMU/OTA/PIN (M9) and the full web UI (M10) are pending;
+`firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
+device.
 
 Commands, all from `firmware/` in PowerShell 7 (same scripts as the hardware tests):
 `.\tools\build.ps1`, `.\tools\flash.ps1` (auto-detects COM13), `.\tools\monitor.ps1`,
@@ -61,8 +63,9 @@ not reset the board, so to capture a boot log keep it open while
 pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\api_smoke.py http://<ip> [--corpus]`,
 `python tests\device\content_smoke.py http://<ip>` and
-`python tests\device\makapix_smoke.py http://<ip> [--paired]` and
-`python tests\device\widgets_smoke.py http://<ip>` against the live device (the
+`python tests\device\makapix_smoke.py http://<ip> [--paired]`,
+`python tests\device\widgets_smoke.py http://<ip>` and
+`python tests\device\stream_smoke.py http://<ip>` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs

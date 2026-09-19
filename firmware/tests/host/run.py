@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""Host tests for the ESP-IDF-free components (p64_gfx, p64_decode, p64_content).
+r"""Host tests for the ESP-IDF-free components (p64_gfx, p64_decode, p64_content, widgets, streams).
 
 Builds tests/host/main.cpp with the component sources and the vendored libraries
 (AnimatedGIF, the APNG-patched libpng, zlib from managed_components, libwebp) using the
@@ -59,6 +59,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
+    os.path.join(COMPONENTS, "p64_stream", "src", "protocol.cpp"),
 ]
 ZLIB_SOURCES = [os.path.join(ZLIB, f) for f in (
     "adler32.c", "crc32.c", "inffast.c", "inflate.c", "inftrees.c", "zutil.c",
@@ -76,6 +77,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_playback", "include"),
     os.path.join(COMPONENTS, "p64_content", "include"),
     os.path.join(COMPONENTS, "p64_widgets", "src"),
+    os.path.join(COMPONENTS, "p64_stream", "src"),
     CJSON,
     os.path.join(COMPONENTS, "animatedgif", "src"),
     LIBPNG,                               # pnglibconf.h
@@ -90,6 +92,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_playback", "include"),
     os.path.join(COMPONENTS, "p64_content", "include"),
     os.path.join(COMPONENTS, "p64_widgets", "src"),
+    os.path.join(COMPONENTS, "p64_stream", "src"),
 ]
 
 

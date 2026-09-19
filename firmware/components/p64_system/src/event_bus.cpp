@@ -72,6 +72,10 @@ const char *event_name(Event type) {
       return "makapix channel changed";
     case Event::MakapixStateChanged:
       return "makapix state changed";
+    case Event::StreamStarted:
+      return "stream started";
+    case Event::StreamEnded:
+      return "stream ended";
   }
   return "?";
 }

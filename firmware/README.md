@@ -28,6 +28,15 @@ Route reference: `docs/api.md`. Device tests: `tests/device/api_smoke.py` and
 `tests/device/content_smoke.py` (both need a card with files; `--corpus` uploads the
 host corpus).
 
+## Streams
+
+Pixels over UDP: DDP on 4048 (LedFx, xLights, WLED tooling) and the raw p64 format on
+4064 (RGB888, RGB565 or indexed, any size to 128x128, chunked by offset; the header is
+in `docs/api.md`). `python tools\stream_send.py p64.local test` sends a moving
+pattern, `... image.gif` any image or animation, `... screen --ddp --size 128` the PC
+screen; `tests/device/stream_smoke.py` checks both protocols pixel for pixel and the
+takeover.
+
 ## Decode benchmark (2026-09-19, first firmware milestone of spec 4.4)
 
 Measured on the device with `GET /api/v1/diag/bench` (decode plus scaling to 64x64, per

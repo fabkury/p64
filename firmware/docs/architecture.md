@@ -26,7 +26,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | no |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | no |
 | `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly |
-| `p64_stream` | DDP and raw UDP receivers, frame assembly, the stream sink | `p64_gfx`, IDF | partly (parsers) |
+| `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | BOOT button, IMU (tap, orientation), encoder abstraction | IDF | no |
 | `p64_ops` | OTA, factory reset, diagnostics endpoints' data | IDF | no |
 | `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | no |
@@ -283,11 +283,55 @@ in the chosen corner; static images are re-emitted from the player's kept copy w
 key changes, so the overlay ticks without a decode.
 
 The show owns the main state (spec 6): Animation show as before; Widget plays
-`widgets::make(kind)` and pauses the swap timer; Stream shows the waiting screen until
-M8 brings the sink. Interludes are rolled at auto-swap in the fixed order Clock,
+`widgets::make(kind)` and pauses the swap timer; Stream shows the waiting screen
+between streams (section 14). Interludes are rolled at auto-swap in the fixed order Clock,
 Weather, Temperature with the settings' percentages; a winner enters history as an
 `Interlude` item and revisiting it replays the widget. Manual next and previous never
 roll one. Frames with minute-long delays taught two rules: the player announces a new
 generation before its first frame so the render task frees the old slots at once, and
 the render task sleeps towards a far target in 10 ms steps, checking for a newer
 generation each time.
+
+## 14. Streams (M8)
+
+`p64_stream` (spec 8, ADR 0007) is one listener task on core 0 (priority 9, PSRAM
+stack) selecting on two UDP sockets, DDP on 4048 and the raw p64 format on 4064 (ports
+and enables from the settings; a change reopens the sockets). `protocol.cpp` is the
+host-tested part: the two header parsers, the `Assembler` that collects chunks by byte
+offset into caller-owned storage (a 64-byte block map counts distinct bytes, so a
+resent chunk is not counted twice and chunks may arrive in any order; the raw "last"
+flag is informational), the
+RGB565 and indexed conversions and the DDP size rule (12 288 bytes = 64x64, 49 152 =
+128x128, nothing else). Each protocol has its own assembler (49 920 bytes of PSRAM
+each) so interleaved senders do not corrupt each other; within a protocol a new frame
+(offset 0 for DDP, a new sequence or geometry for raw) abandons the one in progress
+(`incomplete`). A complete frame is converted into an RGB888 canvas, scaled by the
+artwork rules into a panel `Frame` kept as "the latest", a serial bumps, a semaphore
+wakes the source, and the silence timer (esp_timer, `stream.silence_ms`) is re-armed.
+`StreamStarted` goes out on the first frame after silence, `StreamEnded` when the timer
+fires. lwIP's UDP mailbox is raised to 48 datagrams (`sdkconfig.defaults`) because a
+128x128 frame is 35 datagrams in one burst.
+
+The source (`stream::source()`, one instance) is a `FrameSource` like any other, which
+is what makes the takeover seamless: the player swaps to it and back with the same
+hard cut it uses for artworks. Its `next_frame()` waits for a frame newer than the one
+it handed out last; because the player asks one 60 fps slot ahead, the source waits
+until 2 ms before the slot's due time before taking the latest frame, so a sender
+above 60 fps is sampled at the panel rate with the freshest frame and never queues
+(spec 8.2: no buffering beyond one frame). After a second without frames it re-issues
+the last frame slowly so the player keeps polling; `stream::wake()` breaks the wait so
+the show can swap the stream out at once. Measured latency (last chunk in to the
+player taking the frame) is in the status document; the panel copy and one refresh
+add about 10 ms.
+
+The show (`show.cpp`) routes every source it puts up through `present()`. When a
+stream may take the panel (`stream.takeover` on, or the Stream state; after the boot
+animation and not over the pairing screen, which waits) the source that was up is kept
+as "behind", the stream source goes to the player and `stream_up` is set. While it is
+up, `present()` parks whatever the state would show (a fresh pick at auto-swap, a
+navigation, a pause, a widget, the waiting screen after a state change) as the new
+"behind" instead of playing it, so timers and history run on unchanged. On
+`StreamEnded`, or when takeover is switched off, the show wakes the source and plays
+"behind"; a kept `Artwork` continues from where its decoder stopped. Views are noted as
+hidden during a stream and reported again on return; the overlay hook returns no key
+over a stream; streams never enter history.

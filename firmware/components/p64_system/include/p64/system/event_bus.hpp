@@ -22,6 +22,8 @@ enum class Event : uint16_t {
   LocalFilesChanged,    // the file manager changed the card's animations tree
   PlaysetsChanged,      // a user playset was created, changed or deleted
   MakapixChannelChanged,  // a Makapix channel index or its cache changed
+  StreamStarted,        // the first complete stream frame of a run landed (stream::status())
+  StreamEnded,          // no stream frame for the silence timeout
 };
 
 struct Message {

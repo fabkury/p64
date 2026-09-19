@@ -32,6 +32,7 @@
 #include "p64/system/event_bus.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/system/state_store.hpp"
+#include "p64/stream/stream.hpp"
 #include "p64/widgets/widgets.hpp"
 #include "status_screens.hpp"
 
@@ -69,6 +70,8 @@ enum class Cmd : uint8_t {
   MakapixChanged,
   MakapixState,
   WifiConnected,
+  StreamStarted,
+  StreamEnded,
 };
 
 struct Command {
@@ -165,6 +168,11 @@ bool g_widget_up = false;
 system::WidgetKind g_widget_kind = system::WidgetKind::Clock;
 bool g_want_widget = false;                  // the Widget state waits for the boot animation
 std::atomic<bool> g_artwork_up{false};       // read by the overlay hook on the player task
+std::shared_ptr<playback::FrameSource> g_on_panel;  // the last source the show handed to the player
+std::shared_ptr<playback::FrameSource> g_behind;    // what the state put up while a stream holds the panel
+std::atomic<bool> g_stream_up{false};        // a stream holds the panel (read by the overlay hook)
+bool g_stream_active = false;                // stream frames are arriving (StreamStarted .. StreamEnded)
+bool g_want_stream = false;                  // a takeover waits for the boot animation or a screen
 
 Pick g_prepared_pick;
 std::shared_ptr<playback::Artwork> g_prepared;
@@ -187,6 +195,18 @@ int64_t now_us() { return esp_timer_get_time(); }
 template <typename T, typename... Args>
 std::shared_ptr<T> psram_shared(Args &&...args) {
   return std::allocate_shared<T>(content::PsramAllocator<T>(), std::forward<Args>(args)...);
+}
+
+// Every source the show puts up goes through here. While a stream holds the panel the
+// source is kept aside instead (the state keeps running invisibly, spec 8.3) and goes up
+// when the stream ends.
+void present(std::shared_ptr<playback::FrameSource> src) {
+  if (g_stream_up) {
+    g_behind = std::move(src);
+    return;
+  }
+  g_on_panel = src;
+  g_player->play(std::move(src));
 }
 
 void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
@@ -369,7 +389,7 @@ void report_shown(const content::HistoryItem &item) {
 
 void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem item, bool push) {
   const int64_t now = now_us();
-  g_player->play(art);
+  present(art);
   g_current = std::move(art);
   g_widget.reset();
   g_widget_up = false;
@@ -422,7 +442,7 @@ void play_prepared() {
 }
 
 void show_frame(const char *name) {
-  g_player->play(psram_shared<playback::StaticSource>(name, *g_scratch));
+  present(psram_shared<playback::StaticSource>(name, *g_scratch));
   g_current.reset();
   g_widget.reset();
   g_widget_up = false;
@@ -467,7 +487,7 @@ void load_current_history_item(Pending::Purpose purpose, int direction);
 void play_widget(system::WidgetKind kind, bool interlude) {
   g_widget = widgets::make(kind);
   g_widget_kind = kind;
-  g_player->play(g_widget);
+  present(g_widget);
   g_current.reset();
   g_artwork_up = false;
   g_widget_up = true;
@@ -511,12 +531,62 @@ bool roll_interlude() {
   return false;
 }
 
+void swap_fresh();
+
 void show_stream_waiting() {
   const net::wifi::Status w = net::wifi::status();
   const system::Settings s = system::settings();
   status_screens::stream_waiting(*g_scratch, w.hostname, w.connected ? w.ip : "no network", s.ddp_port, s.raw_udp_port);
   g_status_reason.clear();
   show_frame("stream waiting");
+}
+
+bool stream_allowed() {
+  return g_main_state == system::MainState::Stream || system::settings().stream_takeover;
+}
+
+// The first complete frame of a stream takes the panel (spec 8.3). The boot animation
+// and a screen that needs the user (pairing) finish first; informational screens are
+// simply covered and their timers run on.
+void take_stream() {
+  if (!g_stream_active || g_stream_up || !stream_allowed()) return;
+  if (now_us() < g_boot_until_us || g_screen == Screen::Pairing) {
+    g_want_stream = true;
+    return;
+  }
+  g_want_stream = false;
+  g_behind = g_on_panel;
+  g_stream_up = true;
+  g_on_panel = stream::source();
+  g_player->play(g_on_panel);
+  makapix::note_hidden();
+  const stream::Status st = stream::status();
+  ESP_LOGI(TAG, "stream takes the panel: %s %dx%d from %s (behind: %s)", st.protocol.c_str(), st.width, st.height,
+           st.sender.c_str(), g_behind ? g_behind->name().c_str() : "nothing");
+  system::publish(system::Event::PlaybackSwapped, -1);
+}
+
+// The stream ended (silence) or may no longer hold the panel: back to what the state
+// has up, which kept running meanwhile.
+void release_stream() {
+  g_want_stream = false;
+  if (!g_stream_up) return;
+  g_stream_up = false;
+  std::shared_ptr<playback::FrameSource> back = std::move(g_behind);
+  g_behind.reset();
+  stream::wake();
+  if (back) {
+    present(back);
+  } else if (g_main_state == system::MainState::Stream) {
+    show_stream_waiting();
+  } else {
+    swap_fresh();
+  }
+  if (g_current) {
+    if (const content::HistoryItem *cur = g_history.current()) report_shown(*cur);
+  }
+  ESP_LOGI(TAG, "stream released the panel: back to %s", g_on_panel ? g_on_panel->name().c_str() : "?");
+  system::publish(system::Event::PlaybackSwapped, g_current ? static_cast<int32_t>(g_history.position()) : -1);
 }
 
 // A fresh pick goes up now (auto-swap, next at the end of history, activation). When
@@ -841,7 +911,7 @@ void do_go_to(size_t index) {
 void do_pause() {
   if (g_paused) return;
   status_screens::black(*g_scratch);
-  g_player->play(psram_shared<playback::StaticSource>("paused", *g_scratch));
+  present(psram_shared<playback::StaticSource>("paused", *g_scratch));
   g_current.reset();
   g_widget.reset();
   g_widget_up = false;
@@ -930,10 +1000,23 @@ void handle(Command &c) {
       } else if (g_main_state == system::MainState::Widget && g_widget_up && s.widget != g_widget_kind) {
         play_widget(s.widget, false);
       }
+      if (g_stream_up && !stream_allowed()) {
+        release_stream();
+      } else if (!g_stream_up) {
+        take_stream();
+      }
       break;
     }
     case Cmd::MakapixChanged: on_makapix_changed(); break;
     case Cmd::MakapixState: on_makapix_state(c.number); break;
+    case Cmd::StreamStarted:
+      g_stream_active = true;
+      take_stream();
+      break;
+    case Cmd::StreamEnded:
+      g_stream_active = false;
+      release_stream();
+      break;
     case Cmd::WifiConnected:
       // The IP goes on the panel only when nothing is playing yet (spec 15.1).
       if (!g_current && !g_paused && g_screen == Screen::None) show_screen(Screen::Connected, 15 * kSecond);
@@ -950,6 +1033,7 @@ void tick() {
   const int64_t now = now_us();
   const system::Settings s = system::settings();
   if (g_screen != Screen::None && g_screen_until_us && now >= g_screen_until_us) end_screen();
+  if (g_want_stream) take_stream();
   if (g_want_widget && now >= g_boot_until_us) play_widget(s.widget, false);
   if (g_main_state != system::MainState::AnimationShow) return;
   if (g_want_prepared_now && g_prepared && can_swap_now()) play_prepared();
@@ -1037,12 +1121,13 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
   // The boot animation holds the panel until it has run its course (spec 15.1).
   if (boot_animation_ms > 0) {
     g_boot_until_us = now_us() + static_cast<int64_t>(boot_animation_ms) * 1000;
-    g_player->play(psram_shared<BootSource>(boot_animation_ms));
+    present(psram_shared<BootSource>(boot_animation_ms));
   } else {
     status_screens::black(*g_scratch);
-    g_player->play(psram_shared<playback::StaticSource>("boot", *g_scratch));
+    present(psram_shared<playback::StaticSource>("boot", *g_scratch));
   }
-  g_player->set_overlay(playback::Player::Overlay{[] { return g_artwork_up.load() ? widgets::overlay_key() : 0u; }, widgets::draw_overlay});
+  g_player->set_overlay(playback::Player::Overlay{
+      [] { return g_artwork_up.load() && !g_stream_up.load() ? widgets::overlay_key() : 0u; }, widgets::draw_overlay});
   system::subscribe(system::Event::CardMounted, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
@@ -1053,6 +1138,8 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { send(Cmd::WifiConnected); });
   system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { send(Cmd::MakapixChanged); });
   system::subscribe(system::Event::TimeSynced, [](const system::Message &) { send(Cmd::MakapixChanged); });
+  system::subscribe(system::Event::StreamStarted, [](const system::Message &) { send(Cmd::StreamStarted); });
+  system::subscribe(system::Event::StreamEnded, [](const system::Message &) { send(Cmd::StreamEnded); });
   return true;
 }
 
@@ -1153,6 +1240,7 @@ cJSON *status_json() {
   cJSON *p = cJSON_CreateObject();
   cJSON_AddStringToObject(p, "state", g_main_state == system::MainState::Widget ? "widget" : g_main_state == system::MainState::Stream ? "stream" : "animation_show");
   cJSON_AddBoolToObject(p, "paused", g_paused);
+  cJSON_AddBoolToObject(p, "stream_up", g_stream_up.load());
   if (g_widget_up) cJSON_AddStringToObject(p, "widget", widgets::widget_name(g_widget_kind));
   cJSON *ps = cJSON_AddObjectToObject(p, "playset");
   cJSON_AddStringToObject(ps, "name", g_playset.name.c_str());

@@ -25,7 +25,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
-| M8 | Streams: DDP, raw UDP, takeover | pending | |
+| M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | pending | |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
 
@@ -236,4 +236,32 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 - Deferred: the analogue clock face (spec 7.1 says its details are drawn with the user
   first); the city search for the weather location (browser-side, M10); the weather
   and clock widgets take the clock widget's colours (per-widget colours later).
-- Next: M8, streams (DDP on 4048, raw UDP on 4064, takeover, silence timeout).
+- M8: `p64_stream` (docs/architecture.md section 14): one listener task selecting on
+  the DDP (4048) and raw p64 (4064) sockets, host-tested parsers and assembly by byte
+  offset (`protocol.cpp`), RGB565 and indexed conversion, scaling by the artwork rules,
+  the latest-frame `FrameSource` that samples the freshest frame 2 ms before each 60 fps
+  slot, the silence timer and the StreamStarted/StreamEnded events. The show routes every
+  source through `present()`: a stream takes the panel (takeover on, or the Stream
+  state; after the boot animation, never over the pairing screen) and the state keeps
+  running invisibly, its sources parked as "behind" until the stream ends. The raw
+  format's field layout is in docs/api.md. `tools/stream_send.py` sends a test pattern,
+  any image or animation Pillow opens, or the PC screen (mss) over either protocol.
+  `CONFIG_LWIP_UDP_RECVMBOX_SIZE=48` (a 128x128 DDP frame is 35 datagrams in a burst).
+- Verified on the device (`tests/device/stream_smoke.py`, 0 failures): raw RGB888 64x64,
+  RGB565 32x32 (upscaled 2x, bit-replicated values), indexed 64x64 with a palette,
+  RGB888 128x128 (box-downscaled), chunks sent in reverse order, DDP 64x64 and 128x128,
+  all pixel-exact against the panel frame; 30 fps measured at 30.0 fps; the takeover and
+  the return after the silence timeout; takeover off (frames counted, panel kept); the
+  Stream state's waiting screen before and after a stream. Latency from the last chunk to
+  the player taking the frame: 0.4 ms at 30 fps (7.6 ms at 60 fps, where the source waits
+  for the next slot on purpose). Stress: 64x64 at 60 fps 5 s, no loss; 128x128 at 30 fps
+  (1.5 MB/s, 36 datagrams per frame) about 1 % of datagrams lost on this Wi-Fi so 145 of
+  150 frames complete; 64x64 at 120 fps sampled to the panel's 60 fps with 0.8 % loss.
+  Internal RAM with the listener up and MQTT connected: 23-24 KB free, largest 17 KB.
+- Found on the device and fixed: a "last" chunk arriving first (chunks reordered) ended
+  the frame with holes; completeness is now "every byte in" and the flag informational.
+  With the M6 Wi-Fi trims (24 dynamic RX buffers) a 36-datagram burst lost 4-5 % of its
+  datagrams and every third 128x128 frame; 64 dynamic RX buffers (PSRAM, no internal
+  cost) lose none at 10 fps bursts.
+- Next: M9 (IMU tap and auto-rotation, night schedule, PIN, OTA, coredump, diagnostics,
+  factory reset via BOOT hold, RTC).

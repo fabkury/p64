@@ -35,6 +35,7 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/stream/stream.hpp"
 #include "p64/widgets/widgets.hpp"
 #include "show.hpp"
 
@@ -178,6 +179,7 @@ extern "C" void app_main() {
   }
   p64::makapix::start(mk);
   p64::widgets::start();
+  if (!p64::stream::start()) ESP_LOGE(TAG, "stream listener failed to start");
   p64::show::restore();
   p64::show::run();
 }

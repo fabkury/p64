@@ -23,6 +23,7 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/stream/stream.hpp"
 #include "p64/widgets/widgets.hpp"
 
 namespace p64::web {
@@ -202,6 +203,7 @@ cJSON *build_status() {
     cJSON_AddNumberToObject(sn, "trend_c_per_hour", r.trend_c_per_hour);
     cJSON_AddItemToObject(d, "weather", widgets::weather_json());
   }
+  cJSON_AddItemToObject(d, "stream", stream::status_json());
   return d;
 }
 

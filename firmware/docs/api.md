@@ -17,7 +17,7 @@ everything below against a live device.
 | `/api/v1/frame` | GET | the panel's current logical frame as PNG (live preview) |
 | `/api/v1/frame.raw` | GET | the same as 64x64x3 RGB888 bytes |
 
-`playback`: `state`, `paused`, `playset {name, builtin, channels, scanning}`, `artwork
+`playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning}`, `artwork
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
 channel_index, source}` (absent on a status screen or pause), `no_artwork` (reason or
 ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
@@ -83,6 +83,57 @@ date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
 `show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
 `interlude` carry `widget`.
+
+## Streams (M8)
+
+No HTTP routes: pixels arrive over UDP (spec 8, ADR 0007). The status document carries
+`stream {active, protocol, width, height, frames, incomplete, rejected, lost, datagrams,
+fps, last_latency_ms, sender, ddp_listening, raw_listening}` and `playback.stream_up`.
+Settings group `stream` (takeover, silence_ms 500..60000, ddp_enabled, ddp_port,
+raw_udp_enabled, raw_udp_port); changing a port or an enable reopens the sockets.
+`tools/stream_send.py` sends a test pattern, an image or the PC screen over either
+protocol; `tests/device/stream_smoke.py` checks both pixel for pixel.
+
+**DDP** (UDP 4048, the protocol LedFx, xLights and WLED speak): 10-byte header, flags
+`0x40` (version 1) with `0x01` on the last chunk of a frame ("push") and `0x10` when a
+4-byte timecode follows the header; byte 1 low nibble sequence; byte 2 data type (RGB
+8-bit assumed); byte 3 destination id; bytes 4-7 the byte offset (big-endian); bytes
+8-9 the payload length (big-endian). A chunk at offset 0 starts a frame; the byte count
+at the push decides the size: 12 288 = 64x64, 49 152 = 128x128 (box-downscaled 2:1);
+any other count is dropped as incomplete. Queries are ignored, and no reply is sent.
+
+**Raw p64** (UDP 4064), little-endian, 22-byte header then up to 1400 bytes of payload:
+
+| Offset | Field | Meaning |
+|---|---|---|
+| 0 | `char[4]` | magic `P64F` |
+| 4 | u8 | version, 1 |
+| 5 | u8 | pixel format: 0 RGB888, 1 RGB565 (little-endian), 2 indexed 8-bit with a palette |
+| 6 | u16 | width, 1..128 |
+| 8 | u16 | height, 1..128 |
+| 10 | u16 | frame sequence number; a change starts a new frame; gaps count as `lost` |
+| 12 | u8 | flags: bit 0 a 768-byte RGB888 palette opens the frame's stream (required for indexed), bit 1 last chunk |
+| 13 | u8 | reserved, 0 |
+| 14 | u32 | byte offset of this chunk in the frame's stream (palette, then pixels) |
+| 18 | u32 | total bytes of the frame's stream; must equal width x height x bytes per pixel (+ 768 with a palette) |
+| 22 | bytes | the chunk |
+
+Chunks may arrive in any order; a frame is complete when every byte is in (the "last"
+flag is the sender's end mark, not a cut-off); a chunk with a new sequence number or
+geometry abandons an unfinished frame, counted as `incomplete`. Any size up to 128x128 is
+scaled by the artwork rules (integer nearest up, box average down, background bars).
+Both protocols: the latest complete frame wins; a frame is on the panel about 10 ms
+after its last chunk (assembly and scaling on core 0, the copy to the panel on core 1,
+one refresh); senders above 60 fps are sampled at the panel's 60 fps cap, always the
+freshest frame.
+
+Takeover (spec 8.3): with `stream.takeover` on, the first complete frame takes the panel
+in the Animation show and Widget states (after the boot animation; a pairing screen
+finishes first) and the state keeps running invisibly (swap timer, navigation, history)
+until `silence_ms` pass without a frame; then the panel returns to whatever the state
+has up. With takeover off, frames are counted but ignored outside the Stream state. In
+the Stream state a waiting screen (hostname, IP, ports) shows between streams. Streams
+never enter history and the clock overlay is not drawn over them.
 
 ## Files (M4)
 
