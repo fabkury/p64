@@ -58,3 +58,35 @@ Notes:
 - Stands stably at 12 degrees; barely warm after running for a while.
 - Not checked yet: pin and mic holes over the buttons and mics; the plug in the pocket and
   the cable in the groove to the back notch.
+
+## 90-degree USB-C adapter (two, one per driver-board port)
+
+Small aluminium-shelled USB-C male-to-female right-angle adapter: the male plug leaves the
+wide face of the body near one end, the female socket sits in the far end face. Two are
+used, one on each of the driver board's ports (POWER and USB), and they stay there; the
+external cable plugs into the adapter's socket from the back of the shell (v6). Photos in
+`usb-c-90-degree-adapter/`: `PXL_20260919_152802345.jpg` (side, plug to the right),
+`PXL_20260919_152820195.jpg` (female end face), `PXL_20260919_152837459.jpg` (plug end),
+and `PXL_20260919_152802345 - with measures.jpeg` (the side view with the measurements
+drawn on; the GIMP source `.xcf` is kept next to it, untracked).
+
+Measured on 2026-09-19 (the side photo):
+
+| Item | Value |
+|---|---|
+| Body length, near end face to female socket face | 19.3 |
+| Body thickness (along the plug axis) | 8.0 |
+| Near end face to the plug tip, along the body | 13.3 (so the plug's far edge is 6.0 from the near end) |
+| Body face to the plug tip, along the plug axis | 15.7 - 8.0 = 7.7 |
+| Body width across the end face | 12.7 (the two bodies touch when both are plugged in: the ports are 12.74 apart) |
+
+Derived, used by v6: the plug's centre is 4.8 from the near end (6.0 minus half of the
+2.4 mm plug thickness); the boot between the body face and the receptacle face is about
+1.2 (7.7 minus a 6.5 mm plug shell), an estimate.
+
+Checked on the panel the same day:
+- Both adapters fit in the two ports at once; the bodies touch.
+- Plugged into a port with the controller on the panel, the adapter body lands on the
+  frame's back plate below the port and stops about 1 mm short of fully seated. The
+  shell design (v6) therefore assumes a notch cut through the plate strip below the
+  ports, see `README.md` (v6).
