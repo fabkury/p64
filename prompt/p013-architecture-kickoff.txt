@@ -1,0 +1,51 @@
+Thanks.
+
+With that, let's now discuss p64 as a product, and from that derive appropriate, production-grade architectural decisions.
+
+For your reference, I have cloned two more repositories into firmware/reference/:
+ - p3a/: p3a is a Makapix Club player device which contains many features we need to replicate/copy/incorporate/implement/leverage/reuse.
+ - makapix/: this is the codebase of the Makapix Club server, in case you need to understand anything about it.
+
+Projects evolve, so it is difficult to define with certainty what p64 "should" be. What I can say with certainty is what are p64's initial features. We need to architect p64 around those initial features, while keeping the architecture maintanable and expansible in case we want to expand into other things later.
+
+## INITIAL DEFINING FEATURES OF P64:
+ - Accurate, tearless, jitterless playback of animations up to 128x128 px, 60 fps. Sizes bigger than 64x64 (native panel size) are downscaled by averaging pixels, while sizes smaller than 64x64 are upscaled using crisp nearest-neighbor interpolation. Aspect ratios are always respected and preserved when scaling (letterbox/pillarbox are used as needed, using the background color).
+
+ - Full support for animated GIF, APNG, WEBP, including transparency and alpha channel as per each format.
+
+ - Full support for static GIF, WebP, PNG and BMP, including transparency and alpha channel as per each format.
+
+ - Configurable background color (default black, RGB 0,0,0).
+
+ - Configurable brightness (default maximum).
+
+ - Two modes of operation: quality mode (lower Hz, higher color richness), photo mode (much higher Hz, less banding in photos).
+
+ - Seamless transition between main states of operation. Initial main states of operation:
+  a. Animation show: auto-swap (change) animation every X seconds, X defaults to 30, configurable from 5 to 86400 (if configured to 0 there's no auto-swap, i.e. infinite seconds). Optional clock on the top left (default) or any of the corners. Last 32 animations played are kept in playback history, so the user can easily go back. Swap from one animation to another is instantaneous with no jitter or stutter. User can swap back and forth along the animation show history by using the web UI (more about the web UI below).
+  b. Widget: each widget renders the screen its own way. Initial widgets: 1) full screen clock with configurable font (see fonts in folder assets/fonts/), 2) weather forecast with pixel art icons and symbols (icons and symbols need to be drawn to raster files ahead of time).
+  c. Stream: device receives pixels directly from a network command and/or stream. Prioritizes low latency, responsiveness, and compatibility.
+
+ - Device connects to user's wifi if it has working SSID and password. If it doesn't, or if the SSID/password doesn't work, device falls back to soft AP for network setup.
+
+ - While in soft AP mode, LED matrix displays helpful information for Wi-Fi setup including device LAN IP. User can connect to soft AP and access a streamlined web interface for configuring WiFi SSID and password.
+
+ - When not in soft AP mode, i.e. when connected to user's wifi, a web interface is also offered to control the device. This web interface replicates as closely as possible the feature set and layout of p3a's web interface: https://GitHub.com/fabkury/p3a. This includes:
+  a. Full support for up to 32 playsets.
+  b. Each playset supports up to 64 channels.
+  c. Each channel supports up to 8192 artworks.
+  d. Different kinds of channels: local microSD card, Makapix Club channels.
+
+ - Full support for downloading and playing an artwork from an arbitrary URL, similar to how p3a does.
+## END OF INITIAL DEFINING CHARACTERISTICS OF P64
+
+Before we begin any implementation work, please grill me to:
+ - Expand the feature set of p64: what else could we put into the spec at this time?
+ - Close any and every gap in the spec.
+ 
+The outcome of this session should be:
+ - Fully documented spec for p64
+ - In a robust, production-grade way
+[Process: three sub-agents inventoried p3a's firmware, its web UI and API, and the Makapix Club device contract; 13 rounds of AskUserQuestion (the user asked for that tool, not free-text question lists).]
+
+[Answers, in the order settled: public DIY product, Apache-2.0; adopt p3a's module boundaries and port deliberately; own p3a-inspired API under /api/v1 with p3a's envelope and a WebSocket status push; single hardware target with panel geometry as one property. Photo mode about 800 Hz with 8 planes, sub-second blank on switch allowed; brightness 1-255 (never percent) with an advanced ceiling and one night schedule; gamma 2.2 fixed, advanced RGB gains, alpha blended like a browser; runtime rotation with default 90 plus IMU auto. Browser frame-delay rule, loops forever, 60 fps presentation cap; live decode only and frames never skipped (slow down when late), 64x64@60 guaranteed, 128x128@60 best effort; limits 256x256 and 5 MB (the Makapix envelope); auto-swap is a hard cut, timer reset on every swap; history 32 in RAM only; seamless defined as an acceptance test, no effects; pause blanks like p3a. States: Animation show (clock overlay with font choice), Widget, Stream; widget interludes rolled at every auto-swap with a per-widget probability, one full slot, in history; no state scheduling; stream as explicit state plus takeover with a 5 s silence timeout; DDP over UDP and a raw p64 UDP format accepting RGB888, RGB565 and 8-bit indexed; no WebSocket stream. Widgets: clock (two bundled fonts, two more later, plus an analogue face), weather (Open-Meteo, lat/lon with search, 3-day strip, 12-icon set), temperature/humidity from the on-board sensor with offsets. Inputs: BOOT only for the boot-hold factory reset; IMU tap next, double tap previous, auto-rotate; encoders reserved; audio, mics, Bluetooth out. Network: p3a setup pattern plus a scan list, AP after 60 s with STA retried underneath, optional PIN over UI and HTTP API (streams unprotected), no USB mass storage but a full web file manager. Storage: card optional with a degraded mode, FAT32 only, p3a layout under /sdcard/p64, explicit format; folders under animations/ are local channels; uploads to a chosen folder, URL plays transient; per-channel cap 4096 (default 2048, the 8192 in the prompt was lowered). Makapix: full pairing in v1 (mTLS, MQTT, token renewal, p64/<version> User-Agent), all six channel kinds, p3a playset semantics unchanged, the server's followed_artists playset and play_playset command implemented, view reporting, artwork info and Like/unlike. Operations: OTA with rollback and the web UI embedded in the app image; diagnostics always on; live 64x64 preview in the web UI; pause/resume and device name in v1; boot animation; minimal status screens. Web UI: p3a's pages with Settings tabs Display, Widgets, Stream, Network, Storage, Makapix, System; p3a's stylesheet and five themes under a p64 wordmark. Docs at the repo root: CONTEXT.md, docs/spec/, docs/adr/.]

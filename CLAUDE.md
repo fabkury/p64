@@ -8,10 +8,11 @@ p64 is a desktop 64x64 RGB LED matrix: Waveshare's ESP32-S3-RGB-Matrix driver bo
 plugged onto their RGB-Matrix-P2-64x64 panel, in a 3D-printed tabletop shell. Three
 folders of work live here, each with its own README that is the detailed reference:
 
-- `firmware/` — the p64 product firmware, started from zero on 2026-09-19. Only its
-  README exists so far; the device's features and the firmware's architecture are still to
-  be discussed with the user, so do not carry code or patterns over from
-  `hardware-tests/` on your own initiative.
+- `firmware/` — the p64 product firmware, started from zero on 2026-09-19. Its behaviour is
+  fixed by the product specification `docs/spec/p64-spec.md` (settled with the user on
+  2026-09-19, settings and limits tables included) and the decisions in `docs/adr/`; the
+  vocabulary is `CONTEXT.md`. No code yet: the architecture is the next step. Do not carry
+  code or patterns over from `hardware-tests/` on your own initiative.
 - `hardware-tests/` — the former `firmware/` (renamed on 2026-09-19; git history follows
   the rename, `git log --follow` works on its files): ESP-IDF v5.5 test firmware, C++20,
   directly on the `esphome/esp-hub75` DMA driver (vendored and patched under
@@ -22,9 +23,11 @@ folders of work live here, each with its own README that is the detailed referen
 - `enclosure/` — the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
 
-Also: `firmware/reference/` is git-ignored upstream clones (Waveshare's example repo;
-the re-clone command is in `firmware/README.md`; moved there from hardware-tests/ on
-2026-09-19). `prompt/pNNN-*.txt` are the user's task
+Also: `firmware/reference/` is git-ignored upstream clones: Waveshare's example repo,
+`p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the
+reference for module boundaries, web UI and Makapix client) and `makapix/` (the Makapix
+Club server, github.com/fabkury/makapix, the device contract in its `docs/player/` and
+`docs/mqtt-api/`); re-clone commands are in `firmware/README.md`. `prompt/pNNN-*.txt` are the user's task
 prompts, one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a
 friend's separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked
 staging area for incoming material; do not commit it unless asked.

@@ -21,6 +21,7 @@ terminals feed the panel's VH4 socket.
 |---|---|
 | `firmware/` | The p64 product firmware, started from zero on 2026-09-19 (README only so far; features and architecture to be decided). See `firmware/README.md`. |
 | `hardware-tests/` | The former `firmware/`: the ESP-IDF (v5.5) test firmware that brought up the board and panel (display driver and frame pacing, GIF playback, Wi-Fi, Makapix Club, microSD, web control). Kept as technical reference for the product firmware. See `hardware-tests/README.md` for setup, build and flash. |
+| `CONTEXT.md`, `docs/` | The product glossary, the product specification (`docs/spec/p64-spec.md`) and the architecture decision records (`docs/adr/`). |
 | `enclosure/` | The 3D-printed back shell: OpenSCAD source, ready-to-print STL/3MF, renders and the Waveshare drawings it was checked against. See `enclosure/README.md`. |
 | `enclosure/archive/2026-09-dhruv-solidworks/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
 | `prompt/` | The task prompts that drove each development session, numbered in order. |
@@ -44,5 +45,5 @@ terminals feed the panel's VH4 socket.
   orientation verified); rendering frame-locked to the panel refresh (271.3 Hz); GIF
   playback from Makapix Club and the microSD card, with web control. See
   `hardware-tests/README.md`.
-- Firmware (`firmware/`): started from zero on 2026-09-19; holds only its README until
-  the features and architecture are decided.
+- Firmware (`firmware/`): the product specification was settled on 2026-09-19
+  (`docs/spec/p64-spec.md`); no code yet, the architecture comes next.

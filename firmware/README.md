@@ -8,6 +8,12 @@ This folder was started from zero on 2026-09-19. Nothing is decided yet: the dev
 features and the firmware's architecture are the next discussion, and this README is the
 only file until then.
 
+## Specification
+
+What the device does is fixed by `docs/spec/p64-spec.md` at the repository root, with
+the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`. This folder's README will
+describe how the firmware is built and flashed once it exists.
+
 ## Relation to `hardware-tests/`
 
 `hardware-tests/` is the previous `firmware/` folder: the test firmware that brought up
@@ -33,4 +39,15 @@ against; to re-create it, from `firmware/`:
 
 ```
 git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S3-RGB-Matrix
+```
+
+Two more clones live there since 2026-09-19 and are used as references by the
+specification: `p3a/`, the user's production ESP32-P4 pixel-art player whose module
+boundaries, web UI and Makapix client p64 follows, and `makapix/`, the Makapix Club
+server, whose `docs/player/`, `docs/mqtt-api/` and `api/openapi.json` are the device
+contract:
+
+```
+git clone https://github.com/fabkury/p3a reference/p3a
+git clone https://github.com/fabkury/makapix reference/makapix
 ```

@@ -1,0 +1,18 @@
+Today we have monumental work to do, that will lay the foundations for the entire p64 project.
+
+So far, the firmware/ folder has been performing tests of the hardware, without really building towards the p64 device we want to build.
+
+What we want to do is this:
+ - Rename the firmware folder to "hardware-tests"
+ - Create a new firmware folder
+ - In the new, fresh firmware folder, create a new project from zero, using hardware-tests as technical reference only (not architectural reference)
+
+The goals here include:
+ - Keep the technical know-how from hardware-tests (including its git history sometimes)
+ - But do NOT keep the architecture and overall code patterns from hardware-tests, because they may not be optimal for p64
+
+We will be discussing p64's features and proposed architectures at some point later. For now, please just get us started:
+ - rename firmware to hardware-tests
+ - create a new firmware folder
+ - commit what you did
+ - then halt: wait for my further instructions.
