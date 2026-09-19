@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reads the board's console for a while without resetting it.
+r"""Reads the board's console for a while without resetting it.
 
     python tools\serial_peek.py COM13 [seconds] [--grep REGEX]
 

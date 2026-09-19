@@ -7,6 +7,9 @@ idf_component_register(
     PRIV_REQUIRES
         p64_gfx
         p64_display
+        p64_decode
+        p64_playback
+        p64_storage
         esp_timer
         app_update
         esp_app_format

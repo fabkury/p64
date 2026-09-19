@@ -1,15 +1,19 @@
 // p64 -- firmware entry point.
 //
-// Milestone M0: boot, start the display, show the boot animation, then a quiet idle
-// pattern, with a statistics line every 10 s. The rendering runs in its own task on
-// core 1 from the start (docs/architecture.md section 2); everything network- and
-// storage-related lives on core 0 and arrives with later milestones.
+// Milestone M1: boot animation, then a show of the GIF files on the card, swapped every
+// 30 s, through the player and render tasks on core 1 (docs/architecture.md). The main
+// task (core 0) plays the part the state machine will take over: it picks files, reads
+// them and hands artworks to the player.
 
 #include <cinttypes>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
+#include "esp_random.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,70 +23,26 @@
 #include "boot_animation.hpp"
 #include "p64/display/display.hpp"
 #include "p64/gfx/frame.hpp"
+#include "p64/playback/artwork.hpp"
+#include "p64/playback/frame_queue.hpp"
+#include "p64/playback/player.hpp"
+#include "p64/playback/renderer.hpp"
+#include "p64/storage/card.hpp"
 
 namespace {
 
 constexpr const char *TAG = "p64";
-constexpr uint32_t kBootAnimationMs = 2000;  // becomes a setting with the settings store (M3)
-constexpr int64_t kStatsIntervalUs = 10 * 1000 * 1000;
-constexpr uint8_t kBrightness = 255;  // the user brightness setting arrives with M3
+constexpr uint32_t kBootAnimationMs = 2000;  // a setting with the settings store (M3)
+constexpr uint8_t kBrightness = 255;         // the user brightness setting arrives with M3
+constexpr uint32_t kAutoSwapSeconds = 30;    // the auto-swap interval setting arrives with M3
+constexpr uint32_t kFrameUs = 16667;
 
-// Off the task stacks: the frame is 12 KB.
-p64::gfx::Frame g_frame;
+// Off the task stacks and in internal RAM (.bss): the queue holds three 12 KB frames.
 p64::display::Display g_display;
-
-void log_stats(const char *what, int64_t window_start_us, uint32_t frames, uint64_t render_us) {
-  const p64::display::Display::Stats s = g_display.take_stats();
-  if (frames == 0) return;
-  const float seconds = static_cast<float>(esp_timer_get_time() - window_start_us) / 1e6f;
-  const float n = static_cast<float>(frames);
-  ESP_LOGI(TAG,
-           "%s: %" PRIu32 " frames in %.1f s = %.1f fps; per frame render %.2f ms, wait %.2f ms, copy %.2f ms; "
-           "late flips %" PRIu32 ", sync timeouts %" PRIu32 " (%s)",
-           what, frames, seconds, n / seconds, static_cast<float>(render_us) / n / 1000.0f,
-           static_cast<float>(s.wait_us) / n / 1000.0f, static_cast<float>(s.copy_us) / n / 1000.0f, s.late_flips,
-           s.timeouts, g_display.dma_sync() ? "frame-locked to the DMA" : "timed fallback");
-}
-
-// Core 1: the only task that presents frames.
-void render_task(void *) {
-  const p64::BootAnimation boot;
-  const p64::IdlePattern idle;
-  const int64_t t0 = esp_timer_get_time();
-  int64_t window_start = t0;
-  uint32_t window_frames = 0;
-  uint64_t window_render_us = 0;
-  bool booting = true;
-  while (true) {
-    const int64_t now = esp_timer_get_time();
-    const uint32_t t_ms = static_cast<uint32_t>((now - t0) / 1000);
-    bool dirty;
-    if (booting) {
-      dirty = boot.render(g_frame, t_ms, kBootAnimationMs);
-      if (!dirty) {
-        booting = false;
-        ESP_LOGI(TAG, "boot animation done after %" PRIu32 " ms; idle pattern until content exists", t_ms);
-        idle.render(g_frame, t_ms);
-        dirty = true;
-      }
-    } else {
-      idle.render(g_frame, t_ms);
-      dirty = true;
-    }
-    window_render_us += static_cast<uint64_t>(esp_timer_get_time() - now);
-    if (dirty) {
-      g_display.wait_for_back_buffer();
-      g_display.present(g_frame);
-      ++window_frames;
-    }
-    if (now - window_start >= kStatsIntervalUs) {
-      log_stats(booting ? "boot" : "idle", window_start, window_frames, window_render_us);
-      window_start = now;
-      window_frames = 0;
-      window_render_us = 0;
-    }
-  }
-}
+p64::playback::FrameQueue g_queue;
+p64::playback::Player g_player;
+p64::playback::Renderer g_renderer;
+p64::gfx::Frame g_scratch;
 
 void init_nvs() {
   esp_err_t err = nvs_flash_init();
@@ -94,14 +54,7 @@ void init_nvs() {
   ESP_ERROR_CHECK(err);
 }
 
-}  // namespace
-
-extern "C" void app_main() {
-  const esp_app_desc_t *app = esp_app_get_description();
-  ESP_LOGI(TAG, "p64 firmware %s (IDF %s), built %s %s", app->version, app->idf_ver, app->date, app->time);
-
-  init_nvs();
-
+void mark_image_valid() {
   // This image booted far enough to run: cancel the bootloader's rollback. A later
   // milestone moves this behind a self-test (display up, settings readable).
   esp_ota_img_states_t state;
@@ -110,6 +63,78 @@ extern "C" void app_main() {
     ESP_LOGI(TAG, "first boot of this image: marking it valid");
     esp_ota_mark_app_valid_cancel_rollback();
   }
+}
+
+// The main task produces the boot animation into the queue before the player starts
+// (the queue has one producer at a time).
+void play_boot_animation() {
+  const p64::BootAnimation boot;
+  const int64_t t0 = esp_timer_get_time();
+  while (true) {
+    const uint32_t t_ms = static_cast<uint32_t>((esp_timer_get_time() - t0) / 1000);
+    if (!boot.render(g_scratch, t_ms, kBootAnimationMs)) break;
+    p64::playback::ReadySlot *slot = g_queue.producer_slot();
+    if (!slot) {
+      vTaskDelay(1);
+      continue;
+    }
+    slot->frame.copy_from(g_scratch);
+    slot->due_us = esp_timer_get_time();
+    slot->delay_us = kFrameUs;
+    slot->generation = 0;
+    slot->first = false;
+    g_queue.producer_publish();
+  }
+  ESP_LOGI(TAG, "boot animation done after %lld ms", static_cast<long long>((esp_timer_get_time() - t0) / 1000));
+}
+
+// GIF files in the card's animations folder, or in the card root when that folder is
+// empty (the test card from the hardware tests keeps its files there).
+std::vector<std::string> find_gifs() {
+  std::vector<std::string> paths;
+  for (const std::string &dir : {p64::storage::animations_dir(), std::string(p64::storage::mount_point())}) {
+    for (const p64::storage::FileInfo &f : p64::storage::list(dir)) {
+      if (!f.directory && p64::storage::extension_of(f.name) == ".gif") paths.push_back(dir + "/" + f.name);
+    }
+    if (!paths.empty()) {
+      ESP_LOGI(TAG, "%u GIF files in %s", static_cast<unsigned>(paths.size()), dir.c_str());
+      break;
+    }
+  }
+  return paths;
+}
+
+std::shared_ptr<p64::playback::Artwork> load_artwork(const std::string &path) {
+  std::vector<uint8_t> bytes;
+  std::string error;
+  const int64_t t0 = esp_timer_get_time();
+  if (!p64::storage::read_file(path, bytes, p64::playback::kMaxFileBytes, error)) {
+    ESP_LOGW(TAG, "%s: %s", path.c_str(), error.c_str());
+    return nullptr;
+  }
+  const int64_t t1 = esp_timer_get_time();
+  auto art = std::make_shared<p64::playback::Artwork>();
+  const std::string name = path.substr(path.rfind('/') + 1);
+  if (!art->open(std::move(bytes), name, p64::gfx::kBlack, error)) {
+    ESP_LOGW(TAG, "%s: rejected: %s", name.c_str(), error.c_str());
+    return nullptr;
+  }
+  ESP_LOGI(TAG, "playing %s: %s %dx%d, %u bytes, read in %lld ms, scaled %s%dx to %dx%d", name.c_str(),
+           p64::decode::format_name(art->format()), art->info().width, art->info().height,
+           static_cast<unsigned>(art->file_bytes()), static_cast<long long>((t1 - t0) / 1000),
+           art->scaler().enlarging() ? "up " : "", art->scaler().factor(), art->scaler().out_w(),
+           art->scaler().out_h());
+  return art;
+}
+
+}  // namespace
+
+extern "C" void app_main() {
+  const esp_app_desc_t *app = esp_app_get_description();
+  ESP_LOGI(TAG, "p64 firmware %s (IDF %s), built %s %s", app->version, app->idf_ver, app->date, app->time);
+
+  init_nvs();
+  mark_image_valid();
 
   if (!g_display.begin()) {
     ESP_LOGE(TAG, "display failed to start; nothing to do");
@@ -117,8 +142,20 @@ extern "C" void app_main() {
   }
   g_display.set_rotation(p64::gfx::Rotation::R90);  // the printed shell's orientation; a setting with M3
   g_display.set_brightness(kBrightness);
+  g_renderer.start(g_display, g_queue, &g_player);
 
-  // Render on core 1, above everything else there; 8 KB of stack for the drawing code.
-  xTaskCreatePinnedToCore(render_task, "render", 8192, nullptr, 20, nullptr, 1);
-  ESP_LOGI(TAG, "render task started on core 1; boot animation %" PRIu32 " ms", kBootAnimationMs);
+  play_boot_animation();
+  g_player.start(g_queue);
+
+  p64::storage::mount();
+  std::vector<std::string> gifs = find_gifs();
+  if (gifs.empty()) {
+    ESP_LOGW(TAG, "no GIF files on the card; the panel stays on the last boot frame");
+    return;
+  }
+  while (true) {
+    const std::string &path = gifs[esp_random() % gifs.size()];
+    if (auto art = load_artwork(path)) g_player.play(art);
+    vTaskDelay(pdMS_TO_TICKS(kAutoSwapSeconds * 1000));
+  }
 }

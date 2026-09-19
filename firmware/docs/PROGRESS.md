@@ -18,7 +18,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | # | Milestone | Status | Verified on device |
 |---|---|---|---|
 | M0 | Project skeleton: builds, boots, console, boot animation on the panel, tools | done | 2026-09-19: boot log clean, panel frame-locked at 271.3 Hz, boot animation 2010 ms, idle 66.7 fps, 0 late flips |
-| M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | pending | |
+| M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | done (panel modes untested) | 2026-09-19: card GIFs play through player + renderer at their stored delays, late 0, decode 1.1-1.5 ms, copy 7.5 ms, swap drops the old queued frame |
 | M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | pending | |
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | pending | |
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | pending | |
@@ -49,5 +49,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   representative), copy 7.4 ms, wait 0.8 ms, 0 late flips, 0 timeouts. Internal heap at
   boot: 297 KB + 21 KB + 32 KB DRAM. The core dump partition logs "incorrect size" once
   because it was never written; harmless.
-- Next: M1, the decoder interface and GIF decoder (`p64_decode`), the player and frame
-  queue (`p64_playback`), card mount (`p64_storage`), and a first show of card GIFs.
+- M1 done: `p64_decode` (Decoder interface, sniffing, browser delay rule, GIF decoder
+  with background colour), `p64_storage` (card mount, p64 layout created, listing,
+  reads), `p64_playback` (FrameQueue of 3 slots with generations, Artwork, Player task
+  on core 1 at priority 15, Renderer task at 20). main plays random card GIFs every
+  30 s. Two pacing bugs found and fixed on the device: (1) the minimum stay was
+  measured from the end of the 7.5 ms copy, so every frame slipped by the copy time
+  (10 fps instead of 20); the renderer now starts the copy a measured lead ahead of
+  the target and keeps the schedule on target times; (2) lateness was measured against
+  the player's timeline anchored at the first decode, unattainable by the copy time;
+  it is now measured against the renderer's own schedule, which starts at the first
+  frame's visibility. Result: late 0, fps equal to the stored delays (8 fps for
+  125 ms frames, 1.9 fps for 500 ms). The first 10 s window shows a higher fps because
+  the 60 fps boot animation frames are counted in it.
+- Panel mode switching (`Display::set_mode`) is implemented but not yet exercised; it
+  gets its test with the API (M4). Rotation is fixed at 90 until the settings store.
+- Next: host tests (`tests/host/`, scaler, rotation, sniffing, delay rule, GIF frames
+  against Pillow), then M2 decoders.
