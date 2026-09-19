@@ -25,6 +25,9 @@ CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # The app marks itself valid at boot; an image that never gets there rolls back.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# Updates may also come from a plain-HTTP URL on the LAN (a local build); the SHA256 the
+# caller supplies is what protects that path.
+CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
 
 # --- Console: the board's USB port is the ESP32-S3's native USB Serial/JTAG ---
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

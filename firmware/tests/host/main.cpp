@@ -35,6 +35,7 @@
 #include "p64/system/rtc_codec.hpp"
 #include "tap.hpp"
 #include "orientation.hpp"
+#include "version.hpp"
 
 namespace {
 
@@ -1031,6 +1032,28 @@ void test_orientation() {
   CHECK_EQ(o2.rotation(), 270);
 }
 
+// --- firmware versions (spec 15.2) ---------------------------------------------------
+
+void test_versions() {
+  using namespace p64::ota::version;
+  Parsed p = parse("v1.2.3");
+  CHECK(p.valid); CHECK_EQ(p.major, 1); CHECK_EQ(p.minor, 2); CHECK_EQ(p.patch, 3); CHECK(p.suffix.empty());
+  p = parse("0.1.0-dev");
+  CHECK(p.valid); CHECK(p.suffix == "dev");
+  CHECK(!parse("1.2").valid);
+  CHECK(!parse("abc").valid);
+  CHECK(!parse("1.2.3x").valid);
+  CHECK(is_newer("0.1.0", "0.1.0-dev"));      // a release beats the dev build of it
+  CHECK(!is_newer("0.1.0-dev", "0.1.0"));
+  CHECK(is_newer("0.2.0", "0.1.9"));
+  CHECK(is_newer("1.0.0", "0.99.99"));
+  CHECK(!is_newer("0.1.0", "0.1.0"));
+  CHECK(is_newer("v0.1.1", "0.1.0-dev"));
+  CHECK(!is_newer("0.0.9", "0.1.0-dev"));     // older numbers stay older despite the suffix
+  CHECK_EQ(compare("1.0.0", "1.0.0-rc1"), 1);
+  CHECK_EQ(compare("1.0.0-rc1", "1.0.0-rc2"), -1);
+}
+
 int run_unit() {
   test_delay_rule();
   test_sniff();
@@ -1054,6 +1077,7 @@ int run_unit() {
   test_rtc_codec();
   test_taps();
   test_orientation();
+  test_versions();
   std::printf("unit tests: %d checks, %d failures\n", g_checks, g_failures);
   return g_failures ? 1 : 0;
 }

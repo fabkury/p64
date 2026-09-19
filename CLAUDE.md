@@ -40,7 +40,7 @@ ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_
 `p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
 `p64_web`,
 `p64_makapix`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
-`p64_makapix`, `p64_widgets`, `p64_stream`, `p64_inputs`) and the application in `firmware/main/` (`main.cpp`
+`p64_makapix`, `p64_widgets`, `p64_stream`, `p64_inputs`, `p64_ota`) and the application in `firmware/main/` (`main.cpp`
 wiring, `show.cpp` the state machine, `loader.cpp` the card I/O worker). Milestones M0
 to M8 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
 mode, API v1 with WebSocket and web UI, the content model (playsets, channels,
@@ -51,8 +51,9 @@ fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
 `tools/stream_send.py` sends). M9 is in progress: reliability (reset counters, core dump
 summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
-hold), the IMU (taps, auto-rotation with an upright calibration) and the PIN (route
-gate, sessions, lockout) are done; OTA remains, then the full web UI (M10);
+hold), the IMU (taps, auto-rotation with an upright calibration), the PIN (route
+gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, rollback)
+are done, so M0 to M9 are complete; the full web UI (M10) remains;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
@@ -71,7 +72,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\stream_smoke.py http://<ip>` and
 `python tests\device\ops_smoke.py http://<ip>` and
 `python tests\device\imu_smoke.py http://<ip>` and
-`python tests\device\pin_smoke.py http://<ip>` against the live device (the
+`python tests\device\pin_smoke.py http://<ip>` and
+`python tests\device\ota_smoke.py http://<ip> [--no-install]` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
@@ -85,7 +87,9 @@ network and storage tasks on core 0; the main task is the show loop and never do
 I/O. Internal RAM is the scarce resource: with the Makapix MQTT session up the heap
 sits at 25 to 30 KB free (largest block 24 KB), so anything new that wants internal
 RAM (a task stack, a TLS session, a buffer) must be measured on the device
-(`GET /api/v1/diag/memory`) before it is kept.
+(`GET /api/v1/diag/memory`) before it is kept. After an OTA install the device boots from
+`ota_1` while `flash.ps1` writes `ota_0`: roll back from the Update card (or run
+`tests\device\ota_smoke.py`, which ends with a rollback) before trusting a flash.
 
 ## Hardware tests: commands
 

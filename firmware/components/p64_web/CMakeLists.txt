@@ -26,6 +26,7 @@ idf_component_register(
         p64_widgets
         p64_stream
         p64_inputs
+        p64_ota
         p64_decode
         p64_playback
         esp_timer

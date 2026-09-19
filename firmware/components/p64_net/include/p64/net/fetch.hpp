@@ -56,6 +56,11 @@ class Session {
   bool holds_tls_ = false;
 };
 
+// The one-TLS-session-at-a-time slot (ADR 0009), for code that runs its own HTTPS
+// client (the updater): hold it for the whole transfer. Recursive.
+void tls_lock();
+void tls_unlock();
+
 // "p64/<firmware version>" (spec 13).
 const char *user_agent();
 // The body as a string (for JSON).

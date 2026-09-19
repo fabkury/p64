@@ -388,3 +388,20 @@ every frame, since frames carry no headers). `auth.cpp` keeps the salted SHA-256
 PIN in NVS (`p64auth`), up to eight session tokens in RAM (cookie or bearer), the
 failure counter and the 30 s lockout. Open routes: the setup portal, the UI shell, the
 auth routes. The factory reset erases the namespace.
+
+## 18. Updates (M9)
+
+`p64_ota` keeps one status record and runs each job (a check or an install) on a task
+created for it with an internal 8 KB stack (flash writes are not allowed from a PSRAM
+stack) and deleted afterwards, so the internal RAM is only borrowed during an update.
+The check is one `fetch::perform` of the GitHub "latest release" document (PSRAM body);
+the tag, notes and the two asset URLs are kept, and `version::is_newer` (pure,
+host-tested: MAJOR.MINOR.PATCH, a suffixed build older than the bare release) decides
+`available`. The install holds the fetch module's TLS slot and drives `esp_https_ota`
+(4 KB buffers, redirects followed, plain HTTP allowed for LAN installs), reads the
+written slot back through `esp_partition_read` into SHA-256 and compares with the
+published or supplied checksum before `esp_https_ota_finish` makes the slot bootable.
+Rollback selects the other slot when its image is valid and not marked invalid by a
+previous rollback. Development note: after an install the device runs from `ota_1`
+while `flash.ps1` writes `ota_0`; roll back (the Update card, or the test does it) or
+`idf.py erase-otadata` before trusting a flash again.

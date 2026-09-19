@@ -20,6 +20,7 @@ idf_component_register(
         p64_widgets
         p64_stream
         p64_inputs
+        p64_ota
         esp_driver_gpio
         p64_net
         p64_web

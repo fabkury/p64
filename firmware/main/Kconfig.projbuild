@@ -59,6 +59,20 @@ menu "p64"
 
     endmenu
 
+    menu "Updates"
+
+        config P64_OTA_GITHUB_REPO
+            string "GitHub repository (owner/name) whose releases carry the firmware"
+            default "fabkury/p64"
+        config P64_OTA_ASSET
+            string "Release asset name of the firmware image"
+            default "p64-firmware.bin"
+            help
+                The release must also carry <asset>.sha256 ("<hex>  <asset>"), made by
+                tools/release_assets.py. The tag is v<MAJOR.MINOR.PATCH>.
+
+    endmenu
+
     menu "Sensors"
 
         config P64_I2C_SDA

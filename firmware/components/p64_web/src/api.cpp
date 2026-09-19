@@ -25,6 +25,7 @@
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
 #include "p64/inputs/inputs.hpp"
+#include "p64/ota/ota.hpp"
 #include "p64/stream/stream.hpp"
 #include "p64/widgets/widgets.hpp"
 
@@ -213,6 +214,7 @@ cJSON *build_status() {
   }
   cJSON_AddItemToObject(d, "stream", stream::status_json());
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());
+  cJSON_AddStringToObject(d, "update_state", ota::state_name(ota::status().state));
   {
     cJSON *in = cJSON_AddObjectToObject(d, "inputs");
     cJSON_AddBoolToObject(in, "imu_present", inputs::imu_present());
@@ -359,6 +361,42 @@ esp_err_t action_calibrate_upright(httpd_req_t *req) {
   if (!gfx::valid_rotation(rotation)) return reply_error(req, "400 Bad Request", "INVALID_ARG", "rotation 0, 90, 180 or 270");
   if (!inputs::calibrate_upright(static_cast<uint16_t>(rotation))) return reply_error(req, "503 Service Unavailable", "NO_IMU", "no IMU reading yet");
   return reply_ok(req, inputs::imu_json());
+}
+
+// Updates (spec 15.2).
+esp_err_t update_get(httpd_req_t *req) { return reply_ok(req, ota::status_json()); }
+
+esp_err_t update_check(httpd_req_t *req) {
+  if (!ota::check_now()) return reply_error(req, "409 Conflict", "BUSY", "a check or install is running");
+  return reply_ok(req, ota::status_json());
+}
+
+// {"url": "...", "sha256": "<64 hex>"} installs from any URL; an empty body installs the
+// available release (its published checksum is verified).
+esp_err_t update_install(httpd_req_t *req) {
+  std::string url, sha;
+  if (req->content_len > 0) {
+    cJSON *body = parse_body(req);
+    if (!body) return ESP_OK;
+    const cJSON *u = cJSON_GetObjectItemCaseSensitive(body, "url");
+    const cJSON *s = cJSON_GetObjectItemCaseSensitive(body, "sha256");
+    if (u && cJSON_IsString(u)) url = u->valuestring;
+    if (s && cJSON_IsString(s)) sha = s->valuestring;
+    cJSON_Delete(body);
+  }
+  if (!url.empty() && sha.size() != 64) return reply_error(req, "400 Bad Request", "INVALID_ARG", "an install from a URL needs its sha256 (64 hex digits)");
+  if (!ota::install(url, sha)) return reply_error(req, "409 Conflict", "BUSY", "nothing available to install, or a job is running");
+  return reply_ok(req, ota::status_json());
+}
+
+esp_err_t update_rollback(httpd_req_t *req) {
+  std::string error;
+  if (!ota::rollback(error)) return reply_error(req, "409 Conflict", "NO_ROLLBACK", error);
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "rebooting", true);
+  const esp_err_t r = reply_ok(req, d);
+  xTaskCreate(reboot_task, "reboot", 2048, nullptr, 5, nullptr);
+  return r;
 }
 
 esp_err_t diag_coredump_erase(httpd_req_t *req) {
@@ -579,6 +617,10 @@ void init(const Hooks &hooks) {
       {"/api/v1/action/set_time", HTTP_POST, action_set_time, nullptr, false, false, nullptr},
       {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
       {"/api/v1/diag/imu", HTTP_GET, diag_imu, nullptr, false, false, nullptr},
+      {"/api/v1/update", HTTP_GET, update_get, nullptr, false, false, nullptr},
+      {"/api/v1/update/check", HTTP_POST, update_check, nullptr, false, false, nullptr},
+      {"/api/v1/update/install", HTTP_POST, update_install, nullptr, false, false, nullptr},
+      {"/api/v1/update/rollback", HTTP_POST, update_rollback, nullptr, false, false, nullptr},
       {"/api/v1/action/calibrate_upright", HTTP_POST, action_calibrate_upright, nullptr, false, false, nullptr},
       {"/api/v1/frame", HTTP_GET, frame_png, nullptr, false, false, nullptr},
       {"/api/v1/frame.raw", HTTP_GET, frame_raw, nullptr, false, false, nullptr},

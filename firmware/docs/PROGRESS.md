@@ -26,7 +26,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
-| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA next |
+| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
 
 ## Log
@@ -308,5 +308,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   table (64) was full, so the last routes registered never existed (now 96); a
   `Retry-After` header set from a temporary string went out empty (httpd keeps the
   pointer until the response is sent).
-- Next: M9 last part: OTA from GitHub Releases (check every 12 h and on request, install
-  with SHA256 verification, rollback from the Update page).
+- M9, updates (docs/architecture.md section 18): `p64_ota` with the GitHub release
+  check (every 12 h and on request), the install through esp_https_ota into the other
+  slot with the SHA256 read back from flash, installs from any URL with a supplied
+  checksum (plain HTTP allowed on the LAN), rollback, the Update card in the UI,
+  `tools/release_assets.py` for the two release assets, host-tested version rule.
+- Verified on the device (`tests/device/ota_smoke.py`, 0 failures): the GitHub check
+  reports the missing release cleanly (404 on the empty repository), an install of the
+  PC's build from a plain-HTTP URL with its SHA256 took 20 s for 1.9 MB, the device
+  rebooted from `ota_1`, confirmed the image 30 s later, offered the rollback and came
+  back on `ota_0`. Internal RAM is only borrowed during the job (the worker task is
+  created per job).
+- M9 is complete. Not exercised on the device: a real GitHub release install (none is
+  published yet; the check against the empty repository reports the 404 cleanly), the
+  BOOT-hold reset, real taps and the auto-rotation direction (a hand on the shell).
+- Next: M10, the full web UI port (p3a layout), acceptance tests, docs.

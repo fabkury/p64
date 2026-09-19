@@ -89,6 +89,23 @@ refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) 
 `show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
 `interlude` carry `widget`.
 
+## Updates (M9, spec 15.2)
+
+| Route | Method | What |
+|---|---|---|
+| `/api/v1/update` | GET | `{state, current_version, available_version, notes, available_size, download_url, sha256_published, bytes_read, image_size, progress_percent, error, last_check_age_s, can_rollback, rollback_version, rollback_partition, repository, asset}`; `state` is `idle`, `checking`, `up_to_date`, `available`, `downloading`, `verifying`, `ready_to_reboot` or `error` |
+| `/api/v1/update/check` | POST | asks GitHub for the latest release now (409 `BUSY` while a job runs) |
+| `/api/v1/update/install` | POST | empty body: installs the available release (its `.sha256` asset is verified); `{"url": "...", "sha256": "<64 hex>"}`: installs any image, plain HTTP allowed on the LAN, the checksum required |
+| `/api/v1/update/rollback` | POST | makes the other slot bootable (409 `NO_ROLLBACK` when it holds no valid image) and reboots |
+
+The status document carries `update_state`. The check runs 90 s after boot once online
+and every 12 h while `updates.auto_check` is on. The image is written to the other OTA
+slot while the panel keeps playing, its SHA256 read back from flash and compared, then
+the slot is made bootable; the user reboots. The new image confirms itself 30 s after
+boot; a crash before that rolls back automatically. Releases: tag `v<MAJOR.MINOR.PATCH>`
+at the repository in `P64_OTA_GITHUB_REPO` with the assets `tools/release_assets.py`
+produces (`p64-firmware.bin` and `p64-firmware.bin.sha256`).
+
 ## PIN (M9, spec 10.3)
 
 | Route | Method | What |

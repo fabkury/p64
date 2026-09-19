@@ -143,6 +143,9 @@ bool run(esp_http_client_handle_t client, const Request &request, Result &out, b
 
 }  // namespace
 
+void tls_lock() { tls_take(); }
+void tls_unlock() { tls_give(); }
+
 const char *user_agent() {
   if (!g_user_agent[0]) {
     const esp_app_desc_t *app = esp_app_get_description();

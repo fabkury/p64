@@ -36,6 +36,7 @@
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
 #include "p64/inputs/inputs.hpp"
+#include "p64/ota/ota.hpp"
 #include "p64/stream/stream.hpp"
 #include "p64/system/reliability.hpp"
 #include "ops.hpp"
@@ -190,6 +191,7 @@ extern "C" void app_main() {
   in.previous = p64::show::previous;
   in.rotation_changed = [] { apply_display_settings(p64::system::settings()); };
   p64::inputs::start(in);
+  p64::ota::start();
   p64::show::restore();
   p64::show::run();
 }
