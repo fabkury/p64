@@ -15,7 +15,7 @@ leaning back 12 degrees.
 | `src/p64_enclosure.scad` | Parametric OpenSCAD source (OpenSCAD 2021.01+). Everything below is a parameter. |
 | `output/v1/p64_enclosure_print.stl` | v1, ready to slice, already in print orientation (back face on the bed). |
 | `output/v1/p64_enclosure_print.3mf` | Same mesh, 3MF. |
-| `output/v1/p64_enclosure_service.stl` | v1 bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. The file ordered on 2026-09-05. |
+| `output/v1/p64_enclosure_service.stl` | v1 bureau variant (MJF/SLA): 0.45 mm fit clearance instead of 0.3 mm. The file ordered on 2026-09-05; it came back printed in FDM PLA on 2026-09-18 and fits, see [Verified with the v1 print](#verified-with-the-v1-print). |
 | `output/v1/render_*.png` | v1 preview renders (back, front with mock-ups, side, sections, bottom, print orientation). |
 | `src/p64_enclosure_v2.scad` | **v2**: v1 plus two rotary encoders on the back face (see [v2](#v2-two-rotary-encoders-on-the-back)). Kept as a separate file so v1 stays as printed. |
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
@@ -239,6 +239,8 @@ kept as an alternative: on 2026-09-11 the user chose to keep v4 as the version t
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
+- For FDM use the 0.3 mm `p64_enclosure_print.stl`: the 0.45 mm `_service.stl` printed in
+  PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
 - Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores and the
   debossed labels stay clean on the first layer.
 - Bed needs at least 140 x 140 mm.
@@ -263,12 +265,35 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 
 | Input | Value used | Parameter | Notes |
 |---|---|---|---|
-| Centre of the panel's HUB75 IN header | (-35.0, +5.4) mm from the panel centre, panel arrows up, seen from the back | `hub75_in_native` | From the product photo, +-1 mm. Pin holes (3.5 mm), mic holes (3.5 mm) and the plug pocket (30 mm) are sized to absorb that error. With this value the chip's edge overhangs the frame rim by 0.8 mm, which fits the photo. |
-| Height of the controller PCB's back face above the frame's back face | 0.5 mm | `z_chip` | Must be 0 or more because the chip edge overhangs the rim. Only the plug pocket (`pocket_z`) depends on it. |
-| Right-angle plug body | up to 12 wide x 7 thick x 14 long | `pocket_w`, `pocket_z` | Enlarge the pocket if yours is bigger. |
+| Centre of the panel's HUB75 IN header | (-35.0, +5.4) mm from the panel centre, panel arrows up, seen from the back | `hub75_in_native` | From the product photo, +-1 mm. Pin holes (3.5 mm), mic holes (3.5 mm) and the plug pocket (30 mm) are sized to absorb that error. With this value the chip's edge overhangs the frame rim by 0.8 mm, which fits the photo. v1 print: the base pocket lands exactly on the two USB-C ports; whether the pin and mic holes land over the buttons and mics is not checked yet. |
+| Height of the controller PCB's back face above the frame's back face | 0.5 mm | `z_chip` | Must be 0 or more because the chip edge overhangs the rim. Only the plug pocket (`pocket_z`) depends on it. v1 print: with the panel seated there is a visible gap between the controller and the back wall, so the value is safe. |
+| Right-angle plug body | up to 12 wide x 7 thick x 14 long | `pocket_w`, `pocket_z` | Enlarge the pocket if yours is bigger. v1 print: not tried yet. |
 
-Quick verification with the printed part: the panel should drop into the pocket by hand;
-the six holes should line up with the inserts without forcing.
+## Verified with the v1 print
+
+The 2026-09-05 order of `output/v1/p64_enclosure_service.stl` (0.45 mm clearance) came back
+on 2026-09-18, printed by JLC3DP in black FDM PLA. Checked by hand the same day; the hand
+measurements are in `input/measurements.md` and the photos are `input/PXL_20260918_*.jpg`
+(open shell beside the panel, assembled display in hand, front, back and side standing on
+the desk, panel with controller and the right-angle cable, lit at night).
+
+| Item | Result |
+|---|---|
+| Overall size | 133.0 mm wide (model 132.4, +0.6 mm), 34.6 mm deep at the bottom edge (model 34.6). |
+| Screw bosses | All six line up with the panel's inserts. The 3.4 mm holes and 6.5 mm counterbores printed clean; a screw drops in without cleaning. |
+| Panel in the pocket | Drops in by hand with slight side play, under 1 mm, at 0.45 mm clearance. Next FDM print: use the 0.3 mm `p64_enclosure_print.stl`. |
+| Seating | The frame rests on the ledge all round and the LED mask stands about 2.5 mm proud, as designed. |
+| USB-C opening | The base pocket lands exactly on the two ports. |
+| Controller clearance | Visible gap between the controller and the back wall with the panel seated. |
+| Back face | Groove marks legible, vent slots, pin holes and mic holes clean; the 2 mm minimum-feature rule held. |
+| Stand | Stable at the 12 degree lean; the front-bottom bar stays (the v2/v4 choice over v3's plinth, confirmed on the real part). |
+| Heat | Barely warm after running for a while; PLA is fine at the brightness used. |
+| Not checked yet | Pin holes and mic holes over the buttons and mics (press BOOT through the hole with a pin); the right-angle plug in the base pocket and the cable in the groove to the back notch. |
+
+Screws: none shipped with the panel or the controller. Buy six M3 x 10 (socket head cap or
+pan head, head 6 mm or less for the 6.5 mm counterbore; not countersunk). The next shell
+(v4) adds no screws: the encoder boards bring their own bushing nut and washer, the USB-C
+sockets bring their own screws.
 
 ## Main parameters (`src/p64_enclosure.scad`)
 
