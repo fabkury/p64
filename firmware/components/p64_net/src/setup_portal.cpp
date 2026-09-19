@@ -228,7 +228,7 @@ void init(esp_err_t (*root_when_running)(httpd_req_t *)) {
       {"/canonical.html", HTTP_GET, probe_handler, nullptr, false, false, nullptr},  // Firefox
       {"/success.txt", HTTP_GET, probe_handler, nullptr, false, false, nullptr},     // Firefox
   };
-  for (const httpd_uri_t &r : routes) http::add(r);
+  for (const httpd_uri_t &r : routes) http::add(r, true);  // the setup portal is never behind the PIN (spec 10.3)
 }
 
 }  // namespace p64::net::portal

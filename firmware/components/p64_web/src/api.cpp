@@ -48,6 +48,10 @@ void register_routes();
 void start();
 void notify();
 }  // namespace ws
+namespace auth {
+void register_routes();
+bool gate(httpd_req_t *req);
+}  // namespace auth
 
 namespace {
 
@@ -592,6 +596,8 @@ void init(const Hooks &hooks) {
   content::register_routes();
   makapix_routes::register_routes();
   ws::register_routes();
+  auth::register_routes();
+  net::http::set_gate(auth::gate);
   ws::start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { ws::notify(); });
   system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { ws::notify(); });

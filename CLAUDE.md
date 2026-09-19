@@ -51,8 +51,8 @@ fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
 `tools/stream_send.py` sends). M9 is in progress: reliability (reset counters, core dump
 summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
-hold) and the IMU (taps, auto-rotation with an upright calibration) are done; PIN and
-OTA remain, then the full web UI (M10);
+hold), the IMU (taps, auto-rotation with an upright calibration) and the PIN (route
+gate, sessions, lockout) are done; OTA remains, then the full web UI (M10);
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
@@ -70,7 +70,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\widgets_smoke.py http://<ip>`,
 `python tests\device\stream_smoke.py http://<ip>` and
 `python tests\device\ops_smoke.py http://<ip>` and
-`python tests\device\imu_smoke.py http://<ip>` against the live device (the
+`python tests\device\imu_smoke.py http://<ip>` and
+`python tests\device\pin_smoke.py http://<ip>` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs

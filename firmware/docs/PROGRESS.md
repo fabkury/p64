@@ -26,7 +26,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
-| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN and OTA next |
+| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA next |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
 
 ## Log
@@ -293,4 +293,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   and adjust the sensitivity), and the direction of auto-rotation (turn the panel 90
   degrees clockwise after calibrating; if the picture turns the wrong way, set
   `P64_IMU_ROTATION_SIGN` to -1).
-- Next: M9 third part: PIN (route gate, session cookie, lockout), then OTA.
+- M9, PIN (docs/architecture.md section 17): the HTTP server's route gate (every route
+  behind a trampoline unless registered open), `web/auth.cpp` with the salted hash in
+  NVS, session cookies and bearer tokens, the `X-P64-Pin` header for scripts, five
+  failures locking for 30 s; the UI's PIN prompt on a 401, the PIN card, plus the
+  security-and-inputs card (tap gestures, sensitivity, auto-rotation, calibration,
+  set time from the browser, factory reset with the typed word) and the reliability
+  line in the diagnostics. `tests/device/pin_smoke.py`.
+- Verified on the device (`tests/device/pin_smoke.py`, 0 failures): PIN validation, 401 on
+  every route without a session while `/`, `/api/v1/auth` and the portal stay open, the
+  `X-P64-Pin` header, the cookie and the bearer token, five wrong PINs locking for 30 s
+  (429 with Retry-After) while an open session keeps working, changing the PIN needs the
+  current one, clearing reopens the routes. Found on the way: the HTTP server's handler
+  table (64) was full, so the last routes registered never existed (now 96); a
+  `Retry-After` header set from a temporary string went out empty (httpd keeps the
+  pointer until the response is sent).
+- Next: M9 last part: OTA from GitHub Releases (check every 12 h and on request, install
+  with SHA256 verification, rollback from the Update page).

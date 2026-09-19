@@ -378,3 +378,13 @@ degrees of a right angle, with at least 0.55 g in the plane (a panel lying flat 
 the last value). The display applies the resolved value while `rotation_auto` is on;
 the setting stays the fallback. On the development board gravity lies along +X with the
 panel upright at rotation 90.
+
+## 17. The PIN gate (M9)
+
+`net::http::add()` registers every route behind a trampoline unless the caller marks it
+open; the trampoline asks the gate installed by the web module (`web::auth::gate`) and
+only then calls the real handler (a WebSocket handler is gated at its handshake, not at
+every frame, since frames carry no headers). `auth.cpp` keeps the salted SHA-256 of the
+PIN in NVS (`p64auth`), up to eight session tokens in RAM (cookie or bearer), the
+failure counter and the 30 s lockout. Open routes: the setup portal, the UI shell, the
+auth routes. The factory reset erases the namespace.

@@ -1,6 +1,7 @@
 #include "p64/net/http_server.hpp"
 
 #include <string>
+#include <vector>
 
 #include "esp_log.h"
 
@@ -9,6 +10,25 @@ namespace {
 
 constexpr const char *TAG = "http";
 httpd_handle_t g_server = nullptr;
+Gate g_gate;
+
+// What add() keeps per route: the real handler behind the gate trampoline. Routes live
+// for the whole run, so the entries are never freed.
+struct Route {
+  esp_err_t (*handler)(httpd_req_t *);
+  void *user_ctx;
+  bool websocket;
+};
+
+esp_err_t gated(httpd_req_t *req) {
+  auto *route = static_cast<Route *>(req->user_ctx);
+  // A WebSocket handler is also called for every frame (method 0); only the handshake
+  // (a GET with headers) is checked.
+  const bool handshake = !route->websocket || req->method == HTTP_GET;
+  if (handshake && g_gate && !g_gate(req)) return ESP_OK;
+  req->user_ctx = route->user_ctx;
+  return route->handler(req);
+}
 
 }  // namespace
 
@@ -18,7 +38,7 @@ bool start() {
   cfg.server_port = 80;
   cfg.core_id = 0;
   cfg.stack_size = 8192;
-  cfg.max_uri_handlers = 64;
+  cfg.max_uri_handlers = 96;  // the API, the portal and the UI register about 70 routes
   cfg.max_open_sockets = 12;  // needs CONFIG_LWIP_MAX_SOCKETS >= 15 (three are the server's own)
   cfg.lru_purge_enable = true;
   cfg.uri_match_fn = httpd_uri_match_wildcard;
@@ -36,12 +56,20 @@ bool start() {
 
 httpd_handle_t handle() { return g_server; }
 
-bool add(const httpd_uri_t &uri) {
+bool add(const httpd_uri_t &uri, bool open) {
   if (!g_server) return false;
-  const esp_err_t err = httpd_register_uri_handler(g_server, &uri);
+  httpd_uri_t wrapped = uri;
+  if (!open) {
+    auto *route = new Route{uri.handler, uri.user_ctx, uri.is_websocket};
+    wrapped.handler = gated;
+    wrapped.user_ctx = route;
+  }
+  const esp_err_t err = httpd_register_uri_handler(g_server, &wrapped);
   if (err != ESP_OK) ESP_LOGE(TAG, "route %s: %s", uri.uri, esp_err_to_name(err));
   return err == ESP_OK;
 }
+
+void set_gate(Gate gate) { g_gate = std::move(gate); }
 
 esp_err_t send(httpd_req_t *req, const char *status, const char *content_type, const char *body) {
   httpd_resp_set_status(req, status);

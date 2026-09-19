@@ -89,6 +89,24 @@ refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) 
 `show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
 `interlude` carry `widget`.
 
+## PIN (M9, spec 10.3)
+
+| Route | Method | What |
+|---|---|---|
+| `/api/v1/auth` | GET | `{pin_set, authenticated, locked_for_s}` (open) |
+| `/api/v1/auth/login` | POST | `{"pin": "..."}`: sets the `p64_session` cookie (open; 401 `WRONG_PIN`, 429 `LOCKED` with `Retry-After`) |
+| `/api/v1/auth/logout` | POST | forgets this browser's session (open) |
+| `/api/v1/auth/pin` | PUT | `{"pin": "1234", "current": "..."}` sets or changes the PIN (4 to 8 digits); `"pin": ""` clears it; with a PIN set the request must be authenticated and carry the current PIN; every session is dropped |
+
+With a PIN set, every other route (including the WebSocket handshake and `/api/v1/frame`)
+needs one of: the session cookie from a login, `Authorization: Bearer <session>`, or the
+PIN itself in an `X-P64-Pin` header (for scripts; counted like a login attempt). Otherwise
+401 `UNAUTHORIZED`. Five wrong PINs lock logins and header checks for 30 s (429 `LOCKED`,
+`Retry-After`); sessions already open keep working. Open regardless: the UI shell page
+(`/`, which shows the PIN prompt), the auth routes, the setup portal in setup mode, and the
+UDP streams. Sessions live in RAM (up to 8; a reboot signs every browser out); the PIN is
+stored as a salted SHA-256 in NVS and erased by the factory reset.
+
 ## Operations (M9)
 
 The status document carries `time.source` (`none`, `rtc`, `ntp`, `manual`),

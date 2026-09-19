@@ -33,4 +33,5 @@ idf_component_register(
         app_update
         heap
         nvs_flash
+        mbedtls
 )
