@@ -122,4 +122,25 @@ void connected(Frame &frame, const std::string &hostname, const std::string &ip)
   lines_centred(frame, 40, lines, Rgb{120, 200, 255}, 1, 0);
 }
 
+void stream_waiting(Frame &frame, const std::string &hostname, const std::string &ip, int ddp_port, int raw_port) {
+  frame.clear(gfx::kBlack);
+  border(frame, Rgb{30, 60, 90});
+  gfx::text::draw_centred(frame, 4, "STREAM", kInk, 1, 1);
+  gfx::text::draw_centred(frame, 12, "WAITING", kDim, 1, 1);
+  std::vector<std::string> host = wrap(hostname + ".local", 0);
+  if (host.size() > 1) host.resize(1);
+  lines_centred(frame, 24, host, kDim, 1, 0);
+  std::vector<std::string> lines;
+  if (gfx::text::text_width(ip, 1, 0) <= Frame::width() - 2) {
+    lines.push_back(ip);
+  } else {
+    const size_t mid = ip.find('.', ip.find('.') + 1);
+    lines.push_back(ip.substr(0, mid + 1));
+    lines.push_back(ip.substr(mid + 1));
+  }
+  lines_centred(frame, 34, lines, Rgb{120, 200, 255}, 1, 0);
+  gfx::text::draw_centred(frame, 52, "DDP " + std::to_string(ddp_port), kDim, 1, 0);
+  gfx::text::draw_centred(frame, 58, "UDP " + std::to_string(raw_port), kDim, 1, 0);
+}
+
 }  // namespace p64::status_screens

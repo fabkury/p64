@@ -57,6 +57,10 @@ class FrameQueue {
   }
   // Generation of the most recently published slot (the consumer skips older ones).
   uint32_t latest_generation() const { return latest_generation_.load(std::memory_order_relaxed); }
+  // The producer announces a new generation before its first frame exists, so the
+  // consumer drops the old generation's queued slots at once: a source with long frame
+  // delays (a clock) would otherwise keep every slot for minutes and block the swap.
+  void announce_generation(uint32_t generation) { latest_generation_.store(generation, std::memory_order_release); }
 
  private:
   ReadySlot *slots_;

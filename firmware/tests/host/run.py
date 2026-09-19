@@ -53,6 +53,12 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "makapix_index.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "text.cpp"),
+    os.path.join(COMPONENTS, "p64_gfx", "src", "fonts.cpp"),
+    os.path.join(COMPONENTS, "p64_gfx", "src", "fonts_data.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "clock_format.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
 ]
 ZLIB_SOURCES = [os.path.join(ZLIB, f) for f in (
     "adler32.c", "crc32.c", "inffast.c", "inflate.c", "inftrees.c", "zutil.c",
@@ -69,6 +75,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
     os.path.join(COMPONENTS, "p64_content", "include"),
+    os.path.join(COMPONENTS, "p64_widgets", "src"),
     CJSON,
     os.path.join(COMPONENTS, "animatedgif", "src"),
     LIBPNG,                               # pnglibconf.h
@@ -82,6 +89,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
     os.path.join(COMPONENTS, "p64_content", "include"),
+    os.path.join(COMPONENTS, "p64_widgets", "src"),
 ]
 
 

@@ -23,6 +23,7 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/widgets/widgets.hpp"
 
 namespace p64::web {
 
@@ -192,6 +193,15 @@ cJSON *build_status() {
   }
   if (g_hooks.playback_status) cJSON_AddItemToObject(d, "playback", g_hooks.playback_status());
   cJSON_AddItemToObject(d, "makapix", makapix_routes::makapix_status());
+  {
+    const widgets::Reading r = widgets::sensor();
+    cJSON *sn = cJSON_AddObjectToObject(d, "sensor");
+    cJSON_AddBoolToObject(sn, "valid", r.valid);
+    cJSON_AddNumberToObject(sn, "temperature_c", r.temperature_c);
+    cJSON_AddNumberToObject(sn, "humidity", r.humidity);
+    cJSON_AddNumberToObject(sn, "trend_c_per_hour", r.trend_c_per_hour);
+    cJSON_AddItemToObject(d, "weather", widgets::weather_json());
+  }
   return d;
 }
 

@@ -39,6 +39,17 @@ menu "p64"
 
     endmenu
 
+    menu "Sensors"
+
+        config P64_I2C_SDA
+            int "I2C SDA GPIO (SHTC3, IMU, RTC)"
+            default 47
+        config P64_I2C_SCL
+            int "I2C SCL GPIO"
+            default 48
+
+    endmenu
+
     menu "Makapix Club"
 
         config P64_MAKAPIX_HOST

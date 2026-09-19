@@ -1,6 +1,7 @@
 #include "show.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -31,6 +32,7 @@
 #include "p64/system/event_bus.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/system/state_store.hpp"
+#include "p64/widgets/widgets.hpp"
 #include "status_screens.hpp"
 
 namespace p64::show {
@@ -157,6 +159,12 @@ std::string g_status_reason;                 // the "no artwork" reason on the p
 std::string g_last_error;                    // the last load or activation failure, for the UI
 Screen g_screen = Screen::None;              // a status screen that holds the panel
 int64_t g_screen_until_us = 0;               // when a timed screen ends (0 = until its cause ends)
+system::MainState g_main_state = system::MainState::AnimationShow;
+std::shared_ptr<playback::FrameSource> g_widget;  // the widget on the panel (Widget state or an interlude)
+bool g_widget_up = false;
+system::WidgetKind g_widget_kind = system::WidgetKind::Clock;
+bool g_want_widget = false;                  // the Widget state waits for the boot animation
+std::atomic<bool> g_artwork_up{false};       // read by the overlay hook on the player task
 
 Pick g_prepared_pick;
 std::shared_ptr<playback::Artwork> g_prepared;
@@ -363,6 +371,9 @@ void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem i
   const int64_t now = now_us();
   g_player->play(art);
   g_current = std::move(art);
+  g_widget.reset();
+  g_widget_up = false;
+  g_artwork_up = true;
   g_status_reason.clear();
   g_screen = Screen::None;
   g_paused = false;
@@ -413,6 +424,9 @@ void play_prepared() {
 void show_frame(const char *name) {
   g_player->play(psram_shared<playback::StaticSource>(name, *g_scratch));
   g_current.reset();
+  g_widget.reset();
+  g_widget_up = false;
+  g_artwork_up = false;
   g_paused = false;
   makapix::note_hidden();
   system::publish(system::Event::PlaybackSwapped, -1);
@@ -447,6 +461,63 @@ void show_screen(Screen screen, int64_t for_us) {
 }
 
 void load_current_history_item(Pending::Purpose purpose, int direction);
+
+// A widget takes the panel: the Widget state, an interlude, or an interlude revisited
+// through history (spec 6.1, 6.2).
+void play_widget(system::WidgetKind kind, bool interlude) {
+  g_widget = widgets::make(kind);
+  g_widget_kind = kind;
+  g_player->play(g_widget);
+  g_current.reset();
+  g_artwork_up = false;
+  g_widget_up = true;
+  g_status_reason.clear();
+  g_screen = Screen::None;
+  g_paused = false;
+  g_swap_at_us = now_us();
+  g_want_widget = false;
+  if (interlude) {
+    content::HistoryItem item;
+    item.kind = content::ItemKind::Interlude;
+    item.source = content::Source::Channel;
+    item.name = widgets::widget_name(kind);
+    item.playset = g_playset.name;
+    item.widget = static_cast<uint8_t>(kind);
+    item.shown_at_us = g_swap_at_us;
+    g_history.push(std::move(item));
+  }
+  makapix::note_hidden();
+  ESP_LOGI(TAG, "widget %s%s", widgets::widget_name(kind), interlude ? " (interlude)" : "");
+  system::publish(system::Event::PlaybackSwapped, static_cast<int32_t>(g_history.position()));
+}
+
+// At an auto-swap, each widget with an interlude probability is rolled in a fixed order;
+// the first that wins takes the slot (spec 6.1).
+bool roll_interlude() {
+  const system::Settings s = system::settings();
+  const struct {
+    system::WidgetKind kind;
+    uint8_t percent;
+  } rolls[] = {{system::WidgetKind::Clock, s.interlude_clock},
+               {system::WidgetKind::Weather, s.interlude_weather},
+               {system::WidgetKind::Temperature, s.interlude_temperature}};
+  for (const auto &r : rolls) {
+    if (r.percent == 0) continue;
+    if (esp_random() % 100 < r.percent) {
+      play_widget(r.kind, true);
+      return true;
+    }
+  }
+  return false;
+}
+
+void show_stream_waiting() {
+  const net::wifi::Status w = net::wifi::status();
+  const system::Settings s = system::settings();
+  status_screens::stream_waiting(*g_scratch, w.hostname, w.connected ? w.ip : "no network", s.ddp_port, s.raw_udp_port);
+  g_status_reason.clear();
+  show_frame("stream waiting");
+}
 
 // A fresh pick goes up now (auto-swap, next at the end of history, activation). When
 // nothing is ready, whatever is on the panel stays until something is (spec 4.5).
@@ -491,6 +562,11 @@ void end_screen() {
 void load_current_history_item(Pending::Purpose purpose, int direction) {
   const content::HistoryItem *item = g_history.current();
   if (!item) return;
+  if (item->kind == content::ItemKind::Interlude) {
+    play_widget(static_cast<system::WidgetKind>(item->widget), false);
+    if (content::HistoryItem *cur = g_history.current()) cur->shown_at_us = now_us();
+    return;
+  }
   g_pending.purpose = purpose;
   g_pending.direction = direction;
   g_pending.item = *item;
@@ -713,7 +789,7 @@ void on_makapix_changed() {
       g_prepared_pick = Pick{};
     }
   }
-  if (!g_current && !g_paused && g_screen == Screen::None) {
+  if (!g_current && !g_widget_up && !g_paused && g_screen == Screen::None) {
     swap_fresh();
   } else if (!g_prepared && !g_prepared_load_id) {
     request_prepare();
@@ -767,6 +843,9 @@ void do_pause() {
   status_screens::black(*g_scratch);
   g_player->play(psram_shared<playback::StaticSource>("paused", *g_scratch));
   g_current.reset();
+  g_widget.reset();
+  g_widget_up = false;
+  g_artwork_up = false;
   g_paused = true;
   makapix::note_hidden();
   ESP_LOGI(TAG, "paused");
@@ -830,6 +909,27 @@ void handle(Command &c) {
       apply_scheduler_modes(s);
       if (g_current) g_current->set_background(s.background);
       if (g_prepared) g_prepared->set_background(s.background);
+      if (s.main_state != g_main_state) {
+        g_main_state = s.main_state;
+        ESP_LOGI(TAG, "main state: %s", s.main_state == system::MainState::Widget ? "widget" : s.main_state == system::MainState::Stream ? "stream" : "animation show");
+        if (s.main_state == system::MainState::Widget) {
+          if (can_swap_now()) {
+            play_widget(s.widget, false);
+          } else {
+            g_want_widget = true;
+          }
+        } else if (s.main_state == system::MainState::Stream) {
+          g_want_widget = false;
+          show_stream_waiting();
+        } else {
+          g_want_widget = false;
+          g_widget.reset();
+          g_widget_up = false;
+          end_screen();
+        }
+      } else if (g_main_state == system::MainState::Widget && g_widget_up && s.widget != g_widget_kind) {
+        play_widget(s.widget, false);
+      }
       break;
     }
     case Cmd::MakapixChanged: on_makapix_changed(); break;
@@ -850,10 +950,12 @@ void tick() {
   const int64_t now = now_us();
   const system::Settings s = system::settings();
   if (g_screen != Screen::None && g_screen_until_us && now >= g_screen_until_us) end_screen();
+  if (g_want_widget && now >= g_boot_until_us) play_widget(s.widget, false);
+  if (g_main_state != system::MainState::AnimationShow) return;
   if (g_want_prepared_now && g_prepared && can_swap_now()) play_prepared();
-  if (!g_paused && g_current && s.auto_swap_seconds > 0 &&
+  if (!g_paused && (g_current || g_widget_up) && s.auto_swap_seconds > 0 &&
       now - g_swap_at_us >= static_cast<int64_t>(s.auto_swap_seconds) * kSecond) {
-    swap_fresh();
+    if (!roll_interlude()) swap_fresh();
   }
   if (g_rescan_due_us && now >= g_rescan_due_us) {
     if (g_scan_running) {
@@ -863,7 +965,7 @@ void tick() {
     }
     g_rescan_due_us = 0;
   }
-  if (!g_current && !g_paused && g_screen == Screen::None && !g_status_reason.empty() && now >= g_retry_at_us) {
+  if (!g_current && !g_widget_up && !g_paused && g_screen == Screen::None && !g_status_reason.empty() && now >= g_retry_at_us) {
     g_retry_at_us = now + kRetryUs;
     swap_fresh();
     if (!g_current && !g_rescan_due_us && !g_scan_running && has_local_channels()) g_rescan_due_us = now + kIdleRescanUs;
@@ -879,9 +981,10 @@ TickType_t wait_ticks() {
     if (at > 0) wait = std::min(wait, std::max<int64_t>(at - now, 0));
   };
   const system::Settings s = system::settings();
-  if (!g_paused && g_current && s.auto_swap_seconds > 0) {
+  if (!g_paused && (g_current || g_widget_up) && s.auto_swap_seconds > 0 && g_main_state == system::MainState::AnimationShow) {
     consider(g_swap_at_us + static_cast<int64_t>(s.auto_swap_seconds) * kSecond);
   }
+  if (g_want_widget) consider(g_boot_until_us);
   if (g_want_prepared_now && g_prepared) consider(g_boot_until_us);
   consider(g_rescan_due_us);
   consider(g_screen_until_us);
@@ -894,6 +997,7 @@ cJSON *item_json(const content::HistoryItem &item, size_t index, bool current) {
   cJSON *o = cJSON_CreateObject();
   cJSON_AddNumberToObject(o, "index", static_cast<double>(index));
   cJSON_AddStringToObject(o, "kind", item.kind == content::ItemKind::Interlude ? "interlude" : "artwork");
+  if (item.kind == content::ItemKind::Interlude) cJSON_AddStringToObject(o, "widget", widgets::widget_name(static_cast<system::WidgetKind>(item.widget)));
   const char *source = "channel";
   switch (item.source) {
     case content::Source::Channel: source = "channel"; break;
@@ -938,6 +1042,7 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
     status_screens::black(*g_scratch);
     g_player->play(psram_shared<playback::StaticSource>("boot", *g_scratch));
   }
+  g_player->set_overlay(playback::Player::Overlay{[] { return g_artwork_up.load() ? widgets::overlay_key() : 0u; }, widgets::draw_overlay});
   system::subscribe(system::Event::CardMounted, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
@@ -967,6 +1072,10 @@ void restore() {
                               : content::builtin_name(content::Builtin::Promoted);
   }
   activate(name, false);
+  const system::Settings s = system::settings();
+  g_main_state = s.main_state;
+  if (s.main_state == system::MainState::Widget) g_want_widget = true;
+  if (s.main_state == system::MainState::Stream) show_stream_waiting();
 }
 
 [[noreturn]] void run() {
@@ -1042,8 +1151,9 @@ cJSON *status_json() {
   const system::Settings s = system::settings();
   const int64_t now = now_us();
   cJSON *p = cJSON_CreateObject();
-  cJSON_AddStringToObject(p, "state", "animation_show");
+  cJSON_AddStringToObject(p, "state", g_main_state == system::MainState::Widget ? "widget" : g_main_state == system::MainState::Stream ? "stream" : "animation_show");
   cJSON_AddBoolToObject(p, "paused", g_paused);
+  if (g_widget_up) cJSON_AddStringToObject(p, "widget", widgets::widget_name(g_widget_kind));
   cJSON *ps = cJSON_AddObjectToObject(p, "playset");
   cJSON_AddStringToObject(ps, "name", g_playset.name.c_str());
   cJSON_AddBoolToObject(ps, "builtin", g_playset.builtin);
@@ -1072,7 +1182,7 @@ cJSON *status_json() {
   const char *screen = g_screen == Screen::Pairing ? "pairing" : g_screen == Screen::Paired ? "paired"
                        : g_screen == Screen::Connected ? "connected" : "";
   cJSON_AddStringToObject(p, "screen", screen);
-  cJSON_AddStringToObject(p, "no_artwork", g_current || g_paused || g_screen != Screen::None ? "" : g_status_reason.c_str());
+  cJSON_AddStringToObject(p, "no_artwork", g_current || g_paused || g_widget_up || g_screen != Screen::None ? "" : g_status_reason.c_str());
   cJSON_AddStringToObject(p, "last_error", g_last_error.c_str());
   cJSON *h = cJSON_AddObjectToObject(p, "history");
   cJSON_AddNumberToObject(h, "count", static_cast<double>(g_history.size()));

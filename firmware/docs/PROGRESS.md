@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | pending | |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | pending | |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | pending | |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
@@ -203,5 +203,37 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   prepared pick chosen from a one-file cache that replayed the same artwork; a stale
   resume after a status screen that showed one artwork while history named another;
   esp-mqtt logging an error when started twice.
-- Next: M7, widgets (the bundled fonts from `assets/fonts`, the clock overlay, the
-  clock, weather and temperature widgets, interludes).
+- M7: `p64_widgets` (docs/architecture.md section 13): the bundled pixel fonts are
+  rasterised by `tools/gen_fonts.py` from the TTFs at their native sizes (Capital Hill
+  6 px, Everyday Typical 7 px; Pillow renders them crisp only there) into glyph tables in
+  `p64_gfx` (`gfx::fonts`: integer scale, one-pixel outline, ink-box layout anchored on
+  digits and capitals); the weather icons are drawn by `tools/gen_weather_icons.py` into
+  `assets/weather/*.png` (12 WMO groups, day and night, 24 and 12 px; hand-editable) and
+  compiled in. Widgets are `FrameSource`s: the digital clock (time at the chosen scale,
+  12/24 h, seconds, blinking colon, date and weekday, colours), the weather (Open-Meteo
+  current and four days, icon, temperature, today's high and low, a three-day strip;
+  fetched every refresh interval on a PSRAM-stack task through the one-TLS-slot rule),
+  the temperature (SHTC3 on the internal I2C bus, offsets, humidity, hourly trend
+  arrow). The clock overlay draws through a player hook on every produced frame, and a
+  static image is re-emitted when the minute changes. The show gained the main states
+  (Widget: the chosen widget stays; Stream: a waiting screen until M8), interludes
+  (rolled per widget at every auto-swap, entering history and replaying from it), and
+  the sensor and weather in the status document. `net::fetch` now serialises HTTPS
+  requests behind a recursive mutex so one transient TLS session exists at a time (a
+  kept-alive session holds the slot while open). Settings gained the clock, weather and
+  temperature groups. `tests/device/widgets_smoke.py`.
+- Found on the device and fixed: a widget with minute-long frame delays kept all three
+  ready slots and the render task slept towards a frame due a minute away, so a swap to
+  the next widget waited up to two minutes; the player now announces a new generation
+  before its first frame and the render task sleeps in 10 ms steps and drops the old
+  generation's slots as soon as one is announced. The font line top was the tallest
+  glyph (quotes), which pushed digits two rows down; it is anchored on digits and
+  capitals now. The weather strip's low temperatures clipped at the panel's bottom row.
+- Verified on the device: the SHTC3 answers (31.8 C and 33 % RH inside the warm shell),
+  the weather fetch (New York and Greenwich) parses and draws, all three widgets and the
+  overlay render as designed (frames captured through `/api/v1/frame`), interludes enter
+  history at auto-swap, the main state persists.
+- Deferred: the analogue clock face (spec 7.1 says its details are drawn with the user
+  first); the city search for the weather location (browser-side, M10); the weather
+  and clock widgets take the clock widget's colours (per-widget colours later).
+- Next: M8, streams (DDP on 4048, raw UDP on 4064, takeover, silence timeout).

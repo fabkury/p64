@@ -14,6 +14,14 @@ What the device does is fixed by `docs/spec/p64-spec.md` at the repository root,
 the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`. This folder's README will
 describe how the firmware is built and flashed once it exists.
 
+## Fonts and icons
+
+`tools/gen_fonts.py` rasterises the bundled TTFs (`assets/fonts`, VEXED's Capital Hill
+and Everyday Typical, CC BY 4.0) into `components/p64_gfx/src/fonts_data.cpp`;
+`tools/gen_weather_icons.py` draws the weather icons into `assets/weather/*.png` (edit
+the PNGs by hand and rerun to compile them in). Both need Pillow (the system Python)
+and both outputs are committed, so the firmware build needs neither.
+
 ## HTTP API
 
 Route reference: `docs/api.md`. Device tests: `tests/device/api_smoke.py` and

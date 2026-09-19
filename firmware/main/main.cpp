@@ -35,6 +35,7 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/widgets/widgets.hpp"
 #include "show.hpp"
 
 namespace {
@@ -176,6 +177,7 @@ extern "C" void app_main() {
     p64::system::publish(p64::system::Event::CardFailed);
   }
   p64::makapix::start(mk);
+  p64::widgets::start();
   p64::show::restore();
   p64::show::run();
 }

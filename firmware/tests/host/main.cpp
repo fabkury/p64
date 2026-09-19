@@ -26,6 +26,10 @@
 #include "p64/content/scheduler.hpp"
 #include "p64/content/makapix_index.hpp"
 #include "p64/gfx/text.hpp"
+#include "p64/gfx/fonts.hpp"
+#include "clock_format.hpp"
+#include "weather_model.hpp"
+#include "weather_icons.hpp"
 
 namespace {
 
@@ -602,6 +606,121 @@ void test_makapix_index() {
   CHECK_EQ(fresh2[0].flags, 0);
 }
 
+// --- M7: the bundled fonts, the clock text, the weather model -------------------------
+
+void test_fonts() {
+  using namespace p64::gfx::fonts;
+  CHECK_EQ(kFontCount, 2u);
+  const Font *ch = by_name("capital-hill");
+  const Font *ev = by_name("everyday");
+  CHECK(ch != nullptr && ev != nullptr);
+  CHECK(by_name("nope") == nullptr);
+  CHECK(&default_font() == ch);
+  CHECK_EQ(ch->size, 6);
+  CHECK_EQ(ev->size, 7);
+  CHECK(width(*ch, "", 1) == 0);
+  CHECK(width(*ch, "12:34", 1) > 20 && width(*ch, "12:34", 1) < 40);
+  CHECK_EQ(width(*ch, "12:34", 2), 2 * width(*ch, "12:34", 1));
+  CHECK_EQ(cap_height(*ch, 2), 12);
+  CHECK(line_height(*ch, 1) >= 6);
+  // Drawing "1" puts ink in the cap-height box and nothing above it.
+  Frame f;
+  f.clear(Rgb{0, 0, 0});
+  draw(f, *ch, 4, 10, "1", Rgb{255, 255, 255}, 1);
+  int inked = 0, above = 0;
+  for (int y = 0; y < 64; ++y) {
+    for (int x = 0; x < 64; ++x) {
+      if (f.get(x, y).r == 0) continue;
+      ++inked;
+      if (y < 10 || y >= 10 + 6) ++above;
+    }
+  }
+  CHECK(inked >= 6);
+  CHECK_EQ(above, 0);
+  // An outline surrounds the glyph with the outline colour.
+  f.clear(Rgb{0, 0, 0});
+  const Rgb black{9, 9, 9};
+  draw(f, *ch, 10, 10, "1", Rgb{255, 255, 255}, 1, &black);
+  bool halo = false;
+  for (int y = 8; y < 20; ++y) {
+    for (int x = 8; x < 20; ++x) {
+      if (f.get(x, y) == black) halo = true;
+    }
+  }
+  CHECK(halo);
+  // Everyday has descenders below the cap height.
+  CHECK(line_height(*ev, 1) > cap_height(*ev, 1));
+}
+
+void test_clock_format() {
+  using namespace p64::widgets::clock_format;
+  tm t = {};
+  t.tm_hour = 14;
+  t.tm_min = 5;
+  t.tm_sec = 9;
+  t.tm_wday = 6;
+  t.tm_mday = 19;
+  t.tm_mon = 8;
+  CHECK(time_text(t, true, false) == "14:05");
+  CHECK(time_text(t, true, true) == "14:05:09");
+  CHECK(time_text(t, false, false) == " 2:05");
+  CHECK(time_text(t, true, false, false) == "14 05");
+  CHECK(meridiem(t, false) == "PM");
+  CHECK(meridiem(t, true) == "");
+  t.tm_hour = 0;
+  CHECK(time_text(t, false, false) == "12:05");
+  CHECK(meridiem(t, false) == "AM");
+  CHECK(date_text(t, false) == "Sat 19 Sep");
+  CHECK(date_text(t, true) == "Sat Sep 19");
+}
+
+void test_weather_model() {
+  using namespace p64::widgets::weather_model;
+  using p64::widgets::icons::Group;
+  using p64::widgets::icons::group_for_code;
+  CHECK(group_for_code(0) == Group::Clear);
+  CHECK(group_for_code(2) == Group::Partly);
+  CHECK(group_for_code(3) == Group::Overcast);
+  CHECK(group_for_code(45) == Group::Fog);
+  CHECK(group_for_code(53) == Group::Drizzle);
+  CHECK(group_for_code(63) == Group::Rain);
+  CHECK(group_for_code(66) == Group::Freezing);
+  CHECK(group_for_code(75) == Group::Snow);
+  CHECK(group_for_code(81) == Group::Showers);
+  CHECK(group_for_code(86) == Group::SnowShowers);
+  CHECK(group_for_code(95) == Group::Thunder);
+  CHECK(group_for_code(99) == Group::Hail);
+  CHECK_EQ(weekday_of("2026-09-19"), 6);  // a Saturday
+  CHECK_EQ(weekday_of("2024-01-15"), 1);  // a Monday
+  CHECK_EQ(weekday_of("nope"), -1);
+  const std::string url = request_url(48.85f, 2.35f, true);
+  CHECK(url.find("latitude=48.8500") != std::string::npos);
+  CHECK(url.find("temperature_unit=fahrenheit") != std::string::npos);
+  CHECK(request_url(0, 0, false).find("fahrenheit") == std::string::npos);
+  const char *reply =
+      "{\"current_units\":{\"temperature_2m\":\"\xC2\xB0\x43\"},"
+      "\"current\":{\"temperature_2m\":21.4,\"relative_humidity_2m\":55,\"weather_code\":61,\"is_day\":0},"
+      "\"daily\":{\"time\":[\"2026-09-19\",\"2026-09-20\",\"2026-09-21\",\"2026-09-22\"],"
+      "\"weather_code\":[61,2,0,95],\"temperature_2m_max\":[24,22,20,18],\"temperature_2m_min\":[15,14,12,11]}}";
+  Forecast f;
+  std::string e;
+  CHECK(parse(reply, std::strlen(reply), f, e));
+  CHECK(f.valid);
+  CHECK(!f.imperial);
+  CHECK(f.temperature > 21.3f && f.temperature < 21.5f);
+  CHECK_EQ(f.humidity, 55);
+  CHECK_EQ(f.code, 61);
+  CHECK(!f.is_day);
+  CHECK_EQ(f.today.weekday, 6);
+  CHECK(f.today.max == 24.0f && f.today.min == 15.0f);
+  CHECK_EQ(f.day_count, 3);
+  CHECK_EQ(f.days[0].weekday, 0);
+  CHECK_EQ(f.days[2].code, 95);
+  CHECK(!parse("{\"reason\":\"bad\"}", 16, f, e));
+  CHECK(e == "bad");
+  CHECK(!parse("garbage", 7, f, e));
+}
+
 int run_unit() {
   test_delay_rule();
   test_sniff();
@@ -617,6 +736,9 @@ int run_unit() {
   test_history();
   test_text_font();
   test_makapix_index();
+  test_fonts();
+  test_clock_format();
+  test_weather_model();
   std::printf("unit tests: %d checks, %d failures\n", g_checks, g_failures);
   return g_failures ? 1 : 0;
 }

@@ -6,6 +6,8 @@
 #include "esp_crt_bundle.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 namespace p64::net::fetch {
 namespace {
@@ -13,6 +15,22 @@ namespace {
 constexpr const char *TAG = "fetch";
 constexpr int kMaxRedirects = 4;
 char g_user_agent[48] = {};
+
+// One transient TLS session at a time (ADR 0009): HTTPS requests queue here; a Session
+// on HTTPS holds the slot from its first request until it closes. Recursive, so a task
+// that keeps a session open can still make one-shot requests.
+SemaphoreHandle_t g_tls_slot = nullptr;
+
+bool is_https(const std::string &url) { return url.rfind("https://", 0) == 0; }
+
+void tls_take() {
+  if (!g_tls_slot) g_tls_slot = xSemaphoreCreateRecursiveMutex();
+  xSemaphoreTakeRecursive(g_tls_slot, portMAX_DELAY);
+}
+
+void tls_give() {
+  if (g_tls_slot) xSemaphoreGiveRecursive(g_tls_slot);
+}
 
 std::string scheme_and_host(const std::string &url) {
   const size_t s = url.find("://");
@@ -136,14 +154,18 @@ const char *user_agent() {
 std::string body_string(const Result &r) { return std::string(r.body.begin(), r.body.end()); }
 
 bool perform(const Request &request, Result &out) {
+  const bool tls = is_https(request.url);
+  if (tls) tls_take();
   esp_http_client_handle_t client = make_client(request, false);
   if (!client) {
     out = Result{};
     out.error = ESP_ERR_NO_MEM;
+    if (tls) tls_give();
     return false;
   }
   const bool ok = run(client, request, out, false);
   esp_http_client_cleanup(client);
+  if (tls) tls_give();
   return ok;
 }
 
@@ -151,10 +173,18 @@ bool Session::perform(const Request &request, Result &out) {
   const std::string host = scheme_and_host(request.url);
   if (client_ && host != host_) close();
   if (!client_) {
+    if (is_https(request.url)) {
+      tls_take();
+      holds_tls_ = true;
+    }
     client_ = make_client(request, true);
     if (!client_) {
       out = Result{};
       out.error = ESP_ERR_NO_MEM;
+      if (holds_tls_) {
+        tls_give();
+        holds_tls_ = false;
+      }
       return false;
     }
     host_ = host;
@@ -168,6 +198,10 @@ void Session::close() {
   esp_http_client_cleanup(client_);
   client_ = nullptr;
   host_.clear();
+  if (holds_tls_) {
+    tls_give();
+    holds_tls_ = false;
+  }
 }
 
 }  // namespace p64::net::fetch

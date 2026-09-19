@@ -16,5 +16,7 @@ void pairing_code(gfx::Frame &frame, const std::string &code);
 void paired(gfx::Frame &frame);
 // Hostname and IP address after joining a network.
 void connected(gfx::Frame &frame, const std::string &hostname, const std::string &ip);
+// The Stream state with no frames arriving: hostname, IP and the ports (spec 6.3).
+void stream_waiting(gfx::Frame &frame, const std::string &hostname, const std::string &ip, int ddp_port, int raw_port);
 
 }  // namespace p64::status_screens

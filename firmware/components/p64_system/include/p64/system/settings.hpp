@@ -54,6 +54,28 @@ struct Settings {
   // Widgets
   WidgetKind widget = WidgetKind::Clock;
   uint8_t interlude_clock = 0, interlude_weather = 0, interlude_temperature = 0;  // 0..100 %
+  struct Clock {
+    bool analogue = false;  // face: digital (default) or analogue (drawn later)
+    std::string font = "capital-hill";
+    uint8_t scale = 2;      // 1..3
+    bool seconds = false;
+    bool blink_colon = false;
+    bool h24 = true;
+    bool month_first = false;  // date order: day-month (default) or month-day
+    gfx::Rgb colour{255, 255, 255};
+    gfx::Rgb background{0, 0, 0};
+  } clock;
+  struct Weather {
+    bool location_set = false;
+    float latitude = 0, longitude = 0;
+    bool imperial = false;
+    uint16_t refresh_minutes = 30;  // 10..180
+  } weather;
+  struct Temperature {
+    int8_t offset_temperature = 0;  // -10..10 units
+    int8_t offset_humidity = 0;
+    bool trend = true;
+  } temperature;
 
   // Stream
   bool stream_takeover = true;

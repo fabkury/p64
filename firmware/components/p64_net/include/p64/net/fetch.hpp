@@ -53,6 +53,7 @@ class Session {
  private:
   esp_http_client_handle_t client_ = nullptr;
   std::string host_;  // scheme and host the client was created for
+  bool holds_tls_ = false;
 };
 
 // "p64/<firmware version>" (spec 13).

@@ -72,6 +72,18 @@ Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refr
 (epoch seconds), `refreshing` and `error`. History items and the status artwork carry
 `post_id` and `sqid` for Makapix artworks.
 
+## Widgets (M7)
+
+The status document carries `sensor {valid, temperature_c, humidity, trend_c_per_hour}`
+and `weather {valid, error, age_s, temperature, units, humidity, code, condition, is_day,
+today_max, today_min, days:[{weekday, condition, max, min}]}`; `playback.state` is
+`animation_show`, `widget` or `stream` and `playback.widget` names the widget on the
+panel. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
+date_order, colour, background), `weather` (latitude, longitude, units,
+refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
+`show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
+`interlude` carry `widget`.
+
 ## Files (M4)
 
 | Route | Method | What |

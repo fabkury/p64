@@ -128,6 +128,14 @@ void Settings::clamp() {
   gain_b = clamp_to<uint8_t>(gain_b, 50, 100);
   boot_animation_ms = clamp_to<uint16_t>(boot_animation_ms, 0, 5000);
   if (auto_swap_seconds != 0) auto_swap_seconds = clamp_to<uint32_t>(auto_swap_seconds, 5, 86400);
+  clock.scale = clamp_to<uint8_t>(clock.scale, 1, 3);
+  weather.refresh_minutes = clamp_to<uint16_t>(weather.refresh_minutes, 10, 180);
+  if (weather.latitude < -90 || weather.latitude > 90 || weather.longitude < -180 || weather.longitude > 180) {
+    weather.location_set = false;
+    weather.latitude = weather.longitude = 0;
+  }
+  temperature.offset_temperature = clamp_to<int8_t>(temperature.offset_temperature, -10, 10);
+  temperature.offset_humidity = clamp_to<int8_t>(temperature.offset_humidity, -10, 10);
   interlude_clock = clamp_to<uint8_t>(interlude_clock, 0, 100);
   interlude_weather = clamp_to<uint8_t>(interlude_weather, 0, 100);
   interlude_temperature = clamp_to<uint8_t>(interlude_temperature, 0, 100);
@@ -184,6 +192,29 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(ip, "clock", interlude_clock);
   cJSON_AddNumberToObject(ip, "weather", interlude_weather);
   cJSON_AddNumberToObject(ip, "temperature", interlude_temperature);
+
+  cJSON *ck = obj(root, "clock");
+  cJSON_AddStringToObject(ck, "face", clock.analogue ? "analogue" : "digital");
+  cJSON_AddStringToObject(ck, "font", clock.font.c_str());
+  cJSON_AddNumberToObject(ck, "scale", clock.scale);
+  cJSON_AddBoolToObject(ck, "seconds", clock.seconds);
+  cJSON_AddBoolToObject(ck, "blink_colon", clock.blink_colon);
+  cJSON_AddBoolToObject(ck, "h24", clock.h24);
+  cJSON_AddStringToObject(ck, "date_order", clock.month_first ? "month_day" : "day_month");
+  put_rgb(ck, "colour", clock.colour);
+  put_rgb(ck, "background", clock.background);
+
+  cJSON *we = obj(root, "weather");
+  cJSON_AddBoolToObject(we, "location_set", weather.location_set);
+  cJSON_AddNumberToObject(we, "latitude", weather.latitude);
+  cJSON_AddNumberToObject(we, "longitude", weather.longitude);
+  cJSON_AddStringToObject(we, "units", weather.imperial ? "imperial" : "metric");
+  cJSON_AddNumberToObject(we, "refresh_minutes", weather.refresh_minutes);
+
+  cJSON *te = obj(root, "temperature");
+  cJSON_AddNumberToObject(te, "offset_temperature", temperature.offset_temperature);
+  cJSON_AddNumberToObject(te, "offset_humidity", temperature.offset_humidity);
+  cJSON_AddBoolToObject(te, "trend", temperature.trend);
 
   cJSON *st = obj(root, "stream");
   cJSON_AddBoolToObject(st, "takeover", stream_takeover);
@@ -267,6 +298,45 @@ bool Settings::apply_json(const char *json, std::string &error) {
   get_num(ip, "clock", interlude_clock);
   get_num(ip, "weather", interlude_weather);
   get_num(ip, "temperature", interlude_temperature);
+
+  const cJSON *ck = sub(root, "clock");
+  {
+    std::string face;
+    get_str(ck, "face", face, 16);
+    if (face == "analogue") clock.analogue = true;
+    if (face == "digital") clock.analogue = false;
+    get_str(ck, "font", clock.font, 32);
+    get_num(ck, "scale", clock.scale);
+    get_bool(ck, "seconds", clock.seconds);
+    get_bool(ck, "blink_colon", clock.blink_colon);
+    get_bool(ck, "h24", clock.h24);
+    std::string order;
+    get_str(ck, "date_order", order, 16);
+    if (order == "month_day") clock.month_first = true;
+    if (order == "day_month") clock.month_first = false;
+    get_rgb(ck, "colour", clock.colour);
+    get_rgb(ck, "background", clock.background);
+  }
+  const cJSON *we = sub(root, "weather");
+  {
+    const cJSON *lat = we ? cJSON_GetObjectItemCaseSensitive(we, "latitude") : nullptr;
+    const cJSON *lon = we ? cJSON_GetObjectItemCaseSensitive(we, "longitude") : nullptr;
+    if (lat && cJSON_IsNumber(lat) && lon && cJSON_IsNumber(lon)) {
+      weather.latitude = static_cast<float>(lat->valuedouble);
+      weather.longitude = static_cast<float>(lon->valuedouble);
+      weather.location_set = true;
+    }
+    get_bool(we, "location_set", weather.location_set);
+    std::string units;
+    get_str(we, "units", units, 16);
+    if (units == "imperial") weather.imperial = true;
+    if (units == "metric") weather.imperial = false;
+    get_num(we, "refresh_minutes", weather.refresh_minutes);
+  }
+  const cJSON *te = sub(root, "temperature");
+  get_num(te, "offset_temperature", temperature.offset_temperature);
+  get_num(te, "offset_humidity", temperature.offset_humidity);
+  get_bool(te, "trend", temperature.trend);
 
   const cJSON *st = sub(root, "stream");
   get_bool(st, "takeover", stream_takeover);

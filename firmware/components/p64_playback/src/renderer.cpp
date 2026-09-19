@@ -119,8 +119,19 @@ void Renderer::run() {
     // The copy into the driver takes several milliseconds (7.5 ms at 10 planes), so it
     // starts that much ahead of the target and the flip lands on the boundary after it.
     const int64_t start_at = target - copy_lead_us_;
-    const int64_t wait = start_at - esp_timer_get_time();
-    if (wait > 1000) vTaskDelay(pdMS_TO_TICKS(wait / 1000));
+    // Sleep towards the target in short steps: a newer generation announced meanwhile
+    // (a swap, a widget) must not wait behind a frame due a minute from now.
+    bool cut = false;
+    while (true) {
+      const int64_t remaining = start_at - esp_timer_get_time();
+      if (remaining <= 1000) break;
+      if (slot->generation != queue_->latest_generation()) {
+        cut = true;
+        break;
+      }
+      vTaskDelay(pdMS_TO_TICKS(std::min<int64_t>(remaining / 1000, 10)));
+    }
+    if (cut) continue;  // the loop's top drops the slot
     display_->wait_for_back_buffer();
     const int64_t t_start = esp_timer_get_time();
     display_->present(slot->frame);

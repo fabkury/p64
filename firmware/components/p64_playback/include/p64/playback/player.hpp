@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 
@@ -38,6 +39,15 @@ class Player {
   void notify_slot_free();
   Stats take_stats();
 
+  // An overlay drawn on every produced frame (the clock overlay, spec 6.1). `key()` is
+  // asked before each frame: 0 means nothing to draw; a changed key makes a static source
+  // re-emit its frame so the overlay moves on without a new decode.
+  struct Overlay {
+    std::function<uint32_t()> key;
+    std::function<void(gfx::Frame &)> draw;
+  };
+  void set_overlay(Overlay overlay);
+
  private:
   static void task_entry(void *arg);
   void run();
@@ -50,6 +60,8 @@ class Player {
   std::shared_ptr<FrameSource> current_;
   uint32_t generation_ = 0;
   Stats stats_;
+  Overlay overlay_;
+  gfx::Frame *last_frame_ = nullptr;  // PSRAM: the last decoded frame without the overlay
 };
 
 }  // namespace p64::playback

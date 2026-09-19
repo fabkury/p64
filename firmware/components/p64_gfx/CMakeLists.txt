@@ -7,6 +7,8 @@ idf_component_register(
         "src/scaler.cpp"
         "src/png_encode.cpp"
         "src/text.cpp"
+        "src/fonts.cpp"
+        "src/fonts_data.cpp"
     INCLUDE_DIRS
         "include"
 )

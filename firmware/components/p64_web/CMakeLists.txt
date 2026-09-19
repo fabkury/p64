@@ -22,6 +22,7 @@ idf_component_register(
         p64_storage
         p64_content
         p64_makapix
+        p64_widgets
         p64_decode
         p64_playback
         esp_timer

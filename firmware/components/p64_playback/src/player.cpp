@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include <new>
+
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -19,6 +21,8 @@ constexpr TickType_t kIdleWait = pdMS_TO_TICKS(100);
 bool Player::start(FrameQueue &queue) {
   if (task_) return true;
   queue_ = &queue;
+  void *mem = heap_caps_malloc(sizeof(gfx::Frame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  last_frame_ = mem ? new (mem) gfx::Frame() : new gfx::Frame();
   commands_ = xQueueCreate(4, sizeof(std::shared_ptr<FrameSource> *));
   if (!commands_) return false;
   // Stack in PSRAM: the decoders keep their state on the heap and this task never
@@ -51,6 +55,11 @@ void Player::notify_slot_free() {
   if (task_) xTaskNotifyGive(task_);
 }
 
+void Player::set_overlay(Overlay overlay) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  overlay_ = std::move(overlay);
+}
+
 Player::Stats Player::take_stats() {
   std::lock_guard<std::mutex> lock(mutex_);
   const Stats out = stats_;
@@ -73,6 +82,19 @@ void Player::run() {
   int64_t next_due_us = 0;
   bool first = true;
   bool exhausted = false;  // static source fully produced: nothing more to ask for
+  uint32_t last_overlay_key = 0;
+  auto overlay_key = [this]() -> uint32_t {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return overlay_.key ? overlay_.key() : 0;
+  };
+  auto overlay_draw = [this](gfx::Frame &f) {
+    Overlay o;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      o = overlay_;
+    }
+    if (o.draw) o.draw(f);
+  };
   while (true) {
     // A new command replaces the source at once (hard cut); when nothing plays, wait.
     std::shared_ptr<FrameSource> incoming;
@@ -82,12 +104,30 @@ void Player::run() {
         current_ = incoming;
         ++generation_;
       }
+      queue_->announce_generation(generation_);  // the renderer frees the old slots now
       src = std::move(incoming);
       first = true;
       exhausted = false;
       continue;
     }
-    if (!src || exhausted) continue;
+    if (!src) continue;
+    if (exhausted) {
+      // A static frame stays; only a changed overlay makes it go out again.
+      const uint32_t key = overlay_key();
+      if (key == last_overlay_key) continue;
+      ReadySlot *slot = queue_->producer_slot();
+      if (!slot) continue;
+      slot->frame.copy_from(*last_frame_);
+      if (key) overlay_draw(slot->frame);
+      last_overlay_key = key;
+      slot->due_us = esp_timer_get_time();
+      slot->delay_us = kMinFrameUs;
+      slot->generation = generation_;
+      slot->first = false;
+      slot->decoded_late = false;
+      queue_->producer_publish();
+      continue;
+    }
 
     ReadySlot *slot = queue_->producer_slot();
     if (!slot) {
@@ -98,6 +138,12 @@ void Player::run() {
     uint32_t delay_ms = 0;
     const bool ok = src->next_frame(slot->frame, delay_ms, first ? 0 : next_due_us);
     const int64_t t1 = esp_timer_get_time();
+    if (ok) {
+      const uint32_t key = overlay_key();
+      if (src->is_static()) last_frame_->copy_from(slot->frame);
+      if (key) overlay_draw(slot->frame);
+      last_overlay_key = key;
+    }
     if (!ok) {
       ESP_LOGW(TAG, "%s: source failed: %s", src->name().c_str(), src->error());
       std::lock_guard<std::mutex> lock(mutex_);
