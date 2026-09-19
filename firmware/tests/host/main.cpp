@@ -1,10 +1,10 @@
-// p64 -- host test program (built by tests/host/run.py with the PC's g++).
+// p64 -- host test program (built by tests/host/run.py with the PC's gcc/g++).
 //
 //   p64_hosttest unit                              unit tests, exit 1 on failure
-//   p64_hosttest gifdump <w> <h> <out_dir> <gif>...  dump every frame of each GIF's first loop
+//   p64_hosttest dump <w> <h> <out_dir> <file>...   dump every frame of each file's first loop
 //
-// gifdump writes <out_dir>/<basename>.frames:
-//   "P64GIF\n<w> <h> <ox> <oy> <ow> <oh>\n<n>\n<delay_0> ... <delay_n-1>\n"
+// dump writes <out_dir>/<basename>.frames:
+//   "P64FRM\n<format> <w> <h> <ox> <oy> <ow> <oh> <animated> <has_alpha>\n<n>\n<delay_0> ... \n"
 //   then per frame: w*h*3 bytes of canvas RGB888, then dst_w*dst_h*3 bytes scaled.
 
 #include <cstdio>
@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "p64/decode/decoder.hpp"
-#include "p64/decode/gif_decoder.hpp"
 #include "p64/gfx/frame.hpp"
 #include "p64/gfx/scaler.hpp"
 #include "p64/playback/frame_queue.hpp"
@@ -69,29 +68,22 @@ void test_sniff() {
   using p64::decode::sniff;
   const uint8_t gif[16] = {'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0, 0, 0, 0, 0, 0};
   CHECK(sniff(gif, sizeof(gif)) == Format::Gif);
-  // PNG: signature, IHDR, then IDAT (static) or acTL before IDAT (animated).
   std::vector<uint8_t> png = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
-  auto chunk = [&](const char *type, uint32_t len) {
-    png.push_back(static_cast<uint8_t>(len >> 24));
-    png.push_back(static_cast<uint8_t>(len >> 16));
-    png.push_back(static_cast<uint8_t>(len >> 8));
-    png.push_back(static_cast<uint8_t>(len));
-    png.insert(png.end(), type, type + 4);
-    png.insert(png.end(), len + 4, 0);  // data + crc
+  auto chunk = [](std::vector<uint8_t> &v, const char *type, uint32_t len) {
+    v.push_back(static_cast<uint8_t>(len >> 24));
+    v.push_back(static_cast<uint8_t>(len >> 16));
+    v.push_back(static_cast<uint8_t>(len >> 8));
+    v.push_back(static_cast<uint8_t>(len));
+    v.insert(v.end(), type, type + 4);
+    v.insert(v.end(), len + 4, 0);  // data + crc
   };
-  chunk("IHDR", 13);
-  std::vector<uint8_t> static_png = png;
-  {
-    std::vector<uint8_t> tmp = png;
-    png = tmp;
-  }
-  chunk("IDAT", 4);
+  chunk(png, "IHDR", 13);
+  std::vector<uint8_t> apng = png;
+  chunk(png, "IDAT", 4);
   CHECK(sniff(png.data(), png.size()) == Format::Png);
-  std::vector<uint8_t> apng = static_png;
-  png = apng;
-  chunk("acTL", 8);
-  chunk("IDAT", 4);
-  CHECK(sniff(png.data(), png.size()) == Format::Apng);
+  chunk(apng, "acTL", 8);
+  chunk(apng, "IDAT", 4);
+  CHECK(sniff(apng.data(), apng.size()) == Format::Apng);
   const uint8_t webp[16] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 'V', 'P', '8', ' '};
   CHECK(sniff(webp, sizeof(webp)) == Format::WebP);
   const uint8_t bmp[16] = {'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -139,7 +131,6 @@ void test_scaler_placement() {
 }
 
 void test_scaler_pixels() {
-  // 2x2 source with four colours enlarges to 64x64 blocks of 32.
   const uint8_t src[2 * 2 * 3] = {255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255};
   p64::gfx::Scaler s;
   s.configure(2, 2, 64, 64);
@@ -150,7 +141,6 @@ void test_scaler_pixels() {
   CHECK(f.get(32, 0) == (Rgb{0, 255, 0}));
   CHECK(f.get(0, 32) == (Rgb{0, 0, 255}));
   CHECK(f.get(63, 63) == (Rgb{255, 255, 255}));
-  // 128x128 alternating columns of 0 and 200 shrink to 64x64 of 100 (box average of 2x2).
   std::vector<uint8_t> big(128 * 128 * 3);
   for (int y = 0; y < 128; ++y)
     for (int x = 0; x < 128; ++x) {
@@ -163,9 +153,8 @@ void test_scaler_pixels() {
   s.scale(big.data(), f);
   CHECK(f.get(0, 0) == (Rgb{100, 100, 100}));
   CHECK(f.get(63, 63) == (Rgb{100, 100, 100}));
-  // Non-square: bars in the background colour.
   const uint8_t wide[4 * 2 * 3] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-  s.configure(4, 2, 64, 64);  // factor 16: 64x32 at y 16
+  s.configure(4, 2, 64, 64);
   s.scale(wide, f, Rgb{7, 8, 9});
   CHECK(f.get(0, 0) == (Rgb{7, 8, 9}));
   CHECK(f.get(0, 15) == (Rgb{7, 8, 9}));
@@ -207,7 +196,7 @@ void test_frame_blend() {
   CHECK(f.get(3, 3) == (Rgb{128, 128, 128}));
   f.blend(3, 3, Rgb{10, 20, 30}, 255);
   CHECK(f.get(3, 3) == (Rgb{10, 20, 30}));
-  f.set(-1, 0, Rgb{1, 1, 1});  // ignored
+  f.set(-1, 0, Rgb{1, 1, 1});
   CHECK(f.get(-1, 0) == (Rgb{0, 0, 0}));
 }
 
@@ -221,7 +210,7 @@ void test_frame_queue() {
     s->due_us = i;
     q.producer_publish();
   }
-  CHECK(q.producer_slot() == nullptr);  // full
+  CHECK(q.producer_slot() == nullptr);
   CHECK_EQ(q.published(), p64::playback::FrameQueue::kSlots);
   auto *c = q.consumer_peek();
   CHECK(c != nullptr && c->due_us == 0);
@@ -252,9 +241,9 @@ std::string basename_of(const std::string &path) {
   return slash == std::string::npos ? path : path.substr(slash + 1);
 }
 
-int run_gifdump(int argc, char **argv) {
+int run_dump(int argc, char **argv) {
   if (argc < 6) {
-    std::fprintf(stderr, "usage: p64_hosttest gifdump <dst_w> <dst_h> <out_dir> <gif>...\n");
+    std::fprintf(stderr, "usage: p64_hosttest dump <dst_w> <dst_h> <out_dir> <file>...\n");
     return 2;
   }
   const int dst_w = std::atoi(argv[2]);
@@ -270,37 +259,52 @@ int run_gifdump(int argc, char **argv) {
       continue;
     }
     const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    p64::decode::GifDecoder dec;
-    if (!dec.open(bytes.data(), bytes.size(), Rgb{0, 0, 0})) {
-      std::fprintf(stderr, "%s: open failed: %s\n", path.c_str(), dec.error());
+    const p64::decode::Format format = p64::decode::sniff(bytes.data(), bytes.size());
+    std::unique_ptr<p64::decode::Decoder> dec = p64::decode::create(format);
+    if (!dec) {
+      std::fprintf(stderr, "%s: unknown format\n", path.c_str());
       ++failures;
       continue;
     }
-    const int w = dec.info().width, h = dec.info().height;
+    if (!dec->open(bytes.data(), bytes.size(), Rgb{0, 0, 0})) {
+      std::fprintf(stderr, "%s: open failed: %s\n", path.c_str(), dec->error());
+      ++failures;
+      continue;
+    }
+    const int w = dec->info().width, h = dec->info().height;
     p64::gfx::Scaler scaler;
     scaler.configure(w, h, dst_w, dst_h);
-    std::vector<std::vector<uint8_t>> canvases;
-    std::vector<std::vector<uint8_t>> scaled;
+    std::vector<std::vector<uint8_t>> canvases, scaled;
     std::vector<uint32_t> delays;
+    uint32_t loops = 0;
     while (true) {
       uint32_t delay = 0;
-      if (!dec.next(delay)) {
+      const bool was_at_end = dec->at_end();
+      if (was_at_end) break;
+      if (!dec->next(delay)) {
         std::fprintf(stderr, "%s: decode failed at frame %u: %s\n", path.c_str(),
-                     static_cast<unsigned>(canvases.size()), dec.error());
+                     static_cast<unsigned>(canvases.size()), dec->error());
         ++failures;
         break;
       }
-      // Files with trailing data end their loop unannounced: the decoder wraps on the
-      // next call, and that frame belongs to the second loop.
-      if (dec.loops() > 0) break;
-      canvases.emplace_back(dec.canvas(), dec.canvas() + static_cast<size_t>(w) * h * 3);
+      // GIFs with trailing data wrap unannounced: a frame belonging to the second loop
+      // is recognised by the decoder's loop counter (GIF only exposes it this way).
+      if (format == p64::decode::Format::Gif) {
+        // GifDecoder::loops() is not part of the interface; detect the wrap through
+        // info().frame_count, which the decoder fills when the loop ends.
+        if (dec->info().frame_count != 0 && canvases.size() >= dec->info().frame_count) {
+          ++loops;
+          break;
+        }
+      }
+      canvases.emplace_back(dec->canvas(), dec->canvas() + static_cast<size_t>(w) * h * 3);
       std::vector<uint8_t> out(static_cast<size_t>(dst_w) * dst_h * 3);
-      scaler.scale(dec.canvas(), out.data());
+      scaler.scale(dec->canvas(), out.data());
       scaled.push_back(std::move(out));
       delays.push_back(delay);
-      if (dec.at_end()) break;
-      if (canvases.size() > 4096) break;  // safety
+      if (canvases.size() > 4096) break;
     }
+    (void)loops;
     const std::string out_path = out_dir + "/" + basename_of(path) + ".frames";
     std::FILE *out = std::fopen(out_path.c_str(), "wb");
     if (!out) {
@@ -308,8 +312,9 @@ int run_gifdump(int argc, char **argv) {
       ++failures;
       continue;
     }
-    std::fprintf(out, "P64GIF\n%d %d %d %d %d %d\n%u\n", w, h, scaler.out_x(), scaler.out_y(), scaler.out_w(),
-                 scaler.out_h(), static_cast<unsigned>(canvases.size()));
+    std::fprintf(out, "P64FRM\n%s %d %d %d %d %d %d %d %d\n%u\n", p64::decode::format_name(format), w, h, scaler.out_x(),
+                 scaler.out_y(), scaler.out_w(), scaler.out_h(), dec->info().animated ? 1 : 0,
+                 dec->info().has_alpha ? 1 : 0, static_cast<unsigned>(canvases.size()));
     for (size_t k = 0; k < delays.size(); ++k) std::fprintf(out, "%s%u", k ? " " : "", static_cast<unsigned>(delays[k]));
     std::fprintf(out, "\n");
     for (size_t k = 0; k < canvases.size(); ++k) {
@@ -325,7 +330,7 @@ int run_gifdump(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   if (argc >= 2 && std::strcmp(argv[1], "unit") == 0) return run_unit();
-  if (argc >= 2 && std::strcmp(argv[1], "gifdump") == 0) return run_gifdump(argc, argv);
-  std::fprintf(stderr, "usage: p64_hosttest unit | gifdump <w> <h> <out_dir> <gif>...\n");
+  if (argc >= 2 && std::strcmp(argv[1], "dump") == 0) return run_dump(argc, argv);
+  std::fprintf(stderr, "usage: p64_hosttest unit | dump <w> <h> <out_dir> <file>...\n");
   return 2;
 }

@@ -1,7 +1,10 @@
 #include <cstring>
 
+#include "p64/decode/bmp_decoder.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/decode/gif_decoder.hpp"
+#include "p64/decode/png_decoder.hpp"
+#include "p64/decode/webp_decoder.hpp"
 
 namespace p64::decode {
 
@@ -73,6 +76,13 @@ std::unique_ptr<Decoder> create(Format format) {
   switch (format) {
     case Format::Gif:
       return std::make_unique<GifDecoder>();
+    case Format::Png:
+    case Format::Apng:
+      return std::make_unique<PngDecoder>();
+    case Format::WebP:
+      return std::make_unique<WebPDecoder>();
+    case Format::Bmp:
+      return std::make_unique<BmpDecoder>();
     default:
       return nullptr;
   }

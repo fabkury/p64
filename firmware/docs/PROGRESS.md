@@ -19,7 +19,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 |---|---|---|---|
 | M0 | Project skeleton: builds, boots, console, boot animation on the panel, tools | done | 2026-09-19: boot log clean, panel frame-locked at 271.3 Hz, boot animation 2010 ms, idle 66.7 fps, 0 late flips |
 | M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | done (panel modes untested) | 2026-09-19: card GIFs play through player + renderer at their stored delays, late 0, decode 1.1-1.5 ms, copy 7.5 ms, swap drops the old queued frame |
-| M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | pending | |
+| M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | done except the on-device benchmark (needs files on the card: M4 upload) | 2026-09-19: host tests 86 files / 1531 frames exact; device builds and plays GIFs unchanged |
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | pending | |
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | pending | |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | pending | |
@@ -64,5 +64,17 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   the 60 fps boot animation frames are counted in it.
 - Panel mode switching (`Display::set_mode`) is implemented but not yet exercised; it
   gets its test with the API (M4). Rotation is fixed at 90 until the settings store.
-- Next: host tests (`tests/host/`, scaler, rotation, sniffing, delay rule, GIF frames
-  against Pillow), then M2 decoders.
+- Host tests in `tests/host/` (run.py + main.cpp): 74 unit checks, GIF corpus exact.
+- M2: PNG/APNG (components/libpng, p3a's APNG-patched libpng 1.6.52 fork, pruned;
+  zlib from the registry), WebP (components/libwebp, decoder subset of v1.4.0 vendored),
+  BMP (ported from p3a), all behind `Decoder`; alpha flattened over the background in
+  gamma space (`alpha.hpp`). A Pillow-made corpus of 22 PNG/APNG/WebP/BMP/GIF files
+  lives in `tests/host/corpus/`; the runner now compiles zlib, libpng and libwebp on
+  the PC. Finding: Pillow's APNG reader pastes OVER-blended sub-frames with their alpha
+  as a mask (halving colour and alpha over transparent areas) instead of a true OVER,
+  so the tests use a spec compositor (`apng_reference_frames`) as the APNG oracle; our
+  decoder agrees with the spec. All 86 files exact.
+- Device: builds with all decoders, plays card GIFs unchanged. Internal heap at boot
+  fell from 297 KB to 258 KB with the libraries linked (see size report below when
+  taken). The on-device decode benchmark waits for a way to put PNG/WebP files on the
+  card (M4 file manager).

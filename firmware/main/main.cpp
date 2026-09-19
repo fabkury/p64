@@ -88,16 +88,20 @@ void play_boot_animation() {
   ESP_LOGI(TAG, "boot animation done after %lld ms", static_cast<long long>((esp_timer_get_time() - t0) / 1000));
 }
 
-// GIF files in the card's animations folder, or in the card root when that folder is
-// empty (the test card from the hardware tests keeps its files there).
+bool supported_extension(const std::string &ext) {
+  return ext == ".gif" || ext == ".png" || ext == ".apng" || ext == ".webp" || ext == ".bmp";
+}
+
+// Artwork files in the card's animations folder, or in the card root when that folder
+// is empty (the test card from the hardware tests keeps its files there).
 std::vector<std::string> find_gifs() {
   std::vector<std::string> paths;
   for (const std::string &dir : {p64::storage::animations_dir(), std::string(p64::storage::mount_point())}) {
     for (const p64::storage::FileInfo &f : p64::storage::list(dir)) {
-      if (!f.directory && p64::storage::extension_of(f.name) == ".gif") paths.push_back(dir + "/" + f.name);
+      if (!f.directory && supported_extension(p64::storage::extension_of(f.name))) paths.push_back(dir + "/" + f.name);
     }
     if (!paths.empty()) {
-      ESP_LOGI(TAG, "%u GIF files in %s", static_cast<unsigned>(paths.size()), dir.c_str());
+      ESP_LOGI(TAG, "%u artwork files in %s", static_cast<unsigned>(paths.size()), dir.c_str());
       break;
     }
   }
