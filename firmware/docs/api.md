@@ -19,6 +19,8 @@ everything below against a live device.
 | `/api/v1/action/set_time` | POST | `{"utc": <seconds since 1970>}`: sets the clock by hand (and the RTC); source becomes `manual` |
 | `/api/v1/action/factory_reset` | POST | `{"confirm": "ERASE"}` required; answers, then erases settings, state, Wi-Fi, Makapix credentials and the PIN and reboots into setup mode (the card is untouched) |
 | `/api/v1/diag/coredump/erase` | POST | erases the stored core dump |
+| `/api/v1/diag/imu` | GET | live accelerometer reading (g), gravity angle and in-plane magnitude, calibration and resolution state, the tap threshold, the peak impulse of the last 2 s, tap counters, samples and read errors |
+| `/api/v1/action/calibrate_upright` | POST | `{"rotation": 0|90|180|270}` (default: the display's current rotation): "the panel is upright now" becomes auto-rotation's reference |
 
 `playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning}`, `artwork
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
@@ -97,6 +99,15 @@ usb, deep_sleep, other}, crash {present, task, pc, cause, backtrace}, image {par
 pending_verify, other_partition, other_version, other_date}}`. The counters persist in
 NVS and reset when a new image is confirmed (30 s after boot). Settings group
 `display.night` (enabled, start_minutes, end_minutes, brightness 0..255 with 0 = off).
+
+Inputs (spec 9): the status document carries `inputs {imu_present, auto_rotation_resolved,
+auto_rotation, calibrated}`. Settings `inputs.tap_enabled` and `inputs.tap_sensitivity`
+(1 firm knock .. 10 light touch: threshold 2.5 g .. 0.25 g above gravity), and
+`display.rotation_auto` (the IMU's resolved rotation drives the display once it has one;
+`display.rotation` is the fallback and the value shown before the first resolution). A
+single tap is "next", a double tap "previous", with a 1 s lockout. Auto-rotation needs one
+calibration (above); the direction the picture turns with the gravity angle is the Kconfig
+`P64_IMU_ROTATION_SIGN` (see PROGRESS: unverified until the panel is turned by hand).
 
 ## Streams (M8)
 

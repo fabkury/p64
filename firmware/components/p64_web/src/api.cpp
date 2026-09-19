@@ -24,6 +24,7 @@
 #include "p64/system/reliability.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/inputs/inputs.hpp"
 #include "p64/stream/stream.hpp"
 #include "p64/widgets/widgets.hpp"
 
@@ -208,6 +209,13 @@ cJSON *build_status() {
   }
   cJSON_AddItemToObject(d, "stream", stream::status_json());
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());
+  {
+    cJSON *in = cJSON_AddObjectToObject(d, "inputs");
+    cJSON_AddBoolToObject(in, "imu_present", inputs::imu_present());
+    cJSON_AddBoolToObject(in, "auto_rotation_resolved", inputs::auto_rotation_resolved());
+    cJSON_AddNumberToObject(in, "auto_rotation", inputs::auto_rotation());
+    cJSON_AddBoolToObject(in, "calibrated", inputs::calibrated());
+  }
   return d;
 }
 
@@ -329,6 +337,24 @@ esp_err_t action_set_time(httpd_req_t *req) {
   cJSON_AddBoolToObject(d, "synced", net::clock::synced());
   cJSON_AddStringToObject(d, "source", net::clock::source());
   return reply_ok(req, d);
+}
+
+esp_err_t diag_imu(httpd_req_t *req) { return reply_ok(req, inputs::imu_json()); }
+
+// "The panel is upright now": {"rotation": 0|90|180|270} (default: the current display
+// rotation) becomes the reference for auto-rotation.
+esp_err_t action_calibrate_upright(httpd_req_t *req) {
+  int rotation = g_hooks.display && g_hooks.display() ? static_cast<int>(g_hooks.display()->rotation()) : 0;
+  if (req->content_len > 0) {
+    cJSON *body = parse_body(req);
+    if (!body) return ESP_OK;
+    const cJSON *r = cJSON_GetObjectItemCaseSensitive(body, "rotation");
+    if (r && cJSON_IsNumber(r)) rotation = r->valueint;
+    cJSON_Delete(body);
+  }
+  if (!gfx::valid_rotation(rotation)) return reply_error(req, "400 Bad Request", "INVALID_ARG", "rotation 0, 90, 180 or 270");
+  if (!inputs::calibrate_upright(static_cast<uint16_t>(rotation))) return reply_error(req, "503 Service Unavailable", "NO_IMU", "no IMU reading yet");
+  return reply_ok(req, inputs::imu_json());
 }
 
 esp_err_t diag_coredump_erase(httpd_req_t *req) {
@@ -548,6 +574,8 @@ void init(const Hooks &hooks) {
       {"/api/v1/action/factory_reset", HTTP_POST, action_factory_reset, nullptr, false, false, nullptr},
       {"/api/v1/action/set_time", HTTP_POST, action_set_time, nullptr, false, false, nullptr},
       {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
+      {"/api/v1/diag/imu", HTTP_GET, diag_imu, nullptr, false, false, nullptr},
+      {"/api/v1/action/calibrate_upright", HTTP_POST, action_calibrate_upright, nullptr, false, false, nullptr},
       {"/api/v1/frame", HTTP_GET, frame_png, nullptr, false, false, nullptr},
       {"/api/v1/frame.raw", HTTP_GET, frame_raw, nullptr, false, false, nullptr},
       {"/api/v1/wifi/scan", HTTP_GET, wifi_scan, nullptr, false, false, nullptr},

@@ -47,6 +47,16 @@ menu "p64"
             help
                 Held for 10 s at power-on: factory reset (spec 9).
 
+        config P64_IMU_ROTATION_SIGN
+            int "Auto-rotation direction (1 or -1)"
+            default 1
+            range -1 1
+            help
+                Which way the picture's rotation grows as the gravity angle in the IMU's
+                board plane grows. Depends on how the IMU is mounted; verify by turning
+                the panel 90 degrees clockwise after calibrating upright: the picture
+                must stay upright. Flip the sign when it turns the other way.
+
     endmenu
 
     menu "Sensors"

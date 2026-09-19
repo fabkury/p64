@@ -35,6 +35,7 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
+#include "p64/inputs/inputs.hpp"
 #include "p64/stream/stream.hpp"
 #include "p64/system/reliability.hpp"
 #include "ops.hpp"
@@ -67,7 +68,9 @@ void init_nvs() {
 // The picture settings the display applies directly; the panel mode goes through the
 // renderer (switched between two frames).
 void apply_display_settings(const p64::system::Settings &s) {
-  g_display.set_rotation(static_cast<p64::gfx::Rotation>(s.rotation));
+  // Rotation "auto": the IMU's resolved value once it has one; the setting is the fallback.
+  const uint16_t rotation = s.rotation_auto && p64::inputs::auto_rotation_resolved() ? p64::inputs::auto_rotation() : s.rotation;
+  g_display.set_rotation(static_cast<p64::gfx::Rotation>(rotation));
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
   g_display.set_brightness(p64::ops::effective_brightness(s));
   g_renderer.request_mode(s.panel_mode == p64::system::PanelMode::Photo ? p64::display::Mode::Photo
@@ -182,6 +185,11 @@ extern "C" void app_main() {
   p64::makapix::start(mk);
   p64::widgets::start();
   if (!p64::stream::start()) ESP_LOGE(TAG, "stream listener failed to start");
+  p64::inputs::Hooks in;
+  in.next = p64::show::next;
+  in.previous = p64::show::previous;
+  in.rotation_changed = [] { apply_display_settings(p64::system::settings()); };
+  p64::inputs::start(in);
   p64::show::restore();
   p64::show::run();
 }

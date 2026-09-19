@@ -40,7 +40,7 @@ ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_
 `p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
 `p64_web`,
 `p64_makapix`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
-`p64_makapix`, `p64_widgets`, `p64_stream`) and the application in `firmware/main/` (`main.cpp`
+`p64_makapix`, `p64_widgets`, `p64_stream`, `p64_inputs`) and the application in `firmware/main/` (`main.cpp`
 wiring, `show.cpp` the state machine, `loader.cpp` the card I/O worker). Milestones M0
 to M8 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
 mode, API v1 with WebSocket and web UI, the content model (playsets, channels,
@@ -51,7 +51,8 @@ fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
 `tools/stream_send.py` sends). M9 is in progress: reliability (reset counters, core dump
 summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
-hold) are done; IMU, PIN and OTA remain, then the full web UI (M10);
+hold) and the IMU (taps, auto-rotation with an upright calibration) are done; PIN and
+OTA remain, then the full web UI (M10);
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
@@ -68,7 +69,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\makapix_smoke.py http://<ip> [--paired]`,
 `python tests\device\widgets_smoke.py http://<ip>`,
 `python tests\device\stream_smoke.py http://<ip>` and
-`python tests\device\ops_smoke.py http://<ip>` against the live device (the
+`python tests\device\ops_smoke.py http://<ip>` and
+`python tests\device\imu_smoke.py http://<ip>` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs

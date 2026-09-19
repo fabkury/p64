@@ -26,7 +26,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
-| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU, PIN and OTA next |
+| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN and OTA next |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
 
 ## Log
@@ -279,4 +279,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   "panel off" blanks, the ceiling caps outside the window, the factory reset refuses
   without the word. Not exercised: the BOOT hold (nobody at the button) and the reset
   itself (it would unpair the development device).
-- Next: M9 second part: IMU (taps, auto-rotation with an upright calibration), PIN, OTA.
+- M9, IMU (docs/architecture.md section 16): `p64_inputs` with the QMI8658 sampler,
+  the host-tested `TapDetector` (impulse shape, double window, lockout) and
+  `OrientationTracker` (calibrated reference, hysteresis, hold when flat), the
+  `calibrate_upright` action, `diag/imu`, `inputs` in the status, settings
+  `inputs.tap_enabled`, `inputs.tap_sensitivity` and `display.rotation_auto` applied
+  live. `tests/device/imu_smoke.py`.
+- Verified on the device: the IMU answers at 0x6B, 250 Hz sampling with no read errors,
+  gravity 1.01 g along +X with the panel upright at rotation 90, a noise peak of 0.004 g
+  at rest (the default tap threshold is 1.5 g), calibration and auto mode resolve to the
+  current rotation and keep it. Not verified (needs a hand on the shell): that a real
+  knock registers as a tap at sensitivity 5 (watch `peak_g` in `diag/imu` while knocking
+  and adjust the sensitivity), and the direction of auto-rotation (turn the panel 90
+  degrees clockwise after calibrating; if the picture turns the wrong way, set
+  `P64_IMU_ROTATION_SIGN` to -1).
+- Next: M9 third part: PIN (route gate, session cookie, lockout), then OTA.

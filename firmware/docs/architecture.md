@@ -27,7 +27,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | no |
 | `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
-| `p64_inputs` | BOOT button, IMU (tap, orientation), encoder abstraction | IDF | no |
+| `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
 | `p64_ops` | OTA, factory reset, diagnostics endpoints' data | IDF | no |
 | `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | no |
 
@@ -359,3 +359,22 @@ The task watchdog watches the show loop, the loader and the stream listener (eac
 at most a second between resets); the player and the render task are excluded on
 purpose (a slow artwork keeps them busy by design), as are the network workers whose
 TLS calls can block longer than the 10 s timeout.
+
+## 16. Inputs: the IMU (M9)
+
+`p64_inputs` polls the QMI8658 accelerometer (I2C 0x6B, +-8 g at 500 Hz, no filter) every
+4 ms from a small task on core 0 and feeds two host-tested detectors. `TapDetector`
+tracks gravity with a 150 ms low-pass and looks at what is left: an excursion above the
+threshold (sensitivity 1..10 maps to 2.5..0.25 g) that ends within 60 ms is an impulse;
+a longer one is the shell being moved and cancels a pending tap; two impulses 80..350 ms
+apart make a double tap, a lone one is reported when the window closes (so "next" lands
+about 350 ms after the knock), and every report starts a 1 s lockout. The measured noise
+floor on the resting board is about 0.004 g, three orders below the default threshold.
+`OrientationTracker` low-passes the gravity vector (0.5 s) and reads its angle in the
+board plane; a calibration ("the panel is upright now at rotation R") stores that angle
+as the reference, and the resolved rotation is R plus the number of right angles gravity
+has moved since (sign from Kconfig). A new value must hold for a second, within 30
+degrees of a right angle, with at least 0.55 g in the plane (a panel lying flat keeps
+the last value). The display applies the resolved value while `rotation_auto` is on;
+the setting stays the fallback. On the development board gravity lies along +X with the
+panel upright at rotation 90.
