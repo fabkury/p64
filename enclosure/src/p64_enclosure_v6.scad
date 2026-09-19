@@ -34,6 +34,20 @@
 //  hand (see README). v4's sockets, ribbon hooks and vent keep-outs are
 //  gone; the lower vent band regains its +-30 columns. Based on v4 (front
 //  bar kept, not the v3 plinth; no v5 speaker).
+//
+//  v6 edges (2026-09-19, edited in place, still v6): the outer edges are
+//  softened for the hand. The back face's perimeter gets a 45-degree
+//  chamfer (edge_back_c: it is the bed side of the print, where a fillet
+//  would overhang), the front rim's outer edge a fillet (edge_rim_r,
+//  leaving a flat next to the pocket, whose own edge stays sharp), and the
+//  base's front edge, the acute one under the LED face, a larger fillet
+//  (edge_base_r) that blends into the rim's along the front corners. The
+//  six counterbore mouths get a small chamfer (cb_chamfer). The pocket,
+//  ledge, bosses, cradle and every other opening are unchanged. The outer
+//  body is now the hull of thin sections of the same envelope (side, top,
+//  base, front and back planes), each section inset by its own edge
+//  treatment, so the envelope itself did not move: set the three edge
+//  values to 0 and the old body comes back exactly.
 // ---------------------------------------------------------------------
 //  Coordinates (design orientation, part = "shell"):
 //    origin = centre of the panel frame back face
@@ -54,11 +68,13 @@
 //  part = "section_win" -> cut along the adapters' centre line, seen from below
 //  part = "section_y"   -> cut through the side screw bosses
 //  part = "section_enc" -> cut through the right-hand encoder
+//  part = "section_edge"-> cut through the walls at x = section_edge_x, clear of every feature: the edge profiles
 //  part = "product"     -> the assembled display standing on a table (LED face mock-up)
 //  part = "frame"       -> panel frame and controller only, seen from the back: where to notch the frame plate
 // =====================================================================
 
-part = "shell";            // "shell" | "print" | "assembly" | "section_ad" | "section_win" | "section_y" | "section_enc" | "product" | "frame"
+part = "shell";            // "shell" | "print" | "assembly" | "section_ad" | "section_win" | "section_y" | "section_enc" | "section_edge" | "product" | "frame"
+section_edge_x = 33;       // where "section_edge" cuts: between two vent columns, clear of the encoder boards and the bosses
 
 /* [Panel] */
 panel      = 127.8;        // frame outer size, measured in RGB-Matrix-P2-64x64-2D.dwg (Waveshare quotes 128)
@@ -81,6 +97,17 @@ tilt         = 12;     // lean-back angle in degrees
 r_in         = 0.6;    // pocket corner radius (the frame corners are sharp; keep small)
 ledge_w      = 1.6;    // seating ledge at the frame back face (0 = none); the frame's outer wall is 1.6 mm
 ledge_t      = 1.5;
+
+/* [Edges] */
+edge_back_c = 1.4;     // 45-degree chamfer on the back face's perimeter (the bed side of the print, where a fillet would
+                       // overhang). 1.4 keeps 2.0 mm of material on the top edge's corner diagonal (the top wall meets
+                       // the back at 96 degrees, so it is the thinnest corner); 1.5 would leave 1.95. See the echo.
+edge_rim_r  = 1.5;     // fillet on the front rim's outer edge; the rim is `wall` wide, so wall - edge_rim_r stays flat
+                       // next to the pocket and the pocket edge itself stays sharp
+edge_base_r = 3.0;     // fillet on the base's front edge (the 78-degree edge under the LED face, solid behind it);
+                       // >= edge_rim_r, it blends into the rim fillet along the two front-bottom corners
+edge_fn     = 12;      // facets per quarter turn of the rim fillet (7.5 degrees each, like $fn = 48)
+cb_chamfer  = 0.5;     // 45-degree chamfer on the six counterbore mouths (0 = sharp)
 
 /* [Screws] */
 screw_len  = 10;   // M3 screw length
@@ -189,6 +216,20 @@ function z_cav(y)  = z_back(y) - back_tz;                      // cavity back fa
 wedge    = (depth_bottom + lip) * tan(tilt);                   // extra height of the wedge at the front bottom
 floor_t  = screw_len - engage;                                 // boss floor between screw head and panel
 
+// the two inclined planes of the outer envelope, as lines in the YZ side view (2D normals point outwards, n . p = k)
+n_base = [-cos(tilt), sin(tilt)];      k_base = n_base * [-half_out, depth_bottom];   // the base, through the back-bottom edge
+n_bk   = [sin(back_ang), cos(back_ang)]; k_bk  = n_bk * [0, z_mid];                    // the back face
+function isect2(n1, k1, n2, k2) = let (det = n1[0]*n2[1] - n1[1]*n2[0])              // where two such lines cross
+    [(k1*n2[1] - k2*n1[1]) / det, (n1[0]*k2 - n2[0]*k1) / det];
+function y_base(z, d = 0) = (k_base - d - n_base[1]*z) / n_base[0];                   // the base plane, moved inwards by d, at height z
+function dist_line(p, a, b) = abs((b[0]-a[0])*(p[1]-a[1]) - (b[1]-a[1])*(p[0]-a[0])) / norm(b - a);
+// corner material left by the back chamfer: distance from the cavity's edge to the chamfer plane, per edge
+edge_top_pts = [[half_out - edge_back_c, z_back(half_out - edge_back_c)], [half_out, z_back(half_out) - edge_back_c / cos(back_ang)]];
+edge_bot_pts = [isect2(n_base, k_base - edge_back_c, n_bk, k_bk), isect2(n_base, k_base, n_bk, k_bk - edge_back_c)];
+corner_top  = dist_line([half_in, z_cav(half_in)], edge_top_pts[0], edge_top_pts[1]);
+corner_bot  = dist_line([-half_in, z_cav(-half_in)], edge_bot_pts[0], edge_bot_pts[1]);
+corner_side = (wall + back_t - edge_back_c) / sqrt(2);   // the side walls meet the back face at 90 degrees
+
 function rot2(p, a) = [p[0]*cos(a) - p[1]*sin(a), p[0]*sin(a) + p[1]*cos(a)];
 function contains(v, x) = len([for (e = v) if (abs(e - x) < 1e-6) e]) > 0;
 
@@ -266,6 +307,14 @@ if (encoders) for (p = enc_pos) {
              enc_bush_l - (back_t - enc_spot_t), " (needs ", enc_nut_h, ")  shaft proud of face ", enc_shaft_l - back_t,
              "  knob end behind frame back ", z_back(p[1]) + (enc_nut_h - enc_spot_t + knob_h) * cos(back_ang)));
 }
+echo(str("edges: back chamfer ", edge_back_c, " leaves on the corner diagonal top ", corner_top, "  bottom ", corner_bot,
+         "  sides ", corner_side, " (rule: >= 2)  bed footprint ", 2*(half_out - edge_back_c), " x ",
+         norm(edge_top_pts[0] - edge_bot_pts[0])));
+echo(str("edges: rim fillet ", edge_rim_r, " leaves a ", wall - edge_rim_r, " flat next to the pocket  base front fillet ", edge_base_r,
+         " moves the base's front contact line back ", edge_base_r / tan((90 - tilt) / 2),
+         "  window chamfer to the bottom edge chamfer on the back face ",
+         adapters ? (ad_win_y - (ad_win[1]/2 + ad_chamfer) * cos(back_ang) - edge_bot_pts[0][0]) / cos(back_ang) : 0));
+if (corner_top < 2 || corner_bot < 2 || corner_side < 2) echo("WARNING: the back chamfer leaves less than 2 mm at a corner");
 
 // ---------------- primitives ----------------
 module rrect(w, h, r) { offset(r = r) square([w - 2*r, h - 2*r], center = true); }
@@ -273,17 +322,37 @@ module rrect(w, h, r) { offset(r = r) square([w - 2*r, h - 2*r], center = true);
 // local frame lying on the outer back face at height y: XY in the face, +Z outwards
 module on_back(y) { translate([0, y, z_back(y)]) rotate([-back_ang, 0, 0]) children(); }
 
-module back_slab(th = 0.01) {          // thin slab whose top face is the inclined back plane
-    H = 2*half_out / cos(back_ang);
-    translate([0, 0, z_mid]) rotate([-back_ang, 0, 0]) translate([0, 0, -th])
-        linear_extrude(th) rrect(2*half_out, H, r_out);
+// The outer envelope is bounded by the side planes x = +-half_out, the top y = half_out, the tilted base, the front
+// z = -lip and the inclined back face. Its body is the hull of thin sections of that envelope taken in planes parallel
+// to the front or to the back, each with every bounding plane moved inwards by d (corner radius r_out - d, so the
+// vertical corners come out at r_out again): a section with d = 0 is the plain outline, a stack of sections with
+// d = r (1 - sin a) at depth r (1 - cos a) sweeps a fillet of radius r along the edge, and two sections d = c at the
+// face plus d = 0 at depth c make a 45-degree chamfer.
+module front_section(z0, d, ycut = undef) {      // in the plane z = z0; ycut trims it above the base bar's region
+    vb = is_undef(ycut) ? y_base(z0, d) : max(y_base(z0, d), ycut);
+    vt = half_out - d;
+    translate([0, 0, z0]) linear_extrude(0.01) translate([0, (vt + vb)/2]) rrect(2*(half_out - d), vt - vb, r_out - d);
+}
+module back_section(w, d) {                      // in the plane parallel to the back face, w behind it
+    q  = isect2(n_base, k_base - d, n_bk, k_bk - w);                  // where the (inset) base meets that plane
+    vb = (q[0] + w*sin(back_ang)) / cos(back_ang);                     // global y -> position along the face
+    vt = (half_out - d + w*sin(back_ang)) / cos(back_ang);
+    translate([0, 0, z_mid]) rotate([-back_ang, 0, 0]) translate([0, 0, -w - 0.01])
+        linear_extrude(0.01) translate([0, (vt + vb)/2]) rrect(2*(half_out - d), vt - vb, r_out - d);
+}
+module base_bar() {                              // the base's front edge: a capsule of radius edge_base_r tangent to the front,
+    r = edge_base_r; zc = -lip + r;              // the base and both side planes; its end spheres are the front-bottom corners
+    hull() for (sx = [-1, 1]) translate([sx*(half_out - r), y_base(zc, r), zc]) sphere(r);
 }
 
 module outer_body() {
+    bar = edge_base_r > edge_rim_r;              // the rim sections stop above the bar, else their smaller fillet would win the hull
     hull() {
-        translate([0, -wedge/2, -lip])
-            linear_extrude(0.01) rrect(2*half_out, 2*half_out + wedge, r_out);
-        back_slab();
+        for (a = [0 : 90/edge_fn : 90])
+            front_section(-lip + edge_rim_r*(1 - cos(a)), edge_rim_r*(1 - sin(a)), bar ? -half_out : undef);
+        if (bar) base_bar();
+        back_section(0, edge_back_c);
+        back_section(edge_back_c, 0);
     }
 }
 
@@ -328,6 +397,8 @@ module boss(p) {                        // tall; clipped to the outer body in sh
 module boss_hole(p) {
     translate([p[0], p[1], -1])       cylinder(d = screw_hole, h = depth_bottom + 3);
     translate([p[0], p[1], floor_t])  cylinder(d = cb_d, h = depth_bottom + 3);
+    if (cb_chamfer > 0) on_back(p[1]) translate([p[0], 0, -cb_chamfer])            // chamfered mouth on the outer face
+        cylinder(d1 = cb_d, d2 = cb_d + 2*(cb_chamfer + 1), h = cb_chamfer + 1);
 }
 
 // ---------------- USB-C adapters: window, cradle, mark ----------------
@@ -539,5 +610,7 @@ if (part == "section_y") intersection() { union() { shell(); ghost_panel(); ghos
                                           translate([-200, -200, -100]) cube([400, 200, 200]); }
 if (part == "section_enc") intersection() { union() { shell(); ghosts(); }
                                             translate([enc_pos[0][0], -200, -100]) cube([200, 400, 200]); }
+if (part == "section_edge") intersection() { union() { shell(); ghost_panel(); }
+                                             translate([section_edge_x - 200, -200, -100]) cube([200, 400, 200]); }
 if (part == "product") { standing() { shell(); ghosts(); ghost_face(); } table_top(); }
 if (part == "frame") { ghost_panel(notch = false); ghost_chip(); if (adapters) color("red", 0.8) notch_block(); }   // red = cut this away
