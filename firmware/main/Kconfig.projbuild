@@ -1,0 +1,42 @@
+menu "p64"
+
+    menu "Development seeds (never set in a release build)"
+
+        config P64_DEV_WIFI_SSID
+            string "Wi-Fi SSID seeded into NVS when none is stored"
+            default ""
+            help
+                Development convenience: when NVS holds no Wi-Fi credentials at boot,
+                these are stored as if entered in the setup portal. Leave empty in
+                releases. Put real values only in the git-ignored sdkconfig.secrets
+                (see sdkconfig.secrets.example).
+
+        config P64_DEV_WIFI_PASSWORD
+            string "Wi-Fi password seeded into NVS when none is stored"
+            default ""
+
+    endmenu
+
+    menu "microSD card"
+
+        config P64_SD_PIN_CLK
+            int "SD CLK GPIO"
+            default 1
+        config P64_SD_PIN_CMD
+            int "SD CMD GPIO"
+            default 44
+        config P64_SD_PIN_D0
+            int "SD D0 GPIO"
+            default 17
+
+        config P64_SD_FREQ_KHZ
+            int "SD bus clock (kHz)"
+            range 400 40000
+            default 20000
+            help
+                SDMMC 1-bit. The host has its own DMA; card traffic never disturbed the
+                panel in the hardware tests.
+
+    endmenu
+
+endmenu

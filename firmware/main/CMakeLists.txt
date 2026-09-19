@@ -1,0 +1,14 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "boot_animation.cpp"
+    INCLUDE_DIRS
+        "."
+    PRIV_REQUIRES
+        p64_gfx
+        p64_display
+        esp_timer
+        app_update
+        esp_app_format
+        nvs_flash
+)

@@ -1,0 +1,12 @@
+# ESP32-S3-WROOM-2-N32R16V: 32 MB flash.
+# Two 8 MB app slots (OTA with rollback), 64 KB NVS (settings, Wi-Fi and Makapix
+# credentials), a 256 KB core dump, and a data partition reserved for later use
+# (the web UI is embedded in the app image, see docs/adr/0005).
+# Name,     Type, SubType,  Offset,    Size,      Flags
+nvs,        data, nvs,      0x9000,    0x10000,
+otadata,    data, ota,      0x19000,   0x2000,
+phy_init,   data, phy,      0x1B000,   0x1000,
+coredump,   data, coredump, 0x20000,   0x40000,
+ota_0,      app,  ota_0,    0x60000,   0x800000,
+ota_1,      app,  ota_1,    0x860000,  0x800000,
+storage,    data, spiffs,   0x1060000, 0xF90000,

@@ -1,0 +1,6 @@
+## IDF Component Manager manifest for the p64 application.
+## esphome/esp-hub75 and bitbank2/AnimatedGIF are vendored under components/.
+## Managed components download into firmware/managed_components/ on the first build;
+## dependencies.lock pins the exact versions and is committed.
+dependencies:
+  idf: ">=5.5"

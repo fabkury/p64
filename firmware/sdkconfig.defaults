@@ -1,0 +1,110 @@
+# p64 firmware: ESP-IDF defaults for the Waveshare ESP32-S3-RGB-Matrix board.
+# Only deviations from ESP-IDF's own defaults are listed. The generated sdkconfig is
+# git-ignored; edit this file (a changed default only takes effect after deleting the
+# generated sdkconfig or through menuconfig). Measured reasons for the panel and network
+# values are in ../hardware-tests/README.md.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- Module: ESP32-S3-WROOM-2-N32R16V (32 MB octal flash, 16 MB octal PSRAM) ---
+CONFIG_ESPTOOLPY_OCT_FLASH=y
+CONFIG_ESPTOOLPY_FLASHMODE_OPI=y
+CONFIG_ESPTOOLPY_FLASH_SAMPLE_MODE_DTR=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+# Allocations above this size that do not ask for internal memory come from PSRAM.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+
+# --- Partition table: two 8 MB app slots, 64 KB NVS, 256 KB core dump, data ---
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+# The app marks itself valid at boot; an image that never gets there rolls back.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# --- Console: the board's USB port is the ESP32-S3's native USB Serial/JTAG ---
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# --- Crash handling: core dump to flash (ELF), watchdog on both idle tasks ---
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+CONFIG_ESP_COREDUMP_CHECKSUM_CRC32=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_BROWNOUT_DET=y
+
+# --- TLS: hardware AES and SHA; the panel's GDMA channel outranks them (HUB75_GDMA_PRIORITY) ---
+CONFIG_MBEDTLS_HARDWARE_AES=y
+CONFIG_MBEDTLS_HARDWARE_SHA=y
+
+# --- Network throughput (measured in the hardware tests): 64 KB TCP window, lwIP in PSRAM,
+# TLS buffers from the default allocator, released between records ---
+CONFIG_LWIP_TCP_WND_DEFAULT=65535
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65535
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_MBEDTLS_DEFAULT_MEM_ALLOC=y
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+CONFIG_LWIP_LOCAL_HOSTNAME="p64"
+CONFIG_HTTPD_WS_SUPPORT=y
+
+# --- CPU / RTOS / compiler ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# The main task (state machine) runs on core 0 with the network; the render and player
+# tasks are created on core 1 by the firmware itself (docs/architecture.md section 2).
+CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_COMPILER_CXX_EXCEPTIONS=n
+
+# --- HUB75 driver (vendored esphome/esp-hub75 + p64 patch): Waveshare ESP32-S3-RGB-Matrix pins ---
+CONFIG_HUB75_BOARD_CUSTOM=y
+CONFIG_HUB75_PIN_R1=4
+CONFIG_HUB75_PIN_G1=5
+CONFIG_HUB75_PIN_B1=6
+CONFIG_HUB75_PIN_R2=7
+CONFIG_HUB75_PIN_G2=15
+CONFIG_HUB75_PIN_B2=16
+CONFIG_HUB75_PIN_A=18
+CONFIG_HUB75_PIN_B=8
+CONFIG_HUB75_PIN_C=3
+CONFIG_HUB75_PIN_D=42
+CONFIG_HUB75_PIN_E=9
+CONFIG_HUB75_PIN_LAT=40
+CONFIG_HUB75_PIN_OE=2
+CONFIG_HUB75_PIN_CLK=41
+
+# --- HUB75 panel: Waveshare RGB-Matrix-P2-64x64 (1/32 scan, FM6126A-class driver IC) ---
+CONFIG_HUB75_PANEL_WIDTH=64
+CONFIG_HUB75_PANEL_HEIGHT=64
+CONFIG_HUB75_WIRING_STANDARD=y
+CONFIG_HUB75_DRIVER_FM6126A=y
+CONFIG_HUB75_LAYOUT_ROWS=1
+CONFIG_HUB75_LAYOUT_COLS=1
+CONFIG_HUB75_LAYOUT_HORIZONTAL=y
+# The driver always runs in the panel's native orientation; p64 rotates in its own
+# display layer (a runtime setting, default 90 for the printed shell).
+CONFIG_HUB75_ROTATE_0=y
+
+# --- HUB75 quality: 10 bit planes, gamma 2.2, 20 MHz, minimum refresh 250 Hz -> transition
+# bit 4, 271.3 Hz, 1024 codes (Quality mode). Photo mode raises the minimum refresh at
+# runtime (600 -> transition bit 6, 698 Hz). GDMA priority 5 keeps the panel ahead of the
+# crypto engines' DMA bursts. ---
+CONFIG_HUB75_BIT_DEPTH_10=y
+CONFIG_HUB75_GAMMA_2_2=y
+CONFIG_HUB75_CLK_20MHZ=y
+CONFIG_HUB75_MIN_REFRESH_RATE=250
+CONFIG_HUB75_GDMA_PRIORITY=5
+CONFIG_HUB75_LATCH_BLANKING=1
+CONFIG_HUB75_BRIGHTNESS=255
+CONFIG_HUB75_DOUBLE_BUFFER=y
+CONFIG_HUB75_IRAM_OPTIMIZATION=y
+
+# --- microSD card (FAT): long file names, UTF-8 names, larger stdio buffers ---
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_API_ENCODING_UTF_8=y
+CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096
