@@ -753,6 +753,6 @@ night schedule.
 - Hardware tests: `hardware-tests/README.md` sections "Frame pacing", "Tonal depth and
   refresh", "Network throughput", "Hardware facts baked into sdkconfig.defaults";
   `hardware-tests/components/esp-hub75/P64-CHANGES.md`.
-- Fonts: `hardware-tests/assets/fonts/*/​*-Info.md` (VEXED, CC-BY 4.0).
+- Fonts: `firmware/assets/fonts/*/​*-Info.md` (VEXED, CC-BY 4.0).
 - Protocols: DDP (3waylabs, "Distributed Display Protocol"), Open-Meteo API, WMO weather
   interpretation codes.
