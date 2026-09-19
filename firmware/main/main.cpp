@@ -36,6 +36,8 @@
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
 #include "p64/stream/stream.hpp"
+#include "p64/system/reliability.hpp"
+#include "ops.hpp"
 #include "p64/widgets/widgets.hpp"
 #include "show.hpp"
 
@@ -62,21 +64,12 @@ void init_nvs() {
   ESP_ERROR_CHECK(err);
 }
 
-void mark_image_valid() {
-  esp_ota_img_states_t state;
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  if (running && esp_ota_get_state_partition(running, &state) == ESP_OK && state == ESP_OTA_IMG_PENDING_VERIFY) {
-    ESP_LOGI(TAG, "first boot of this image: marking it valid");
-    esp_ota_mark_app_valid_cancel_rollback();
-  }
-}
-
 // The picture settings the display applies directly; the panel mode goes through the
 // renderer (switched between two frames).
 void apply_display_settings(const p64::system::Settings &s) {
   g_display.set_rotation(static_cast<p64::gfx::Rotation>(s.rotation));
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
-  g_display.set_brightness(std::min(s.brightness, s.brightness_ceiling));
+  g_display.set_brightness(p64::ops::effective_brightness(s));
   g_renderer.request_mode(s.panel_mode == p64::system::PanelMode::Photo ? p64::display::Mode::Photo
                                                                           : p64::display::Mode::Quality);
 }
@@ -89,7 +82,7 @@ extern "C" void app_main() {
   ESP_LOGI(TAG, "p64 firmware %s (IDF %s), built %s %s", app->version, app->idf_ver, app->date, app->time);
 
   init_nvs();
-  mark_image_valid();
+  p64::system::reliability::init();
   p64::system::event_bus_init();
   p64::system::settings_init();
   const p64::system::Settings s = p64::system::settings();
@@ -100,7 +93,7 @@ extern "C" void app_main() {
   }
   g_display.set_rotation(static_cast<p64::gfx::Rotation>(s.rotation));
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
-  g_display.set_brightness(std::min(s.brightness, s.brightness_ceiling));
+  g_display.set_brightness(p64::ops::effective_brightness(s));
 
   // Frames in PSRAM (see the globals above).
   void *slot_mem = heap_caps_malloc(sizeof(p64::playback::ReadySlot) * p64::playback::FrameQueue::kSlots,
@@ -119,6 +112,12 @@ extern "C" void app_main() {
   if (!p64::show::init(g_player, g_renderer, s.boot_animation_ms)) {
     ESP_LOGE(TAG, "show failed to start");
     return;
+  }
+  // BOOT held at power-on: the factory reset countdown (spec 9); returns at once otherwise.
+  {
+    void *mem = heap_caps_malloc(sizeof(p64::gfx::Frame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    auto *scratch = mem ? new (mem) p64::gfx::Frame() : new p64::gfx::Frame();
+    p64::ops::check_boot_hold(g_player, *scratch);
   }
 
   // Network: Wi-Fi start creates the TCP/IP stack; the HTTP server, the portal and the
@@ -146,7 +145,10 @@ extern "C" void app_main() {
   hooks.snapshot = [](p64::gfx::Frame &out) { return g_renderer.snapshot(out); };
   hooks.request_mode = [](p64::display::Mode m) { g_renderer.request_mode(m); };
   hooks.display = [] { return &g_display; };
+  hooks.night_active = p64::ops::night_active;
+  hooks.factory_reset = [] { p64::ops::factory_reset(); };
   p64::web::init(hooks);
+  p64::ops::start([] { apply_display_settings(p64::system::settings()); });
   p64::net::clock::start(s.ntp_server, s.timezone);
   p64::system::subscribe(p64::system::Event::SettingsChanged, [](const p64::system::Message &) {
     const p64::system::Settings now = p64::system::settings();

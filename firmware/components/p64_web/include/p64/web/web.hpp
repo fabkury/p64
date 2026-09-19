@@ -39,7 +39,13 @@ struct Hooks {
   std::function<bool(gfx::Frame &)> snapshot;  // the frame on the panel (live preview)
   std::function<void(display::Mode)> request_mode;
   std::function<display::Display *()> display;
+  // Operations (main/ops).
+  std::function<bool()> night_active;     // the night schedule's window applies now
+  std::function<void()> factory_reset;    // erases everything and reboots (does not return)
 };
+
+// Erases the PIN (factory reset).
+void auth_erase();
 
 // Registers every route and starts the WebSocket push task. Call after the HTTP server.
 void init(const Hooks &hooks);

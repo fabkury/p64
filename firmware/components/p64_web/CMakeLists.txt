@@ -8,6 +8,7 @@ idf_component_register(
         "src/makapix_routes.cpp"
         "src/ws.cpp"
         "src/ui.cpp"
+        "src/auth.cpp"
     INCLUDE_DIRS
         "include"
     EMBED_TXTFILES
@@ -30,4 +31,5 @@ idf_component_register(
         esp_app_format
         app_update
         heap
+        nvs_flash
 )

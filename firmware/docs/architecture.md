@@ -335,3 +335,27 @@ navigation, a pause, a widget, the waiting screen after a state change) as the n
 "behind"; a kept `Artwork` continues from where its decoder stopped. Views are noted as
 hidden during a stream and reported again on return; the overlay hook returns no key
 over a stream; streams never enter history.
+
+## 15. Operations (M9)
+
+`p64_system::reliability` classifies the reset at boot (`esp_reset_reason`), bumps a
+per-cause counter in the state store, reads the core dump summary when one is stored
+(task, pc, cause, backtrace) and knows whether the running image still awaits
+confirmation. `main/ops` confirms a pending image 30 s after boot (a crash before that
+lets the bootloader roll back to the previous slot; confirmation also resets the reboot
+counters), runs the night schedule (a 15 s timer re-applies the display settings when
+the effective brightness changes; the rule itself, `system::night`, is pure and
+host-tested: night target inside the window, else the user's value, capped by the
+ceiling, 0 = panel off), and performs the factory reset (Makapix unpair, Wi-Fi
+credentials, state, settings, PIN; the card stays) either from the API or when BOOT is
+held for 10 s at power-on, the panel counting down the last three seconds.
+
+The on-board PCF85063A (`system::rtc`, on the shared I2C bus `system::i2c_bus`) seeds the
+system clock at boot when its oscillator has run since the last set and the date is
+plausible; every NTP sync and every manual set writes it back. `net::clock::source()`
+says where the time came from.
+
+The task watchdog watches the show loop, the loader and the stream listener (each waits
+at most a second between resets); the player and the render task are excluded on
+purpose (a slow artwork keeps them busy by design), as are the network workers whose
+TLS calls can block longer than the 10 s timeout.

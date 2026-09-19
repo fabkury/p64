@@ -39,6 +39,16 @@ menu "p64"
 
     endmenu
 
+    menu "Inputs"
+
+        config P64_BOOT_GPIO
+            int "BOOT button GPIO"
+            default 0
+            help
+                Held for 10 s at power-on: factory reset (spec 9).
+
+    endmenu
+
     menu "Sensors"
 
         config P64_I2C_SDA

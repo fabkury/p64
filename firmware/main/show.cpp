@@ -10,6 +10,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -1167,7 +1168,9 @@ void restore() {
 
 [[noreturn]] void run() {
   ESP_LOGI(TAG, "show loop running");
+  esp_task_wdt_add(nullptr);  // wait_ticks() is at most a second
   while (true) {
+    esp_task_wdt_reset();
     Command c{};
     const bool got = xQueueReceive(g_commands, &c, wait_ticks()) == pdTRUE;
     std::lock_guard<std::mutex> lock(g_mutex);

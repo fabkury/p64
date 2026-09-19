@@ -10,6 +10,7 @@
 #include "esp_sntp.h"
 #include "p64/net/tz.hpp"
 #include "p64/system/event_bus.hpp"
+#include "p64/system/rtc.hpp"
 
 namespace p64::net::clock {
 namespace {
@@ -20,9 +21,12 @@ std::mutex g_mutex;
 std::string g_rule = "UTC0";
 std::string g_server;
 bool g_sntp_started = false;
+std::atomic<const char *> g_source{"none"};
 
 void on_sync(struct timeval *) {
   const bool first = !g_synced.exchange(true);
+  g_source = "ntp";
+  system::rtc::write(time(nullptr));  // the RTC follows NTP (spec 10.2)
   struct tm t;
   if (local_time(t)) {
     ESP_LOGI(TAG, "time %ssynced: %04d-%02d-%02d %02d:%02d:%02d local", first ? "" : "re-", t.tm_year + 1900,
@@ -48,6 +52,20 @@ void apply_zone(const std::string &iana_zone) {
 void start(const std::string &ntp_server, const std::string &iana_zone) {
   std::lock_guard<std::mutex> lock(g_mutex);
   apply_zone(iana_zone);
+  time_t from_rtc;
+  if (system::rtc::read(from_rtc)) {
+    timeval tv = {from_rtc, 0};
+    settimeofday(&tv, nullptr);
+    g_synced = true;
+    g_source = "rtc";
+    struct tm t;
+    localtime_r(&from_rtc, &t);
+    ESP_LOGI(TAG, "time from the RTC: %04d-%02d-%02d %02d:%02d:%02d local", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+             t.tm_hour, t.tm_min, t.tm_sec);
+    system::publish(system::Event::TimeSynced, 0);
+  } else {
+    ESP_LOGI(TAG, "no time from the RTC; waiting for NTP");
+  }
   g_server = ntp_server;
   esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(g_server.c_str());
   config.sync_cb = on_sync;
@@ -83,11 +101,15 @@ void set_manual(time_t utc) {
   timeval tv = {utc, 0};
   settimeofday(&tv, nullptr);
   const bool first = !g_synced.exchange(true);
+  g_source = "manual";
+  system::rtc::write(utc);
   ESP_LOGI(TAG, "time set by hand");
   if (first) system::publish(system::Event::TimeSynced, 0);
 }
 
 bool synced() { return g_synced.load(); }
+
+const char *source() { return g_source.load(); }
 
 bool local_time(struct tm &out) {
   if (!g_synced.load()) return false;

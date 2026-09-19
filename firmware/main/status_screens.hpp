@@ -10,6 +10,8 @@ namespace p64::status_screens {
 
 // "NO ARTWORK" and the reason ("no card", "offline", "needs pairing", "empty", ...).
 void no_artwork(gfx::Frame &frame, const std::string &reason);
+// The BOOT-hold factory reset countdown: 3, 2, 1 (0 = "RESET").
+void countdown(gfx::Frame &frame, int seconds);
 void black(gfx::Frame &frame);
 // The Makapix pairing code, large, in two rows of three characters.
 void pairing_code(gfx::Frame &frame, const std::string &code);

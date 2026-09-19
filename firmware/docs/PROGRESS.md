@@ -26,7 +26,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
-| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | pending | |
+| M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | in progress | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU, PIN and OTA next |
 | M10 | Full web UI port, acceptance tests, docs | pending | |
 
 ## Log
@@ -263,5 +263,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   With the M6 Wi-Fi trims (24 dynamic RX buffers) a 36-datagram burst lost 4-5 % of its
   datagrams and every third 128x128 frame; 64 dynamic RX buffers (PSRAM, no internal
   cost) lose none at 10 fps bursts.
-- Next: M9 (IMU tap and auto-rotation, night schedule, PIN, OTA, coredump, diagnostics,
-  factory reset via BOOT hold, RTC).
+- M9, first part (docs/architecture.md section 15): `system::reliability` (reset
+  reason, per-cause reboot counters in NVS, the core dump summary, image confirmation
+  deferred to 30 s after boot so a crashing update rolls back), `system::rtc` on the
+  new shared `system::i2c_bus` (the PCF85063A seeds the clock at boot, NTP and manual
+  sets write it back), `system::night` (pure: the effective brightness rule) applied by
+  `main/ops` on a 15 s timer, the factory reset (API with the confirmation word, and
+  BOOT held 10 s at power-on with a 3-2-1 countdown screen), `set_time` for browsers
+  without internet, the task watchdog on the show loop, the loader and the stream
+  listener. Status gains `time.source`, `panel.night_active` and `reliability`.
+- Verified on the device (`tests/device/ops_smoke.py`, 0 failures): the RTC gives the
+  time 1.5 s after boot (NTP re-syncs 2 s later), reset reasons and counters persist
+  across reboots (a flash counts as `usb`), a core dump left by an earlier crash was
+  summarised and erased through the API, the night window sets brightness 40 and
+  "panel off" blanks, the ceiling caps outside the window, the factory reset refuses
+  without the word. Not exercised: the BOOT hold (nobody at the button) and the reset
+  itself (it would unpair the development device).
+- Next: M9 second part: IMU (taps, auto-rotation with an upright calibration), PIN, OTA.

@@ -86,6 +86,18 @@ void no_artwork(Frame &frame, const std::string &reason) {
 
 void black(Frame &frame) { frame.clear(gfx::kBlack); }
 
+void countdown(Frame &frame, int seconds) {
+  frame.clear(gfx::kBlack);
+  border(frame, Rgb{120, 30, 30});
+  gfx::text::draw_centred(frame, 6, "FACTORY", kDim, 1, 1);
+  gfx::text::draw_centred(frame, 15, "RESET", kDim, 1, 1);
+  if (seconds > 0) {
+    gfx::text::draw_centred(frame, 28, std::to_string(seconds), Rgb{255, 90, 90}, 4, 1);
+  } else {
+    gfx::text::draw_centred(frame, 32, "ERASING", Rgb{255, 90, 90}, 1, 1);
+  }
+}
+
 void pairing_code(Frame &frame, const std::string &code) {
   frame.clear(gfx::kBlack);
   border(frame, Rgb{60, 30, 90});

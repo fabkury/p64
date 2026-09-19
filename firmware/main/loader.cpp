@@ -6,6 +6,7 @@
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
@@ -115,9 +116,11 @@ void do_scan(Request &r) {
 }
 
 void task(void *) {
+  esp_task_wdt_add(nullptr);
   while (true) {
     Request *r = nullptr;
-    if (xQueueReceive(g_queue, &r, portMAX_DELAY) != pdTRUE || !r) continue;
+    esp_task_wdt_reset();
+    if (xQueueReceive(g_queue, &r, pdMS_TO_TICKS(1000)) != pdTRUE || !r) continue;
     if (r->kind == Kind::Load) {
       do_load(*r);
     } else {

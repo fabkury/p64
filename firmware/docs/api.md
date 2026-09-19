@@ -16,6 +16,9 @@ everything below against a live device.
 | `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and on events |
 | `/api/v1/frame` | GET | the panel's current logical frame as PNG (live preview) |
 | `/api/v1/frame.raw` | GET | the same as 64x64x3 RGB888 bytes |
+| `/api/v1/action/set_time` | POST | `{"utc": <seconds since 1970>}`: sets the clock by hand (and the RTC); source becomes `manual` |
+| `/api/v1/action/factory_reset` | POST | `{"confirm": "ERASE"}` required; answers, then erases settings, state, Wi-Fi, Makapix credentials and the PIN and reboots into setup mode (the card is untouched) |
+| `/api/v1/diag/coredump/erase` | POST | erases the stored core dump |
 
 `playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning}`, `artwork
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
@@ -83,6 +86,17 @@ date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
 `show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
 `interlude` carry `widget`.
+
+## Operations (M9)
+
+The status document carries `time.source` (`none`, `rtc`, `ntp`, `manual`),
+`panel.night_active` and `panel.brightness` (the effective brightness: the user's value,
+or the night schedule's target inside its window, capped by the ceiling; 0 = panel off),
+and `reliability {reset_reason, counters {power, software, panic, watchdog, brownout,
+usb, deep_sleep, other}, crash {present, task, pc, cause, backtrace}, image {partition,
+pending_verify, other_partition, other_version, other_date}}`. The counters persist in
+NVS and reset when a new image is confirmed (30 s after boot). Settings group
+`display.night` (enabled, start_minutes, end_minutes, brightness 0..255 with 0 = off).
 
 ## Streams (M8)
 

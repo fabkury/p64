@@ -5,6 +5,7 @@ idf_component_register(
         "show.cpp"
         "loader.cpp"
         "status_screens.cpp"
+        "ops.cpp"
     INCLUDE_DIRS
         "."
     PRIV_REQUIRES
@@ -18,6 +19,7 @@ idf_component_register(
         p64_makapix
         p64_widgets
         p64_stream
+        esp_driver_gpio
         p64_net
         p64_web
         json

@@ -60,6 +60,8 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
     os.path.join(COMPONENTS, "p64_stream", "src", "protocol.cpp"),
+    os.path.join(COMPONENTS, "p64_system", "src", "night.cpp"),
+    os.path.join(COMPONENTS, "p64_system", "src", "rtc_codec.cpp"),
 ]
 ZLIB_SOURCES = [os.path.join(ZLIB, f) for f in (
     "adler32.c", "crc32.c", "inffast.c", "inflate.c", "inftrees.c", "zutil.c",
@@ -78,6 +80,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_content", "include"),
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
+    os.path.join(COMPONENTS, "p64_system", "include"),
     CJSON,
     os.path.join(COMPONENTS, "animatedgif", "src"),
     LIBPNG,                               # pnglibconf.h
@@ -93,6 +96,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_content", "include"),
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
+    os.path.join(COMPONENTS, "p64_system", "include"),
 ]
 
 

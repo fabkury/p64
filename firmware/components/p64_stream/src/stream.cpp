@@ -6,6 +6,7 @@
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
@@ -236,7 +237,9 @@ void reopen_sockets() {
 
 void task(void *) {
   auto *packet = static_cast<uint8_t *>(heap_caps_malloc(kPacketBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  esp_task_wdt_add(nullptr);  // select() waits at most 250 ms
   while (true) {
+    esp_task_wdt_reset();
     if (g_reopen) reopen_sockets();
     fd_set set;
     FD_ZERO(&set);

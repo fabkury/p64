@@ -21,6 +21,7 @@
 #include "p64/storage/card.hpp"
 #include "p64/system/event_bus.hpp"
 #include "p64/system/log_ring.hpp"
+#include "p64/system/reliability.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
 #include "p64/stream/stream.hpp"
@@ -159,6 +160,7 @@ cJSON *build_status() {
   struct tm t;
   const bool synced = net::clock::local_time(t);
   cJSON_AddBoolToObject(tm, "synced", synced);
+  cJSON_AddStringToObject(tm, "source", net::clock::source());
   if (synced) {
     char buf[32];
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &t);
@@ -191,6 +193,7 @@ cJSON *build_status() {
     cJSON_AddBoolToObject(panel, "dma_moving", h.dma_moving);
     cJSON_AddNumberToObject(panel, "brightness", g_hooks.display()->brightness());
     cJSON_AddNumberToObject(panel, "rotation", static_cast<int>(g_hooks.display()->rotation()));
+    cJSON_AddBoolToObject(panel, "night_active", g_hooks.night_active ? g_hooks.night_active() : false);
   }
   if (g_hooks.playback_status) cJSON_AddItemToObject(d, "playback", g_hooks.playback_status());
   cJSON_AddItemToObject(d, "makapix", makapix_routes::makapix_status());
@@ -204,6 +207,7 @@ cJSON *build_status() {
     cJSON_AddItemToObject(d, "weather", widgets::weather_json());
   }
   cJSON_AddItemToObject(d, "stream", stream::status_json());
+  cJSON_AddItemToObject(d, "reliability", system::reliability::json());
   return d;
 }
 
@@ -287,6 +291,50 @@ esp_err_t action_reboot(httpd_req_t *req) {
   const esp_err_t r = reply_ok(req, d);
   xTaskCreate(reboot_task, "reboot", 2048, nullptr, 5, nullptr);
   return r;
+}
+
+// Factory reset (spec 15.4): the body must carry {"confirm": "ERASE"}; answers, then
+// erases and reboots from a helper task so the response leaves first.
+void factory_reset_task(void *) {
+  vTaskDelay(pdMS_TO_TICKS(300));
+  if (g_hooks.factory_reset) g_hooks.factory_reset();
+  vTaskDelete(nullptr);
+}
+
+esp_err_t action_factory_reset(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *c = cJSON_GetObjectItemCaseSensitive(body, "confirm");
+  const bool confirmed = c && cJSON_IsString(c) && std::strcmp(c->valuestring, "ERASE") == 0;
+  cJSON_Delete(body);
+  if (!confirmed) return reply_error(req, "400 Bad Request", "NOT_CONFIRMED", "send {\"confirm\":\"ERASE\"}");
+  if (!g_hooks.factory_reset) return reply_error(req, "501 Not Implemented", "UNSUPPORTED", "no factory reset hook");
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "erasing", true);
+  const esp_err_t r = reply_ok(req, d);
+  xTaskCreate(factory_reset_task, "factory", 4096, nullptr, 5, nullptr);
+  return r;
+}
+
+// "Set time from this browser" (spec 10.2): {"utc": <seconds since 1970>}.
+esp_err_t action_set_time(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *u = cJSON_GetObjectItemCaseSensitive(body, "utc");
+  const double utc = (u && cJSON_IsNumber(u)) ? u->valuedouble : 0;
+  cJSON_Delete(body);
+  if (utc < 1700000000.0 || utc > 4102444800.0) return reply_error(req, "400 Bad Request", "INVALID_ARG", "utc: seconds since 1970, 2023..2100");
+  net::clock::set_manual(static_cast<time_t>(utc));
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "synced", net::clock::synced());
+  cJSON_AddStringToObject(d, "source", net::clock::source());
+  return reply_ok(req, d);
+}
+
+esp_err_t diag_coredump_erase(httpd_req_t *req) {
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "erased", system::reliability::erase_coredump());
+  return reply_ok(req, d);
 }
 
 esp_err_t frame_png(httpd_req_t *req) {
@@ -497,6 +545,9 @@ void init(const Hooks &hooks) {
       {"/api/v1/action/next", HTTP_POST, action_next, nullptr, false, false, nullptr},
       {"/api/v1/action/play", HTTP_POST, action_play, nullptr, false, false, nullptr},
       {"/api/v1/action/reboot", HTTP_POST, action_reboot, nullptr, false, false, nullptr},
+      {"/api/v1/action/factory_reset", HTTP_POST, action_factory_reset, nullptr, false, false, nullptr},
+      {"/api/v1/action/set_time", HTTP_POST, action_set_time, nullptr, false, false, nullptr},
+      {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
       {"/api/v1/frame", HTTP_GET, frame_png, nullptr, false, false, nullptr},
       {"/api/v1/frame.raw", HTTP_GET, frame_raw, nullptr, false, false, nullptr},
       {"/api/v1/wifi/scan", HTTP_GET, wifi_scan, nullptr, false, false, nullptr},

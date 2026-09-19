@@ -2,6 +2,7 @@
 
 #include "driver/i2c_master.h"
 #include "esp_log.h"
+#include "p64/system/i2c_bus.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
@@ -15,7 +16,6 @@ constexpr uint8_t kWakeup[] = {0x35, 0x17};
 constexpr uint8_t kSleep[] = {0xB0, 0x98};
 constexpr uint8_t kMeasure[] = {0x7C, 0xA2};  // clock stretching, normal mode, temperature first
 
-i2c_master_bus_handle_t g_bus = nullptr;
 i2c_master_dev_handle_t g_dev = nullptr;
 
 uint8_t crc8(const uint8_t *data, size_t len) {
@@ -31,28 +31,9 @@ uint8_t crc8(const uint8_t *data, size_t len) {
 
 bool init() {
   if (g_dev) return true;
-  i2c_master_bus_config_t bus = {};
-  bus.i2c_port = I2C_NUM_0;
-  bus.sda_io_num = static_cast<gpio_num_t>(CONFIG_P64_I2C_SDA);
-  bus.scl_io_num = static_cast<gpio_num_t>(CONFIG_P64_I2C_SCL);
-  bus.clk_source = I2C_CLK_SRC_DEFAULT;
-  bus.glitch_ignore_cnt = 7;
-  bus.flags.enable_internal_pullup = true;
-  esp_err_t err = i2c_new_master_bus(&bus, &g_bus);
-  if (err != ESP_OK) {
-    ESP_LOGW(TAG, "I2C bus: %s", esp_err_to_name(err));
-    return false;
-  }
-  i2c_device_config_t dev = {};
-  dev.dev_addr_length = I2C_ADDR_BIT_LEN_7;
-  dev.device_address = kAddress;
-  dev.scl_speed_hz = 100000;
-  dev.scl_wait_us = 20000;  // the measurement stretches the clock for up to 12 ms
-  err = i2c_master_bus_add_device(g_bus, &dev, &g_dev);
-  if (err != ESP_OK) {
-    ESP_LOGW(TAG, "I2C device: %s", esp_err_to_name(err));
-    return false;
-  }
+  // 20 ms clock-stretch allowance: the measurement stretches the clock for up to 12 ms.
+  g_dev = system::i2c_add_device(kAddress, 100000, 20000);
+  if (!g_dev) return false;
   float t, h;
   if (!read(t, h)) {
     ESP_LOGW(TAG, "no SHTC3 answer on SDA %d / SCL %d", CONFIG_P64_I2C_SDA, CONFIG_P64_I2C_SCL);
