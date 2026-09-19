@@ -1,4 +1,10 @@
-# p64 firmware
+# p64 hardware tests
+
+This folder was `firmware/` until 2026-09-19. It is the test firmware that brought up the
+driver board and the panel, kept as technical reference (pin map, driver patch, frame
+pacing, tonal depth, network settings, microSD, measured numbers) for the product firmware
+that is being built from zero in `firmware/`. It still builds and flashes as described
+below; everything in it refers to this folder.
 
 ESP-IDF firmware for the Waveshare ESP32-S3-RGB-Matrix driver board and the
 RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
@@ -417,7 +423,7 @@ TLS sessions once caused.
 ## Layout
 
 ```
-firmware/
+hardware-tests/
   CMakeLists.txt          ESP-IDF project "p64"
   sdkconfig.defaults      every setting that differs from ESP-IDF defaults (board, panel, pins)
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
@@ -487,7 +493,7 @@ The main loop presents one frame per panel refresh.
 - Driver: <https://github.com/esphome-libs/esp-hub75> (docs/ has menuconfig, troubleshooting
   and multi-panel guides).
 
-To re-create the local clone (from `firmware/`):
+To re-create the local clone (from `hardware-tests/`):
 
 ```
 git clone https://github.com/waveshareteam/ESP32-S3-RGB-Matrix reference/ESP32-S3-RGB-Matrix

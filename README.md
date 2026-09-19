@@ -19,11 +19,12 @@ terminals feed the panel's VH4 socket.
 
 | Path | What it is |
 |---|---|
-| `firmware/` | ESP-IDF (v5.5) firmware for the driver board. See `firmware/README.md` for setup, build and flash. |
+| `firmware/` | The p64 product firmware, started from zero on 2026-09-19 (README only so far; features and architecture to be decided). See `firmware/README.md`. |
+| `hardware-tests/` | The former `firmware/`: the ESP-IDF (v5.5) test firmware that brought up the board and panel (display driver and frame pacing, GIF playback, Wi-Fi, Makapix Club, microSD, web control). Kept as technical reference for the product firmware. See `hardware-tests/README.md` for setup, build and flash. |
 | `enclosure/` | The 3D-printed back shell: OpenSCAD source, ready-to-print STL/3MF, renders and the Waveshare drawings it was checked against. See `enclosure/README.md`. |
 | `enclosure/archive/2026-09-dhruv-solidworks/` | A friend's separate SolidWorks take on the enclosure. Kept as-is. |
 | `prompt/` | The task prompts that drove each development session, numbered in order. |
-| `firmware/reference/` | Local clones of upstream repositories the firmware was written against (git-ignored). The clone command is in `firmware/README.md`. |
+| `hardware-tests/reference/` | Local clones of upstream repositories the hardware tests were written against (git-ignored). The clone command is in `hardware-tests/README.md`. |
 
 ## Status
 
@@ -36,6 +37,9 @@ terminals feed the panel's VH4 socket.
   board from outside, and is the version to print next. v5 is a kept alternative that adds
   the speaker shipped with the driver board, sunk into the upper back and firing
   backwards. Nothing after v1 is printed yet.
-- Firmware: display bring-up done (pins, panel driver, orientation verified); rendering
-  frame-locked to the panel refresh at 122 Hz; GIF playback (Makapix artwork) running as
-  a frame-rate test. See `firmware/README.md`.
+- Hardware tests (`hardware-tests/`): display bring-up done (pins, panel driver,
+  orientation verified); rendering frame-locked to the panel refresh (271.3 Hz); GIF
+  playback from Makapix Club and the microSD card, with web control. See
+  `hardware-tests/README.md`.
+- Firmware (`firmware/`): started from zero on 2026-09-19; holds only its README until
+  the features and architecture are decided.
