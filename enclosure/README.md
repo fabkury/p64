@@ -21,12 +21,15 @@ leaning back 12 degrees.
 | `output/v2/` | v2 outputs under the same file names: `p64_enclosure_print.stl` / `.3mf`, `p64_enclosure_service.stl` (0.45 mm clearance), and renders (back, assembly with knobs, section through an encoder, print orientation, and `render_product.png` / `render_product_back.png`: the assembled display standing on a table, seen from the front-left and from the back-right with the knobs). |
 | `src/p64_enclosure_v3.scad` | **v3** (kept alternative, v2 remains the version to print): v2 with the stand's wedge turned into a recessed plinth (see [v3](#v3-recessed-plinth)), so the front rim is 2 mm on all four sides. |
 | `output/v3/` | v3 outputs, same file names and renders as v2. |
-| `src/p64_enclosure_v4.scad` | **v4** (the version to print): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The cables no longer reach the controller from outside. |
+| `src/p64_enclosure_v4.scad` | **v4** (superseded by v6): v2 plus two panel-mount USB-C sockets on the back face for POWER and USB, see [v4](#v4-panel-mount-usb-c-sockets). The v1 print showed there is no room inside for the sockets. |
 | `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
 | `src/p64_enclosure_v5.scad` | **v5** (kept alternative, v4 remains the version to print): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
 | `output/v5/` | v5 outputs, same file names as v4, plus `render_section_spk.png` through the speaker's lugs. |
-| `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker so far). |
+| `src/p64_enclosure_v6.scad` | **v6** (the version to print): v4 with the panel-mount sockets replaced by two small 90-degree USB-C adapters that stay on the controller's ports, reached through one window in the back face, see [v6](#v6-90-degree-adapters-on-the-ports). Needs a hand-cut notch in the panel frame. |
+| `output/v6/` | v6 outputs, same file names as v4, plus `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line) and `render_frame_notch.png` (where to notch the panel frame, in red). |
+| `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker, the v1 print, the 90-degree USB-C adapter). |
 | `input/PXL_20260911_*.jpg` | Photos of the speaker box: front, front with lead, corner lug. |
+| `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter used from v6 on; one has the hand measurements drawn on it. |
 
 Each shell version gets its own sub-folder under `output/` with identical file names inside;
 the version lives in the folder name (and in the source file name under `src/`).
@@ -183,6 +186,61 @@ shell; the controller's ports only ever see the short internal ribbons.
 - **Printing:** as v2. The hook lips overhang 2.5 mm at 2.5 mm height, which MJF prints
   without support and FDM handles with part cooling.
 
+## v6: 90-degree adapters on the ports
+
+`src/p64_enclosure_v6.scad` is v4 with the JUXINICE panel-mount sockets replaced. Handling
+the v1 print showed there is no room inside the shell for the sockets' housings and their
+ribbon plugs, so the external cables now plug into two small 90-degree USB-C adapters that
+stay on the controller's ports for good, through one window in the back face. Everything
+else is v4 (encoders, front bar, no speaker). Set `adapters = false` to get a shell with no
+USB opening at all.
+
+- **Hardware** (hand-measured on 2026-09-19, `input/measurements.md`, photos in
+  `input/usb-c-90-degree-adapter/`): a 19.3 x 12.7 x 8.0 mm aluminium-shelled body; the
+  male plug leaves the wide face with its centre 4.8 mm from one end (7.7 mm proud of the
+  face, boot included), the female socket sits in the far end face. Plugged into a port
+  with the controller on the panel, the body hangs below the port with its length running
+  front to back and the socket facing the back wall; the two bodies touch (the ports are
+  12.74 mm apart), so the pair is 25.4 mm wide. POWER is the left one seen from the back.
+- **Where they end up** (model, `z_chip` = 0.5): receptacle axis 3.7 mm behind the frame's
+  back face; bodies from 1.1 mm in front of that face to 18.2 mm behind it, i.e. 0.5 mm
+  short of the cavity back and 2.9 mm inside the outer surface; body underside 0.4 mm
+  above the frame's outer wall; the pair spans x = -12.4..13.0 mm.
+- **Window:** one 26.2 x 9.2 mm rounded-rectangle opening through the back wall (0.4 mm
+  clearance per side in x, 0.6 in y, around the pair), with a 1 mm 45-degree chamfer on the
+  outside; the socket faces sit 2.9 mm down in it and a cable plug's boot goes into that
+  well. One groove beside the window's right end marks USB, as in v4. One cable at a time
+  is the design case (chosen 2026-09-19); two boots at or under the USB-C maximum of
+  12.35 mm would also fit side by side.
+- **Cradle:** a U on the cavity back around the last 6 mm of the bodies: a 2 mm bottom wall
+  merging into the shell's bottom wall and 2 mm side walls up to the bodies' top face,
+  0.3 mm clearance in x and 0.5 in y (the boot gap that sets the bodies' height is an
+  estimate), 1 mm entry chamfer, open towards the controller. It takes the sideways and
+  downward part of the cable forces so they cannot lever the adapters in the receptacles,
+  and stops the pair creeping out. The right side wall ends 1.15 mm below the mic1 hole and
+  the window's chamfer passes 1.5 mm from it (the mic position is +-1 mm).
+- **Frame notch (hand work):** the bodies reach 1.1 mm in front of the frame's back face,
+  and right there the frame's back plate has a 3.9 mm strip between its opening (58.4 mm
+  from the centre at the ports) and its 1.6 mm outer wall. Cut that strip away over
+  27.4 mm centred on the ports, through the plate: in the panel's own orientation (arrows
+  up, seen from the back) x = -62.3..-58.4, y = -14.0..+13.4 mm. The outer wall stays.
+  `render_frame_notch.png` shows the cut in red below the two ports. On 2026-09-19 an
+  adapter on the uncut plate stopped about 1 mm short of seating; after cutting, check
+  that both seat fully and that the bodies clear the wall.
+- **Removed from v4:** the two sockets with their cut-outs and screw holes, the ribbon
+  hooks, and the flange keep-outs (the lower vent band gets its +-30 columns back).
+- **Numbers** (printed by the `echo` lines): window 26.24 x 9.2; cradle x = -14.7..15.3,
+  z = 12.7..18.7; socket faces z = 18.2; well depth 2.92; pair y = -61.9..-53.9.
+- **Assembly change:** push an adapter onto each port before the panel slides in (it only
+  goes one way, body towards the frame's edge); the pair enters the cradle as the panel
+  seats. Then the six screws as in v1. Cables plug in from the back, straight, 2.9 mm deep
+  in the window. Standing, the back face points 6 degrees below horizontal (12 degrees of
+  lean minus the 6 degree wedge), and the window's centre is about 8 mm above the table,
+  so a cable leaves backwards, slightly downwards, and reaches the table a few
+  centimetres behind the display (`render_product_back.png`).
+- **Printing:** as v4. The cradle walls stand up from the bed face; the window's chamfer
+  is a 45-degree overhang that starts at the bed and needs no support.
+
 ## v5: speaker in the back
 
 `src/p64_enclosure_v5.scad` is v4 plus the 8 ohm speaker box that ships with the
@@ -234,10 +292,11 @@ kept as an alternative: on 2026-09-11 the user chose to keep v4 as the version t
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` to `output/v5/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` to `output/v6/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
+  v6 adds the cradle ribs on the bed side and the chamfered window; nothing else changes.
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
 - For FDM use the 0.3 mm `p64_enclosure_print.stl`: the 0.45 mm `_service.stl` printed in
   PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
@@ -267,7 +326,9 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 |---|---|---|---|
 | Centre of the panel's HUB75 IN header | (-35.0, +5.4) mm from the panel centre, panel arrows up, seen from the back | `hub75_in_native` | From the product photo, +-1 mm. Pin holes (3.5 mm), mic holes (3.5 mm) and the plug pocket (30 mm) are sized to absorb that error. With this value the chip's edge overhangs the frame rim by 0.8 mm, which fits the photo. v1 print: the base pocket lands exactly on the two USB-C ports; whether the pin and mic holes land over the buttons and mics is not checked yet. |
 | Height of the controller PCB's back face above the frame's back face | 0.5 mm | `z_chip` | Must be 0 or more because the chip edge overhangs the rim. Only the plug pocket (`pocket_z`) depends on it. v1 print: with the panel seated there is a visible gap between the controller and the back wall, so the value is safe. |
-| Right-angle plug body | up to 12 wide x 7 thick x 14 long | `pocket_w`, `pocket_z` | Enlarge the pocket if yours is bigger. v1 print: not tried yet. |
+| Right-angle plug body | up to 12 wide x 7 thick x 14 long | `pocket_w`, `pocket_z` | Enlarge the pocket if yours is bigger. v1 print: not tried yet. v6 has no pocket. |
+| 90-degree adapter: boot gap between its body and the receptacle face (v6) | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; the cradle has 0.5 mm of clearance in that direction. Measure the seated adapter after notching the frame. |
+| 90-degree adapter: corner radius of the body cross-section (v6) | 3.0 mm | `ad_r` | From the photos, looks like 3.5 to 4. A smaller value in the model only makes the cradle and window corners tighter than needed. |
 
 ## Verified with the v1 print
 
@@ -292,8 +353,8 @@ the desk, panel with controller and the right-angle cable, lit at night).
 
 Screws: none shipped with the panel or the controller. Buy six M3 x 10 (socket head cap or
 pan head, head 6 mm or less for the 6.5 mm counterbore; not countersunk). The next shell
-(v4) adds no screws: the encoder boards bring their own bushing nut and washer, the USB-C
-sockets bring their own screws.
+(v6) adds no screws: the encoder boards bring their own bushing nut and washer, and the
+90-degree adapters simply stay plugged into the controller.
 
 ## Main parameters (`src/p64_enclosure.scad`)
 
@@ -318,12 +379,18 @@ openscad -o output/v4/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclos
 openscad -o output/v4/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v4.scad
 openscad -o output/v5/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v5.scad
 openscad -o output/v5/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v5.scad
+openscad -o output/v6/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v6.scad
+openscad -o output/v6/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v6.scad
 ```
 
 The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
 The v3 to v5 renders use the same commands with `v3`, `v4` or `v5` in both paths; v4 adds
 `render_section_usb.png` with `part="section_usb"` and `--camera=210,-70,70,-60,-40,5`,
-v5 adds `render_section_spk.png` with `part="section_spk"` and `--camera=170,-40,90,-60,27,10`:
+v5 adds `render_section_spk.png` with `part="section_spk"` and `--camera=170,-40,90,-60,27,10`.
+v6 has no `section_usb`; instead `render_section_ad.png` uses `part="section_ad"` with
+`--camera=110,-120,55,-6,-50,8`, `render_section_win.png` uses `part="section_win"` with
+`--camera=15,-180,45,0,-55,10`, and `render_frame_notch.png` uses `part="frame"` with
+`--projection=o --camera=0,-48,170,0,-48,0` (orthographic, straight at the back of the panel):
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
@@ -350,3 +417,5 @@ back 12 degrees, base on z = 0) with a black LED-face mock-up and a table slab.
 - Panel-mount USB-C extension (v4): JUXINICE 2-pack, 90 degree, 15 cm, USB 2.0, 100 W PD,
   https://www.amazon.com/JUXINICE-USB-Male-Female-Cable/dp/B0FL7HY5G8 ; dimensions taken
   from the seller's listing drawings.
+- 90-degree USB-C adapter (v6): a generic aluminium-shelled male-to-female right-angle
+  adapter, no drawing; dimensions hand-measured (`input/measurements.md`).

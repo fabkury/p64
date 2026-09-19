@@ -33,10 +33,13 @@ terminals feed the panel's VH4 socket.
   adds two rotary encoders on the back face for user input (two Adafruit 5880 I2C encoder
   boards chained on the driver board's SH1.0 GPIO socket). v3 is a kept alternative that
   turns the stand's wedge into a recessed plinth. v4 is v2 plus two panel-mount USB-C
-  sockets on the back face (POWER and USB), so the cables no longer plug into the driver
-  board from outside, and is the version to print next. v5 is a kept alternative that adds
-  the speaker shipped with the driver board, sunk into the upper back and firing
-  backwards. Nothing after v1 is printed yet.
+  sockets on the back face (POWER and USB); the v1 print (received 2026-09-18, fits)
+  showed there is no room for them. v5 is a kept alternative that adds the speaker
+  shipped with the driver board, sunk into the upper back and firing backwards. v6
+  (2026-09-19) is v4 with the sockets replaced by two small 90-degree USB-C adapters that
+  stay on the driver board's ports behind one window in the back face (a notch must be
+  cut by hand in the panel frame's back plate), and is the version to print next.
+  Nothing after v1 is printed yet.
 - Hardware tests (`hardware-tests/`): display bring-up done (pins, panel driver,
   orientation verified); rendering frame-locked to the panel refresh (271.3 Hz); GIF
   playback from Makapix Club and the microSD card, with web control. See
