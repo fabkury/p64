@@ -25,8 +25,8 @@ leaning back 12 degrees.
 | `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
 | `src/p64_enclosure_v5.scad` | **v5** (kept alternative, v4 remains the version to print): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
 | `output/v5/` | v5 outputs, same file names as v4, plus `render_section_spk.png` through the speaker's lugs. |
-| `src/p64_enclosure_v6.scad` | **v6** (the version to print): v4 with the panel-mount sockets replaced by two small 90-degree USB-C adapters that stay on the controller's ports, reached through one window in the back face, see [v6](#v6-90-degree-adapters-on-the-ports). Needs a hand-cut notch in the panel frame. |
-| `output/v6/` | v6 outputs, same file names as v4, plus `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line) and `render_frame_notch.png` (where to notch the panel frame, in red). |
+| `src/p64_enclosure_v6.scad` | **v6** (the version to print): v4 with the panel-mount sockets replaced by two small 90-degree USB-C adapters that stay on the controller's ports, reached through one window in the back face, see [v6](#v6-90-degree-adapters-on-the-ports). Needs a hand-cut notch in the panel frame. Edited in place on 2026-09-19: the outer edges are chamfered and filleted for the hand, see [Edges](#edges-2026-09-19-edited-in-place). |
+| `output/v6/` | v6 outputs, same file names as v4, plus `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line), `render_frame_notch.png` (where to notch the panel frame, in red) and `render_section_edge.png` (the wall profile through x = 33: the edge chamfer and fillets). |
 | `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker, the v1 print, the 90-degree USB-C adapter). |
 | `input/PXL_20260911_*.jpg` | Photos of the speaker box: front, front with lead, corner lug. |
 | `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter used from v6 on; one has the hand measurements drawn on it. |
@@ -241,6 +241,51 @@ USB opening at all.
 - **Printing:** as v4. The cradle walls stand up from the bed face; the window's chamfer
   is a 45-degree overhang that starts at the bed and needs no support.
 
+### Edges (2026-09-19, edited in place)
+
+Up to here every outer edge of the shell was sharp except the four vertical corners
+(2.6 mm radius, the most a uniform 2 mm wall allows against the frame's sharp corners).
+On 2026-09-19 the user asked for edges that are softer to the hand, and v6 was edited in
+place rather than forked: the envelope (walls, base plane, front, back plane) did not
+move, only its edges did. With `edge_back_c`, `edge_rim_r`, `edge_base_r` and
+`cb_chamfer` set to 0 the previous body comes back exactly (checked against the previous
+`output/v6` mesh: same volume, area and vertex set).
+
+- **Back face perimeter:** a 45-degree chamfer, 1.4 mm (`edge_back_c`). This edge is the
+  bed side of the print, where a fillet would start as a horizontal overhang; a chamfer
+  prints clean. 1.4 rather than 1.5 because the top wall and the base meet the back face
+  at 96 degrees, not 90, which brings the chamfer closer to the cavity: the material left
+  on the corner diagonal (cavity edge to chamfer plane) is 2.02 mm at the top edge, 2.12 at
+  the sides and 2.36 at the bottom, printed by the `edges:` echo line; 1.5 mm would leave
+  1.95 at the top. The chamfer wraps each rounded corner as a cone. On the back face it
+  ends 1.6 mm from the USB window's own chamfer and over 4 mm from the nearest counterbore.
+  The bed footprint is now 129.6 x 130.3 mm.
+- **Front rim:** a 1.5 mm fillet on the outer edge (`edge_rim_r`). The rim is the end of
+  the 2 mm wall, so 0.5 mm of flat remains next to the panel; the pocket edge itself stays
+  sharp and the fit against the frame is unchanged.
+- **Base front edge:** a 3 mm fillet (`edge_base_r`) on the acute 78-degree edge under the
+  LED face, the sharpest edge of the shell and the front line of the base. It is backed by
+  the solid wedge. The base's front contact line moves back 3.7 mm and the back chamfer
+  moves the rear one forward 1.4 mm, so the contact patch is 29.6 mm deep instead of 34.7;
+  the centre of gravity stays about 7.6 mm in front of the rear contact line, so a backward
+  push of about 7 degrees tips it (8 before). Along the two front-bottom
+  corners the 3 mm rounding blends into the rim's 1.5 mm and the vertical corners' 2.6 mm.
+- **Counterbores:** a 0.5 mm chamfer on the six mouths (`cb_chamfer`), where the fingers
+  land on the back.
+- **Unchanged:** pocket, ledge, bosses, cradle, vent slots, pin and mic holes, encoder
+  spot-faces (they must stay flat for the nut), and the USB window with its 1 mm chamfer.
+- **How it is built:** `outer_body()` is the hull of thin sections of the envelope, each
+  with every bounding plane moved inwards by its own amount: a stack of 13 sections
+  sweeps the rim fillet (7.5 degrees per facet, like `$fn = 48`), a capsule of two spheres
+  makes the base bar, two sections make the back chamfer. Each section keeps a corner
+  radius of `r_out` minus its inset, so the vertical corners still come out at 2.6 mm.
+- **Printing:** the chamfer rises from the bed at 45 degrees along the two straight sides
+  and at 42 degrees along the top and bottom edges (those two walls overhang 6 degrees),
+  1.4 mm tall, no support. The fillets are at the top of the print. Elephant-foot
+  compensation matters less for the outline now (the first layer is inside the chamfer)
+  but keep it for the holes. `render_section_edge.png` shows the profile through x = 33
+  (`part = "section_edge"`, a cut clear of every feature).
+
 ## v5: speaker in the back
 
 `src/p64_enclosure_v5.scad` is v4 plus the 8 ohm speaker box that ships with the
@@ -296,7 +341,10 @@ kept as an alternative: on 2026-09-11 the user chose to keep v4 as the version t
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
-  v6 adds the cradle ribs on the bed side and the chamfered window; nothing else changes.
+  v6 adds the cradle ribs on the bed side and the chamfered window, and since 2026-09-19
+  a 1.4 mm chamfer around the bed-side edge (first layer 129.6 x 130.3 mm) with the rim
+  and base fillets at the top of the print (print height 34.2 mm, the front-bottom edge
+  being rounded); nothing else changes.
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
 - For FDM use the 0.3 mm `p64_enclosure_print.stl`: the 0.45 mm `_service.stl` printed in
   PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
@@ -366,6 +414,10 @@ pan head, head 6 mm or less for the 6.5 mm counterbore; not countersunk). The ne
 - `part` selects `shell`, `print`, `assembly`, `section_x`, `section_y`
 - v2 only: `encoders`, `enc_pos`, `enc_rot`, `enc_bush_l`, `enc_spot_t`, `enc_post_d`,
   `enc_peg_d`, `enc_keepout`; `part` also accepts `section_enc`
+- v6 only: `adapters`, `ad_*` (the 90-degree adapters, window and cradle); the edge
+  treatments `edge_back_c` 1.4, `edge_rim_r` 1.5, `edge_base_r` 3, `cb_chamfer` 0.5 (all 0
+  = the sharp-edged body); `part` also accepts `section_ad`, `section_win`, `frame` and
+  `section_edge` (cut at `section_edge_x`)
 
 Regenerate the STL with:
 
@@ -389,8 +441,10 @@ The v3 to v5 renders use the same commands with `v3`, `v4` or `v5` in both paths
 v5 adds `render_section_spk.png` with `part="section_spk"` and `--camera=170,-40,90,-60,27,10`.
 v6 has no `section_usb`; instead `render_section_ad.png` uses `part="section_ad"` with
 `--camera=110,-120,55,-6,-50,8`, `render_section_win.png` uses `part="section_win"` with
-`--camera=15,-180,45,0,-55,10`, and `render_frame_notch.png` uses `part="frame"` with
-`--projection=o --camera=0,-48,170,0,-48,0` (orthographic, straight at the back of the panel):
+`--camera=15,-180,45,0,-55,10`, `render_frame_notch.png` uses `part="frame"` with
+`--projection=o --camera=0,-48,170,0,-48,0` (orthographic, straight at the back of the panel),
+and `render_section_edge.png` uses `part="section_edge"` with `--projection=o --camera=333,-4,5,33,-4,5`
+(orthographic, looking at the cut face from +X: the base is on the left, the back face on top):
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
