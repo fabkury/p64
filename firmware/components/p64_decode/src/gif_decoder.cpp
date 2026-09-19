@@ -76,10 +76,15 @@ bool GifDecoder::next(uint32_t &delay_ms) {
   int stored_ms = 0;
   int rc = gif_->playFrame(false, &stored_ms, this);
   if (!frame_started_) {
-    // Nothing was drawn: trailing data after the last frame, or a broken file.
+    // Nothing was drawn: trailing data after the last frame (the frame returned before
+    // this call was the loop's last one, unannounced), or a broken file.
     if (rc < 0) {
       fail("decode error");
       return false;
+    }
+    if (loops_ == 0) {
+      info_.frame_count = frames_this_loop_;
+      if (frames_this_loop_ == 1) info_.animated = false;
     }
     rewind();
     frame_started_ = false;
