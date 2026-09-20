@@ -361,7 +361,9 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   and preview poll every second: 120 swaps, 7 798 frames presented, 0 late flips, 0
   panel timeouts, no stall, no reboot, internal heap floor 11.8 KB (20.5 KB typical),
   0 poll errors. The portal page, the city search and the format refusal checked over
-  HTTP; the format itself was not run on the development card.
+  HTTP; the format itself was not run on the development card. A second soak of 45
+  minutes on the committed build: 540 swaps, 31 879 frames, 0 late flips, 0 timeouts,
+  no reboot, heap floor 13.8 KB (23 KB typical), 0 poll errors.
 - Remaining: the analogue clock face (to be designed with the user), the acceptance
   measurements that need instruments (camera at 240 fps, a power meter), a 12 h and a
   24 h soak (run `soak.py --minutes 720` when the device can be left alone).
