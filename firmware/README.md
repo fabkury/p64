@@ -4,15 +4,34 @@ The firmware of the p64 device: a desktop 64x64 RGB LED matrix built on Waveshar
 ESP32-S3-RGB-Matrix driver board and RGB-Matrix-P2-64x64 panel (the repository README
 lists the hardware).
 
-This folder was started from zero on 2026-09-19. Nothing is decided yet: the device's
-features and the firmware's architecture are the next discussion, and this README is the
-only file until then.
+Started from zero on 2026-09-19 and built in ten milestones the same day (M0 to M10,
+`docs/PROGRESS.md` has the table, the log and what was verified on the device). The
+design is `docs/architecture.md`, the routes `docs/api.md`.
 
 ## Specification
 
 What the device does is fixed by `docs/spec/p64-spec.md` at the repository root, with
-the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`. This folder's README will
-describe how the firmware is built and flashed once it exists.
+the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`.
+
+## Building, flashing, testing
+
+ESP-IDF v5.5.4 (`tools/env.ps1` knows the install), PowerShell 7, from this folder:
+`.	oolsuild.ps1`, `.	oolslash.ps1` (auto-detects the board's COM port),
+`.	ools\monitor.ps1`, `.	ools\idf.ps1 <args>`. `sdkconfig.defaults` is the source
+of truth; a changed default needs `sdkconfig` deleted. Wi-Fi credentials live only in
+the git-ignored `sdkconfig.secrets`. Boot logs without a reset: `tools\serial_peek.py
+COM13 <seconds>` with the IDF venv's python while `POST /api/v1/action/reboot`
+restarts the firmware.
+
+Host tests (`python tests\hostun.py`, gcc and the system Python with Pillow) build
+the ESP-IDF-free parts: decoders against Pillow pixel for pixel, the content model,
+fonts, widgets' pure parts, the stream protocol, the night rule, the RTC codec, taps and
+orientation, the version rule. Device tests under `tests/device/` run against the
+live device: `api_smoke`, `content_smoke`, `makapix_smoke [--paired]`,
+`widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `pin_smoke`, `ota_smoke
+[--no-install]`, `ui_smoke`, and `soak --minutes N` for an unattended acceptance run.
+Tools: `stream_send.py` (send pixels), `release_assets.py` (the GitHub release assets),
+`gen_fonts.py`, `gen_weather_icons.py`, `gen_ui_icons.py`.
 
 ## Fonts and icons
 
