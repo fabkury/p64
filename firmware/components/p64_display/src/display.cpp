@@ -25,9 +25,14 @@ namespace {
 
 constexpr const char *TAG = "display";
 
-// Minimum refresh rate the driver is asked for in each mode. Quality is the sdkconfig
-// value (250 -> transition bit 4, 271 Hz); Photo selects transition bit 6 (698 Hz).
+// The refresh profile (bit planes sent, minimum refresh rate) of each mode. Quality is
+// the sdkconfig depth and rate (10 planes, 250 Hz -> transition bit 4, 271 Hz on this
+// panel). Photo drops the two lowest planes (spec 3.1): 8 planes at 600 Hz minimum ->
+// transition bit 4, 814 Hz, 256 codes, about three quarters of Quality's light (the
+// halved windows of the planes sent once cost duty cycle).
+constexpr unsigned kQualityPlanes = CONFIG_HUB75_BIT_DEPTH;
 constexpr unsigned kQualityMinRefreshHz = CONFIG_HUB75_MIN_REFRESH_RATE;
+constexpr unsigned kPhotoPlanes = 8;
 constexpr unsigned kPhotoMinRefreshHz = 600;
 
 // Timed fallback: extra time after the refresh period before the back buffer is
@@ -200,7 +205,7 @@ bool Display::start_driver(unsigned min_refresh_hz) {
   ESP_LOGI(TAG,
            "HUB75 refresh running (%s mode): %d bit planes, planes 0..%d sent once with halving output-enable "
            "windows, %u transmissions per frame; refresh period %.1f us (%.1f Hz), GDMA priority %d",
-           mode_ == Mode::Photo ? "photo" : "quality", CONFIG_HUB75_BIT_DEPTH, transition,
+           mode_ == Mode::Photo ? "photo" : "quality", driver_->get_bit_planes(), transition,
            static_cast<unsigned>(driver_->get_descriptor_count()), refresh_period_us(), 1e6 / refresh_period_us(),
            driver_->get_dma_priority());
   if (lcd_dma_channel_ >= 0) {
@@ -221,18 +226,23 @@ void Display::stop_driver() {
   flip_pending_ = false;
 }
 
-// The mode changes the minimum refresh rate in place (p64 driver patch): the DMA stops,
-// the descriptor chains are rebuilt for the new transition bit and the DMA restarts on
-// the same channel with the picture still in the row buffers. A full driver re-creation
-// was tried first and left the DMA stalled (2026-09-19).
+// The mode changes the driver's refresh profile in place (p64 driver patch): the DMA
+// stops, the descriptor chains are rebuilt for the new plane count and transition bit
+// inside the arrays from begin(), and the DMA restarts on the same channel. A full
+// driver re-creation was tried first and left the DMA stalled (2026-09-19); a rebuild
+// that re-allocated the chains failed for lack of internal RAM after hours of uptime
+// and left the panel dark (2026-09-20). The row buffers keep the previous picture, whose
+// codes were made with the previous LUT, so both buffers are repainted from physical_.
 bool Display::set_mode(Mode mode) {
   std::lock_guard<std::mutex> lock(driver_mutex_);
   if (!driver_) return false;
   if (mode == mode_) return true;
   const int64_t t0 = esp_timer_get_time();
+  const unsigned planes = mode == Mode::Photo ? kPhotoPlanes : kQualityPlanes;
   const unsigned hz = mode == Mode::Photo ? kPhotoMinRefreshHz : kQualityMinRefreshHz;
-  if (!driver_->set_min_refresh_rate(static_cast<uint16_t>(hz))) {
-    ESP_LOGE(TAG, "mode switch refused by the driver");
+  if (!driver_->set_refresh_profile(static_cast<uint8_t>(planes), static_cast<uint16_t>(hz))) {
+    ESP_LOGE(TAG, "mode switch to %s refused by the driver; staying in %s", mode == Mode::Photo ? "photo" : "quality",
+             mode_ == Mode::Photo ? "photo" : "quality");
     return false;
   }
   mode_ = mode;
@@ -251,10 +261,40 @@ bool Display::set_mode(Mode mode) {
   if (lcd_dma_channel_ >= 0 && !learn_chains()) lcd_dma_channel_ = -1;
 #endif
   last_flip_us_ = esp_timer_get_time();
-  ESP_LOGI(TAG, "panel mode switched to %s in %lld ms: %.1f Hz, transition bit %d, %s", mode == Mode::Photo ? "photo" : "quality",
-           static_cast<long long>((esp_timer_get_time() - t0) / 1000), 1e6 / refresh_period_us(),
-           driver_->get_lsb_msb_transition_bit(), lcd_dma_channel_ >= 0 ? "frame-locked" : "timed waits");
+  repaint_both_buffers();
+  ESP_LOGI(TAG, "panel mode switched to %s in %lld ms: %d bit planes, %.1f Hz, transition bit %d, %s",
+           mode == Mode::Photo ? "photo" : "quality", static_cast<long long>((esp_timer_get_time() - t0) / 1000),
+           driver_->get_bit_planes(), 1e6 / refresh_period_us(), driver_->get_lsb_msb_transition_bit(),
+           lcd_dma_channel_ >= 0 ? "frame-locked" : "timed waits");
   return true;
+}
+
+// After a profile switch the pictures in the row buffers carry the previous LUT's codes.
+// Paint the last presented picture into the back buffer, flip, wait for the DMA to move
+// over, then paint the other buffer too: both hold the current picture, no flip is
+// pending, and a static picture (a still artwork, a clock between updates) is right
+// without waiting for the next present().
+void Display::repaint_both_buffers() {
+  push_physical();
+  wait_for_back_buffer();
+  push_physical();
+  wait_for_back_buffer();
+}
+
+void Display::push_physical() {
+  driver_->draw_pixels(0, 0, gfx::kPanelWidth, gfx::kPanelHeight, physical_, Hub75PixelFormat::RGB888,
+                       Hub75ColorOrder::RGB, false);
+#if defined(CONFIG_HUB75_DOUBLE_BUFFER)
+  if (lcd_dma_channel_ >= 0) {
+    const uint32_t ch = static_cast<uint32_t>(lcd_dma_channel_);
+    const uint32_t fetching = GDMA.channel[ch].out.dscr;
+    old_front_last_ = in_chain(fetching, chain_last_[1], chain_bytes_) ? chain_last_[1] : chain_last_[0];
+    gdma_ll_tx_clear_interrupt_status(&GDMA, ch, GDMA_LL_EVENT_TX_EOF);
+  }
+  driver_->flip_buffer();
+  flip_pending_ = true;
+#endif
+  last_flip_us_ = esp_timer_get_time();
 }
 
 void Display::present(const gfx::Frame &frame) {
@@ -410,7 +450,7 @@ Display::Health Display::health() const {
   h.timeouts = totals_.timeouts + stats_.timeouts;
   h.dma_priority = driver_ ? driver_->get_dma_priority() : -1;
   h.transition_bit = driver_ ? driver_->get_lsb_msb_transition_bit() : 0;
-  h.bit_depth = CONFIG_HUB75_BIT_DEPTH;
+  h.bit_depth = driver_ ? driver_->get_bit_planes() : 0;
   h.refresh_hz = period_us_ > 0 ? 1e6 / period_us_ : 0;
   h.mode = mode_;
   h.restarts = restarts_;

@@ -18,7 +18,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | # | Milestone | Status | Verified on device |
 |---|---|---|---|
 | M0 | Project skeleton: builds, boots, console, boot animation on the panel, tools | done | 2026-09-19: boot log clean, panel frame-locked at 271.3 Hz, boot animation 2010 ms, idle 66.7 fps, 0 late flips |
-| M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | done (panel modes untested) | 2026-09-19: card GIFs play through player + renderer at their stored delays, late 0, decode 1.1-1.5 ms, copy 7.5 ms, swap drops the old queued frame |
+| M1 | Display layer ported (pacing, rotation, gains, brightness, panel modes) + GIF from the card in the new player | done (panel modes reworked 2026-09-20) | 2026-09-19: card GIFs play through player + renderer at their stored delays, late 0, decode 1.1-1.5 ms, copy 7.5 ms, swap drops the old queued frame |
 | M2 | PNG/APNG, WebP, BMP decoders; format sniffing; decode benchmark; no-drop timeline | done except the on-device benchmark (needs files on the card: M4 upload) | 2026-09-19: host tests 86 files / 1531 frames exact; device builds and plays GIFs unchanged |
 | M3 | Storage layout, settings store, Wi-Fi manager with setup mode, mDNS, time | done (RTC chip deferred to M9) | 2026-09-19: settings in NVS, dev seed, STA join, mDNS, SNTP + zone table, HTTP server, portal page, scan, captive probes, erase -> setup mode (AP+STA, captive DNS) all seen on the device |
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
@@ -374,6 +374,36 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   on the way: a settings change while a widget was up did not redraw it until its next
   frame (a minute for the clock); the show now restarts the widget's source on any
   settings change in the Widget state.
+- 2026-09-20, panel modes reworked after the user's bug report (Photo mode posterized
+  and dim; a switch back to Quality left the panel dark for good, and no button rescued
+  it). Two causes, both in the driver patch. (1) Photo was ten planes at transition
+  bit 6: planes 0, 1 and 2 all got one-clock output-enable windows, the plane weights
+  stopped being superincreasing and the LUT fit's monotonic walk got stuck at code 3,
+  so every input above 13 mapped to code 3 (3 distinct output levels instead of 229;
+  reproduced from the driver's logic on the host). (2) Every switch freed and
+  re-allocated both descriptor chains from internal DMA memory (2 x 13.8 KB for ten
+  planes); after hours of uptime with the Makapix session up the largest free block
+  was 21 KB, the second allocation failed with the DMA already stopped, the driver kept
+  the new rate as "in force" so a retry was a no-op, and nothing restarted the DMA
+  (the device was found in exactly that state: `stalled`, `dma_moving` false,
+  largest block 21.5 KB; seven switches on a fresh boot worked, which fits an
+  allocation failure rather than a timing bug). Fix, settled with the user: Photo is
+  now the spec's 8 planes at 813.8 Hz (transition bit 4, windows 1 3 7 15 31 62 62 62,
+  179 distinct codes, about 74 % of Quality's light), through a runtime plane count in
+  the driver (`set_refresh_profile`); the descriptor arrays are allocated once at boot
+  and rebuilt in place, a profile that would not fit is refused before the DMA stops,
+  a failed rebuild restores the previous profile and restarts; a plane that would
+  weigh less than the planes below it is blanked so the LUT fit always holds; the
+  display repaints the last picture into both buffers after a switch (the buffers
+  held codes from the previous LUT). Quality stays at 271 Hz: transition bit 3 would
+  need two 25.7 KB chains in internal RAM. The user's observation that Quality mode
+  photographs without banding is expected (a 1/100 s exposure spans nearly three
+  refreshes), not a sign of low tonal quality. Verified on the device:
+  `tests/device/panel_mode_smoke.py`, 12 switches at 1.5 s plus a five-request burst,
+  every switch 34 to 55 ms, 813.8 / 271.3 Hz, frame lock kept, 0 timeouts, no stall,
+  largest internal block unchanged (22.5 -> 21.5 KB, system noise). Open: the picture
+  in Photo mode by eye and a camera measurement of the refresh.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
-  left alone), and the hands-on checks (taps, rotation direction, BOOT hold).
+  left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
+  mode picture).

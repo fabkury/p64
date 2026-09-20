@@ -31,8 +31,8 @@ class Renderer {
   // Cumulative counters since start (for status).
   Stats totals();
   int64_t last_present_us() const { return last_present_us_; }
-  // Asks for a panel mode switch; the render task performs the driver restart between
-  // two frames (the panel blanks briefly, spec 3.1).
+  // Asks for a panel mode switch; the render task switches the driver's refresh profile
+  // between two frames (spec 3.1).
   void request_mode(display::Mode mode);
   // Copies the frame presented last (the live preview). False before the first frame.
   bool snapshot(gfx::Frame &out);

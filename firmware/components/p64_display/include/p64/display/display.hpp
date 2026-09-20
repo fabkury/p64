@@ -10,9 +10,13 @@
 // predicted boundary, spins on the flag, then checks from the descriptor addresses that
 // the DMA really moved to the other chain. Rendering is thereby locked to the refresh.
 //
-// Panel modes: the driver's bit depth is compile-time (10 planes), so Photo mode is a
-// driver re-creation with a higher minimum refresh rate (transition bit 6, 698 Hz on
-// this panel at 20 MHz); the panel blanks for well under a second while it happens.
+// Panel modes are refresh profiles of the driver (p64 patch): Quality sends all ten bit
+// planes at the sdkconfig minimum refresh rate (transition bit 4, 271 Hz on this panel
+// at 20 MHz); Photo sends eight planes at 600 Hz minimum (transition bit 4, 814 Hz).
+// A switch rebuilds the descriptor chains in place inside arrays allocated at begin()
+// (nothing is allocated, so it cannot fail for lack of internal RAM) and repaints the
+// last picture into both buffers with the new LUT; the panel shows the previous picture
+// for a few refresh periods meanwhile.
 #pragma once
 
 #include <cstdint>
@@ -45,7 +49,7 @@ class Display {
     uint32_t timeouts = 0;
     int dma_priority = -1;  // GDMA arbitration priority of the panel's channel
     int transition_bit = 0;  // bit planes 0..n sent once per frame
-    int bit_depth = 0;
+    int bit_depth = 0;       // bit planes sent per frame (10 in Quality, 8 in Photo)
     double refresh_hz = 0;
     Mode mode = Mode::Quality;
     int restarts = 0;      // driver re-creations (mode switches)
@@ -75,9 +79,9 @@ class Display {
   // Per-channel gains in percent (50..100), applied at present().
   void set_gains(unsigned r_pct, unsigned g_pct, unsigned b_pct);
 
-  // Switches the panel mode by re-creating the driver. The panel blanks meanwhile
-  // (under a second). Returns false when the driver could not be restarted (the
-  // previous mode is then restored if possible).
+  // Switches the panel mode (the driver's refresh profile) in place and repaints the
+  // last presented picture. Call from the render task between frames. Returns false
+  // when the driver refused the profile; the previous mode then stays up.
   bool set_mode(Mode mode);
   Mode mode() const { return mode_; }
 
@@ -97,6 +101,8 @@ class Display {
  private:
   bool start_driver(unsigned min_refresh_hz);
   void stop_driver();
+  void push_physical();          // copies physical_ into the back buffer and flips
+  void repaint_both_buffers();  // after a profile switch: both buffers get physical_
   bool learn_chains();
   bool wait_for_dma_switch();
   void wait_timed();

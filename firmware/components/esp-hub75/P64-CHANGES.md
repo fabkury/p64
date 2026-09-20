@@ -17,6 +17,14 @@ the panel keeps 2^bits levels. The shortest window is the one of plane 0:
 `(63 * brightness/255) >> (transition + 1)` pixel clocks; at 20 MHz, 10 bits and
 transition 3 that is 3 clocks = 150 ns.
 
+The windows are computed once per plane and must be superincreasing (each plane weighs
+at least the sum of the planes below it) for the LUT fit below to hold. Upstream's
+one-pixel floor for planes that truncate to zero can break that: ten planes at
+transition bit 6 gave planes 0, 1 and 2 one clock each, the fit's monotonic walk got
+stuck at code 3 and every input above 13 mapped to it (a posterized, nearly black
+picture: p64's first Photo mode, 2026-09-20). A plane that would weigh less than the
+planes below it is now blanked instead (window 0).
+
 ## LUT fitted to the real on-times (gdma_dma.cpp, fit_lut_to_weights)
 
 Integer windows and latch blanking make the plane weights only approximately binary, so
@@ -50,16 +58,29 @@ the LCD peripheral selector, which found a stale channel after a driver restart 
 panel mode switch re-creates the driver) because the old channel's selector still read
 "LCD".
 
-## Minimum refresh rate changed in place (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
+## Refresh profile changed in place (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
 
-`Hub75Driver::set_min_refresh_rate(hz)` recomputes the transition bit for a new minimum
-refresh rate and applies it without tearing the driver down: the DMA stops, the
-output-enable windows and the LUT are refitted, the descriptor chains are rebuilt for the
-new transmission pattern, and the DMA restarts on the same channel with the picture still
-in the row buffers. p64 switches between its Quality (250 Hz minimum -> 271 Hz) and Photo
-(600 Hz minimum -> 698 Hz) panel modes this way. Re-creating the driver (`end()` then a
-new `begin()`) leaves the DMA stalled on this board: the descriptor pointer never moves
-again, in either mode.
+`Hub75Driver::set_refresh_profile(planes, min_hz)` (and `set_min_refresh_rate(hz)`,
+which keeps the plane count) changes the number of bit planes sent and the minimum
+refresh rate without tearing the driver down: the DMA stops, the transition bit is
+recomputed, the output-enable windows and the LUT are refitted, the descriptor chains
+are rebuilt for the new transmission pattern, and the DMA restarts on the same channel
+with the pixel data still in the row buffers (the caller redraws: those codes were made
+with the previous LUT). The row buffers always hold the compile-time depth; a smaller
+`planes` leaves the top planes out of the chain and the LUT produces codes of that many
+bits (the compile-time gamma table is normalised by its own maximum).
+`get_bit_planes()` reports the count in force. p64 switches between Quality (10 planes,
+250 Hz minimum -> 271 Hz) and Photo (8 planes, 600 Hz minimum -> 814 Hz) this way.
+Re-creating the driver (`end()` then a new `begin()`) leaves the DMA stalled on this
+board: the descriptor pointer never moves again, in either mode.
+
+The descriptor arrays are allocated once, at the size of the first chain built, and
+every later profile is rebuilt inside them; a profile needing more descriptors is
+refused before the DMA is touched, and a rebuild that fails anyway restores the
+previous profile and restarts the DMA. The first version freed and re-allocated the
+arrays (2 x 13.8 KB of internal DMA memory for ten planes) on every switch; after hours
+of uptime the second block was not available, the rebuild failed with the DMA stopped
+and the panel stayed dark until a reboot (2026-09-20).
 
 ## Timing getters (hub75.h, platform_dma.h, gdma_dma.h/.cpp)
 

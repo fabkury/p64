@@ -102,12 +102,17 @@ Ported from the hardware tests (`hardware-tests/main/display.*`) and extended:
 - Brightness pipeline: effective = min(user, ceiling, schedule) computed by the main
   task, applied through the driver's `set_brightness()`; 0 is only ever used for pause
   and panel off.
-- Panel modes: the driver's bit depth is a compile-time constant (10), so Photo mode is
-  a driver re-creation with a higher `min_refresh_rate` (600 selects transition bit 6:
-  698 Hz on this panel at 20 MHz, above the spec's 600 Hz threshold). The re-creation
-  blanks the panel for well under a second; the render task performs it between frames.
-  A runtime bit-depth patch to the driver is the later refinement if 8-plane 810 Hz is
-  wanted.
+- Panel modes are refresh profiles of the driver (p64 patch `set_refresh_profile`):
+  Quality sends the ten compile-time planes at the sdkconfig minimum rate (transition
+  bit 4, 271.3 Hz); Photo sends eight planes at 600 Hz minimum (transition bit 4,
+  813.8 Hz, 256 codes, about 74 % of Quality's light). The render task switches between
+  two frames: the DMA stops, the output-enable windows and the LUT are refitted, the
+  descriptor chains are rebuilt in place inside arrays allocated once at `begin()` (a
+  switch never allocates: internal RAM is too fragmented after hours of uptime for two
+  fresh 13.8 KB chains, which is how the 2026-09-20 dark-panel bug happened), the DMA
+  restarts on the same channel, and the last picture is repainted into both buffers
+  with the new LUT. A profile the arrays cannot hold is refused before the DMA is
+  touched; a rebuild failure restores the previous profile and restarts.
 - Health: DMA stall detection, late flips, timeouts, GDMA priority (5 by default, the
   hardware tests' GDMA lesson) are exposed for diagnostics.
 

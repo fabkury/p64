@@ -216,6 +216,15 @@ class Hub75Driver {
    * restarted on the same channel; the picture stays. False when unsupported or refused.
    */
   bool set_min_refresh_rate(uint16_t hz);
+  /**
+   * @brief p64 patch: changes the number of bit planes sent (1..the compile-time depth)
+   * and the minimum refresh rate in place, like set_min_refresh_rate(). Fewer planes
+   * mean a shorter chain (faster refresh) and codes of that many bits; the LUT is
+   * refitted. False when unsupported or refused (the previous profile then stays).
+   */
+  bool set_refresh_profile(uint8_t planes, uint16_t min_hz);
+  /** @brief p64 patch: bit planes currently sent (the compile-time depth until changed). */
+  int get_bit_planes() const;
 
   /**
    * @brief Get panel height in pixels

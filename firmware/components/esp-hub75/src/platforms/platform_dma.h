@@ -285,6 +285,11 @@ class PlatformDma {
   // p64 patch: changes the minimum refresh rate in place (new transition bit, descriptor
   // chains rebuilt, DMA restarted, pixel data kept). False when unsupported.
   virtual bool set_min_refresh_rate(uint16_t hz) { return false; }
+  // p64 patch: changes the number of bit planes in the chain and the minimum refresh rate
+  // in place (planes 1..compile-time depth). False when unsupported or refused.
+  virtual bool set_refresh_profile(uint8_t planes, uint16_t min_hz) { return false; }
+  // p64 patch: bit planes currently in the chain (0 when the platform does not know).
+  virtual int get_bit_planes() const { return 0; }
 };
 
 }  // namespace hub75

@@ -80,7 +80,7 @@ void Renderer::log_window(int64_t window_start_us, uint32_t frames, uint32_t lat
 void Renderer::run() {
   int64_t window_start = esp_timer_get_time();
   uint32_t window_frames = 0, window_late = 0, window_skipped = 0;
-  const int64_t period_us = static_cast<int64_t>(display_->refresh_period_us());
+  int64_t period_us = static_cast<int64_t>(display_->refresh_period_us());
   while (true) {
     const int64_t now = esp_timer_get_time();
     if (now - window_start >= kStatsIntervalUs) {
@@ -88,11 +88,12 @@ void Renderer::run() {
       window_start = now;
       window_frames = window_late = window_skipped = 0;
     }
-    // A requested panel mode switch happens here, between frames: the driver is
-    // re-created and the last picture put back (Display::set_mode).
+    // A requested panel mode switch happens here, between frames: the driver's refresh
+    // profile changes in place and the last picture is repainted (Display::set_mode).
     const int pending = pending_mode_.exchange(-1);
     if (pending >= 0 && static_cast<display::Mode>(pending) != display_->mode()) {
       display_->set_mode(static_cast<display::Mode>(pending));
+      period_us = static_cast<int64_t>(display_->refresh_period_us());
     }
     ReadySlot *slot = queue_->consumer_peek();
     if (!slot) {

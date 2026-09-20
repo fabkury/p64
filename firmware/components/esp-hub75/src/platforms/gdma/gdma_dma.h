@@ -103,7 +103,9 @@ class GdmaDma : public PlatformDma {
   bool set_dma_priority(int priority) override;
   int get_dma_priority() const override { return dma_priority_; }
   int get_dma_channel_id() const override;
-  bool set_min_refresh_rate(uint16_t hz) override;
+  bool set_min_refresh_rate(uint16_t hz) override { return set_refresh_profile(active_planes_, hz); }
+  bool set_refresh_profile(uint8_t planes, uint16_t min_hz) override;
+  int get_bit_planes() const override { return active_planes_; }
 
   // ============================================================================
   // Static Helper Functions (Public for compile-time validation)
@@ -142,6 +144,10 @@ class GdmaDma : public PlatformDma {
   gdma_channel_handle_t dma_chan_;
   const uint8_t bit_depth_;         // Bit depth from config (6, 7, 8, 10, or 12)
   uint8_t lsbMsbTransitionBit_;     // BCM optimization threshold (calculated at init)
+  // p64 patch: bit planes in the descriptor chain (plane 0..active_planes_-1). The row
+  // buffers always hold bit_depth_ planes; a smaller active count leaves the top planes
+  // out of the chain (the LUT then produces codes of active_planes_ bits).
+  uint8_t active_planes_;
   const uint32_t actual_clock_hz_;  // Actual achieved clock frequency after rounding
 
   // Panel configuration (immutable, cached from config)
@@ -176,6 +182,11 @@ class GdmaDma : public PlatformDma {
   int active_idx_;  // CPU draws to buffers[active_idx_]
 
   size_t descriptor_count_;  // Number of descriptors per chain
+  // p64 patch: descriptors allocated per chain, fixed at the first build; a rebuild for
+  // another refresh profile reuses the arrays (no allocation at switch time).
+  size_t descriptor_capacity_ = 0;
+  // p64 patch: the transition bit that meets target_hz with `planes` bit planes (pure).
+  uint8_t transition_bit_for(int planes, uint32_t target_hz, int *actual_hz = nullptr) const;
 
   // p64 patch: output-enable window (pixels) of each bit plane as last written by
   // set_brightness_oe_internal(), and the resulting on-time weight per frame; the LUT is
@@ -184,6 +195,7 @@ class GdmaDma : public PlatformDma {
   uint16_t min_refresh_hz_ = 0;  // p64 patch: the minimum refresh rate in force (config_ is const)
   uint16_t plane_on_pixels_[16] = {};
   uint32_t plane_weight_[16] = {};
+  bool log_windows_ = true;  // p64 patch: log the windows once per refresh profile
   void fit_lut_to_weights();
 
   // Brightness control (implementation of base class interface)

@@ -45,7 +45,10 @@ and both outputs are committed, so the firmware build needs neither.
 
 Route reference: `docs/api.md`. Device tests: `tests/device/api_smoke.py` and
 `tests/device/content_smoke.py` (both need a card with files; `--corpus` uploads the
-host corpus).
+host corpus). `tests/device/panel_mode_smoke.py` switches Quality and Photo mode a dozen
+times and checks the refresh rate, plane count, DMA streaming and the internal heap
+after each (the panel modes are refresh profiles of the driver, `docs/architecture.md`
+section 4; the 2026-09-20 rework is in `docs/PROGRESS.md`).
 
 ## Web UI
 

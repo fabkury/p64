@@ -78,7 +78,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\imu_smoke.py http://<ip>` and
 `python tests\device\pin_smoke.py http://<ip>` and
 `python tests\device\ota_smoke.py http://<ip> [--no-install]` and
-`python tests\device\ui_smoke.py http://<ip>` against the live device, and
+`python tests\device\ui_smoke.py http://<ip>` and
+`python tests\device\panel_mode_smoke.py http://<ip>` against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log).
 
@@ -100,6 +101,11 @@ wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap an
 one, and build status documents from RAM copies only. After an OTA install the device boots from
 `ota_1` while `flash.ps1` writes `ota_0`: roll back from the Update card (or run
 `tests\device\ota_smoke.py`, which ends with a rollback) before trusting a flash.
+The panel modes are refresh profiles of the vendored driver (Quality 10 planes at
+271 Hz, Photo 8 planes at 814 Hz, switched in place inside descriptor arrays allocated
+once at boot); a mode switch must never allocate internal RAM, and the plane
+output-enable windows must stay superincreasing or the LUT fit collapses (both bitten
+on 2026-09-20, `firmware/docs/PROGRESS.md`).
 
 ## Hardware tests: commands
 

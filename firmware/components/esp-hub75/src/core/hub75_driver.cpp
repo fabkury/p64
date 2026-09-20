@@ -220,6 +220,12 @@ bool Hub75Driver::set_min_refresh_rate(uint16_t hz) {
   config_.min_refresh_rate = hz;
   return true;
 }
+bool Hub75Driver::set_refresh_profile(uint8_t planes, uint16_t min_hz) {
+  if (!dma_ || !running_ || !dma_->set_refresh_profile(planes, min_hz)) return false;
+  config_.min_refresh_rate = min_hz;
+  return true;
+}
+int Hub75Driver::get_bit_planes() const { return dma_ ? dma_->get_bit_planes() : 0; }
 
 uint16_t Hub75Driver::get_width() const {
   // Return virtual width with rotation applied

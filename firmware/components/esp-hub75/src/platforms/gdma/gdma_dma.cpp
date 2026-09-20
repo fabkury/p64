@@ -82,6 +82,7 @@ GdmaDma::GdmaDma(const Hub75Config &config)
       dma_chan_(nullptr),
       bit_depth_(HUB75_BIT_DEPTH),
       lsbMsbTransitionBit_(0),
+      active_planes_(HUB75_BIT_DEPTH),
       actual_clock_hz_(resolve_actual_clock_speed(config.output_clock_speed)),
       panel_width_(config.panel_width),
       panel_height_(config.panel_height),
@@ -462,7 +463,7 @@ void GdmaDma::start_transfer() {
 
   ESP_LOGI(TAG, "Starting descriptor-chain DMA:");
   ESP_LOGI(TAG, "  Descriptor count: %zu", descriptor_count_);
-  ESP_LOGI(TAG, "  Rows: %d, Bits: %d", num_rows_, bit_depth_);
+  ESP_LOGI(TAG, "  Rows: %d, Bits: %d", num_rows_, active_planes_);
 
   // Prime LCD registers
   LCD_CAM.lcd_user.lcd_update = 1;
@@ -999,41 +1000,62 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t bri
   //
   // See init_brightness_coeffs() for coefficient calculation.
   const int effective_brightness = remap_brightness(brightness);
+  const int max_pixels = dma_width_ - latch_blanking;
+
+  // p64 patch: the output-enable window of each plane, computed once (every row gets the
+  // same windows). Planes above the transition bit are sent 2^(bit - transition - 1)
+  // times with the full brightness window. Planes at or below it are sent once, so each
+  // gets half the window of the plane above it, which restores its binary weight.
+  // (Upstream gave every plane the full window, so the low planes all weighed one
+  // transmission and the distinct levels collapsed to transmissions + 1.)
+  int windows[16] = {};
+  uint32_t weight_below = 0;  // on-time of all planes below the current one, per frame
+  for (int bit = 0; bit < active_planes_; bit++) {
+    int display_pixels = (max_pixels * effective_brightness) >> 8;
+    if (bit <= lsbMsbTransitionBit_) display_pixels >>= (lsbMsbTransitionBit_ + 1 - bit);
+
+    // Edge case fallback for very low brightness
+    //
+    // Even with the brightness floor, integer truncation can result in display_pixels=0
+    // for some configurations. This fallback ensures at least 1 pixel is enabled for
+    // the most significant bits, which contribute most to perceived brightness.
+    //
+    // The threshold increases with brightness: at very low brightness only bit 7 gets
+    // the minimum; as brightness increases, more bits naturally exceed 0 anyway.
+    //   effective_brightness 1-15:   only bit 7 guaranteed minimum
+    //   effective_brightness 16-31:  bits 6-7 guaranteed minimum
+    //   effective_brightness 32-47:  bits 5-7 guaranteed minimum, etc.
+    const int min_bit_for_display = std::max(0, active_planes_ - 1 - (effective_brightness >> 4));
+    if (effective_brightness > 0 && display_pixels == 0 && bit >= min_bit_for_display) {
+      display_pixels = 1;
+    }
+
+    // Reserve at least 1 pixel blanking to prevent ghosting at maximum brightness.
+    // Without this margin, brightness=255 would enable all pixels including those
+    // near the LAT pulse, potentially causing visible artifacts.
+    display_pixels = std::min(display_pixels, max_pixels - 1);
+
+    // p64 patch: the LUT fit (fit_lut_to_weights) needs every plane to weigh at least the
+    // sum of the planes below it, so that a larger code never means less light. The
+    // one-pixel fallback can break that when several low planes all floor to one clock
+    // (ten planes at transition bit 6 gave planes 0, 1 and 2 one clock each, and the fit
+    // then mapped every input to code 3: a posterized, nearly black picture). A plane
+    // that would weigh less than the planes below it is blanked instead; it still costs
+    // its transmission but no longer corrupts the code order.
+    const uint32_t reps = bit <= lsbMsbTransitionBit_ ? 1u : (1u << (bit - lsbMsbTransitionBit_ - 1));
+    if (static_cast<uint32_t>(display_pixels) * reps < weight_below) display_pixels = 0;
+    weight_below += static_cast<uint32_t>(display_pixels) * reps;
+
+    windows[bit] = display_pixels;
+    plane_on_pixels_[bit] = static_cast<uint16_t>(display_pixels);
+  }
+  for (int bit = active_planes_; bit < bit_depth_; bit++) plane_on_pixels_[bit] = 0;
 
   for (int row = 0; row < num_rows_; row++) {
     for (int bit = 0; bit < bit_depth_; bit++) {
       uint16_t *buf = (uint16_t *) (buffers[row].data + (bit * dma_width_ * 2));
-
-      // p64 patch: planes above the transition bit are sent 2^(bit - transition - 1)
-      // times with the full brightness window. Planes at or below it are sent once, so
-      // each gets half the window of the plane above it, which restores its binary
-      // weight. (Upstream gave every plane the full window, so the low planes all
-      // weighed one transmission and the distinct levels collapsed to transmissions + 1.)
-      const int max_pixels = dma_width_ - latch_blanking;
-      int display_pixels = (max_pixels * effective_brightness) >> 8;
-      if (bit <= lsbMsbTransitionBit_) display_pixels >>= (lsbMsbTransitionBit_ + 1 - bit);
-
-      // Edge case fallback for very low brightness
-      //
-      // Even with the brightness floor, integer truncation can result in display_pixels=0
-      // for some configurations. This fallback ensures at least 1 pixel is enabled for
-      // the most significant bits, which contribute most to perceived brightness.
-      //
-      // The threshold increases with brightness: at very low brightness only bit 7 gets
-      // the minimum; as brightness increases, more bits naturally exceed 0 anyway.
-      //   effective_brightness 1-15:   only bit 7 guaranteed minimum
-      //   effective_brightness 16-31:  bits 6-7 guaranteed minimum
-      //   effective_brightness 32-47:  bits 5-7 guaranteed minimum, etc.
-      const int min_bit_for_display = std::max(0, bit_depth_ - 1 - (effective_brightness >> 4));
-      if (effective_brightness > 0 && display_pixels == 0 && bit >= min_bit_for_display) {
-        display_pixels = 1;
-      }
-
-      // Reserve at least 1 pixel blanking to prevent ghosting at maximum brightness.
-      // Without this margin, brightness=255 would enable all pixels including those
-      // near the LAT pulse, potentially causing visible artifacts.
-      display_pixels = std::min(display_pixels, max_pixels - 1);
-      plane_on_pixels_[bit] = static_cast<uint16_t>(display_pixels);  // p64 patch
+      // Planes outside the chain (bit >= active_planes_) are not sent; blank them anyway.
+      const int display_pixels = bit < active_planes_ ? windows[bit] : 0;
 
       assert(max_pixels >= 2 && "max_pixels < 2: insufficient headroom for safety margin");
       assert(display_pixels >= 0 && "display_pixels underflow");
@@ -1115,15 +1137,18 @@ void GdmaDma::fit_lut_to_weights() {
   uint32_t total = 0;
   for (int bit = 0; bit < bit_depth_; bit++) {
     const uint32_t reps = bit <= lsbMsbTransitionBit_ ? 1u : (1u << (bit - lsbMsbTransitionBit_ - 1));
-    plane_weight_[bit] = plane_on_pixels_[bit] * reps;
+    plane_weight_[bit] = bit < active_planes_ ? plane_on_pixels_[bit] * reps : 0;
     total += plane_weight_[bit];
   }
   if (total == 0) return;
-  const uint16_t *ideal = get_lut();  // compile-time gamma table, values 0..2^depth-1
-  const uint32_t max_code = (1u << bit_depth_) - 1;
+  // The compile-time gamma table spans 0..2^HUB75_BIT_DEPTH-1 whatever the number of
+  // planes in the chain; the codes span 0..2^active_planes_-1.
+  const uint16_t *ideal = get_lut();
+  const uint32_t ideal_max = (1u << HUB75_BIT_DEPTH) - 1;
+  const uint32_t max_code = (1u << active_planes_) - 1;
   auto weight_of = [this](uint32_t code) {
     uint32_t w = 0;
-    for (int bit = 0; bit < bit_depth_; bit++) {
+    for (int bit = 0; bit < active_planes_; bit++) {
       if (code & (1u << bit)) w += plane_weight_[bit];
     }
     return w;
@@ -1131,7 +1156,7 @@ void GdmaDma::fit_lut_to_weights() {
   uint32_t code = 0;
   double w_code = 0;
   for (int i = 0; i < 256; i++) {
-    const double target = static_cast<double>(ideal[i]) * total / max_code;
+    const double target = static_cast<double>(ideal[i]) * total / ideal_max;
     while (code < max_code) {
       const double w_next = weight_of(code + 1);
       if (std::fabs(w_next - target) > std::fabs(w_code - target)) break;
@@ -1140,17 +1165,25 @@ void GdmaDma::fit_lut_to_weights() {
     }
     lut_[i] = static_cast<uint16_t>(code);
   }
-  static bool logged = false;
-  if (!logged) {
-    logged = true;
+  if (log_windows_) {  // once per refresh profile, not on every brightness change
+    log_windows_ = false;
     char text[128];
     int n = 0;
-    for (int bit = 0; bit < bit_depth_ && n < static_cast<int>(sizeof(text)) - 8; bit++) {
+    for (int bit = 0; bit < active_planes_ && n < static_cast<int>(sizeof(text)) - 8; bit++) {
       n += snprintf(text + n, sizeof(text) - static_cast<size_t>(n), "%s%u", bit ? " " : "",
                     static_cast<unsigned>(plane_on_pixels_[bit]));
     }
-    ESP_LOGI(TAG, "Bit-plane OE windows in pixel clocks, plane 0..%d: %s; LUT fitted to their on-times (full white %lu)",
-             bit_depth_ - 1, text, static_cast<unsigned long>(total));
+    unsigned distinct = 1;
+    for (int i = 1; i < 256; i++) {
+      if (lut_[i] != lut_[i - 1]) distinct++;
+    }
+    ESP_LOGI(TAG,
+             "Bit-plane OE windows in pixel clocks, plane 0..%d: %s; LUT fitted to their on-times (full white %lu of "
+             "%lu clocks per frame, %u distinct codes)",
+             active_planes_ - 1, text, static_cast<unsigned long>(total),
+             static_cast<unsigned long>(GdmaDma::calculate_bcm_transmissions(active_planes_, lsbMsbTransitionBit_) *
+                                        dma_width_),
+             distinct);
   }
 }
 
@@ -1162,33 +1195,53 @@ bool GdmaDma::set_dma_priority(int priority) {
   return true;
 }
 
-// p64 patch: a different minimum refresh rate means a different transition bit, so the
-// output-enable windows, the LUT and the descriptor chains change while the pixel data in
-// the row buffers stays. The DMA is stopped and restarted on the same channel and the
-// LCD_CAM peripheral is left configured (a full shutdown() + init() left the DMA stalled).
-bool GdmaDma::set_min_refresh_rate(uint16_t hz) {
-  if (!dma_chan_ || !row_buffers_[0] || hz == 0) return false;
-  if (hz == min_refresh_hz_) return true;
-  const uint16_t previous = min_refresh_hz_;
-  const uint8_t previous_transition = lsbMsbTransitionBit_;
-  stop_transfer();
-  min_refresh_hz_ = hz;
-  calculate_bcm_timings();
-  if (!validate_brightness_config()) {
-    ESP_LOGW(TAG, "min refresh %u Hz rejected by the brightness check; keeping %u Hz", hz, previous);
-    min_refresh_hz_ = previous;
-    lsbMsbTransitionBit_ = previous_transition;
-  }
-  set_brightness_oe();
-  if (!build_descriptor_chain()) {
-    ESP_LOGE(TAG, "descriptor chains could not be rebuilt; panel stopped");
+// p64 patch: a refresh profile is a number of bit planes and a minimum refresh rate.
+// Changing it means a different transition bit and chain length, so the output-enable
+// windows, the LUT and the descriptor chains change while the pixel data in the row
+// buffers stays (the caller redraws its picture: the codes in the buffers were made with
+// the previous LUT). The DMA is stopped and restarted on the same channel and the
+// LCD_CAM peripheral is left configured (a full shutdown() + init() left the DMA
+// stalled). Nothing is allocated: the chains are rebuilt inside the arrays from begin(),
+// and a profile that would not fit them is refused before the DMA is touched. Should the
+// rebuild fail anyway, the previous profile is rebuilt and the DMA restarted, so the
+// panel never stays dark.
+bool GdmaDma::set_refresh_profile(uint8_t planes, uint16_t hz) {
+  if (!dma_chan_ || !row_buffers_[0] || !descriptors_[0] || hz == 0) return false;
+  if (planes < 1 || planes > bit_depth_) {
+    ESP_LOGW(TAG, "refresh profile with %u bit planes refused (row buffers hold %u)", planes, bit_depth_);
     return false;
+  }
+  if (planes == active_planes_ && hz == min_refresh_hz_) return true;
+  const uint8_t transition = transition_bit_for(planes, hz);
+  const size_t needed = static_cast<size_t>(num_rows_) * GdmaDma::calculate_bcm_transmissions(planes, transition);
+  if (needed > descriptor_capacity_) {
+    ESP_LOGW(TAG, "refresh profile %u planes / %u Hz needs %zu descriptors, %zu allocated at start-up: refused", planes,
+             hz, needed, descriptor_capacity_);
+    return false;
+  }
+  const uint8_t previous_planes = active_planes_;
+  const uint16_t previous_hz = min_refresh_hz_;
+  stop_transfer();
+  active_planes_ = planes;
+  min_refresh_hz_ = hz;
+  log_windows_ = true;
+  calculate_bcm_timings();
+  set_brightness_oe();
+  bool ok = build_descriptor_chain();
+  if (!ok) {
+    ESP_LOGE(TAG, "descriptor chains could not be rebuilt for %u planes / %u Hz; restoring %u planes / %u Hz", planes,
+             hz, previous_planes, previous_hz);
+    active_planes_ = previous_planes;
+    min_refresh_hz_ = previous_hz;
+    calculate_bcm_timings();
+    set_brightness_oe();
+    build_descriptor_chain();  // the previous profile fitted before; the request itself failed
   }
   gdma_reset(dma_chan_);
   esp_rom_delay_us(100);
   LCD_CAM.lcd_misc.lcd_afifo_reset = 1;
   start_transfer();
-  return min_refresh_hz_ == hz;
+  return ok;
 }
 
 int GdmaDma::get_dma_channel_id() const {
@@ -1215,7 +1268,7 @@ bool GdmaDma::build_descriptor_chain_internal(RowBitPlaneBuffer *buffers, dma_de
   // Link descriptors with BCM repetitions
   size_t desc_idx = 0;
   for (int row = 0; row < num_rows_; row++) {
-    for (int bit = 0; bit < bit_depth_; bit++) {
+    for (int bit = 0; bit < active_planes_; bit++) {
       uint8_t *const bit_buffer = buffers[row].data + (bit * bytes_per_bitplane);
 
       // Calculate number of descriptor repetitions for this bit plane
@@ -1255,7 +1308,7 @@ bool GdmaDma::build_descriptor_chain() {
   // For bits > lsbMsbTransitionBit: 2^(bit - lsbMsbTransitionBit - 1) descriptors each
   descriptor_count_ = 0;
   for (int row = 0; row < num_rows_; row++) {
-    for (int bit = 0; bit < bit_depth_; bit++) {
+    for (int bit = 0; bit < active_planes_; bit++) {
       if (bit <= lsbMsbTransitionBit_) {
         descriptor_count_ += 1;  // Base timing
       } else {
@@ -1274,25 +1327,33 @@ bool GdmaDma::build_descriptor_chain() {
   size_t total_descriptor_bytes = sizeof(dma_descriptor_t) * descriptor_count_;
 
   ESP_LOGI(TAG, "Building BCM descriptor chain: %zu descriptors (%zu per row) for %d rows × %d bits", descriptor_count_,
-           descriptors_per_row, num_rows_, bit_depth_);
+           descriptors_per_row, num_rows_, active_planes_);
   ESP_LOGI(TAG, "  BCM via descriptor repetition (lsbMsbTransitionBit=%d)", lsbMsbTransitionBit_);
-  ESP_LOGI(TAG, "  Allocating %zu bytes per descriptor array", total_descriptor_bytes);
 
-  // Free existing descriptors if already allocated (prevent leak on retry)
-  for (auto &descriptor : descriptors_) {
-    if (descriptor) {
-      heap_caps_free(descriptor);
-      descriptor = nullptr;
-    }
-  }
-
-  // Always allocate first descriptor chain (buffer 0)
-  // Use calloc to zero-initialize descriptor memory (prevents garbage in control bits)
-  descriptors_[0] = (dma_descriptor_t *) heap_caps_calloc(1, total_descriptor_bytes, MALLOC_CAP_DMA);
-  if (!descriptors_[0]) {
-    ESP_LOGE(TAG, "Failed to allocate %zu descriptors [0] (%zu bytes) in DMA memory", descriptor_count_,
-             total_descriptor_bytes);
+  // p64 patch: the descriptor arrays are allocated once, at the size of the first chain
+  // built (the boot profile, the longest one p64 uses), and rebuilt in place for any
+  // later profile. A switch used to free and re-allocate them from internal DMA memory,
+  // which is the scarce resource on the S3: after hours of uptime the second 13.8 KB
+  // block was not available, the rebuild failed and the panel stayed dark.
+  if (descriptors_[0] && descriptor_count_ > descriptor_capacity_) {
+    ESP_LOGE(TAG, "chain of %zu descriptors exceeds the %zu allocated at start-up", descriptor_count_,
+             descriptor_capacity_);
     return false;
+  }
+  if (descriptors_[0]) {
+    // Rebuild in place: the entries beyond the new count stay unreachable.
+    memset(descriptors_[0], 0, total_descriptor_bytes);
+    if (descriptors_[1]) memset(descriptors_[1], 0, total_descriptor_bytes);
+  } else {
+    ESP_LOGI(TAG, "  Allocating %zu bytes per descriptor array", total_descriptor_bytes);
+    descriptor_capacity_ = descriptor_count_;
+    // Use calloc to zero-initialize descriptor memory (prevents garbage in control bits)
+    descriptors_[0] = (dma_descriptor_t *) heap_caps_calloc(1, total_descriptor_bytes, MALLOC_CAP_DMA);
+    if (!descriptors_[0]) {
+      ESP_LOGE(TAG, "Failed to allocate %zu descriptors [0] (%zu bytes) in DMA memory", descriptor_count_,
+               total_descriptor_bytes);
+      return false;
+    }
   }
 
   if (!build_descriptor_chain_internal(row_buffers_[0], descriptors_[0])) {
@@ -1303,11 +1364,16 @@ bool GdmaDma::build_descriptor_chain() {
 
   // Conditionally allocate second descriptor chain (buffer 1)
   if (config_.double_buffer) {
-    // Use calloc to zero-initialize descriptor memory (prevents garbage in control bits)
-    descriptors_[1] = (dma_descriptor_t *) heap_caps_calloc(1, total_descriptor_bytes, MALLOC_CAP_DMA);
+    if (!descriptors_[1]) {
+      // Use calloc to zero-initialize descriptor memory (prevents garbage in control bits)
+      descriptors_[1] = (dma_descriptor_t *) heap_caps_calloc(1, total_descriptor_bytes, MALLOC_CAP_DMA);
+    }
     if (!descriptors_[1]) {
       ESP_LOGE(TAG, "Failed to allocate %zu descriptors [1] (%zu bytes) in DMA memory", descriptor_count_,
                total_descriptor_bytes);
+      heap_caps_free(descriptors_[0]);
+      descriptors_[0] = nullptr;
+      descriptor_capacity_ = 0;
       return false;
     }
 
@@ -1341,48 +1407,45 @@ HUB75_CONST constexpr int GdmaDma::calculate_bcm_transmissions(int bit_depth, in
   return transmissions;
 }
 
-void GdmaDma::calculate_bcm_timings() {
-  // Calculate buffer transmission time
-  // Buffer contains dma_width_ pixels with LAT on last pixel
-  // Latch blanking is handled via OE bits, not extra pixels
-  const uint16_t buffer_pixels = dma_width_;  // LAT is on last pixel, not extra
-  const float buffer_time_us = (buffer_pixels * 1000000.0f) / actual_clock_hz_;
-
-  ESP_LOGI(TAG, "Buffer transmission time: %.2f µs (%u pixels @ %lu Hz)", buffer_time_us, (unsigned) buffer_pixels,
-           (unsigned long) actual_clock_hz_);
-
-  // Target refresh rate from config (p64 patch: or the rate set later in place)
-  const uint32_t target_hz = min_refresh_hz_ ? min_refresh_hz_ : config_.min_refresh_rate;
-
-  // Calculate optimal lsbMsbTransitionBit to achieve target refresh rate
-  lsbMsbTransitionBit_ = 0;
-  int actual_hz = 0;
-
+// p64 patch: the lowest transition bit at which `planes` bit planes refresh at target_hz
+// or faster. Pure (no member changed), so a refresh profile can be checked before the
+// DMA is touched.
+uint8_t GdmaDma::transition_bit_for(int planes, uint32_t target_hz, int *actual_hz) const {
+  const float buffer_time_us = (dma_width_ * 1000000.0f) / actual_clock_hz_;
+  int transition = 0;
+  int hz = 0;
   while (true) {
-    // Calculate transmissions per row with current transition bit
-    const int transmissions = GdmaDma::calculate_bcm_transmissions(bit_depth_, lsbMsbTransitionBit_);
-
-    // Calculate refresh rate
-    const float time_per_row_us = transmissions * buffer_time_us;
-    const float time_per_frame_us = time_per_row_us * num_rows_;
-    actual_hz = (int) (1000000.0f / time_per_frame_us);
-
-    ESP_LOGD(TAG, "Testing lsbMsbTransitionBit=%d: %d transmissions/row, %d Hz", lsbMsbTransitionBit_, transmissions,
-             actual_hz);
-
-    if (actual_hz >= target_hz) [[likely]]
+    const int transmissions = GdmaDma::calculate_bcm_transmissions(planes, transition);
+    const float time_per_frame_us = transmissions * buffer_time_us * num_rows_;
+    hz = (int) (1000000.0f / time_per_frame_us);
+    if (hz >= (int) target_hz) [[likely]]
       break;
-
-    if (lsbMsbTransitionBit_ < bit_depth_ - 1) [[likely]] {
-      lsbMsbTransitionBit_++;
+    if (transition < planes - 1) [[likely]] {
+      transition++;
     } else {
-      ESP_LOGW(TAG, "Cannot achieve target %lu Hz, max is %d Hz", (unsigned long) target_hz, actual_hz);
+      ESP_LOGW(TAG, "Cannot achieve target %lu Hz with %d bit planes, max is %d Hz", (unsigned long) target_hz, planes,
+               hz);
       break;
     }
   }
+  if (actual_hz) *actual_hz = hz;
+  return (uint8_t) transition;
+}
 
-  ESP_LOGI(TAG, "lsbMsbTransitionBit=%d achieves %d Hz (target %lu Hz)", lsbMsbTransitionBit_, actual_hz,
-           (unsigned long) target_hz);
+void GdmaDma::calculate_bcm_timings() {
+  // Buffer contains dma_width_ pixels with LAT on last pixel; latch blanking is handled
+  // via OE bits, not extra pixels.
+  const float buffer_time_us = (dma_width_ * 1000000.0f) / actual_clock_hz_;
+  ESP_LOGI(TAG, "Buffer transmission time: %.2f µs (%u pixels @ %lu Hz)", buffer_time_us, (unsigned) dma_width_,
+           (unsigned long) actual_clock_hz_);
+
+  // Target refresh rate from config (p64 patch: or the profile set later in place)
+  const uint32_t target_hz = min_refresh_hz_ ? min_refresh_hz_ : config_.min_refresh_rate;
+  int actual_hz = 0;
+  lsbMsbTransitionBit_ = transition_bit_for(active_planes_, target_hz, &actual_hz);
+
+  ESP_LOGI(TAG, "lsbMsbTransitionBit=%d achieves %d Hz with %d of %d bit planes (target %lu Hz)",
+           lsbMsbTransitionBit_, actual_hz, active_planes_, bit_depth_, (unsigned long) target_hz);
 
   if (lsbMsbTransitionBit_ > 0) {
     ESP_LOGW(TAG,
