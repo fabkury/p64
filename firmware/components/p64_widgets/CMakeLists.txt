@@ -5,6 +5,7 @@ idf_component_register(
     SRCS
         "src/widgets.cpp"
         "src/clock_format.cpp"
+        "src/analogue.cpp"
         "src/weather_model.cpp"
         "src/weather_icons.cpp"
         "src/weather_icons_util.cpp"

@@ -137,6 +137,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Clock</h3>
+        <div class="grid3" style="margin-bottom:8px"><div><label>Face</label><select class="sel" style="min-width:0" id="clock-face" onchange="save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option></select></div></div>
         <div class="grid3">
             <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div>
             <div><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
@@ -147,7 +148,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
             <div><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
         </div>
-        <div class="setting-hint">The analogue face is not drawn yet (digital only).</div>
+        <div class="setting-hint">The analogue face: ticks, the numerals 12, 3, 6 and 9, crisp hands, the date under the centre; the seconds setting adds a second hand.</div>
     </div>
     <div class="section">
         <h3>Weather</h3>
@@ -384,7 +385,7 @@ function fill(s) {
     sv('auto-swap', s.show.auto_swap_seconds); sv('pick-mode', s.show.pick_mode); sv('channel-select', s.show.channel_select);
     ['animation_show', 'widget', 'stream'].forEach(function (m) { document.getElementById('ms-' + m).classList.toggle('active', s.show.main_state === m); });
     sv('widget', s.widgets.widget);
-    sv('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
+    sv('clock-face', s.clock.face); sv('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');

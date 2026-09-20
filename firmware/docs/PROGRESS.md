@@ -24,10 +24,10 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
-| M10 | Full web UI port, acceptance tests, docs | done (analogue clock face and instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
+| M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
 
 ## Log
 
@@ -364,6 +364,16 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   HTTP; the format itself was not run on the development card. A second soak of 45
   minutes on the committed build: 540 swaps, 31 879 frames, 0 late flips, 0 timeouts,
   no reboot, heap floor 13.8 KB (23 KB typical), 0 poll errors.
-- Remaining: the analogue clock face (to be designed with the user), the acceptance
-  measurements that need instruments (camera at 240 fps, a power meter), a 12 h and a
-  24 h soak (run `soak.py --minutes 720` when the device can be left alone).
+- 2026-09-20, the analogue clock face (`p64_widgets/src/analogue.cpp`, host-tested
+  geometry and pixels), settled with the user: ticks with the cardinal four longer,
+  the numerals 12, 3, 6 and 9, crisp Bresenham hands (hour 2 px, minute 1 px, second
+  hand in the accent colour with the seconds setting), a hub, the date under the
+  centre. The Settings page gained the face selector. Captured through `/api/v1/frame`
+  on the device at 13:14 and 13:17: hands, ticks, numerals and the date where the
+  design puts them; the second hand in the accent colour moves once a second. Found
+  on the way: a settings change while a widget was up did not redraw it until its next
+  frame (a minute for the clock); the show now restarts the widget's source on any
+  settings change in the Widget state.
+- Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
+  power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
+  left alone), and the hands-on checks (taps, rotation direction, BOOT hold).

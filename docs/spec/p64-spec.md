@@ -363,9 +363,11 @@ refresh of being asked so it can be shown seamlessly.
 - Digital face: time in the chosen font at 2x (12 to 14 px tall), 12/24 h, optional
   seconds, optional blinking colon; below it the date and weekday at 1x, with a day-month
   or month-day order setting (default day-month-year).
-- Analogue face: a rich but streamlined analogue clock (hour, minute and optional second
-  hand, hour marks, optional numerals) designed for 64x64; details to be drawn with the
-  user before implementation.
+- Analogue face (settled 2026-09-20): twelve tick marks at the rim, the cardinal four
+  longer; the numerals 12, 3, 6 and 9 in the 6 px font inside them; crisp pixel hands
+  with no anti-aliasing (hour hand 2 px wide and short, moving continuously; minute
+  hand 1 px and long, stepping per minute); a second hand in the accent colour when the
+  seconds setting is on; a hub; the date in dimmed small text under the centre.
 - Face choice, font, scale and colours are settings.
 
 ### 7.2 Weather

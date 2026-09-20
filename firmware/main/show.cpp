@@ -998,7 +998,9 @@ void handle(Command &c) {
           g_widget_up = false;
           end_screen();
         }
-      } else if (g_main_state == system::MainState::Widget && g_widget_up && s.widget != g_widget_kind) {
+      } else if (g_main_state == system::MainState::Widget && g_widget_up) {
+        // A changed widget, or changed widget settings (face, seconds, font, units): the
+        // source restarts so the new look shows at once instead of at its next frame.
         play_widget(s.widget, false);
       }
       if (g_stream_up && !stream_allowed()) {

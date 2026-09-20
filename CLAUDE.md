@@ -56,8 +56,8 @@ gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, roll
 are done, and M10 delivered the web UI in p3a's layout and five themes
 (`components/p64_web/ui/`: four pages, the shared static files, the setup portal on the
 same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
-open: the analogue clock face (to design with the user), the acceptance measurements
-that need instruments, long soaks;
+the analogue clock face followed on 2026-09-20; open: the acceptance measurements that
+need instruments, long soaks, the hands-on checks;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 

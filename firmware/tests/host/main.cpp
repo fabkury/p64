@@ -27,6 +27,7 @@
 #include "p64/content/makapix_index.hpp"
 #include "p64/gfx/text.hpp"
 #include "p64/gfx/fonts.hpp"
+#include "analogue.hpp"
 #include "clock_format.hpp"
 #include "weather_model.hpp"
 #include "weather_icons.hpp"
@@ -1054,6 +1055,66 @@ void test_versions() {
   CHECK_EQ(compare("1.0.0-rc1", "1.0.0-rc2"), -1);
 }
 
+// --- the analogue clock face (spec 7.1) ------------------------------------------------
+
+int lit_in(const Frame &f, int x0, int y0, int x1, int y1) {
+  int n = 0;
+  for (int y = y0; y <= y1; ++y)
+    for (int x = x0; x <= x1; ++x)
+      if (f.get(x, y) != p64::gfx::kBlack) ++n;
+  return n;
+}
+
+void test_analogue() {
+  using namespace p64::widgets::analogue;
+  int x, y;
+  hand_end(0.0f, 20, x, y);
+  CHECK_EQ(x, 32); CHECK_EQ(y, 12);          // 12 o'clock: straight up from the centre
+  hand_end(90.0f, 20, x, y);
+  CHECK_EQ(x, 52); CHECK_EQ(y, 32);          // 3 o'clock: right
+  hand_end(180.0f, 20, x, y);
+  CHECK_EQ(x, 32); CHECK_EQ(y, 52);
+  hand_end(270.0f, 20, x, y);
+  CHECK_EQ(x, 12); CHECK_EQ(y, 32);
+  Style st;
+  st.ink = Rgb{255, 255, 255};
+  st.background = p64::gfx::kBlack;
+  Frame f;
+  tm t = {};
+  t.tm_hour = 3; t.tm_min = 0; t.tm_sec = 0; t.tm_mday = 19; t.tm_mon = 8; t.tm_wday = 6;
+  draw(f, st, t);
+  // 3:00: the hour hand runs right from the hub, the minute hand up; nothing points left or down beyond the date.
+  CHECK(lit_in(f, 33, 30, 44, 33) >= 12);    // hour hand, 2 px thick, to the right
+  CHECK(lit_in(f, 31, 9, 32, 30) >= 20);     // minute hand up (column 31/32)
+  CHECK_EQ(lit_in(f, 12, 30, 28, 33), 0);    // nothing on the 9 o'clock arm except the numeral further out
+  CHECK(lit_in(f, 26, 0, 37, 10) > 0);       // the "12" numeral and its tick
+  CHECK(lit_in(f, 26, 53, 37, 63) > 0);      // the "6"
+  CHECK(lit_in(f, 0, 27, 10, 37) > 0);       // the "9"
+  CHECK(lit_in(f, 53, 27, 63, 37) > 0);      // the "3"
+  CHECK(lit_in(f, 20, 41, 43, 47) > 0);      // the date under the centre
+  CHECK(f.get(31, 31) != p64::gfx::kBlack && f.get(32, 32) != p64::gfx::kBlack);  // the hub
+  // No second hand without the setting; with it, an accent-coloured pixel appears.
+  st.seconds = true;
+  t.tm_sec = 45;                              // 9 o'clock direction
+  Frame g;
+  draw(g, st, t);
+  bool accent = false;
+  for (int xx = 8; xx < 28; ++xx) if (g.get(xx, 31) == st.accent) accent = true;
+  CHECK(accent);
+  // Determinism: the same instant draws the same pixels.
+  Frame h;
+  draw(h, st, t);
+  CHECK(std::memcmp(g.data(), h.data(), Frame::bytes()) == 0);
+  // 6:30: the hour hand sits between 6 and 7 (below and slightly left), the minute hand straight down.
+  t.tm_hour = 6; t.tm_min = 30; t.tm_sec = 0;
+  st.seconds = false;
+  Frame k;
+  draw(k, st, t);
+  CHECK(lit_in(k, 31, 34, 32, 54) >= 18);    // minute hand down
+  hand_end(6 * 30.0f + 15.0f, kHourHand, x, y);
+  CHECK(x < 32 && y > 40);
+}
+
 int run_unit() {
   test_delay_rule();
   test_sniff();
@@ -1071,6 +1132,7 @@ int run_unit() {
   test_makapix_index();
   test_fonts();
   test_clock_format();
+  test_analogue();
   test_weather_model();
   test_stream_protocol();
   test_night();

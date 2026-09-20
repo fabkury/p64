@@ -6,6 +6,7 @@
 #include <deque>
 #include <mutex>
 
+#include "analogue.hpp"
 #include "clock_format.hpp"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -181,6 +182,18 @@ class ClockSource : public playback::FrameSource {
       gfx::fonts::draw_centred(out, font, 20, "--:--", s.clock.colour, 2);
       gfx::fonts::draw_centred(out, font, 42, "NO TIME", s.clock.colour, 1);
       delay_ms = 1000;
+      return true;
+    }
+    if (s.clock.analogue) {
+      analogue::Style st;
+      st.ink = s.clock.colour;
+      st.background = s.clock.background;
+      st.seconds = s.clock.seconds;
+      st.month_first = s.clock.month_first;
+      st.font = &font;
+      analogue::draw(out, st, t);
+      delay_ms = s.clock.seconds ? 1000 : static_cast<uint32_t>((60 - t.tm_sec) * 1000);
+      if (delay_ms > 60000) delay_ms = 60000;
       return true;
     }
     const bool colon = !s.clock.blink_colon || (t.tm_sec % 2 == 0);

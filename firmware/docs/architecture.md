@@ -272,7 +272,10 @@ top of digits and capitals at y; descenders hang below `cap_height`, taller glyp
 `p64_widgets`: three `FrameSource`s and the overlay. The clock renders the time for
 the frame's due instant (the player works ahead), so its frames are right when they
 show; it asks for the next frame at the next minute (or second when seconds or the
-blinking colon show). The weather keeps one `Forecast` (Open-Meteo current conditions
+blinking colon show). Its analogue face (`analogue.cpp`, pure and host-tested) draws
+into the frame with integer Bresenham lines around a centre at 31.5 (a nudge keeps the
+axis-aligned hands on one column); the digital face and the analogue one share the
+colour, font, seconds and date-order settings. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours
 without a refresh. The temperature widget reads the SHTC3 through a sampler task every

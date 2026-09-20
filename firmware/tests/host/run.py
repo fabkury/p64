@@ -56,6 +56,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts_data.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "clock_format.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "analogue.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
