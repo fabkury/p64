@@ -19,44 +19,45 @@ esp_err_t (*g_root_when_running)(httpd_req_t *) = nullptr;
 // The setup page: small, inline styles, no external assets (the phone has no internet
 // while it is joined to the setup network). Placeholders: {HOSTNAME}, {SSID}.
 const char kPage[] = R"HTML(<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>p64 Wi-Fi setup</title>
+<link rel="icon" href="/favicon.png"><meta name="theme-color" content="#0E0A1A">
+<link rel="stylesheet" href="/static/common.css"><script src="/static/theme.js"></script>
 <style>
-:root{color-scheme:dark}body{margin:0;background:#0e0a1a;color:#eee;font:16px/1.45 system-ui,sans-serif}
-main{max-width:480px;margin:0 auto;padding:24px 16px}h1{font-size:28px;margin:0 0 4px;background:linear-gradient(90deg,#ff4d97,#8b5cff,#33a6ff);-webkit-background-clip:text;color:transparent}
-.sub{color:#9a93b3;margin:0 0 20px}.card{background:#171229;border-radius:12px;padding:16px;margin-bottom:16px}
-label{display:block;font-size:13px;color:#9a93b3;margin:12px 0 4px}input,select{width:100%;box-sizing:border-box;background:#0e0a1a;color:#eee;border:1px solid #2c2544;border-radius:8px;padding:10px;font-size:16px}
-button{width:100%;margin-top:16px;background:#8b5cff;color:#fff;border:0;border-radius:8px;padding:12px;font-size:16px;cursor:pointer}button.secondary{background:#2c2544}button.danger{background:#7a2130}
-.hint{font-size:13px;color:#9a93b3;margin-top:8px}.row{display:flex;gap:8px}.row button{margin-top:4px}
+body{padding:var(--sp-4);gap:0}main{width:min(var(--w-content),100%);margin:0 auto}
+.card{margin-bottom:var(--sp-4)}label{display:block;font-size:0.8rem;color:var(--c-text-light);margin:12px 0 4px}
+input{width:100%;box-sizing:border-box;background:var(--c-input-bg);color:var(--c-card-fg);border:1px solid var(--c-border);border-radius:var(--r-sm);padding:10px;font-size:1rem;font-family:inherit}
+input:focus{outline:none;border-color:var(--c-primary);box-shadow:var(--focus-ring)}
+.hint{font-size:0.8rem;color:var(--c-text-light);margin-top:8px}.row{display:flex;gap:8px;align-items:stretch}
+.btn{width:100%;margin-top:16px}.btn.scan{width:auto;margin-top:0;padding:10px 14px}
 </style></head><body><main>
-<h1>p64</h1><p class="sub">Wi-Fi setup</p>
+<div class="header"><h1>p64</h1><p style="margin:0 0 var(--sp-4);color:var(--c-on-bg-muted)">Wi-Fi setup</p></div>
 <div class="card"><form method="post" action="/setup/save">
 <label for="ssid">Network name (SSID)</label>
-<div class="row"><input id="ssid" name="ssid" list="nets" maxlength="32" required placeholder="e.g. MyHomeWiFi" value="{SSID}"><button type="button" class="secondary" style="width:auto;padding:10px 14px" onclick="scan()">Scan</button></div>
+<div class="row"><input id="ssid" name="ssid" list="nets" maxlength="32" required placeholder="e.g. MyHomeWiFi" value="{SSID}"><button type="button" class="btn scan" onclick="scan(this)">Scan</button></div>
 <datalist id="nets"></datalist>
 <label for="password">Password (leave empty for an open network)</label>
 <input id="password" name="password" type="password" maxlength="64" autocomplete="off">
 <label for="device_name">Device name (optional)</label>
 <input id="device_name" name="device_name" maxlength="16" pattern="[a-z0-9-]*" placeholder="e.g. bedroom" oninput="preview()">
 <p class="hint">Lowercase letters, digits and hyphens. The device is then reachable as <b id="host">{HOSTNAME}.local</b>. Useful only with more than one p64.</p>
-<button type="submit">Save and connect</button>
+<button type="submit" class="btn btn-gradient">Save and connect</button>
 </form>
 <p class="hint">After saving, p64 joins your network and this setup network disappears. Then open <b>http://<span id="host2">{HOSTNAME}</span>.local/</b> from any device on the same Wi-Fi.</p></div>
-<div class="card"><form method="post" action="/setup/erase" onsubmit="return confirm('Forget the saved Wi-Fi network?')"><button class="danger">Erase Wi-Fi credentials</button></form></div>
+<div class="card"><form method="post" action="/setup/erase" onsubmit="return confirm('Forget the saved Wi-Fi network?')"><button class="btn btn-danger" style="margin-top:0">Erase Wi-Fi credentials</button></form></div>
 <script>
 function preview(){var n=document.getElementById('device_name').value;var h=n?'p64-'+n:'p64';document.getElementById('host').textContent=h+'.local';document.getElementById('host2').textContent=h}
-function scan(){var b=event.target;b.textContent='...';fetch('/setup/scan').then(r=>r.json()).then(list=>{var d=document.getElementById('nets');d.innerHTML='';list.forEach(function(n){var o=document.createElement('option');o.value=n.ssid;o.label=n.ssid+' ('+n.rssi+' dBm'+(n.secure?'':', open')+')';d.appendChild(o)});b.textContent='Scan ('+list.length+')'}).catch(function(){b.textContent='Scan'})}
+function scan(b){b.textContent='...';fetch('/setup/scan').then(function(r){return r.json()}).then(function(list){var d=document.getElementById('nets');d.innerHTML='';list.forEach(function(n){var o=document.createElement('option');o.value=n.ssid;o.label=n.ssid+' ('+n.rssi+' dBm'+(n.secure?'':', open')+')';d.appendChild(o)});b.textContent='Scan ('+list.length+')'}).catch(function(){b.textContent='Scan'})}
 </script></main></body></html>)HTML";
 
-const char kSaved[] = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>p64: saved</title>
-<style>body{margin:0;background:#0e0a1a;color:#eee;font:16px/1.5 system-ui,sans-serif}main{max-width:480px;margin:0 auto;padding:24px 16px}.card{background:#171229;border-radius:12px;padding:16px}a{color:#33a6ff}</style></head>
-<body><main><div class="card"><h2>Saved</h2><p>p64 is joining <b>{SSID}</b>. This setup network closes as soon as it connects.</p>
-<p>Reconnect your phone or computer to your own Wi-Fi, then open <a href="http://{HOSTNAME}.local/">http://{HOSTNAME}.local/</a>.</p>
-<p>If p64 cannot join (wrong password, network out of reach), the <b>p64-setup</b> network comes back within a minute.</p></div></main></body></html>)HTML";
+const char kSaved[] = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/common.css"><script src="/static/theme.js"></script><title>p64: saved</title>
+<style>body{padding:var(--sp-4)}main{width:min(var(--w-content),100%);margin:0 auto}a{color:var(--c-primary)}</style></head>
+<body><main><div class="header"><h1>p64</h1></div><div class="card"><h3>Saved</h3><p>p64 is joining <b>{SSID}</b>. This setup network closes as soon as it connects.</p>
+<p class="setting-hint">Then open <a href="http://{HOSTNAME}.local/">http://{HOSTNAME}.local/</a> from a device on that network. If it never connects, the setup network returns within a minute; <a href="/">try again</a>.</p></div></main></body></html>)HTML";
 
-const char kErased[] = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8"><title>p64: erased</title>
-<style>body{margin:0;background:#0e0a1a;color:#eee;font:16px/1.5 system-ui,sans-serif}main{max-width:480px;margin:0 auto;padding:24px 16px}</style></head>
-<body><main><h2>Wi-Fi credentials erased</h2><p>p64 stays in setup mode. <a style="color:#33a6ff" href="/">Back to setup</a>.</p></main></body></html>)HTML";
+const char kErased[] = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/common.css"><script src="/static/theme.js"></script><title>p64: erased</title>
+<style>body{padding:var(--sp-4)}main{width:min(var(--w-content),100%);margin:0 auto}a{color:var(--c-primary)}</style></head>
+<body><main><div class="header"><h1>p64</h1></div><div class="card"><h3>Wi-Fi credentials erased</h3><p>p64 stays in setup mode. <a href="/">Back to setup</a>.</p></div></main></body></html>)HTML";
 
 const char kRunning[] = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8"><title>p64</title>
 <style>body{margin:0;background:#0e0a1a;color:#eee;font:16px/1.5 system-ui,sans-serif}main{max-width:480px;margin:0 auto;padding:24px 16px}</style></head>

@@ -213,6 +213,7 @@ never enter history and the clock overlay is not drawn over them.
 | `/api/v1/files?path=<rel>` | DELETE | delete a file or empty folder (the p64 folders are protected) |
 | `/api/v1/files/mkdir?path=<rel>` | POST | create a folder |
 | `/api/v1/files/rename` | POST | `{"from":..., "to":...}` |
+| `/api/v1/files/format` | POST | `{"confirm":"FORMAT"}` required: formats the card (FAT32) and recreates the p64 folders; the show rescans |
 
 Changes under `animations/` make the show rescan its local channels (2 s debounce).
 

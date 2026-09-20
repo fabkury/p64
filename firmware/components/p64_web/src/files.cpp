@@ -1,6 +1,7 @@
 // The card file manager (spec 11.1 Storage): list, upload, delete, make folder, rename.
 // Paths are relative to the card root; uploads are validated by sniffing the format.
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,10 @@
 #include "p64/storage/card.hpp"
 #include "p64/system/event_bus.hpp"
 #include "p64/web/web.hpp"
+
+namespace p64::web {
+cJSON *parse_body(httpd_req_t *req);
+}  // namespace p64::web
 
 namespace p64::web::files {
 namespace {
@@ -151,6 +156,24 @@ esp_err_t rename_handler(httpd_req_t *req) {
 
 }  // namespace
 
+// Formats the card: {"confirm":"FORMAT"} required. The show rescans afterwards.
+esp_err_t format_handler(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *c = cJSON_GetObjectItemCaseSensitive(body, "confirm");
+  const bool confirmed = c && cJSON_IsString(c) && std::strcmp(c->valuestring, "FORMAT") == 0;
+  cJSON_Delete(body);
+  if (!confirmed) return reply_error(req, "400 Bad Request", "NOT_CONFIRMED", "send {\"confirm\":\"FORMAT\"}");
+  std::string error;
+  if (!storage::format(error)) return reply_error(req, "500 Internal Server Error", "FORMAT_FAILED", error);
+  system::publish(system::Event::CardMounted);
+  system::publish(system::Event::LocalFilesChanged);
+  system::publish(system::Event::MakapixChannelChanged);
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "formatted", true);
+  return reply_ok(req, d);
+}
+
 void register_routes() {
   const httpd_uri_t routes[] = {
       {"/api/v1/files", HTTP_GET, list_handler, nullptr, false, false, nullptr},
@@ -159,6 +182,7 @@ void register_routes() {
       {"/api/v1/files", HTTP_DELETE, delete_handler, nullptr, false, false, nullptr},
       {"/api/v1/files/mkdir", HTTP_POST, mkdir_handler, nullptr, false, false, nullptr},
       {"/api/v1/files/rename", HTTP_POST, rename_handler, nullptr, false, false, nullptr},
+      {"/api/v1/files/format", HTTP_POST, format_handler, nullptr, false, false, nullptr},
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
 }

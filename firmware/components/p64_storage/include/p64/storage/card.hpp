@@ -39,6 +39,9 @@ std::string state_dir();             // root()/state
 bool mount();
 // Unmounts and mounts again (after the user swapped the card).
 bool remount();
+// Formats the mounted card (FAT32, spec 14: an explicit user action with confirmation)
+// and recreates the p64 folders. Everything on the card is lost.
+bool format(std::string &error);
 bool mounted();
 CardInfo info();
 

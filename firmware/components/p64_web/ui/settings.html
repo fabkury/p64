@@ -156,6 +156,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div><label>Longitude</label><input class="num-input" type="number" id="lon" step="0.0001"></div>
             <div><label>Units</label><select class="sel" style="min-width:0" id="units" onchange="save({weather:{units:this.value}})"><option value="metric">Metric</option><option value="imperial">Imperial</option></select></div>
         </div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><input type="text" class="text-input" style="flex:1;min-width:140px" id="city" placeholder="Search a city" onkeydown="if(event.key==='Enter')searchCity()"><button class="btn" onclick="searchCity()">Search</button></div>
+        <div id="city-results" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
         <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" onclick="saveLocation()">Save location</button><button class="btn" onclick="useMyLocation()">Use this browser's location</button><label class="toggle-label" style="margin-left:auto">Refresh every</label><input class="num-input" type="number" id="weather-refresh" min="10" max="180" onchange="save({weather:{refresh_minutes:+this.value}})"><span class="setting-hint" style="margin:0">min</span></div>
         <div class="setting-hint" id="weather-status">Open-Meteo, no key needed.</div>
     </div>
@@ -249,6 +251,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Space</span><span class="info-value" id="card-space">-</span></div>
         <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Downloads cap</label><input class="num-input" type="number" id="dl-cap" min="16" max="1024" onchange="save({storage:{downloads_cap_mb:+this.value}})"><span class="setting-hint" style="margin:0">MB kept for Makapix downloads</span></div>
         <div class="info-row"><span class="info-label">Root folder</span><span class="info-value mono" id="card-root">-</span></div>
+        <div class="toggle-row" style="margin-top:8px"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatCard()">Format the card&hellip;</button></div>
+        <div class="setting-hint">Erases everything on the card (FAT32) and recreates the p64 folders. Cached Makapix artworks download again.</div>
     </div>
     <div class="section">
         <h3>Files</h3>
@@ -396,6 +400,20 @@ function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } 
 function bgPreview() { document.getElementById('bg-preview').style.background = 'rgb(' + (+gv('bg-r') || 0) + ',' + (+gv('bg-g') || 0) + ',' + (+gv('bg-b') || 0) + ')'; }
 function saveBg() { save({ display: { background: { r: +gv('bg-r') || 0, g: +gv('bg-g') || 0, b: +gv('bg-b') || 0 } } }); }
 function saveLocation() { var la = parseFloat(gv('lat')), lo = parseFloat(gv('lon')); if (isNaN(la) || isNaN(lo)) { p64.toast('Latitude and longitude needed', true); return; } save({ weather: { latitude: la, longitude: lo } }); }
+// City search from the browser (Open-Meteo geocoding, no key); a pick fills and saves the coordinates.
+function searchCity() {
+    var q = gv('city').trim(), box = document.getElementById('city-results');
+    if (!q) return;
+    box.innerHTML = '<span class="setting-hint">searching...</span>';
+    fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&name=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (j) {
+        var rs = j.results || [];
+        if (!rs.length) { box.innerHTML = '<span class="setting-hint">no place found</span>'; return; }
+        box.innerHTML = rs.map(function (r, i) {
+            return '<button class="rot-btn" style="text-align:left" onclick="pickCity(' + r.latitude + ',' + r.longitude + ')">' + p64.esc(r.name) + (r.admin1 ? ', ' + p64.esc(r.admin1) : '') + (r.country ? ', ' + p64.esc(r.country) : '') + ' <span style="color:var(--c-text-light);font-size:0.78rem">' + r.latitude.toFixed(3) + ', ' + r.longitude.toFixed(3) + '</span></button>';
+        }).join('');
+    }).catch(function () { box.innerHTML = '<span class="setting-hint">the search needs internet in this browser</span>'; });
+}
+function pickCity(lat, lon) { sv('lat', lat.toFixed(4)); sv('lon', lon.toFixed(4)); document.getElementById('city-results').innerHTML = ''; saveLocation(); }
 function useMyLocation() {
     if (!navigator.geolocation) { p64.toast('No geolocation in this browser', true); return; }
     navigator.geolocation.getCurrentPosition(function (pos) { sv('lat', pos.coords.latitude.toFixed(4)); sv('lon', pos.coords.longitude.toFixed(4)); saveLocation(); }, function () { p64.toast('Location not available', true); });
@@ -433,6 +451,11 @@ function fmPlay(rel) { p64.post('/api/v1/action/play', { path: rel }).then(funct
 function fmRename(rel) { var name = rel.split('/').pop(); var n = prompt('New name', name); if (!n || n === name) return; var to = (fmPath ? fmPath + '/' : '') + n; p64.post('/api/v1/files/rename', { from: rel, to: to }).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
 function fmDelete(rel) { if (!confirm('Delete ' + rel + '?')) return; p64.del('/api/v1/files?path=' + encodeURIComponent(rel)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
 function fmMkdir() { var n = prompt('Folder name'); if (!n) return; p64.post('/api/v1/files/mkdir?path=' + encodeURIComponent((fmPath ? fmPath + '/' : '') + n)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
+function formatCard() {
+    if (!p64.confirmWord('Erase everything on the microSD card and format it? This cannot be undone.', 'FORMAT')) return;
+    p64.toast('Formatting...');
+    p64.post('/api/v1/files/format', { confirm: 'FORMAT' }).then(function () { p64.toast('Card formatted'); fmPath = ''; fmList(); }).catch(function (e) { p64.toast(e.message, true); });
+}
 function fmUpload() {
     var f = document.getElementById('fm-file').files[0]; if (!f) return;
     var rel = (fmPath ? fmPath + '/' : '') + f.name;

@@ -75,7 +75,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\imu_smoke.py http://<ip>` and
 `python tests\device\pin_smoke.py http://<ip>` and
 `python tests\device\ota_smoke.py http://<ip> [--no-install]` and
-`python tests\device\ui_smoke.py http://<ip>` against the live device (the
+`python tests\device\ui_smoke.py http://<ip>` against the live device, and
+`python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs

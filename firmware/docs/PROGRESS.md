@@ -350,6 +350,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   version served the browser's cached old page); lwIP sockets 16 -> 24 (12 for the
   server, a browser holds six plus the WebSocket). Internal RAM: 21 KB free at boot,
   23.5 KB with the Home page open (was 9 KB before the changes).
-- Remaining for M10: the setup portal in the same style, the acceptance tests of spec
-  18 that can run unattended (a soak with counters), the analogue clock face, the
-  weather city search.
+- M10, second part: the setup portal restyled on the shared stylesheet (it serves
+  `/static/common.css` in setup mode too), the weather city search (Open-Meteo
+  geocoding from the browser, a pick saves the coordinates), the card format action
+  (`POST /api/v1/files/format` with the word, the Storage tab button), and
+  `tests/device/soak.py`: the unattended acceptance run (spec 18.1 and 18.11 in
+  miniature: a playset at a short interval under a status and preview poll, watching
+  reboots, panics, watchdogs, panel timeouts and stalls, late flips and the heap floor).
+- Verified on the device: `soak.py --minutes 10 --interval 5` on Promoted with a status
+  and preview poll every second: 120 swaps, 7 798 frames presented, 0 late flips, 0
+  panel timeouts, no stall, no reboot, internal heap floor 11.8 KB (20.5 KB typical),
+  0 poll errors. The portal page, the city search and the format refusal checked over
+  HTTP; the format itself was not run on the development card.
+- Remaining: the analogue clock face (to be designed with the user), the acceptance
+  measurements that need instruments (camera at 240 fps, a power meter), a 12 h and a
+  24 h soak (run `soak.py --minutes 720` when the device can be left alone).

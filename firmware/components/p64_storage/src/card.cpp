@@ -90,6 +90,29 @@ bool do_mount() {
 
 }  // namespace
 
+bool format(std::string &error) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_card) {
+    error = "no card mounted";
+    return false;
+  }
+  ESP_LOGW(TAG, "formatting the card");
+  const esp_err_t err = esp_vfs_fat_sdcard_format(kMountPoint, g_card);
+  if (err != ESP_OK) {
+    error = std::string("format failed: ") + esp_err_to_name(err);
+    ESP_LOGE(TAG, "%s", error.c_str());
+    return false;
+  }
+  ensure_dir(root());
+  ensure_dir(animations_dir());
+  ensure_dir(downloads_dir());
+  ensure_dir(cache_dir());
+  ensure_dir(channels_dir());
+  ensure_dir(state_dir());
+  ESP_LOGI(TAG, "card formatted; p64 folders recreated");
+  return true;
+}
+
 const char *mount_point() { return kMountPoint; }
 std::string root() { return std::string(kMountPoint) + "/" + kRootName; }
 std::string animations_dir() { return root() + "/animations"; }
