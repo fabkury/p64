@@ -53,8 +53,11 @@ streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout
 summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
 hold), the IMU (taps, auto-rotation with an upright calibration), the PIN (route
 gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, rollback)
-are done, so M0 to M9 are complete; M10 (the web UI in p3a's layout and themes:
-`components/p64_web/ui/`, four pages plus shared static files) is in progress;
+are done, and M10 delivered the web UI in p3a's layout and five themes
+(`components/p64_web/ui/`: four pages, the shared static files, the setup portal on the
+same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
+open: the analogue clock face (to design with the user), the acceptance measurements
+that need instruments, long soaks;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
