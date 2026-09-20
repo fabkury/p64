@@ -16,14 +16,14 @@ the vocabulary in `CONTEXT.md` and the decisions in `docs/adr/`.
 ## Building, flashing, testing
 
 ESP-IDF v5.5.4 (`tools/env.ps1` knows the install), PowerShell 7, from this folder:
-`.	oolsuild.ps1`, `.	oolslash.ps1` (auto-detects the board's COM port),
-`.	ools\monitor.ps1`, `.	ools\idf.ps1 <args>`. `sdkconfig.defaults` is the source
+`./tools/build.ps1`, `./tools/flash.ps1` (auto-detects the board's COM port),
+`./tools/monitor.ps1`, `./tools/idf.ps1 <args>`. `sdkconfig.defaults` is the source
 of truth; a changed default needs `sdkconfig` deleted. Wi-Fi credentials live only in
-the git-ignored `sdkconfig.secrets`. Boot logs without a reset: `tools\serial_peek.py
+the git-ignored `sdkconfig.secrets`. Boot logs without a reset: `tools/serial_peek.py
 COM13 <seconds>` with the IDF venv's python while `POST /api/v1/action/reboot`
 restarts the firmware.
 
-Host tests (`python tests\hostun.py`, gcc and the system Python with Pillow) build
+Host tests (`python tests/host/run.py`, gcc and the system Python with Pillow) build
 the ESP-IDF-free parts: decoders against Pillow pixel for pixel, the content model,
 fonts, widgets' pure parts, the stream protocol, the night rule, the RTC codec, taps and
 orientation, the version rule. Device tests under `tests/device/` run against the
@@ -86,7 +86,7 @@ frame, on the HTTP task on core 0 while the show ran on core 1; Pillow-made corp
 So 64x64 animations decode well inside the 16.7 ms budget of 60 fps in every format, and
 128x128 animations sustain 35 to 45 fps: 128x128 at 60 fps plays in slow motion under
 the no-drop rule (ADR 0003), as the spec allows. Run it again after decoder or scaler
-changes: `python testsdevicepi_smoke.py http://p64.local --corpus --bench`.
+changes: `python tests/device/api_smoke.py http://p64.local --corpus --bench`.
 
 ## Relation to `hardware-tests/`
 
