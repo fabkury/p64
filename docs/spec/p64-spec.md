@@ -53,14 +53,22 @@ one configuration property read everywhere, never literal numbers.
 
 ### 3.1 Panel modes
 
-| Mode | Bit planes | Refresh (measured or computed at 20 MHz pixel clock) | Codes per channel | Use |
-|---|---|---|---|---|
-| Quality (default) | 10 | 271.3 Hz (measured; transition bit 4) | 1024 | Normal viewing: dark tones keep their steps |
-| Photo | 8 | about 810 Hz (computed: transition bit 4; to be verified on hardware, target at least 600 Hz) | 256 | Being photographed or filmed: no rolling-shutter banding |
+| Mode | Bit planes | Refresh (measured at 20 MHz pixel clock, 2026-09-20) | Codes per channel | Light at full white | Use |
+|---|---|---|---|---|---|
+| Quality (default) | 10 | 271.3 Hz (transition bit 4, 36 transmissions per row) | 1024 | 100 % (1979 of 2304 pixel clocks per frame lit) | Normal viewing: dark tones keep their steps |
+| Photo | 8 | 813.8 Hz (transition bit 4, 12 transmissions per row) | 256 | about 74 % of Quality (491 of 768 clocks lit, at three times the rate) | Being photographed or filmed: no rolling-shutter banding |
 
-Switching modes is a user action in the web UI and the API. It may blank the panel for
-under one second while the driver re-initialises; it must not require a reboot. The mode
-persists across reboots.
+Photo mode is dimmer by design: the five planes sent once carry halved output-enable
+windows whatever the plane count, and with only twelve transmissions per row they are a
+larger share of the frame. Cameras compensate with exposure; the setting is not meant
+for viewing. Quality mode stays at 271 Hz: the next finer setting (transition bit 3,
+146 Hz) would need two 25.7 KB descriptor chains in internal RAM instead of two 13.8 KB
+ones, which the device does not have (settled with the user on 2026-09-20).
+
+Switching modes is a user action in the web UI and the API. The driver's refresh
+profile changes in place (no re-initialisation, nothing allocated): the panel shows the
+previous picture for a few refresh periods and never blanks; it must not require a
+reboot. The mode persists across reboots.
 
 ### 3.2 Brightness
 
@@ -119,8 +127,8 @@ holds for artwork to artwork, artwork to widget, widget to artwork, stream entry
 and overlay changes. There are no transition effects in v1 (cross-fade and wipes are
 possible later because a transition is content that owns two frames).
 
-Exceptions, allowed and documented: panel mode switch (under one second of blank),
-reboot, pause (deliberate darkness).
+Exceptions, allowed and documented: panel mode switch (a few refresh periods of the
+previous picture), reboot, pause (deliberate darkness).
 
 ### 3.7 Live preview
 
@@ -713,7 +721,9 @@ device and read over diagnostics.
 5. Scaling: 32x32 shows at exactly 2x with hard edges; 128x128 averages 2x2; a 64x32
    shows pillar/letterboxed in the background colour, centred.
 6. Modes: switching to Photo mode measures at least 600 Hz; back to Quality at 271 Hz;
-   both with under 1 s of blank.
+   both with under 1 s of blank. Verified 2026-09-20 from the driver's timing (813.8
+   and 271.3 Hz) over 12 switches plus a five-request burst, frame lock kept, no
+   allocation (`tests/device/panel_mode_smoke.py`); a camera measurement is still open.
 7. Brightness: 255 with the 27 W supply draws under 15 W at full white; the ceiling holds
    under Makapix commands and schedules.
 8. Boot: power-on to first artwork under 3 s with a cached artwork; setup mode reachable
@@ -749,8 +759,9 @@ night schedule.
    accepted), one download at a time, dynamic TLS buffers.
 3. IMU tap detection through a printed shell on a desk may be unreliable; sensitivity
    setting and lockout are the knobs; the feature can be disabled.
-4. The photo-mode refresh figure is computed, not measured; the acceptance threshold is
-   600 Hz.
+4. The photo-mode refresh figure (813.8 Hz) comes from the driver's timing, not from a
+   camera; the acceptance threshold is 600 Hz. Photo mode gives about 74 % of Quality's
+   light (3.1).
 5. The server plans daily caps on its anonymous endpoints; the Promoted channel without
    pairing depends on them staying generous.
 6. Box-average downscaling of pixel art (128x128 to 64x64) softens it by design; the spec
