@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>p64 settings</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E0A1A">
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/static/common.css">
+<script src="/static/theme.js"></script>
+<style>
+.bg-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bg-preview { width: 36px; height: 36px; border-radius: var(--r-md); border: 2px solid var(--c-border); flex-shrink: 0; background: #000; }
+.bg-input { width: 100%; max-width: 70px; padding: 8px 10px; border-radius: var(--r-md); border: 1px solid var(--c-border); font-size: 0.9rem; background: var(--c-input-bg); color: var(--c-card-fg); }
+.num-input { width: 100%; max-width: 110px; padding: 8px 10px; border-radius: var(--r-md); border: 1px solid var(--c-border); font-size: 0.9rem; background: var(--c-input-bg); color: var(--c-card-fg); }
+.text-input { width: 100%; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: 0.95rem; font-family: inherit; outline: none; background: var(--c-input-bg); color: var(--c-card-fg); }
+.text-input:focus { border-color: var(--c-primary); box-shadow: var(--focus-ring); }
+select.sel { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--c-card-border); font-size: 0.9rem; background: var(--c-input-bg); color: var(--c-card-fg); min-width: 160px; max-width: 100%; }
+.upload-btn { background: var(--c-success); color: var(--c-on-success); border: none; padding: 9px 14px; border-radius: var(--r-md); font-size: 0.85rem; font-weight: 500; cursor: pointer; }
+.upload-btn:disabled { background: var(--c-bg-fill-strong); cursor: not-allowed; }
+.danger-btn { background: var(--c-danger); color: var(--c-on-danger); width: 100%; }
+.warning { color: var(--c-text-light); font-size: 0.8rem; margin-top: var(--sp-2); text-align: center; }
+.brightness-row { display: flex; gap: 8px; align-items: center; }
+.brightness-row input[type="range"] { flex: 1; min-width: 0; }
+.brightness-value { min-width: 38px; text-align: right; font-size: 0.9rem; color: var(--c-text-light); }
+.rot-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.rot-btn { flex: 1; min-width: 60px; padding: 10px 8px; border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-input-bg); color: var(--c-text); font-size: 0.9rem; font-family: inherit; cursor: pointer; }
+.rot-btn.active { background: var(--c-success); border-color: var(--c-success); color: var(--c-on-success); font-weight: 600; }
+.hostname-preview, .name-hint { color: var(--c-text-lighter); font-size: 0.78rem; margin-top: var(--sp-1); }
+.name-error { color: var(--c-danger); font-size: 0.78rem; margin-top: var(--sp-1); display: none; }
+.files { list-style: none; padding: 0; margin: var(--sp-2) 0; display: flex; flex-direction: column; gap: 4px; }
+.files li { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 8px; border-radius: var(--r-sm); background: var(--c-surface-sunk); font-size: 0.85rem; }
+.files li .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.files li .fname.dir { font-weight: 600; color: var(--c-primary); }
+.files li .fsize { color: var(--c-text-light); font-size: 0.75rem; flex-shrink: 0; }
+.files li button { padding: 4px 8px; font-size: 0.72rem; border-radius: var(--r-sm); border: 1px solid var(--c-card-border); background: var(--c-input-bg); color: var(--c-card-fg); cursor: pointer; }
+.files li button.danger { color: var(--c-danger); }
+.crumbs { font-size: 0.85rem; color: var(--c-text-light); margin-bottom: var(--sp-2); word-break: break-all; }
+.crumbs a { color: var(--c-primary); cursor: pointer; }
+.code-badge { font-family: var(--font-mono); font-size: 1.8rem; letter-spacing: 0.3em; text-align: center; padding: var(--sp-3); background: var(--c-surface-sunk); border-radius: var(--r-md); margin: var(--sp-2) 0; color: var(--c-warning); }
+pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(--c-surface-sunk); padding: var(--sp-2); border-radius: var(--r-sm); white-space: pre-wrap; word-break: break-all; color: var(--c-text); }
+.mono { font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; }
+.pin-overlay-p64 { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: var(--sp-3); }
+.pin-card-p64 { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: var(--sp-3); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-2); }
+.grid2 label, .grid3 label { display: block; font-size: 0.78rem; color: var(--c-text-light); margin-bottom: 2px; }
+.grid2 input, .grid2 select, .grid3 input, .grid3 select { width: 100%; box-sizing: border-box; }
+</style>
+</head>
+<body class="has-bottom-nav">
+<div class="header"><h1>p64</h1><p style="margin:0;color:var(--c-on-bg-muted);font-size:0.85rem">Settings</p></div>
+<div class="tab-bar">
+    <button class="tab-item active" data-tab="display">Display</button>
+    <button class="tab-item" data-tab="widgets">Widgets</button>
+    <button class="tab-item" data-tab="stream">Stream</button>
+    <button class="tab-item" data-tab="network">Network</button>
+    <button class="tab-item" data-tab="storage">Storage</button>
+    <button class="tab-item" data-tab="makapix">Makapix</button>
+    <button class="tab-item" data-tab="system">System</button>
+</div>
+
+<!-- Display -->
+<div class="tab-content active" id="tab-display">
+    <div class="section">
+        <h3>Theme</h3>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label" for="theme-select">Colour theme</label><select id="theme-select" class="sel" onchange="p64Theme.set(this.value)"></select></div>
+        <div class="setting-hint">The look of this web interface; saved in this browser.</div>
+    </div>
+    <div class="section">
+        <h3>Brightness</h3>
+        <div class="brightness-row"><input type="range" id="brightness" min="1" max="255" value="255" oninput="document.getElementById('brightness-value').textContent=this.value" onchange="save({display:{brightness:+this.value}})"><span class="brightness-value" id="brightness-value">255</span></div>
+        <div class="setting-hint">1 to 255. Full white at 255 needs the 27 W supply on the POWER port.</div>
+        <div class="toggle-row" style="margin-top:10px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Ceiling (advanced)</label><input class="num-input" type="number" id="ceiling" min="1" max="255" onchange="save({display:{brightness_ceiling:+this.value}})"></div>
+        <div class="setting-hint">The effective brightness never exceeds the ceiling: schedules, Makapix commands and the API included.</div>
+    </div>
+    <div class="section">
+        <h3>Night schedule</h3>
+        <div class="toggle-row"><label class="toggle-label" for="night-enabled">Enabled</label><label class="toggle-switch"><input type="checkbox" id="night-enabled" onchange="save({display:{night:{enabled:this.checked}}})"><span class="toggle-slider"></span></label></div>
+        <div class="grid3" style="margin-top:8px">
+            <div><label>From</label><input type="time" class="num-input" id="night-start" onchange="save({display:{night:{start_minutes:p64.minutes(this.value)}}})"></div>
+            <div><label>To</label><input type="time" class="num-input" id="night-end" onchange="save({display:{night:{end_minutes:p64.minutes(this.value)}}})"></div>
+            <div><label>Brightness</label><select class="sel" id="night-brightness" style="min-width:0" onchange="save({display:{night:{brightness:+this.value}}})"><option value="0">panel off</option><option value="20">20</option><option value="40">40</option><option value="60">60</option><option value="90">90</option><option value="128">128</option><option value="180">180</option><option value="255">255</option></select></div>
+        </div>
+        <div class="setting-hint" id="night-hint">Inside the window the panel uses the night brightness (or turns off); a window may cross midnight.</div>
+    </div>
+    <div class="section">
+        <h3>Panel mode</h3>
+        <div class="rot-row"><button class="rot-btn" id="mode-quality" onclick="save({display:{panel_mode:'quality'}})">Quality (271 Hz, richer colour)</button><button class="rot-btn" id="mode-photo" onclick="save({display:{panel_mode:'photo'}})">Photo (faster, less banding)</button></div>
+    </div>
+    <div class="section">
+        <h3>Rotation (clockwise)</h3>
+        <div class="rot-row"><button class="rot-btn" data-rot="0" onclick="setRotation(0)">0&deg;</button><button class="rot-btn" data-rot="90" onclick="setRotation(90)">90&deg;</button><button class="rot-btn" data-rot="180" onclick="setRotation(180)">180&deg;</button><button class="rot-btn" data-rot="270" onclick="setRotation(270)">270&deg;</button><button class="rot-btn" id="rot-auto" onclick="save({display:{rotation_auto:!S.display.rotation_auto}})">Auto (IMU)</button></div>
+        <div class="setting-hint" id="rot-hint">Auto needs one calibration: stand the panel upright, then press below. The setting is the fallback until the IMU has resolved.</div>
+        <div class="toggle-row" style="margin-top:8px"><button class="btn" onclick="p64.post('/api/v1/action/calibrate_upright').then(function(d){p64.toast('Calibrated at rotation '+d.auto_rotation)}).catch(function(e){p64.toast(e.message,true)})">Panel is upright now</button></div>
+    </div>
+    <div class="section">
+        <h3>Background colour</h3>
+        <div class="bg-row"><div class="bg-preview" id="bg-preview"></div><input class="bg-input" id="bg-r" type="number" min="0" max="255" placeholder="R" oninput="bgPreview()"><input class="bg-input" id="bg-g" type="number" min="0" max="255" placeholder="G" oninput="bgPreview()"><input class="bg-input" id="bg-b" type="number" min="0" max="255" placeholder="B" oninput="bgPreview()"><button class="upload-btn" onclick="saveBg()">Save</button></div>
+        <div class="setting-hint">Behind transparent artwork and in letterbox bars.</div>
+    </div>
+    <div class="section">
+        <h3>RGB gains</h3>
+        <div class="grid3"><div><label>Red %</label><input class="num-input" type="number" id="gain-r" min="50" max="100"></div><div><label>Green %</label><input class="num-input" type="number" id="gain-g" min="50" max="100"></div><div><label>Blue %</label><input class="num-input" type="number" id="gain-b" min="50" max="100"></div></div>
+        <div class="toggle-row" style="margin-top:8px"><button class="btn" onclick="save({display:{gains:{r:+gv('gain-r'),g:+gv('gain-g'),b:+gv('gain-b')}}})">Save gains</button></div>
+        <div class="setting-hint">Per-channel white balance, 50 to 100 %.</div>
+    </div>
+    <div class="section">
+        <h3>Clock overlay</h3>
+        <div class="toggle-row"><label class="toggle-label" for="ov-enabled">Show the time over artworks</label><label class="toggle-switch"><input type="checkbox" id="ov-enabled" onchange="save({show:{clock_overlay:{enabled:this.checked}}})"><span class="toggle-slider"></span></label></div>
+        <div class="grid3" style="margin-top:8px">
+            <div><label>Corner</label><select class="sel" style="min-width:0" id="ov-corner" onchange="save({show:{clock_overlay:{corner:this.value}}})"><option value="top_left">Top left</option><option value="top_right">Top right</option><option value="bottom_left">Bottom left</option><option value="bottom_right">Bottom right</option></select></div>
+            <div><label>Font</label><select class="sel" style="min-width:0" id="ov-font" onchange="save({show:{clock_overlay:{font:this.value}}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div>
+            <div><label>Hours</label><select class="sel" style="min-width:0" id="ov-h24" onchange="save({show:{clock_overlay:{h24:this.value==='24'}}})"><option value="24">24 h</option><option value="12">12 h</option></select></div>
+        </div>
+    </div>
+    <div class="section">
+        <h3>Boot animation</h3>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Length</label><input class="num-input" type="number" id="boot-ms" min="0" max="5000" step="100" onchange="save({display:{boot_animation_ms:+this.value}})"><span class="setting-hint" style="margin:0">ms (0 = none)</span></div>
+    </div>
+    <div class="section">
+        <h3>Animation show</h3>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Auto-swap interval</label><input class="num-input" type="number" id="auto-swap" min="0" max="86400" onchange="save({show:{auto_swap_seconds:+this.value}})"><span class="setting-hint" style="margin:0">s (0 = never; else 5 to 86400)</span></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">Pick mode</label><select class="sel" id="pick-mode" onchange="save({show:{pick_mode:this.value}})"><option value="random">Random (shuffle on)</option><option value="recency">Recency (newest first)</option></select></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">Channel selection</label><select class="sel" id="channel-select" onchange="save({show:{channel_select:this.value}})"><option value="stochastic">Stochastic</option><option value="swrr">SWRR (fixed order)</option></select></div>
+        <div class="setting-hint"><b>Stochastic</b> picks channels at random with their weights, nudging any that fell behind; <b>SWRR</b> rotates them in a fixed order that matches the weights exactly.</div>
+    </div>
+</div>
+
+<!-- Widgets -->
+<div class="tab-content" id="tab-widgets">
+    <div class="section">
+        <h3>Main state</h3>
+        <div class="rot-row"><button class="rot-btn" id="ms-animation_show" onclick="save({show:{main_state:'animation_show'}})">Animation show</button><button class="rot-btn" id="ms-widget" onclick="save({show:{main_state:'widget'}})">Widget</button><button class="rot-btn" id="ms-stream" onclick="save({show:{main_state:'stream'}})">Stream</button></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">Widget shown in the Widget state</label><select class="sel" id="widget" onchange="save({widgets:{widget:this.value}})"><option value="clock">Clock</option><option value="weather">Weather</option><option value="temperature">Temperature</option></select></div>
+    </div>
+    <div class="section">
+        <h3>Clock</h3>
+        <div class="grid3">
+            <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div>
+            <div><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
+            <div><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h</option></select></div>
+        </div>
+        <div class="grid3" style="margin-top:8px">
+            <div><label>Seconds</label><select class="sel" style="min-width:0" id="clock-seconds" onchange="save({clock:{seconds:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
+        </div>
+        <div class="setting-hint">The analogue face is not drawn yet (digital only).</div>
+    </div>
+    <div class="section">
+        <h3>Weather</h3>
+        <div class="grid3">
+            <div><label>Latitude</label><input class="num-input" type="number" id="lat" step="0.0001"></div>
+            <div><label>Longitude</label><input class="num-input" type="number" id="lon" step="0.0001"></div>
+            <div><label>Units</label><select class="sel" style="min-width:0" id="units" onchange="save({weather:{units:this.value}})"><option value="metric">Metric</option><option value="imperial">Imperial</option></select></div>
+        </div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><button class="btn" onclick="saveLocation()">Save location</button><button class="btn" onclick="useMyLocation()">Use this browser's location</button><label class="toggle-label" style="margin-left:auto">Refresh every</label><input class="num-input" type="number" id="weather-refresh" min="10" max="180" onchange="save({weather:{refresh_minutes:+this.value}})"><span class="setting-hint" style="margin:0">min</span></div>
+        <div class="setting-hint" id="weather-status">Open-Meteo, no key needed.</div>
+    </div>
+    <div class="section">
+        <h3>Temperature (on-board sensor)</h3>
+        <div class="grid3">
+            <div><label>Temperature offset</label><input class="num-input" type="number" id="t-off" min="-10" max="10" onchange="save({temperature:{offset_temperature:+this.value}})"></div>
+            <div><label>Humidity offset</label><input class="num-input" type="number" id="h-off" min="-10" max="10" onchange="save({temperature:{offset_humidity:+this.value}})"></div>
+            <div><label>Trend arrow</label><select class="sel" style="min-width:0" id="t-trend" onchange="save({temperature:{trend:this.value==='on'}})"><option value="on">On</option><option value="off">Off</option></select></div>
+        </div>
+        <div class="setting-hint" id="sensor-status">The board's own sensor sits in a warm shell; the offsets correct that.</div>
+    </div>
+    <div class="section">
+        <h3>Interludes</h3>
+        <div class="setting-hint">At each auto-swap, the chance that a widget shows for one slot instead of an artwork.</div>
+        <div class="grid3" style="margin-top:8px">
+            <div><label>Clock %</label><input class="num-input" type="number" id="il-clock" min="0" max="100" onchange="save({widgets:{interlude_percent:{clock:+this.value}}})"></div>
+            <div><label>Weather %</label><input class="num-input" type="number" id="il-weather" min="0" max="100" onchange="save({widgets:{interlude_percent:{weather:+this.value}}})"></div>
+            <div><label>Temperature %</label><input class="num-input" type="number" id="il-temp" min="0" max="100" onchange="save({widgets:{interlude_percent:{temperature:+this.value}}})"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Stream -->
+<div class="tab-content" id="tab-stream">
+    <div class="section">
+        <h3>Streams</h3>
+        <div class="setting-hint" id="stream-status">&hellip;</div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="st-takeover">Takeover: a stream takes the panel in any state</label><label class="toggle-switch"><input type="checkbox" id="st-takeover" onchange="save({stream:{takeover:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Silence timeout</label><input class="num-input" type="number" id="st-silence" min="500" max="60000" step="100" onchange="save({stream:{silence_ms:+this.value}})"><span class="setting-hint" style="margin:0">ms without a frame before the previous state returns</span></div>
+    </div>
+    <div class="section">
+        <h3>DDP</h3>
+        <div class="toggle-row"><label class="toggle-label" for="st-ddp">Listen (LedFx, xLights, WLED tooling)</label><label class="toggle-switch"><input type="checkbox" id="st-ddp" onchange="save({stream:{ddp_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">UDP port</label><input class="num-input" type="number" id="st-ddp-port" min="1" max="65535" onchange="save({stream:{ddp_port:+this.value}})"></div>
+        <div class="setting-hint">RGB frames of 64x64 (12 288 bytes) or 128x128 (downscaled).</div>
+    </div>
+    <div class="section">
+        <h3>Raw p64 UDP</h3>
+        <div class="toggle-row"><label class="toggle-label" for="st-raw">Listen</label><label class="toggle-switch"><input type="checkbox" id="st-raw" onchange="save({stream:{raw_udp_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">UDP port</label><input class="num-input" type="number" id="st-raw-port" min="1" max="65535" onchange="save({stream:{raw_udp_port:+this.value}})"></div>
+        <div class="setting-hint">RGB888, RGB565 or indexed frames up to 128x128, chunked by offset. From a PC: <code>python tools/stream_send.py p64.local test</code>.</div>
+    </div>
+</div>
+
+<!-- Network -->
+<div class="tab-content" id="tab-network">
+    <div class="section">
+        <h3>Connection</h3>
+        <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="status-badge" id="net-badge">&hellip;</span></span></div>
+        <div class="info-row"><span class="info-label">Network</span><span class="info-value" id="net-ssid">-</span></div>
+        <div class="info-row"><span class="info-label">IP address</span><span class="info-value" id="net-ip">-</span></div>
+        <div class="info-row"><span class="info-label">Gateway</span><span class="info-value" id="net-gw">-</span></div>
+        <div class="info-row"><span class="info-label">Signal</span><span class="info-value" id="net-rssi">-</span></div>
+        <div class="info-row"><span class="info-label">Address</span><span class="info-value" id="net-host">-</span></div>
+    </div>
+    <div class="section">
+        <h3>Device name</h3>
+        <input type="text" id="device-name" class="text-input" maxlength="16" autocapitalize="none" spellcheck="false" placeholder="e.g. bedroom" oninput="hostPreview()">
+        <div class="hostname-preview" id="hostname-preview"></div>
+        <div class="name-hint">Lowercase letters, digits and hyphens; empty means p64.local. A change needs a reboot.</div>
+        <div class="name-error" id="name-error">Use only lowercase letters, digits and hyphens, no hyphen at the edges.</div>
+        <button type="button" class="btn btn-full" style="margin-top:var(--sp-2)" onclick="saveDeviceName()">Save</button>
+    </div>
+    <div class="section">
+        <h3>Time</h3>
+        <div class="info-row"><span class="info-label">Now</span><span class="info-value" id="time-now">-</span></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Time zone</label><select class="sel" id="timezone" onchange="save({network:{timezone:this.value}})"></select></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">NTP server</label><input type="text" class="text-input" style="max-width:220px" id="ntp" onchange="save({network:{ntp_server:this.value.trim()}})"></div>
+        <div class="toggle-row" style="margin-top:8px"><button class="btn" onclick="p64.post('/api/v1/action/set_time',{utc:Math.floor(Date.now()/1000)}).then(function(d){p64.toast('Time set ('+d.source+')')}).catch(function(e){p64.toast(e.message,true)})">Set time from this browser</button></div>
+        <div class="setting-hint">For installs without internet; the on-board clock keeps it across power cuts.</div>
+    </div>
+    <div class="section">
+        <h3>PIN</h3>
+        <div class="setting-hint" id="pin-status">&hellip;</div>
+        <div class="grid2" style="margin-top:8px"><div><label>New PIN (empty clears)</label><input type="password" class="text-input" id="pin-new" inputmode="numeric" maxlength="8" placeholder="4 to 8 digits"></div><div><label>Current PIN</label><input type="password" class="text-input" id="pin-current" inputmode="numeric" maxlength="8"></div></div>
+        <button type="button" class="btn btn-full" style="margin-top:var(--sp-2)" onclick="savePin()">Save PIN</button>
+        <div class="setting-hint">With a PIN, every page and API call needs it once per browser. The setup portal and the UDP streams stay open.</div>
+    </div>
+    <div class="section">
+        <button type="button" class="btn danger-btn" onclick="eraseWifi()">Erase Wi-Fi &amp; restart in setup mode</button>
+        <p class="warning">The device opens the p64-setup network for a new configuration.</p>
+    </div>
+</div>
+
+<!-- Storage -->
+<div class="tab-content" id="tab-storage">
+    <div class="section">
+        <h3>Card</h3>
+        <div class="info-row"><span class="info-label">Status</span><span class="info-value" id="card-status">-</span></div>
+        <div class="info-row"><span class="info-label">Space</span><span class="info-value" id="card-space">-</span></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Downloads cap</label><input class="num-input" type="number" id="dl-cap" min="16" max="1024" onchange="save({storage:{downloads_cap_mb:+this.value}})"><span class="setting-hint" style="margin:0">MB kept for Makapix downloads</span></div>
+        <div class="info-row"><span class="info-label">Root folder</span><span class="info-value mono" id="card-root">-</span></div>
+    </div>
+    <div class="section">
+        <h3>Files</h3>
+        <div class="crumbs" id="crumbs"></div>
+        <ul class="files" id="file-list"></ul>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+            <input type="file" id="fm-file" style="display:none" onchange="fmUpload()">
+            <button class="btn" onclick="document.getElementById('fm-file').click()">Upload here</button>
+            <button class="btn" onclick="fmMkdir()">New folder</button>
+            <button class="btn" onclick="fmList()">Refresh</button>
+        </div>
+        <div class="setting-hint">Artworks under animations/ (and its folders) are the local channels. Tap a file to play it now.</div>
+    </div>
+</div>
+
+<!-- Makapix -->
+<div class="tab-content" id="tab-makapix">
+    <div class="section">
+        <h3>Makapix Club</h3>
+        <div class="info-row"><span class="info-label">State</span><span class="info-value"><span class="status-badge" id="mk-state">&hellip;</span></span></div>
+        <div class="info-row"><span class="info-label">Player key</span><span class="info-value mono" id="mk-key">-</span></div>
+        <div class="info-row"><span class="info-label">Certificate</span><span class="info-value" id="mk-cert">-</span></div>
+        <div class="info-row"><span class="info-label">Connection</span><span class="info-value" id="mk-conn">-</span></div>
+        <div class="info-row"><span class="info-label">Activity</span><span class="info-value" id="mk-activity">-</span></div>
+        <div class="code-badge" id="mk-code" style="display:none"></div>
+        <div class="setting-hint" id="mk-hint"></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+            <button class="btn" id="mk-pair" onclick="p64.post('/api/v1/makapix/pair').then(function(){p64.toast('Asking for a code')}).catch(function(e){p64.toast(e.message,true)})">Pair</button>
+            <button class="btn" id="mk-cancel" onclick="p64.post('/api/v1/makapix/pair/cancel')">Cancel pairing</button>
+            <button class="btn" id="mk-unpair" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="if(confirm('Unpair this device from Makapix Club? Followed channels and likes stop working until paired again.'))p64.post('/api/v1/makapix/unpair').then(function(){p64.toast('Unpaired')}).catch(function(e){p64.toast(e.message,true)})">Unpair</button>
+        </div>
+    </div>
+    <div class="section">
+        <h3>Channels</h3>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Refresh interval</label><input class="num-input" type="number" id="mk-refresh" min="60" max="86400" onchange="save({makapix:{refresh_seconds:+this.value}})"><span class="setting-hint" style="margin:0">s</span></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label">Channel cache size</label><input class="num-input" type="number" id="mk-cache" min="32" max="4096" onchange="save({makapix:{channel_cache_size:+this.value}})"><span class="setting-hint" style="margin:0">artworks per channel</span></div>
+        <div class="setting-hint" id="mk-counters"></div>
+    </div>
+</div>
+
+<!-- System -->
+<div class="tab-content" id="tab-system">
+    <div class="section">
+        <h3>Firmware</h3>
+        <div class="info-row"><span class="info-label">Version</span><span class="info-value" id="sys-ver">-</span></div>
+        <div class="info-row"><span class="info-label">Built</span><span class="info-value" id="sys-built">-</span></div>
+        <div class="info-row"><span class="info-label">ESP-IDF</span><span class="info-value" id="sys-idf">-</span></div>
+        <div class="info-row"><span class="info-label">Uptime</span><span class="info-value" id="sys-uptime">-</span></div>
+        <div class="info-row"><span class="info-label">Update</span><span class="info-value"><a href="/update" style="color:var(--c-primary)" id="sys-update">-</a></span></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="auto-check">Check for updates automatically (every 12 h)</label><label class="toggle-switch"><input type="checkbox" id="auto-check" onchange="save({updates:{auto_check:this.checked}})"><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="section">
+        <h3>Diagnostics</h3>
+        <div class="info-row"><span class="info-label">Panel</span><span class="info-value" id="diag-panel">-</span></div>
+        <div class="info-row"><span class="info-label">Frames</span><span class="info-value" id="diag-frames">-</span></div>
+        <div class="info-row"><span class="info-label">Memory</span><span class="info-value" id="diag-mem">-</span></div>
+        <div class="info-row"><span class="info-label">Last reset</span><span class="info-value" id="diag-reset">-</span></div>
+        <div class="info-row"><span class="info-label">Reboots</span><span class="info-value" id="diag-reboots">-</span></div>
+        <div class="info-row"><span class="info-label">Crash</span><span class="info-value" id="diag-crash">-</span></div>
+        <div class="info-row"><span class="info-label">Sensor</span><span class="info-value" id="diag-sensor">-</span></div>
+        <div class="info-row"><span class="info-label">IMU</span><span class="info-value" id="diag-imu">-</span></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+            <button class="btn" onclick="loadLog()">Show log</button>
+            <button class="btn" onclick="loadTasks()">Tasks and heap</button>
+            <button class="btn" onclick="p64.post('/api/v1/diag/coredump/erase').then(function(){p64.toast('Core dump erased');p64.refresh()})">Clear crash</button>
+        </div>
+        <pre class="log" id="log" style="display:none"></pre>
+    </div>
+    <div class="section">
+        <h3>Actions</h3>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px">
+            <button class="btn" onclick="if(confirm('Reboot the device?'))p64.post('/api/v1/action/reboot').then(function(){p64.toast('Rebooting')})">Reboot</button>
+            <button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="factoryReset()">Factory reset&hellip;</button>
+        </div>
+        <div class="setting-hint">The factory reset erases settings, Wi-Fi, the Makapix pairing and the PIN, then reboots into setup mode. The card is not touched.</div>
+    </div>
+    <div class="section">
+        <h3>About p64</h3>
+        <div class="info-row"><span class="info-label">Author</span><span class="info-value">Fabr&iacute;cio Kury</span></div>
+        <div class="info-row"><span class="info-label">Source</span><span class="info-value"><a href="https://github.com/fabkury/p64" target="_blank" rel="noopener" style="color:var(--c-primary)">github.com/fabkury/p64</a></span></div>
+        <div class="info-row"><span class="info-label">Hardware</span><span class="info-value">Waveshare ESP32-S3-RGB-Matrix + RGB-Matrix-P2-64x64</span></div>
+        <p class="setting-hint" style="margin-top:8px">Built on ESP-IDF (Apache-2.0), esphome/esp-hub75 (with the p64 patch), bitbank2/AnimatedGIF (Apache-2.0), libpng, libwebp (BSD), zlib, cJSON (MIT), Open-Meteo weather data; the web UI shares its stylesheet and themes with p3a. Pixel fonts: Capital Hill and Everyday Typical (bundled with their authors' licences in assets/fonts).</p>
+    </div>
+</div>
+<script src="/static/app.js"></script>
+<script>
+p64.nav('settings');
+var S = null, D = null, fmPath = '';
+function gv(id) { return document.getElementById(id).value; }
+function sv(id, v) { var e = document.getElementById(id); if (e && document.activeElement !== e) e.value = v; }
+function sc(id, v) { var e = document.getElementById(id); if (e) e.checked = !!v; }
+function save(patch) { return p64.setting(patch).then(fill).catch(function () {}); }
+
+// Tabs (with #hash deep links).
+(function () {
+    var items = document.querySelectorAll('.tab-item'), contents = document.querySelectorAll('.tab-content');
+    function activate(name) {
+        items.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === name); });
+        contents.forEach(function (c) { c.classList.toggle('active', c.id === 'tab-' + name); });
+        if (name === 'storage') fmList();
+        try { history.replaceState(null, '', '#' + name); } catch (e) {}
+    }
+    items.forEach(function (b) { b.addEventListener('click', function () { activate(b.getAttribute('data-tab')); }); });
+    var h = location.hash.replace('#', '');
+    if (h && document.getElementById('tab-' + h)) activate(h);
+})();
+// Theme list.
+(function () {
+    var sel = document.getElementById('theme-select');
+    p64Theme.THEMES.forEach(function (t) { var o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+    sel.value = p64Theme.get();
+})();
+
+function fill(s) {
+    S = s;
+    var d = s.display;
+    sv('brightness', d.brightness); document.getElementById('brightness-value').textContent = d.brightness;
+    sv('ceiling', d.brightness_ceiling);
+    sc('night-enabled', d.night.enabled); sv('night-start', p64.hhmm(d.night.start_minutes)); sv('night-end', p64.hhmm(d.night.end_minutes));
+    var nb = document.getElementById('night-brightness'); if (![].some.call(nb.options, function (o) { return +o.value === d.night.brightness; })) { var o = document.createElement('option'); o.value = d.night.brightness; o.textContent = d.night.brightness; nb.appendChild(o); } nb.value = d.night.brightness;
+    document.getElementById('mode-quality').classList.toggle('active', d.panel_mode === 'quality');
+    document.getElementById('mode-photo').classList.toggle('active', d.panel_mode === 'photo');
+    document.querySelectorAll('.rot-btn[data-rot]').forEach(function (b) { b.classList.toggle('active', +b.getAttribute('data-rot') === d.rotation && !d.rotation_auto); });
+    document.getElementById('rot-auto').classList.toggle('active', !!d.rotation_auto);
+    sv('bg-r', d.background.r); sv('bg-g', d.background.g); sv('bg-b', d.background.b); bgPreview();
+    sv('gain-r', d.gains.r); sv('gain-g', d.gains.g); sv('gain-b', d.gains.b);
+    sv('boot-ms', d.boot_animation_ms);
+    sc('ov-enabled', s.show.clock_overlay.enabled); sv('ov-corner', s.show.clock_overlay.corner); sv('ov-font', s.show.clock_overlay.font); sv('ov-h24', s.show.clock_overlay.h24 ? '24' : '12');
+    sv('auto-swap', s.show.auto_swap_seconds); sv('pick-mode', s.show.pick_mode); sv('channel-select', s.show.channel_select);
+    ['animation_show', 'widget', 'stream'].forEach(function (m) { document.getElementById('ms-' + m).classList.toggle('active', s.show.main_state === m); });
+    sv('widget', s.widgets.widget);
+    sv('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
+    if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
+    sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
+    sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
+    sv('il-clock', s.widgets.interlude_percent.clock); sv('il-weather', s.widgets.interlude_percent.weather); sv('il-temp', s.widgets.interlude_percent.temperature);
+    sc('st-takeover', s.stream.takeover); sv('st-silence', s.stream.silence_ms); sc('st-ddp', s.stream.ddp_enabled); sv('st-ddp-port', s.stream.ddp_port); sc('st-raw', s.stream.raw_udp_enabled); sv('st-raw-port', s.stream.raw_udp_port);
+    sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
+    var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
+    sv('dl-cap', s.storage.downloads_cap_mb); document.getElementById('card-root').textContent = s.storage.card_root;
+    sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size);
+    sc('auto-check', s.updates.auto_check);
+}
+function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }
+function bgPreview() { document.getElementById('bg-preview').style.background = 'rgb(' + (+gv('bg-r') || 0) + ',' + (+gv('bg-g') || 0) + ',' + (+gv('bg-b') || 0) + ')'; }
+function saveBg() { save({ display: { background: { r: +gv('bg-r') || 0, g: +gv('bg-g') || 0, b: +gv('bg-b') || 0 } } }); }
+function saveLocation() { var la = parseFloat(gv('lat')), lo = parseFloat(gv('lon')); if (isNaN(la) || isNaN(lo)) { p64.toast('Latitude and longitude needed', true); return; } save({ weather: { latitude: la, longitude: lo } }); }
+function useMyLocation() {
+    if (!navigator.geolocation) { p64.toast('No geolocation in this browser', true); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) { sv('lat', pos.coords.latitude.toFixed(4)); sv('lon', pos.coords.longitude.toFixed(4)); saveLocation(); }, function () { p64.toast('Location not available', true); });
+}
+function hostPreview() { var n = gv('device-name').trim(); var ok = !n || /^[a-z0-9]([a-z0-9-]{0,14}[a-z0-9])?$/.test(n); document.getElementById('name-error').style.display = ok ? 'none' : 'block'; document.getElementById('hostname-preview').textContent = 'http://' + (n && ok ? 'p64-' + n : 'p64') + '.local/'; return ok; }
+function saveDeviceName() { if (!hostPreview()) return; save({ network: { device_name: gv('device-name').trim() } }).then(function () { p64.toast('Saved; reboot to apply the name'); }); }
+function savePin() {
+    var n = gv('pin-new'), c = gv('pin-current');
+    p64.put('/api/v1/auth/pin', { pin: n, current: c }).then(function (d) { p64.toast(d.pin_set ? 'PIN set; sign in again' : 'PIN cleared'); sv('pin-new', ''); sv('pin-current', ''); if (d.pin_set) location.reload(); else pinStatus(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+function pinStatus() { fetch('/api/v1/auth').then(function (r) { return r.json(); }).then(function (j) { var d = j.data || {}; document.getElementById('pin-status').textContent = d.pin_set ? 'A PIN is set; this browser is ' + (d.authenticated ? 'signed in.' : 'not signed in.') : 'No PIN: every page and API route is open on the LAN.'; }).catch(function () {}); }
+function eraseWifi() { if (!p64.confirmWord('Forget the Wi-Fi network and restart in setup mode?', 'ERASE')) return; p64.post('/api/v1/wifi/erase').then(function () { p64.toast('Restarting in setup mode'); }).catch(function (e) { p64.toast(e.message, true); }); }
+function factoryReset() { if (!p64.confirmWord('Erase settings, Wi-Fi, the Makapix pairing and the PIN, then reboot into setup mode? The card is not touched.', 'ERASE')) return; p64.post('/api/v1/action/factory_reset', { confirm: 'ERASE' }).then(function () { p64.toast('Erasing; the device reboots into setup mode'); }).catch(function (e) { p64.toast(e.message, true); }); }
+function loadLog() { var pre = document.getElementById('log'); pre.style.display = 'block'; pre.textContent = 'loading...'; fetch('/api/v1/diag/log?bytes=24000').then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t; pre.scrollTop = pre.scrollHeight; }); }
+function loadTasks() { var pre = document.getElementById('log'); pre.style.display = 'block'; p64.get('/api/v1/diag/memory').then(function (m) { var t = 'heap internal ' + p64.fmtBytes(m.heap.internal.free) + ' free (largest ' + p64.fmtBytes(m.heap.internal.largest_free) + ', minimum ' + p64.fmtBytes(m.heap.internal.minimum_free) + '), PSRAM ' + p64.fmtBytes(m.heap.psram.free) + ' free\n\ntasks (priority, stack headroom):\n'; (m.tasks || []).sort(function (a, b) { return b.priority - a.priority; }).forEach(function (k) { t += '  ' + k.name + ' (' + k.priority + ') ' + k.stack_free + ' B\n'; }); pre.textContent = t; }).catch(function (e) { pre.textContent = e.message; }); }
+
+// Storage: the file manager.
+function fmList() {
+    p64.get('/api/v1/files?path=' + encodeURIComponent(fmPath)).then(function (d) {
+        var parts = fmPath ? fmPath.split('/') : [], crumbs = '<a onclick="fmGo(\'\')">card</a>';
+        parts.forEach(function (p, i) { crumbs += ' / <a onclick="fmGo(\'' + p64.esc(parts.slice(0, i + 1).join('/')) + '\')">' + p64.esc(p) + '</a>'; });
+        document.getElementById('crumbs').innerHTML = crumbs;
+        var list = document.getElementById('file-list');
+        var entries = (d.entries || []).slice().sort(function (a, b) { return (b.dir - a.dir) || a.name.localeCompare(b.name); });
+        list.innerHTML = entries.map(function (e) {
+            var rel = (fmPath ? fmPath + '/' : '') + e.name;
+            return '<li><span class="fname' + (e.dir ? ' dir' : '') + '" onclick="' + (e.dir ? 'fmGo(\'' + p64.esc(rel) + '\')' : 'fmPlay(\'' + p64.esc(rel) + '\')') + '">' + (e.dir ? '&#128193; ' : '') + p64.esc(e.name) + '</span>' +
+                (e.dir ? '' : '<span class="fsize">' + p64.fmtBytes(e.size) + '</span>') +
+                '<button onclick="fmRename(\'' + p64.esc(rel) + '\')">Rename</button><button class="danger" onclick="fmDelete(\'' + p64.esc(rel) + '\')">Delete</button></li>';
+        }).join('') || '<li style="color:var(--c-text-light)">empty</li>';
+    }).catch(function (e) { document.getElementById('file-list').innerHTML = '<li style="color:var(--c-danger)">' + p64.esc(e.message) + '</li>'; });
+}
+function fmGo(p) { fmPath = p; fmList(); }
+function fmPlay(rel) { p64.post('/api/v1/action/play', { path: rel }).then(function () { p64.toast('Playing ' + rel); }).catch(function (e) { p64.toast(e.message, true); }); }
+function fmRename(rel) { var name = rel.split('/').pop(); var n = prompt('New name', name); if (!n || n === name) return; var to = (fmPath ? fmPath + '/' : '') + n; p64.post('/api/v1/files/rename', { from: rel, to: to }).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
+function fmDelete(rel) { if (!confirm('Delete ' + rel + '?')) return; p64.del('/api/v1/files?path=' + encodeURIComponent(rel)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
+function fmMkdir() { var n = prompt('Folder name'); if (!n) return; p64.post('/api/v1/files/mkdir?path=' + encodeURIComponent((fmPath ? fmPath + '/' : '') + n)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
+function fmUpload() {
+    var f = document.getElementById('fm-file').files[0]; if (!f) return;
+    var rel = (fmPath ? fmPath + '/' : '') + f.name;
+    fetch('/api/v1/files?path=' + encodeURIComponent(rel), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f }).then(function (r) { return r.json(); }).then(function (j) { if (j.ok) { p64.toast('Uploaded'); fmList(); } else p64.toast(j.error || 'upload failed', true); }).catch(function (e) { p64.toast(e.message, true); });
+    document.getElementById('fm-file').value = '';
+}
+
+// Live status.
+p64.onStatus(function (d) {
+    D = d;
+    var n = d.network || {};
+    var badge = document.getElementById('net-badge');
+    badge.textContent = n.connected ? 'Connected' : (n.setup_mode ? 'Setup mode' : 'Disconnected');
+    badge.className = 'status-badge ' + (n.connected ? 'status-connected' : 'status-disconnected');
+    document.getElementById('net-ssid').textContent = n.ssid || '-';
+    document.getElementById('net-ip').textContent = n.ip || '-';
+    document.getElementById('net-gw').textContent = n.gateway || '-';
+    document.getElementById('net-rssi').textContent = n.connected ? n.rssi + ' dBm' : '-';
+    document.getElementById('net-host').textContent = 'http://' + (n.hostname || 'p64') + '.local/';
+    var t = d.time || {};
+    document.getElementById('time-now').textContent = t.synced ? (t.local || '').replace('T', ' ') + ' (' + t.source + ')' : 'unknown';
+    var c = d.card || {};
+    document.getElementById('card-status').textContent = c.mounted ? 'mounted' : ('no card' + (c.error ? ': ' + c.error : ''));
+    document.getElementById('card-space').textContent = c.mounted ? p64.fmtBytes(c.free_bytes) + ' free of ' + p64.fmtBytes(c.total_bytes) : '-';
+    var m = d.makapix || {};
+    var ms = document.getElementById('mk-state');
+    ms.textContent = m.state || '-';
+    ms.className = 'status-badge ' + (m.state === 'paired' ? 'status-connected' : m.state === 'pairing' ? 'status-warn' : 'status-neutral');
+    document.getElementById('mk-key').textContent = m.player_key || '-';
+    document.getElementById('mk-cert').textContent = m.cert_expires_at ? 'valid until ' + new Date(m.cert_expires_at * 1000).toISOString().slice(0, 10) : '-';
+    document.getElementById('mk-conn').textContent = (m.online ? 'online' : 'offline') + (m.mqtt_connected ? ', MQTT connected' : '');
+    document.getElementById('mk-activity').textContent = m.activity || '-';
+    var code = document.getElementById('mk-code');
+    code.style.display = m.state === 'pairing' && m.code ? 'block' : 'none';
+    code.textContent = m.code || '';
+    document.getElementById('mk-hint').textContent = m.state === 'pairing' ? 'Enter this code at makapix.club (Settings, Players, Add device); ' + Math.floor((m.code_seconds_left || 0) / 60) + ' min left.' : (m.last_error ? m.last_error : '');
+    document.getElementById('mk-pair').style.display = m.state === 'paired' || m.state === 'pairing' ? 'none' : '';
+    document.getElementById('mk-cancel').style.display = m.state === 'pairing' ? '' : 'none';
+    document.getElementById('mk-unpair').style.display = m.state === 'paired' || m.state === 'invalid' ? '' : 'none';
+    document.getElementById('mk-counters').textContent = 'refreshes ' + m.refreshes + ', downloads ' + m.downloads + (m.download_failures ? ' (' + m.download_failures + ' failed)' : '') + ', views ' + m.views_sent + ', commands ' + m.commands;
+    var st = d.stream || {};
+    document.getElementById('stream-status').textContent = st.active ? ('Receiving ' + st.protocol + ' ' + st.width + 'x' + st.height + ' from ' + st.sender + ' at ' + (st.fps || 0).toFixed(1) + ' fps, latency ' + (st.last_latency_ms || 0).toFixed(1) + ' ms') : 'No stream at the moment.' + ' Frames ' + st.frames + ', incomplete ' + st.incomplete + ', rejected ' + st.rejected + '.';
+    var f = d.firmware || {};
+    document.getElementById('sys-ver').textContent = f.version || '-';
+    document.getElementById('sys-built').textContent = f.built || '-';
+    document.getElementById('sys-idf').textContent = f.idf || '-';
+    document.getElementById('sys-uptime').textContent = p64.uptime(d.uptime_s);
+    document.getElementById('sys-update').textContent = (d.update_state || 'idle').replace(/_/g, ' ');
+    var pn = d.panel || {};
+    document.getElementById('diag-panel').textContent = (pn.refresh_hz || 0).toFixed(1) + ' Hz ' + pn.mode + ', brightness ' + pn.brightness + (pn.night_active ? ' (night)' : '') + (pn.stalled ? ', DMA STALLED' : '');
+    document.getElementById('diag-frames').textContent = pn.frames + ' shown, ' + pn.late_flips + ' late, ' + pn.timeouts + ' timeouts';
+    var h = d.heap || {};
+    document.getElementById('diag-mem').textContent = 'internal ' + p64.fmtBytes(h.internal_free) + ' free (largest ' + p64.fmtBytes(h.internal_largest) + '), PSRAM ' + p64.fmtBytes(h.psram_free);
+    var r = d.reliability || {}, cnt = r.counters || {};
+    document.getElementById('diag-reset').textContent = r.reset_reason || '-';
+    document.getElementById('diag-reboots').textContent = Object.keys(cnt).filter(function (k) { return cnt[k]; }).map(function (k) { return k + ' ' + cnt[k]; }).join(', ') || 'none recorded';
+    document.getElementById('diag-crash').textContent = r.crash && r.crash.present ? 'in ' + r.crash.task + ' at ' + r.crash.pc + ' (cause ' + r.crash.cause + ')' : 'none stored';
+    var sn = d.sensor || {};
+    document.getElementById('diag-sensor').textContent = sn.valid ? sn.temperature_c.toFixed(1) + ' C, ' + sn.humidity.toFixed(0) + ' % RH' : 'no reading';
+    document.getElementById('sensor-status').textContent = sn.valid ? 'Reading now: ' + sn.temperature_c.toFixed(1) + ' C, ' + sn.humidity.toFixed(0) + ' % RH (offsets applied).' : 'No sensor reading.';
+    var inp = d.inputs || {};
+    document.getElementById('diag-imu').textContent = inp.imu_present ? ('present, ' + (inp.calibrated ? 'calibrated' : 'not calibrated') + (inp.auto_rotation_resolved ? ', auto rotation ' + inp.auto_rotation : '')) : 'absent';
+    var we = d.weather || {};
+    document.getElementById('weather-status').textContent = we.valid ? 'Now ' + we.temperature + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
+});
+fetch('/api/v1/timezones').then(function (r) { return r.json(); }).then(function (z) {  // a bare array, streamed
+    var sel = document.getElementById('timezone');
+    (z || []).forEach(function (name) { var o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });
+    sel.value = sel.getAttribute('data-want') || (S ? S.network.timezone : 'UTC');
+}).catch(function () {});
+p64.checkAuth();
+p64.get('/api/v1/settings').then(fill).catch(function () {});
+p64.startStatus();
+pinStatus();
+</script>
+</body>
+</html>

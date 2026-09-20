@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "cJSON.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -80,7 +81,16 @@ void apply_display_settings(const p64::system::Settings &s) {
 
 }  // namespace
 
+// cJSON trees (the API's status and settings documents, several KB each, six at once
+// when a browser opens a page) come from PSRAM, not the scarce internal heap.
+void *psram_malloc(size_t n) {
+  void *p = heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  return p ? p : malloc(n);
+}
+
 extern "C" void app_main() {
+  cJSON_Hooks json_hooks = {psram_malloc, free};
+  cJSON_InitHooks(&json_hooks);
   p64::system::logring::init(32 * 1024);
   const esp_app_desc_t *app = esp_app_get_description();
   ESP_LOGI(TAG, "p64 firmware %s (IDF %s), built %s %s", app->version, app->idf_ver, app->date, app->time);

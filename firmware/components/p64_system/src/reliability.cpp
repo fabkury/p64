@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <mutex>
 
 #include "esp_app_desc.h"
@@ -20,6 +21,8 @@ const char *const kCauses[] = {"power", "software", "panic", "watchdog", "browno
 constexpr int kCauseCount = sizeof(kCauses) / sizeof(kCauses[0]);
 
 std::mutex g_mutex;
+uint32_t g_counters[kCauseCount] = {};  // mirrored from NVS at init; NVS is written, never re-read
+std::string g_other_partition, g_other_version, g_other_date;  // the other slot, read at init and after an install
 const char *g_reason = "other";
 bool g_crash = false;
 std::string g_crash_task, g_crash_backtrace;
@@ -43,10 +46,33 @@ const char *classify(esp_reset_reason_t r) {
 
 std::string key_for(const char *cause) { return std::string("rb_") + cause; }
 
-uint32_t counter(const char *cause) {
+int cause_index(const char *cause) {
+  for (int i = 0; i < kCauseCount; ++i) {
+    if (std::strcmp(kCauses[i], cause) == 0) return i;
+  }
+  return kCauseCount - 1;
+}
+
+uint32_t counter_from_nvs(const char *cause) {
   std::string v;
   if (!state::get(key_for(cause).c_str(), v)) return 0;
   return static_cast<uint32_t>(std::strtoul(v.c_str(), nullptr, 10));
+}
+
+// Flash reads: only from a task whose stack lives in internal RAM (init, the OTA flash
+// writer), never from json().
+void read_other_partition() {
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  const esp_partition_t *other = running ? esp_ota_get_next_update_partition(running) : nullptr;
+  g_other_partition = other ? other->label : "";
+  g_other_version.clear();
+  g_other_date.clear();
+  if (!other) return;
+  esp_app_desc_t desc;
+  if (esp_ota_get_partition_description(other, &desc) == ESP_OK) {
+    g_other_version = desc.version;
+    g_other_date = desc.date;
+  }
 }
 
 void read_crash() {
@@ -78,8 +104,10 @@ void read_crash() {
 void init() {
   std::lock_guard<std::mutex> lock(g_mutex);
   g_reason = classify(esp_reset_reason());
-  const uint32_t n = counter(g_reason) + 1;
+  for (int i = 0; i < kCauseCount; ++i) g_counters[i] = counter_from_nvs(kCauses[i]);
+  const uint32_t n = ++g_counters[cause_index(g_reason)];
   state::set(key_for(g_reason).c_str(), std::to_string(n));
+  read_other_partition();
   const esp_partition_t *running = esp_ota_get_running_partition();
   esp_ota_img_states_t st;
   g_pending_verify = running && esp_ota_get_state_partition(running, &st) == ESP_OK && st == ESP_OTA_IMG_PENDING_VERIFY;
@@ -99,7 +127,7 @@ cJSON *json() {
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "reset_reason", g_reason);
   cJSON *c = cJSON_AddObjectToObject(d, "counters");
-  for (int i = 0; i < kCauseCount; ++i) cJSON_AddNumberToObject(c, kCauses[i], counter(kCauses[i]));
+  for (int i = 0; i < kCauseCount; ++i) cJSON_AddNumberToObject(c, kCauses[i], g_counters[i]);
   cJSON *crash = cJSON_AddObjectToObject(d, "crash");
   cJSON_AddBoolToObject(crash, "present", g_crash);
   if (g_crash) {
@@ -111,16 +139,14 @@ cJSON *json() {
     cJSON_AddStringToObject(crash, "backtrace", g_crash_backtrace.c_str());
   }
   cJSON *image = cJSON_AddObjectToObject(d, "image");
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  const esp_partition_t *other = running ? esp_ota_get_next_update_partition(running) : nullptr;
+  const esp_partition_t *running = esp_ota_get_running_partition();  // a table lookup in RAM
   cJSON_AddStringToObject(image, "partition", running ? running->label : "?");
   cJSON_AddBoolToObject(image, "pending_verify", g_pending_verify);
-  if (other) {
-    cJSON_AddStringToObject(image, "other_partition", other->label);
-    esp_app_desc_t desc;
-    if (esp_ota_get_partition_description(other, &desc) == ESP_OK) {
-      cJSON_AddStringToObject(image, "other_version", desc.version);
-      cJSON_AddStringToObject(image, "other_date", desc.date);
+  if (!g_other_partition.empty()) {
+    cJSON_AddStringToObject(image, "other_partition", g_other_partition.c_str());
+    if (!g_other_version.empty()) {
+      cJSON_AddStringToObject(image, "other_version", g_other_version.c_str());
+      cJSON_AddStringToObject(image, "other_date", g_other_date.c_str());
     }
   }
   return d;
@@ -139,7 +165,15 @@ bool erase_coredump() {
 }
 
 void reset_counters() {
-  for (int i = 0; i < kCauseCount; ++i) state::erase(key_for(kCauses[i]).c_str());
+  for (int i = 0; i < kCauseCount; ++i) {
+    g_counters[i] = 0;
+    state::erase(key_for(kCauses[i]).c_str());
+  }
+}
+
+void refresh_image_info() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  read_other_partition();
 }
 
 bool image_pending_verify() {

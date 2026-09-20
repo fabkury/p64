@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,8 @@ struct Request {
   uint32_t timeout_ms = 15000;
   size_t max_bytes = 256 * 1024;  // the response body cap; larger answers fail with ESP_ERR_INVALID_SIZE
   bool follow_redirects = true;
+  // Called as the body arrives (received bytes, content length or -1), for progress.
+  std::function<void(size_t, int64_t)> progress;
 };
 
 struct Result {

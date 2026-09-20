@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>p64 update</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E0A1A">
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/static/common.css">
+<script src="/static/theme.js"></script>
+<style>
+body { padding: var(--sp-4); gap: 0; }
+.container { width: min(var(--w-content), 100%); }
+h1 { text-align: center; color: var(--c-on-bg); font-size: 1.5rem; font-weight: 300; margin: 0 0 var(--sp-4); }
+.card { margin-bottom: var(--sp-3); }
+.section-header { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-light); margin: 0 0 var(--sp-2); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--c-card-border); }
+.version-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--c-card-border); gap: var(--sp-3); }
+.version-row:last-child { border-bottom: none; }
+.version-label { color: var(--c-text-light); font-size: 0.9rem; flex-shrink: 0; }
+.version-value { color: var(--c-text); font-weight: 500; font-size: 0.9rem; text-align: right; word-break: break-word; }
+.update-available { color: var(--c-success); font-weight: 600; }
+.card button { width: 100%; padding: 14px; border: none; border-radius: var(--r-md); font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+.btn-primary { background: var(--c-gradient); color: var(--c-on-primary); box-shadow: 0 4px 12px color-mix(in srgb, var(--c-primary) 40%, transparent); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { background: var(--c-bg-fill-strong); color: var(--c-text-lighter); cursor: not-allowed; box-shadow: none; }
+.btn-danger { background: var(--c-danger); color: var(--c-on-danger); }
+.btn-secondary { background: var(--c-bg-fill-strong); color: var(--c-on-bg); border: 1px solid var(--c-bg-fill-border); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.card-actions { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
+.card-actions button { margin-bottom: 0; }
+.progress-container { display: none; padding: var(--sp-3) 0 0; }
+.progress-container.active { display: block; }
+.release-notes { max-height: 150px; overflow-y: auto; font-size: 0.8rem; white-space: pre-wrap; background: var(--c-bg-subtle); padding: var(--sp-3); border-radius: var(--r-md); margin-top: var(--sp-3); display: none; color: var(--c-text); }
+.last-checked { text-align: center; color: var(--c-on-bg-muted); font-size: 0.75rem; margin-top: var(--sp-2); }
+.footer-tip { text-align: center; color: var(--c-on-bg-muted); font-size: 0.75rem; margin-top: var(--sp-4); line-height: 1.4; }
+.status-message { display: none; padding: var(--sp-3); border-radius: var(--r-md); margin-bottom: var(--sp-3); font-size: 0.88rem; }
+.status-message.error { display: block; background: var(--c-danger-soft-bg); color: var(--c-danger-soft-fg); }
+.status-message.ok { display: block; background: var(--c-success-soft-bg); color: var(--c-success-soft-fg); }
+.url-row { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-2); }
+.url-row input { padding: 10px; border-radius: var(--r-md); border: 1px solid var(--c-border); background: var(--c-input-bg); color: var(--c-card-fg); font-size: 0.85rem; }
+.pin-overlay-p64 { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: var(--sp-3); }
+.pin-card-p64 { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: var(--sp-3); }
+</style>
+</head>
+<body class="has-bottom-nav">
+<div class="container">
+<h1>Firmware update</h1>
+<div class="status-message" id="status-msg"></div>
+<div class="card">
+    <div class="section-header">Firmware</div>
+    <div class="version-row"><span class="version-label">Installed</span><span class="version-value" id="current-ver">-</span></div>
+    <div class="version-row"><span class="version-label">Available</span><span class="version-value" id="available-ver">-</span></div>
+    <div class="version-row"><span class="version-label">Status</span><span class="version-value" id="state">-</span></div>
+    <div class="version-row"><span class="version-label">Releases</span><span class="version-value" id="repo">-</span></div>
+    <div class="progress-container" id="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        <div class="progress-text" id="progress-text">0%</div>
+    </div>
+    <div class="release-notes" id="release-notes"></div>
+    <div class="card-actions">
+        <button class="btn-primary" id="install-btn" onclick="installUpdate()" disabled>Install update</button>
+        <button class="btn-primary" id="reboot-btn" onclick="rebootNow()" style="display:none">Reboot into the new firmware</button>
+        <button class="btn-danger" id="rollback-btn" onclick="rollback()" style="display:none">Roll back to <span id="rollback-ver"></span></button>
+    </div>
+</div>
+<div class="card">
+    <div class="section-header">Install from a URL</div>
+    <p class="setting-hint">A build served on your network (plain HTTP is fine). The SHA256 of the file is required; <code>tools/release_assets.py</code> prints it.</p>
+    <div class="url-row">
+        <input type="text" id="upd-url" placeholder="http://pc:8000/p64.bin">
+        <input type="text" id="upd-sha" placeholder="SHA256, 64 hex digits">
+        <button class="btn-secondary" onclick="installUrl()">Install from URL</button>
+    </div>
+</div>
+<button class="btn-secondary" id="check-btn" onclick="checkUpdate()" style="width:100%;padding:14px;border-radius:var(--r-md);font-size:0.95rem;cursor:pointer">Check for updates</button>
+<div class="last-checked" id="last-checked">Last checked: never</div>
+<div class="footer-tip">Updates go to the other flash slot while the panel keeps playing. The new firmware confirms itself 30 s after boot; a crash before that boots the previous one.</div>
+</div>
+<script src="/static/app.js"></script>
+<script>
+p64.nav('update');
+var pollTimer = null;
+function msg(text, cls) { var m = document.getElementById('status-msg'); m.textContent = text || ''; m.className = 'status-message' + (text ? ' ' + cls : ''); }
+function render(u) {
+    document.getElementById('current-ver').textContent = u.current_version;
+    var av = document.getElementById('available-ver');
+    av.textContent = u.available_version || '-';
+    av.className = 'version-value' + (u.state === 'available' ? ' update-available' : '');
+    var names = { idle: 'Idle', checking: 'Checking...', up_to_date: 'Up to date', available: 'Update available', downloading: 'Downloading...', verifying: 'Verifying...', ready_to_reboot: 'Installed; reboot to run it', error: 'Error' };
+    document.getElementById('state').textContent = names[u.state] || u.state;
+    document.getElementById('repo').innerHTML = '<a href="https://github.com/' + p64.esc(u.repository) + '/releases" target="_blank" rel="noopener" style="color:var(--c-primary)">' + p64.esc(u.repository) + '</a>';
+    var prog = document.getElementById('progress');
+    var busy = u.state === 'downloading' || u.state === 'verifying' || u.state === 'checking';
+    prog.className = 'progress-container' + (u.state === 'downloading' ? ' active' : '');
+    document.getElementById('progress-fill').style.width = (u.progress_percent || 0).toFixed(0) + '%';
+    document.getElementById('progress-text').textContent = (u.progress_percent || 0).toFixed(0) + '% (' + p64.fmtBytes(u.bytes_read) + (u.image_size ? ' of ' + p64.fmtBytes(u.image_size) : '') + ')';
+    var notes = document.getElementById('release-notes');
+    notes.style.display = u.notes && u.state === 'available' ? 'block' : 'none';
+    notes.textContent = u.notes || '';
+    var install = document.getElementById('install-btn');
+    install.disabled = u.state !== 'available';
+    install.textContent = u.state === 'available' ? 'Install ' + u.available_version + (u.available_size ? ' (' + p64.fmtBytes(u.available_size) + ')' : '') : 'Install update';
+    document.getElementById('reboot-btn').style.display = u.state === 'ready_to_reboot' ? '' : 'none';
+    var rb = document.getElementById('rollback-btn');
+    rb.style.display = u.can_rollback ? '' : 'none';
+    document.getElementById('rollback-ver').textContent = u.rollback_version + ' (' + u.rollback_partition + ')';
+    document.getElementById('check-btn').disabled = busy;
+    document.getElementById('last-checked').textContent = 'Last checked: ' + (u.last_check_age_s >= 0 ? p64.relative(u.last_check_age_s) : 'never');
+    msg(u.state === 'error' ? u.error : (u.state === 'ready_to_reboot' ? 'The update is written and verified. Reboot when convenient.' : ''), u.state === 'error' ? 'error' : 'ok');
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(load, busy ? 1500 : 30000);
+}
+function load() { p64.get('/api/v1/update').then(render).catch(function () { pollTimer = setTimeout(load, 5000); }); }
+function checkUpdate() { p64.post('/api/v1/update/check').then(render).catch(function (e) { p64.toast(e.message, true); }); }
+function installUpdate() {
+    if (!confirm('Download and install the update? The panel keeps playing; you choose when to reboot.')) return;
+    p64.post('/api/v1/update/install').then(render).catch(function (e) { p64.toast(e.message, true); });
+}
+function installUrl() {
+    var u = document.getElementById('upd-url').value.trim(), h = document.getElementById('upd-sha').value.trim();
+    if (!u || h.length !== 64) { p64.toast('URL and its 64-digit SHA256 are needed', true); return; }
+    p64.post('/api/v1/update/install', { url: u, sha256: h }).then(render).catch(function (e) { p64.toast(e.message, true); });
+}
+function rollback() {
+    if (!confirm('Boot the other slot\'s firmware? The device reboots now.')) return;
+    p64.post('/api/v1/update/rollback').then(function () { msg('Rebooting into the other slot...', 'ok'); setTimeout(function () { location.href = '/'; }, 25000); }).catch(function (e) { p64.toast(e.message, true); });
+}
+function rebootNow() {
+    p64.post('/api/v1/action/reboot').then(function () { msg('Rebooting into the new firmware...', 'ok'); setTimeout(function () { location.href = '/'; }, 25000); }).catch(function (e) { p64.toast(e.message, true); });
+}
+p64.checkAuth();
+p64.startStatus();
+load();
+</script>
+</body>
+</html>

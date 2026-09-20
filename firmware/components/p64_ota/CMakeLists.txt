@@ -11,7 +11,6 @@ idf_component_register(
     PRIV_REQUIRES
         p64_net
         p64_system
-        esp_https_ota
         app_update
         esp_app_format
         esp_partition

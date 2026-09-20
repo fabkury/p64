@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "esp_log.h"
+#include "p64/system/flash_guard.hpp"
 #include "nvs.h"
 
 namespace p64::makapix::creds {
@@ -36,7 +37,7 @@ bool set_blob(nvs_handle_t h, const char *key, const std::string &value) {
 
 }  // namespace
 
-bool load(Credentials &out) {
+bool load_impl(Credentials &out) {
   out = Credentials{};
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READONLY, &h) != ESP_OK) return false;
@@ -53,7 +54,7 @@ bool load(Credentials &out) {
   return have_key;
 }
 
-bool save(const Credentials &c) {
+bool save_impl(const Credentials &c) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   bool ok = nvs_set_str(h, "player_key", c.player_key.c_str()) == ESP_OK;
@@ -68,7 +69,7 @@ bool save(const Credentials &c) {
   return ok;
 }
 
-bool save_pems(const std::string &ca, const std::string &cert, const std::string &key) {
+bool save_pems_impl(const std::string &ca, const std::string &cert, const std::string &key) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   bool ok = set_blob(h, "ca_pem", ca) && set_blob(h, "cert_pem", cert) && set_blob(h, "key_pem", key);
@@ -77,7 +78,7 @@ bool save_pems(const std::string &ca, const std::string &cert, const std::string
   return ok;
 }
 
-bool save_token(const std::string &token) {
+bool save_token_impl(const std::string &token) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   bool ok = nvs_set_str(h, "api_token", token.c_str()) == ESP_OK && nvs_commit(h) == ESP_OK;
@@ -85,12 +86,20 @@ bool save_token(const std::string &token) {
   return ok;
 }
 
-bool erase() {
+bool erase_impl() {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   bool ok = nvs_erase_all(h) == ESP_OK && nvs_commit(h) == ESP_OK;
   nvs_close(h);
   return ok;
 }
+
+
+// Flash access from any task (flash_guard.hpp): the work runs on an internal stack.
+bool load(Credentials &out) { return system::on_internal_stack([&] { return load_impl(out); }); }
+bool save(const Credentials &c) { return system::on_internal_stack([&] { return save_impl(c); }); }
+bool save_pems(const std::string &ca, const std::string &cert, const std::string &key) { return system::on_internal_stack([&] { return save_pems_impl(ca, cert, key); }); }
+bool save_token(const std::string &token) { return system::on_internal_stack([&] { return save_token_impl(token); }); }
+bool erase() { return system::on_internal_stack([&] { return erase_impl(); }); }
 
 }  // namespace p64::makapix::creds

@@ -13,6 +13,7 @@ idf_component_register(
         "src/rtc.cpp"
         "src/rtc_codec.cpp"
         "src/night.cpp"
+        "src/flash_guard.cpp"
     INCLUDE_DIRS
         "include"
     REQUIRES

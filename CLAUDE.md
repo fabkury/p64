@@ -53,7 +53,8 @@ streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout
 summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
 hold), the IMU (taps, auto-rotation with an upright calibration), the PIN (route
 gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, rollback)
-are done, so M0 to M9 are complete; the full web UI (M10) remains;
+are done, so M0 to M9 are complete; M10 (the web UI in p3a's layout and themes:
+`components/p64_web/ui/`, four pages plus shared static files) is in progress;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
@@ -73,7 +74,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\ops_smoke.py http://<ip>` and
 `python tests\device\imu_smoke.py http://<ip>` and
 `python tests\device\pin_smoke.py http://<ip>` and
-`python tests\device\ota_smoke.py http://<ip> [--no-install]` against the live device (the
+`python tests\device\ota_smoke.py http://<ip> [--no-install]` and
+`python tests\device\ui_smoke.py http://<ip>` against the live device (the
 development device answers at http://p64.local; its IP is in the boot log).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
@@ -87,7 +89,11 @@ network and storage tasks on core 0; the main task is the show loop and never do
 I/O. Internal RAM is the scarce resource: with the Makapix MQTT session up the heap
 sits at 25 to 30 KB free (largest block 24 KB), so anything new that wants internal
 RAM (a task stack, a TLS session, a buffer) must be measured on the device
-(`GET /api/v1/diag/memory`) before it is kept. After an OTA install the device boots from
+(`GET /api/v1/diag/memory`) before it is kept. A task whose stack is in PSRAM
+(`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
+OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is
+wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap any new
+one, and build status documents from RAM copies only. After an OTA install the device boots from
 `ota_1` while `flash.ps1` writes `ota_0`: roll back from the Update card (or run
 `tests\device\ota_smoke.py`, which ends with a rollback) before trusting a flash.
 

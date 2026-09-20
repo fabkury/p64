@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>p64 playsets</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E0A1A">
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/static/common.css">
+<script src="/static/theme.js"></script>
+<style>
+* { margin: 0; padding: 0; }
+body { padding: var(--sp-5); color: var(--c-text); }
+.container { width: min(var(--w-content), 100%); margin: 0 auto; display: flex; flex-direction: column; gap: var(--sp-5); }
+h1, h2, h3 { font-weight: 300; color: var(--c-on-bg); margin-bottom: var(--sp-3); }
+h2 { font-size: clamp(20px, 5vw, 24px); }
+h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
+.card { background: var(--c-card-bg); border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--c-card-shadow); }
+.btn { padding: var(--sp-3) var(--sp-6); border: none; border-radius: var(--r-md); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; gap: var(--sp-2); justify-content: center; }
+.btn-primary { background: var(--c-gradient); color: var(--c-on-primary); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--c-surface-sunk); color: var(--c-text); }
+.btn-danger { background: var(--c-danger); color: var(--c-on-danger); padding: var(--sp-2) var(--sp-4); font-size: 12px; border-radius: var(--r-sm); }
+.btn-small { padding: var(--sp-2) var(--sp-4); font-size: 12px; border-radius: var(--r-sm); }
+.add-channel-btn { display: block; margin: var(--sp-3) auto 0; padding: var(--sp-4) var(--sp-8); font-size: 16px; }
+.btn-icon { padding: var(--sp-2); border-radius: var(--r-sm); background: transparent; border: 1px solid var(--c-border); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--c-text); }
+.btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+.playset-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+.playset-item { padding: var(--sp-4); border: 2px solid var(--c-card-border); border-radius: var(--r-md); display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); transition: all 0.2s; }
+.playset-item.active-playset { border-color: var(--c-success); background: var(--c-surface-sunk); }
+.playset-item.builtin { border-style: dashed; }
+.playset-item.disabled { opacity: 0.55; }
+.playset-info { flex: 1; min-width: 0; }
+.playset-name { font-weight: 500; font-size: 16px; margin-bottom: var(--sp-1); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.now-playing-badge { display: inline-block; padding: 2px var(--sp-2); border-radius: var(--r-md); font-size: 10px; font-weight: 600; background: var(--c-success); color: var(--c-on-success); text-transform: uppercase; letter-spacing: 0.5px; }
+.builtin-badge { display: inline-block; padding: 2px var(--sp-2); border-radius: var(--r-md); font-size: 10px; font-weight: 600; background: var(--c-pill-builtin); color: var(--c-pill-builtin-fg); text-transform: uppercase; letter-spacing: 0.5px; }
+.playset-meta { font-size: 12px; color: var(--c-text-light); }
+.playset-actions { display: flex; gap: var(--sp-2); }
+.form-group { margin-bottom: var(--sp-5); }
+.form-label { display: block; margin-bottom: var(--sp-2); font-weight: 500; font-size: 14px; }
+.form-input { width: 100%; padding: var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: 14px; font-family: var(--font); background: var(--c-input-bg); color: var(--c-card-fg); }
+.form-input:focus { outline: none; border-color: var(--c-primary); box-shadow: var(--focus-ring); }
+.form-input.error { border-color: var(--c-danger); }
+.sqid-input-row { display: flex; gap: var(--sp-2); align-items: stretch; }
+.sqid-input-row .form-input { flex: 1; }
+.check-results { margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3); font-size: 12px; color: var(--c-card-fg-faint); background: var(--c-surface-sunk); border-radius: var(--r-sm); min-height: 24px; }
+.check-results.has-data { color: var(--c-text); display: flex; align-items: center; gap: var(--sp-3); }
+.check-results .avatar { width: 32px; height: 32px; border-radius: 4px; image-rendering: pixelated; flex-shrink: 0; }
+.error-message { color: var(--c-danger); font-size: 12px; margin-top: var(--sp-1); }
+.channel-list { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.channel-card { border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-4); background: var(--c-surface-sunk); transition: all 0.2s; }
+.channel-card.dragging { opacity: 0.5; }
+.channel-card.drag-over { border-color: var(--c-primary); }
+.channel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); gap: var(--sp-2); }
+.channel-type-badge { display: inline-block; padding: var(--sp-1) var(--sp-3); border-radius: var(--r-md); font-size: 12px; font-weight: 500; background: var(--c-primary); color: var(--c-on-primary); white-space: nowrap; }
+.channel-controls { display: flex; gap: var(--sp-2); }
+.channel-color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: var(--sp-2); vertical-align: middle; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
+.channel-header-left { display: flex; align-items: center; min-width: 0; }
+.channel-fields { display: flex; flex-direction: column; gap: var(--sp-3); }
+.field-row { display: flex; gap: var(--sp-3); align-items: flex-start; }
+.field-row > * { flex: 1; }
+.weight-viz-container { margin-bottom: var(--sp-5); }
+.weight-viz { display: flex; height: 40px; border-radius: var(--r-sm); overflow: hidden; margin-top: var(--sp-2); background: var(--c-surface-sunk); }
+.weight-bar { display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 500; transition: all 0.3s; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--sp-5); }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--c-card-bg); border-radius: var(--r-lg); padding: var(--sp-6); max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-5); }
+.modal-title { font-size: 20px; font-weight: 500; }
+.close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--c-text-light); padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--r-sm); }
+.empty-state { text-align: center; padding: 40px var(--sp-5); color: var(--c-text-light); }
+.empty-state-icon { font-size: 48px; margin-bottom: var(--sp-4); }
+.button-group { display: flex; gap: var(--sp-3); margin-top: var(--sp-6); }
+.button-group .btn { flex: 1; }
+.hidden { display: none !important; }
+.pin-overlay-p64 { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1001; align-items: center; justify-content: center; padding: var(--sp-3); }
+.pin-card-p64 { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: var(--sp-3); }
+@media (max-width: 480px) {
+    body { padding: var(--sp-3); }
+    .card { padding: var(--sp-4); }
+    .playset-item { flex-direction: column; align-items: stretch; }
+    .playset-actions { justify-content: stretch; }
+    .playset-actions .btn { flex: 1; }
+    .button-group { flex-direction: column; }
+    .field-row { flex-direction: column; }
+}
+</style>
+</head>
+<body class="has-bottom-nav">
+<div class="container">
+    <div id="listView">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);gap:var(--sp-3)">
+                <h2 style="color:var(--c-card-fg);margin:0">My playsets <span id="psCount" style="font-size:0.8rem;color:var(--c-text-light)"></span></h2>
+                <button class="btn btn-primary btn-small" id="createNewBtn" onclick="showEditor()">+ Create new</button>
+            </div>
+            <div id="playsetList" class="playset-list"></div>
+        </div>
+        <div class="card" style="margin-top:var(--sp-5)">
+            <h3 style="margin-bottom:var(--sp-3)">Built-in</h3>
+            <div id="builtinList" class="playset-list"></div>
+        </div>
+    </div>
+    <div id="editorView" class="card hidden">
+        <h2 style="color:var(--c-card-fg)" id="editorTitle">New playset</h2>
+        <div class="form-group">
+            <label class="form-label" for="playsetName">Name</label>
+            <input type="text" id="playsetName" class="form-input" maxlength="32" placeholder="letters, digits and underscores" oninput="validateForm()">
+            <div class="error-message hidden" id="nameError"></div>
+        </div>
+        <div class="form-group weight-viz-container">
+            <label class="form-label">Channel balance</label>
+            <div id="weightViz" class="weight-viz"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Channels (<span id="channelCount">0</span>/64)</label>
+            <div id="channelList" class="channel-list"></div>
+            <button type="button" class="btn btn-primary add-channel-btn" id="addChannelBtn" onclick="showAddChannel()">+ Add channel</button>
+        </div>
+        <div class="button-group">
+            <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="saveBtn" onclick="savePlayset(false)">Save</button>
+            <button type="button" class="btn btn-primary" id="saveAndPlayBtn" onclick="savePlayset(true)">Save &amp; play</button>
+        </div>
+    </div>
+</div>
+<div id="addChannelModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header"><div class="modal-title">Add channel</div><button class="close-btn" onclick="closeAddChannel()">&times;</button></div>
+        <div class="form-group">
+            <label class="form-label">Source</label>
+            <select id="channelSource" class="form-input" onchange="updateSourceFields()">
+                <option value="makapix">Makapix Club</option>
+                <option value="local">Local (microSD card)</option>
+            </select>
+        </div>
+        <div id="sourceFields"></div>
+        <div class="form-group">
+            <label class="form-label">Display name (optional)</label>
+            <input type="text" id="channelDisplayName" class="form-input" maxlength="64" placeholder="shown on the home page">
+        </div>
+        <div class="button-group">
+            <button type="button" class="btn btn-secondary" onclick="closeAddChannel()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addChannel()">Add</button>
+        </div>
+    </div>
+</div>
+<script src="/static/app.js"></script>
+<script>
+p64.nav('playsets');
+var state = { playsets: [], builtins: [], active: '', max: 32, editing: null, channels: [], folders: [] };
+var colors = ['#8B5CFF', '#FF4D97', '#33A6FF', '#42D86E', '#FFC533', '#FF8A33', '#2BD6D6', '#E84DD6'];
+var kindLabels = { local: 'Local', promoted: 'Promoted', all: 'All artworks', own: 'Own artworks', artist: 'Artist', hashtag: 'Hashtag', reactions: 'Reactions', url_list: 'URL list', pinned: 'Pinned' };
+var reserved = ['Promoted', 'All', 'Followed', 'Local'];
+
+function load() {
+    p64.get('/api/v1/playsets').then(function (d) {
+        state.playsets = d.playsets || []; state.builtins = d.builtins || []; state.active = d.active || ''; state.max = d.max_playsets || 32;
+        renderList();
+    }).catch(function (e) { p64.toast(e.message, true); });
+    p64.get('/api/v1/folders').then(function (fs) { state.folders = fs || []; }).catch(function () {});
+}
+function renderList() {
+    var list = document.getElementById('playsetList');
+    document.getElementById('psCount').textContent = state.playsets.length + '/' + state.max;
+    document.getElementById('createNewBtn').disabled = state.playsets.length >= state.max;
+    if (!state.playsets.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#127925;</div><p>No playsets yet. Create your first mix!</p></div>';
+    } else {
+        list.innerHTML = state.playsets.map(function (p) {
+            var active = p.name === state.active;
+            return '<div class="playset-item' + (active ? ' active-playset' : '') + '"><div class="playset-info"><div class="playset-name">' + p64.esc(p.name) +
+                (active ? ' <span class="now-playing-badge">Now playing</span>' : '') + '</div><div class="playset-meta">' + p.channels + ' channel' + (p.channels === 1 ? '' : 's') + '</div></div>' +
+                '<div class="playset-actions"><button class="btn btn-primary btn-small" onclick="playPlayset(\'' + p64.esc(p.name) + '\')">&#9654; Play</button>' +
+                '<button class="btn btn-secondary btn-small" onclick="editPlayset(\'' + p64.esc(p.name) + '\')">Edit</button>' +
+                '<button class="btn btn-danger" onclick="deletePlayset(\'' + p64.esc(p.name) + '\')">Delete</button></div></div>';
+        }).join('');
+    }
+    document.getElementById('builtinList').innerHTML = state.builtins.map(function (b) {
+        var active = b.name === state.active;
+        return '<div class="playset-item builtin' + (active ? ' active-playset' : '') + (b.enabled ? '' : ' disabled') + '"><div class="playset-info"><div class="playset-name">' + p64.esc(b.name) +
+            ' <span class="builtin-badge">built-in</span>' + (active ? ' <span class="now-playing-badge">Now playing</span>' : '') + '</div><div class="playset-meta">' + p64.esc(b.enabled ? builtinHint(b.name) : (b.reason || 'unavailable')) + '</div></div>' +
+            '<div class="playset-actions"><button class="btn btn-primary btn-small" ' + (b.enabled ? '' : 'disabled ') + 'onclick="playPlayset(\'' + p64.esc(b.name) + '\')">&#9654; Play</button>' +
+            '<button class="btn btn-secondary btn-small" onclick="viewBuiltin(\'' + p64.esc(b.name) + '\')">View</button></div></div>';
+    }).join('');
+}
+function builtinHint(name) {
+    return { Promoted: 'Makapix Club\'s promoted artworks (no pairing needed)', All: 'every public Makapix artwork', Followed: 'the artists you follow (paired)', Local: 'every folder on the card' }[name] || '';
+}
+function playPlayset(name) {
+    p64.post('/api/v1/action/play_playset', { name: name }).then(function () { p64.toast('Playing ' + name); state.active = name; renderList(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+function deletePlayset(name) {
+    if (!confirm('Delete the playset "' + name + '"?')) return;
+    p64.del('/api/v1/playsets/' + encodeURIComponent(name)).then(function () { p64.toast('Deleted'); load(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+function viewBuiltin(name) {
+    p64.get('/api/v1/playsets/' + encodeURIComponent(name)).then(function (p) {
+        alert(name + ':\n' + (p.channels || []).map(function (c) { return '- ' + (c.display_name || kindLabels[c.kind] || c.kind) + (c.identifier ? ' (' + c.identifier + ')' : '') + ', weight ' + c.weight; }).join('\n'));
+    }).catch(function (e) { p64.toast(e.message, true); });
+}
+function showEditor() {
+    state.editing = null; state.channels = [];
+    document.getElementById('editorTitle').textContent = 'New playset';
+    document.getElementById('playsetName').value = '';
+    document.getElementById('playsetName').readOnly = false;
+    renderChannels(); validateForm();
+    document.getElementById('listView').classList.add('hidden');
+    document.getElementById('editorView').classList.remove('hidden');
+}
+function editPlayset(name) {
+    p64.get('/api/v1/playsets/' + encodeURIComponent(name)).then(function (p) {
+        state.editing = name; state.channels = (p.channels || []).map(function (c) { return { kind: c.kind, identifier: c.identifier || '', display_name: c.display_name || '', weight: c.weight || 0, offset: c.offset || 0 }; });
+        document.getElementById('editorTitle').textContent = 'Edit ' + name;
+        document.getElementById('playsetName').value = name;
+        document.getElementById('playsetName').readOnly = true;
+        renderChannels(); validateForm();
+        document.getElementById('listView').classList.add('hidden');
+        document.getElementById('editorView').classList.remove('hidden');
+    }).catch(function (e) { p64.toast(e.message, true); });
+}
+function cancelEdit() { document.getElementById('editorView').classList.add('hidden'); document.getElementById('listView').classList.remove('hidden'); }
+function validateForm() {
+    var name = document.getElementById('playsetName').value.trim(), err = document.getElementById('nameError'), msg = '';
+    if (!name) msg = 'A name is needed.';
+    else if (!/^[A-Za-z0-9_]{1,32}$/.test(name)) msg = 'Letters, digits and underscores only, up to 32.';
+    else if (reserved.indexOf(name) >= 0) msg = 'That name is a built-in playset.';
+    else if (!state.editing && state.playsets.some(function (p) { return p.name === name; })) msg = 'A playset with that name exists.';
+    err.textContent = msg; err.classList.toggle('hidden', !msg);
+    document.getElementById('playsetName').classList.toggle('error', !!msg);
+    var ok = !msg && state.channels.length > 0;
+    document.getElementById('saveBtn').disabled = !ok;
+    document.getElementById('saveAndPlayBtn').disabled = !ok;
+    return ok;
+}
+function defaultName(c) {
+    if (c.kind === 'local') return c.identifier ? c.identifier : 'card root';
+    if (c.kind === 'artist') return 'Artist ' + (c.identifier || '?');
+    if (c.kind === 'reactions') return (c.identifier || '?') + '\'s reactions';
+    if (c.kind === 'hashtag') return '#' + (c.identifier || 'tag');
+    return kindLabels[c.kind] || c.kind;
+}
+function renderWeights() {
+    var viz = document.getElementById('weightViz'), total = 0;
+    state.channels.forEach(function (c) { total += (+c.weight || 0) === 0 ? 100 : +c.weight; });
+    var allZero = state.channels.every(function (c) { return !(+c.weight); });
+    if (!state.channels.length) { viz.innerHTML = ''; return; }
+    viz.innerHTML = state.channels.map(function (c, i) {
+        var w = (+c.weight || 0) === 0 ? (allZero ? 100 : 0) : +c.weight;
+        var pct = total ? 100 * w / total : 0;
+        return pct >= 3 ? '<div class="weight-bar" style="width:' + pct + '%;background:' + colors[i % colors.length] + '" title="' + p64.esc(c.display_name || defaultName(c)) + ': ' + Math.round(pct) + '%">' + (pct >= 10 ? Math.round(pct) + '%' : '') + '</div>' : '';
+    }).join('');
+}
+function renderChannels() {
+    var list = document.getElementById('channelList');
+    document.getElementById('channelCount').textContent = state.channels.length;
+    document.getElementById('addChannelBtn').disabled = state.channels.length >= 64;
+    if (!state.channels.length) { list.innerHTML = '<div class="empty-state"><p>No channels yet</p></div>'; renderWeights(); validateForm(); return; }
+    list.innerHTML = state.channels.map(function (c, i) {
+        return '<div class="channel-card" draggable="true" ondragstart="dragStart(event,' + i + ')" ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="drop(event,' + i + ')" ondragend="this.classList.remove(\'dragging\')">' +
+            '<div class="channel-header"><div class="channel-header-left"><span class="channel-color-swatch" style="background:' + colors[i % colors.length] + '"></span><span class="channel-type-badge">' + p64.esc(kindLabels[c.kind] || c.kind) + '</span></div>' +
+            '<div class="channel-controls"><button class="btn-icon" onclick="move(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + ' title="Move up">&#8593;</button><button class="btn-icon" onclick="move(' + i + ',1)" ' + (i === state.channels.length - 1 ? 'disabled' : '') + ' title="Move down">&#8595;</button><button class="btn btn-danger" onclick="removeChannel(' + i + ')">Remove</button></div></div>' +
+            '<div class="channel-fields">' +
+            '<input type="text" class="form-input" placeholder="Display name" maxlength="64" value="' + p64.esc(c.display_name || defaultName(c)) + '" onchange="setField(' + i + ',\'display_name\',this.value)">' +
+            fieldsFor(c, i) +
+            '<div class="field-row"><div><label class="form-label" style="font-size:12px">Weight (0 = mute; all 0 = equal)</label><input type="number" class="form-input" min="0" max="65535" value="' + (c.weight || 0) + '" onchange="setField(' + i + ',\'weight\',parseInt(this.value)||0)"></div>' +
+            '<div><label class="form-label" style="font-size:12px">Offset (starting index)</label><input type="number" class="form-input" min="0" value="' + (c.offset || 0) + '" onchange="setField(' + i + ',\'offset\',parseInt(this.value)||0)"></div></div>' +
+            '</div></div>';
+    }).join('');
+    renderWeights(); validateForm();
+}
+function fieldsFor(c, i) {
+    if (c.kind === 'local') {
+        return '<div><label class="form-label" style="font-size:12px">Folder under animations/</label><select class="form-input" onchange="setField(' + i + ',\'identifier\',this.value)">' + folderOptions(c.identifier) + '</select></div>';
+    }
+    if (c.kind === 'artist' || c.kind === 'reactions') {
+        return '<div><label class="form-label" style="font-size:12px">Artist ID (sqid)</label><div class="sqid-input-row"><input type="text" class="form-input" id="ident_' + i + '" maxlength="32" placeholder="artist_sqid" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim())">' +
+            '<button type="button" class="btn btn-secondary btn-small" onclick="verify(\'' + c.kind + '\', document.getElementById(\'ident_' + i + '\').value, \'res_' + i + '\', ' + i + ')">Check</button></div><div class="check-results" id="res_' + i + '">Enter the sqid to check.</div></div>';
+    }
+    if (c.kind === 'hashtag') {
+        return '<div><label class="form-label" style="font-size:12px">Hashtag (without #)</label><div class="sqid-input-row"><input type="text" class="form-input" id="ident_' + i + '" maxlength="64" placeholder="pixelart" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim().replace(/^#/,\'\'))">' +
+            '<button type="button" class="btn btn-secondary btn-small" onclick="verify(\'hashtag\', document.getElementById(\'ident_' + i + '\').value, \'res_' + i + '\', ' + i + ')">Check</button></div><div class="check-results" id="res_' + i + '">Enter the hashtag to check.</div></div>';
+    }
+    return '<div style="padding:8px;background:var(--c-card-bg);border-radius:8px;font-size:13px;color:var(--c-card-fg-muted)">' + p64.esc(builtinHintKind(c.kind)) + '</div>';
+}
+function builtinHintKind(kind) { return { promoted: 'Makapix Club\'s promoted artworks; works without pairing', all: 'Every public Makapix artwork (paired)', own: 'Your own artworks (paired)' }[kind] || ''; }
+function folderOptions(selected) {
+    var opts = '<option value=""' + (selected === '' ? ' selected' : '') + '>animations/ (root)</option>';
+    state.folders.forEach(function (f) { if (!f.folder) return; opts += '<option value="' + p64.esc(f.folder) + '"' + (f.folder === selected ? ' selected' : '') + '>' + p64.esc(f.folder) + ' (' + f.files + ' files)</option>'; });
+    return opts;
+}
+function setField(i, field, value) { state.channels[i][field] = value; if (field === 'weight' || field === 'display_name') renderWeights(); }
+function move(i, dir) { var j = i + dir; if (j < 0 || j >= state.channels.length) return; var t = state.channels[i]; state.channels[i] = state.channels[j]; state.channels[j] = t; renderChannels(); }
+function removeChannel(i) { state.channels.splice(i, 1); renderChannels(); }
+var dragIndex = -1;
+function dragStart(e, i) { dragIndex = i; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+function drop(e, i) { e.preventDefault(); if (dragIndex < 0 || dragIndex === i) return; var c = state.channels.splice(dragIndex, 1)[0]; state.channels.splice(i, 0, c); dragIndex = -1; renderChannels(); }
+
+// ── Makapix checks, from the browser (the same public endpoints p3a uses) ──
+var verifyCooldownUntil = 0;
+function verify(kind, input, resultsId, index, displayNameTarget) {
+    var el = document.getElementById(resultsId);
+    input = (input || '').trim().replace(/^#/, '');
+    var ok = kind === 'hashtag' ? /^[A-Za-z0-9_]{1,64}$/.test(input) : /^[A-Za-z0-9]{1,32}$/.test(input);
+    if (!ok) { el.className = 'check-results'; el.textContent = kind === 'hashtag' ? 'Enter the hashtag to check.' : 'Enter the sqid to check.'; return; }
+    if (Date.now() < verifyCooldownUntil) { el.className = 'check-results'; el.textContent = 'Rate limited; wait a moment.'; return; }
+    el.className = 'check-results'; el.textContent = 'Asking Makapix Club...';
+    var endpoint = kind === 'hashtag' ? '/api/player/verify-hashtag/' : kind === 'reactions' ? '/api/player/verify-reactions/' : '/api/player/verify-user/';
+    fetch('https://makapix.club' + endpoint + encodeURIComponent(input)).then(function (r) {
+        if (r.status === 404) { el.textContent = kind === 'hashtag' ? 'Hashtag not found.' : 'Artist not found.'; return null; }
+        if (r.status === 429) { verifyCooldownUntil = Date.now() + 60000; el.textContent = 'Rate limited; wait a minute.'; return null; }
+        if (!r.ok) { el.textContent = 'Error (HTTP ' + r.status + ').'; return null; }
+        return r.json();
+    }).then(function (data) {
+        if (!data) return;
+        var thumb = data.avatar_url || data.latest_artwork_url || '';
+        if (thumb && thumb.charAt(0) === '/') thumb = 'https://makapix.club' + thumb;
+        var label, sub, name;
+        if (kind === 'hashtag') { label = '#' + (data.tag || input); sub = (data.artwork_count || 0) + (data.artwork_count_capped ? '+' : '') + ' artworks'; name = label; }
+        else if (kind === 'reactions') { label = data.handle || input; sub = (data.artwork_count || 0) + (data.artwork_count_capped ? '+' : '') + ' reactions'; name = label + '\'s reactions'; }
+        else { label = data.handle || input; sub = 'Rep ' + (data.reputation != null ? data.reputation : '?') + ' · ' + (data.artwork_count != null ? data.artwork_count : '?') + ' artworks'; name = label; }
+        el.className = 'check-results has-data';
+        el.innerHTML = (thumb ? '<img class="avatar" src="' + p64.esc(thumb) + '" alt="">' : '') + '<div><strong>' + p64.esc(label) + '</strong><br>' + p64.esc(sub) + '</div>';
+        if (index != null && index >= 0 && !state.channels[index].display_name) { state.channels[index].display_name = name; renderChannels(); }
+        if (displayNameTarget) { var t = document.getElementById(displayNameTarget); if (t && !t.value) t.value = name; }
+    }).catch(function () { el.className = 'check-results'; el.textContent = 'Network error (the check runs from your browser).'; });
+}
+
+// ── Add channel ──
+function showAddChannel() {
+    if (state.channels.length >= 64) { p64.toast('At most 64 channels', true); return; }
+    document.getElementById('channelSource').value = 'makapix';
+    document.getElementById('channelDisplayName').value = '';
+    updateSourceFields();
+    document.getElementById('addChannelModal').classList.add('active');
+}
+function closeAddChannel() { document.getElementById('addChannelModal').classList.remove('active'); }
+function updateSourceFields() {
+    var src = document.getElementById('channelSource').value, c = document.getElementById('sourceFields');
+    if (src === 'local') {
+        c.innerHTML = '<div class="form-group"><label class="form-label">Folder</label><select id="localFolder" class="form-input">' + folderOptions('') + '</select>' +
+            '<p class="setting-hint">Folders under animations/ on the card; new files there are picked up within seconds.</p></div>';
+    } else {
+        c.innerHTML = '<div class="form-group"><label class="form-label">Makapix channel</label><select id="mkKind" class="form-input" onchange="updateKindFields()">' +
+            '<option value="promoted">Promoted artworks</option><option value="all">All artworks</option><option value="own">My own artworks</option><option value="artist">An artist</option><option value="hashtag">A hashtag</option><option value="reactions">An artist\'s reactions</option></select></div><div id="kindFields"></div>';
+        updateKindFields();
+    }
+}
+function updateKindFields() {
+    var kind = document.getElementById('mkKind').value, c = document.getElementById('kindFields');
+    if (kind === 'artist' || kind === 'reactions') {
+        c.innerHTML = '<div class="form-group"><label class="form-label">Artist ID (sqid)</label><div class="sqid-input-row"><input type="text" id="mkIdent" class="form-input" maxlength="32" placeholder="artist_sqid">' +
+            '<button type="button" class="btn btn-secondary btn-small" onclick="verify(\'' + kind + '\', document.getElementById(\'mkIdent\').value, \'mkRes\', -1, \'channelDisplayName\')">Check</button></div><div class="check-results" id="mkRes">Enter the sqid to check.</div></div>';
+    } else if (kind === 'hashtag') {
+        c.innerHTML = '<div class="form-group"><label class="form-label">Hashtag (without #)</label><div class="sqid-input-row"><input type="text" id="mkIdent" class="form-input" maxlength="64" placeholder="pixelart">' +
+            '<button type="button" class="btn btn-secondary btn-small" onclick="verify(\'hashtag\', document.getElementById(\'mkIdent\').value, \'mkRes\', -1, \'channelDisplayName\')">Check</button></div><div class="check-results" id="mkRes">Enter the hashtag to check.</div></div>';
+    } else {
+        c.innerHTML = '<p class="setting-hint">' + p64.esc(builtinHintKind(kind)) + '</p>';
+    }
+}
+function addChannel() {
+    var src = document.getElementById('channelSource').value, c = { kind: 'promoted', identifier: '', display_name: document.getElementById('channelDisplayName').value.trim(), weight: 100, offset: 0 };
+    if (src === 'local') { c.kind = 'local'; c.identifier = document.getElementById('localFolder').value; }
+    else {
+        c.kind = document.getElementById('mkKind').value;
+        var id = document.getElementById('mkIdent');
+        if (id) { c.identifier = id.value.trim().replace(/^#/, ''); if (!c.identifier) { p64.toast('An identifier is needed', true); return; } }
+    }
+    state.channels.push(c);
+    closeAddChannel();
+    renderChannels();
+}
+function savePlayset(play) {
+    if (!validateForm()) return;
+    var name = state.editing || document.getElementById('playsetName').value.trim();
+    var body = { channels: state.channels.map(function (c) { return { kind: c.kind, identifier: c.identifier, display_name: c.display_name, weight: c.weight, offset: c.offset }; }) };
+    p64.put('/api/v1/playsets/' + encodeURIComponent(name), body).then(function () {
+        p64.toast('Saved');
+        if (play) return p64.post('/api/v1/action/play_playset', { name: name }).then(function () { p64.toast('Playing ' + name); });
+    }).then(function () { cancelEdit(); load(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+p64.checkAuth();
+p64.startStatus();
+p64.onStatus(function (d) { if (d.playback && d.playback.playset && d.playback.playset.name !== state.active) { state.active = d.playback.playset.name; renderList(); } });
+load();
+</script>
+</body>
+</html>

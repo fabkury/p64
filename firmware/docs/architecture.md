@@ -405,3 +405,35 @@ Rollback selects the other slot when its image is valid and not marked invalid b
 previous rollback. Development note: after an install the device runs from `ota_1`
 while `flash.ps1` writes `ota_0`; roll back (the Update card, or the test does it) or
 `idf.py erase-otadata` before trusting a flash again.
+
+## 19. The web UI (M10)
+
+Four pages embedded in the image (`p64_web/ui/`, served by `ui.cpp` with an ETag of the
+firmware version so browsers revalidate and never keep a page across an update): Home
+(`/`), Playsets (`/playsets`), Settings (`/settings`, seven tabs) and Update (`/update`),
+plus `static/common.css` and `static/theme.js` taken from p3a (the same tokens and the
+five themes: Spectrum, Gallery, Pixel Console, Dither Pop, Blossom, chosen per browser),
+`static/app.js` (the API wrapper that opens the PIN prompt on a 401, toasts, formatting,
+the bottom navigation with the update badge, and the status feed: the WebSocket push
+with a 4 s polling fallback), the PWA manifest and the icons drawn by
+`tools/gen_ui_icons.py`. Each page keeps p3a's per-page styles and layout and talks to
+`/api/v1`; the live preview on the Home page is the panel's own frame (`/api/v1/frame`)
+refreshed once a second while the tab is visible. The Makapix artist and hashtag checks
+in the playset editor call makapix.club from the browser, as p3a does. Every route of the
+UI is open (the pages show the PIN prompt); the data behind them is what the PIN gates.
+
+## 20. Flash access and PSRAM stacks (a rule)
+
+Reading or writing the SPI flash (NVS, the partition table, an OTA slot, the core
+dump) disables the instruction cache for the duration, and a task whose stack is in
+PSRAM cannot run then: `spi_flash_disable_interrupts_caches_and_other_cpu` asserts and
+the device reboots (the web UI's status push did exactly that, section 19). The rule:
+every NVS access goes through `system::on_internal_stack()` (`flash_guard.hpp`), which
+calls the function directly on an internal stack and otherwise runs it on a 4 KB
+internal helper task and waits. `settings`, `state`, the Makapix credentials and the
+PIN store are wrapped; anything new that touches NVS or `esp_partition` must be too, or
+must run on a task created without `MALLOC_CAP_SPIRAM`. Tasks with PSRAM stacks today:
+player, loader, events, ws_push, weather, sensor, stream, imu, makapix, the OTA
+worker; internal: main (show loop), render, httpd, mqtt_task, ota_flash, the helpers.
+The reliability document caches the reboot counters and the other slot's description
+at boot so the status push never reads flash.

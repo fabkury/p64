@@ -1,194 +1,393 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>p64</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E0A1A">
+<link rel="icon" href="/favicon.png">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/static/common.css">
+<script src="/static/theme.js"></script>
 <style>
-:root{color-scheme:dark;--bg:#0e0a1a;--card:#171229;--line:#2c2544;--ink:#eee;--muted:#9a93b3;--primary:#8b5cff;--accent:#ff4d97;--ok:#42d86e;--danger:#ff4d4d}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
-main{max-width:520px;margin:0 auto;padding:16px 16px 40px}
-h1{font-size:30px;margin:8px 0 0;background:linear-gradient(90deg,var(--accent),var(--primary),#33a6ff);-webkit-background-clip:text;color:transparent}
-.sub{color:var(--muted);margin:0 0 16px;font-size:13px}
-.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:14px}
-.card h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.preview{display:flex;gap:14px;align-items:center}
-.preview img{width:192px;height:192px;image-rendering:pixelated;background:#000;border-radius:8px;border:1px solid var(--line)}
-.kv{font-size:13px;color:var(--muted)}.kv b{color:var(--ink);font-weight:500}
-label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
-input,select,button,textarea{font:inherit}
-input[type=text],input[type=password],input[type=number],select,textarea{width:100%;box-sizing:border-box;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
-textarea{font:12px/1.4 ui-monospace,monospace;min-height:90px}
-input[type=range]{width:100%}
-button{background:var(--primary);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:4px 4px 0 0}
-button.secondary{background:var(--line)}button.danger{background:#7a2130}button.small{padding:5px 9px;font-size:13px}
-button:disabled{opacity:.4;cursor:default}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{display:inline-block;padding:4px 12px;border-radius:14px;font-size:13px;background:var(--line);cursor:pointer;margin:4px 4px 0 0;border:1px solid transparent}
-.pill.active{background:var(--primary)}.pill.off{opacity:.45;cursor:default}
-.files{list-style:none;margin:8px 0 0;padding:0}.files li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
-.files li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.files li.cur{color:var(--accent)}
-pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;max-height:280px;overflow:auto;white-space:pre-wrap}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none}
-.toast.show{opacity:1}
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:var(--line)}.badge.ok{background:#1e4d2b;color:var(--ok)}.badge.warn{background:#5a3d10;color:#ffb347}
-</style></head><body><main>
-<h1>p64</h1><p class="sub">development web interface (milestone M7); the full interface comes later</p>
-
-<div class="card"><h2>Now playing</h2>
-<div class="preview"><img id="frame" alt="panel"><div class="kv" id="playing">…</div></div>
-<div class="row" style="margin-top:10px"><button class="secondary" id="prevbtn" onclick="act('previous')">⏮ Prev</button><button class="secondary" id="pausebtn" onclick="togglePause()">⏸ Pause</button><button onclick="act('next')">Next ⏭</button><button class="secondary small" onclick="act('reset_timer')">Reset timer</button></div>
-<div class="row" style="margin-top:8px"><span class="badge" id="netbadge">…</span><span class="badge" id="timebadge">…</span><span class="badge" id="swapbadge">…</span></div>
-<div id="pills" style="margin-top:10px"></div>
-<div class="kv" id="channels" style="margin-top:6px"></div>
+body { justify-content: flex-start; overflow-x: hidden; }
+.header h1 { font-size: clamp(1.4rem, 3vw, 1.8rem); }
+.artwork-area {
+    position: relative; width: min(420px, 100%); aspect-ratio: 1 / 1;
+    background: var(--c-bg-fill); border-radius: var(--r-lg); box-shadow: var(--c-card-shadow);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.artwork-area > img { width: 100%; height: 100%; object-fit: contain;
+    image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; }
+.artwork-area .live-tag { position: absolute; top: 8px; right: 8px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+    padding: 2px 6px; border-radius: 999px; background: rgba(0,0,0,0.45); color: #fff; opacity: 0.8; }
+.artwork-info-area {
+    width: min(420px, 100%); margin: 8px auto 0; padding: 12px 16px; background: var(--c-card-bg);
+    border-radius: var(--r-md); box-shadow: var(--c-card-shadow); display: flex; align-items: flex-start; gap: 10px; min-height: 44px;
+}
+.artwork-info-area[hidden] { display: none; }
+.artwork-info-rows { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.artwork-info-row { line-height: 1.4; word-break: break-word; font-size: 0.95rem; color: var(--c-text); }
+.artwork-info-label { font-weight: 600; margin-right: 4px; }
+.artwork-info-row a { color: var(--c-primary); }
+.now-playing {
+    width: min(420px, 100%); background: var(--c-primary); border-radius: var(--r-md); font-size: 0.8rem;
+    color: var(--c-on-primary); box-shadow: 0 6px 16px color-mix(in srgb, var(--c-primary) 35%, transparent); overflow: hidden;
+}
+.now-playing-header { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-2) var(--sp-4);
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.now-playing-header-text { text-align: center; flex: 1; min-width: 0; }
+.now-playing-name { font-weight: 600; color: var(--c-on-primary); font-size: 0.85rem; margin-bottom: 2px; }
+.now-playing-stats { color: color-mix(in srgb, var(--c-on-primary) 80%, transparent); font-size: 0.75rem; }
+.now-playing-toggle { font-size: 0.7rem; color: color-mix(in srgb, var(--c-on-primary) 70%, transparent); transition: transform 0.2s; flex-shrink: 0; margin-left: var(--sp-2); }
+.now-playing.collapsed .now-playing-toggle { transform: rotate(-90deg); }
+.now-playing.collapsed .now-playing-channels { display: none; }
+.shuffle-btn { background: color-mix(in srgb, var(--c-on-primary) 16%, transparent); color: var(--c-on-primary); border: none;
+    padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; flex-shrink: 0;
+    margin-right: var(--sp-2); user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s; min-height: 26px; }
+.shuffle-btn.active { background: var(--c-on-primary); color: var(--c-primary); }
+.shuffle-btn .shuffle-state { display: inline-block; min-width: 1.7em; text-align: left; }
+.now-playing-channels { border-top: 1px solid color-mix(in srgb, var(--c-on-primary) 20%, transparent); padding: 6px 10px var(--sp-2);
+    display: flex; flex-direction: column; gap: 5px; }
+.ps-ch-row { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; padding: var(--sp-1) 6px; border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--c-on-primary) 8%, transparent); transition: opacity 0.3s; }
+.ps-ch-row.refreshing { animation: ps-pulse 1.8s ease-in-out infinite; }
+@keyframes ps-pulse { 0%, 100% { background: color-mix(in srgb, var(--c-on-primary) 8%, transparent); } 50% { background: color-mix(in srgb, var(--c-on-primary) 22%, transparent); } }
+.ps-ch-row.blocked { background: color-mix(in srgb, var(--c-warning) 22%, transparent); border-left: 3px solid var(--c-warning); opacity: 0.85; animation: none; }
+.ps-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 3px; text-transform: uppercase; flex-shrink: 0; }
+.ps-badge-type { background: color-mix(in srgb, var(--c-on-primary) 25%, transparent); color: var(--c-on-primary); }
+.ps-badge-sub { background: rgba(0,0,0,0.22); color: color-mix(in srgb, var(--c-on-primary) 90%, transparent); }
+.ps-ch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-on-primary); }
+.ps-ch-id { color: color-mix(in srgb, var(--c-on-primary) 65%, transparent); font-size: 0.65rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+.ps-ch-count { white-space: nowrap; color: color-mix(in srgb, var(--c-on-primary) 85%, transparent); flex-shrink: 0; }
+.ps-ch-time { white-space: nowrap; color: color-mix(in srgb, var(--c-on-primary) 55%, transparent); font-size: 0.6rem; flex-shrink: 0; }
+.arrow-row { width: min(420px, 100%); display: flex; gap: 18px; align-items: center; justify-content: space-between; }
+.arrow-btn { background: var(--c-card-bg); border: none; border-radius: 50%; width: 72px; height: 72px; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; font-size: 1.8rem; color: var(--c-primary); box-shadow: var(--c-card-shadow); transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
+.arrow-btn:active { transform: scale(0.92); }
+.arrow-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pause-btn { background: var(--c-card-bg); border: none; border-radius: var(--r-md); padding: 10px 22px; font-size: 0.95rem; font-weight: 500;
+    color: var(--c-primary); cursor: pointer; box-shadow: var(--c-card-shadow); transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; min-width: 88px; }
+.pause-btn:active { transform: scale(0.95); }
+.round-btn { background: var(--c-card-bg); border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1.5rem; line-height: 1; color: var(--c-primary); box-shadow: var(--c-card-shadow); transition: transform 0.15s ease, background 0.2s ease; -webkit-tap-highlight-color: transparent; padding: 0; }
+.round-btn:active { transform: scale(0.92); }
+.round-btn.active { background: var(--c-warn-soft-bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-warning) 55%, transparent), var(--c-card-shadow); }
+.round-btn.ghost { visibility: hidden; }
+.upload-section { width: min(420px, 100%); background: var(--c-card-bg); border-radius: var(--r-lg); padding: 14px; margin: 0; box-shadow: var(--c-card-shadow); }
+.upload-section h3 { margin: 0; font-size: 0.85rem; font-weight: 500; color: var(--c-text); text-transform: uppercase; letter-spacing: 0.05em; }
+.upload-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; padding-bottom: var(--sp-2); }
+.upload-toggle { font-size: 1rem; transition: transform 0.2s; color: var(--c-primary); }
+.upload-section.collapsed .upload-toggle { transform: rotate(-90deg); }
+.upload-section.collapsed .upload-content { display: none; }
+.upload-form { display: flex; flex-direction: column; gap: var(--sp-2); }
+.drop-zone { border: 2px dashed var(--c-primary); border-radius: var(--r-md); padding: var(--sp-6) var(--sp-4); text-align: center; cursor: pointer; transition: all 0.2s; background: var(--c-surface-sunk); }
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--c-success); background: var(--c-success-soft-bg); }
+.drop-zone-prompt { color: var(--c-text-light); font-size: 0.85rem; }
+.drop-icon { display: block; font-size: 2rem; margin-bottom: var(--sp-2); }
+.drop-zone input[type=file] { display: none; }
+.file-info { font-size: 0.8rem; color: var(--c-text); background: var(--c-bg-subtle); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); display: none; word-break: break-word; }
+.file-info.has-file { display: block; }
+.folder-row { display: flex; gap: var(--sp-2); align-items: center; font-size: 0.82rem; color: var(--c-text-light); }
+.folder-row select { flex: 1; padding: 8px 10px; border-radius: var(--r-md); border: 1px solid var(--c-border); background: var(--c-input-bg); color: var(--c-card-fg); font-size: 0.85rem; min-width: 0; }
+.upload-btn { background: var(--c-success); color: var(--c-on-success); border: none; padding: 9px; border-radius: var(--r-md); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+.upload-btn:disabled { background: var(--c-bg-fill-strong); color: var(--c-card-fg-faint); cursor: not-allowed; }
+.show-url-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-1); }
+.show-url-input { flex: 1; padding: var(--sp-2) 10px; border: 1.5px solid var(--c-border); border-radius: var(--r-md); font-size: 0.82rem; background: var(--c-input-bg); color: var(--c-card-fg); outline: none; min-width: 0; }
+.show-url-input:focus { border-color: var(--c-primary); }
+.show-url-btn { background: var(--c-primary); color: var(--c-on-primary); border: none; padding: var(--sp-2) var(--sp-4); border-radius: var(--r-md); font-size: 0.82rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.show-url-btn:disabled { background: var(--c-bg-fill-strong); color: var(--c-card-fg-faint); cursor: not-allowed; }
+.upload-progress { display: none; margin-top: 6px; }
+.upload-progress.active { display: block; }
+.progress-fill { background: var(--c-success); }
+.update-banner { display: none; width: min(420px, 100%); background: var(--c-success); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); color: var(--c-on-success); cursor: pointer;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--c-success) 35%, transparent); }
+.update-banner h4 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; }
+.update-banner p { margin: 0; font-size: 0.8rem; opacity: 0.9; }
+.cooldown-banner { display: none; width: min(420px, 100%); background: var(--c-warning); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); color: var(--c-on-warning);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--c-warning) 35%, transparent); margin-top: var(--sp-2); }
+.cooldown-banner.danger { background: var(--c-danger); color: var(--c-on-danger); box-shadow: 0 4px 12px color-mix(in srgb, var(--c-danger) 35%, transparent); }
+.cooldown-banner.info { background: var(--c-info-soft-bg); color: var(--c-info-soft-fg); box-shadow: none; }
+.cooldown-banner h4 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; }
+.cooldown-banner p { margin: 0; font-size: 0.8rem; opacity: 0.92; }
+.pin-overlay-p64 { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; padding: var(--sp-3); }
+.pin-card-p64 { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: var(--sp-3); }
+.pin-card-p64 h3 { margin: 0; font-size: 1rem; }
+@media (max-width: 480px) { .arrow-btn { width: 64px; height: 64px; font-size: 1.6rem; } .arrow-row { gap: 12px; } .pause-btn { padding: 9px 16px; font-size: 0.85rem; min-width: 76px; } .round-btn { width: 50px; height: 50px; font-size: 1.4rem; } }
+@media (max-height: 640px) { .arrow-btn { width: 60px; height: 60px; font-size: 1.5rem; } .pause-btn { padding: 8px 14px; font-size: 0.82rem; min-width: 72px; } .round-btn { width: 46px; height: 46px; font-size: 1.3rem; } .upload-section { padding: 12px; } }
+@media (min-width: 481px) { .arrow-btn:hover { transform: scale(1.05); } .pause-btn:hover { transform: scale(1.02); } .round-btn:hover { transform: scale(1.05); } }
+</style>
+</head>
+<body class="has-bottom-nav">
+<div class="header"><h1>p64</h1></div>
+<div class="artwork-area" id="artwork-area">
+    <img id="preview" alt="the panel" src="/api/v1/frame">
+    <span class="live-tag" id="live-tag">LIVE</span>
 </div>
-
-<div class="card"><h2>History</h2><ul class="files" id="history"></ul></div>
-
-<div class="card"><h2>Makapix Club</h2>
-<div class="kv" id="mkinfo">&hellip;</div>
-<div id="mkcode" style="display:none;font-size:30px;letter-spacing:8px;text-align:center;margin:10px 0;font-family:ui-monospace,monospace"></div>
-<div class="row"><button id="mkpair" onclick="post('/api/v1/makapix/pair')">Pair with Makapix</button><button class="secondary" id="mkcancel" onclick="post('/api/v1/makapix/pair/cancel')">Cancel</button><button class="danger" id="mkunpair" onclick="if(confirm('Unpair from Makapix Club? The credentials are erased.'))post('/api/v1/makapix/unpair')">Unpair</button></div>
-<label>Play a Makapix post (sqid or link) or an artwork URL</label><div class="row"><input type="text" id="playref" placeholder="BVLa, makapix.club/p/BVLa or https://.../art.gif" style="flex:1"><button class="small" onclick="playRef()">Play</button></div>
+<div class="artwork-info-area" id="artwork-info" hidden>
+    <div class="artwork-info-rows" id="artwork-info-rows"></div>
 </div>
-
-<div class="card"><h2>Playsets <span class="kv" id="pscount"></span></h2>
-<ul class="files" id="playsets"></ul>
-<div class="row" style="margin-top:8px"><button class="secondary small" onclick="editPlayset('')">New playset</button></div>
-<div id="editor" style="display:none">
-<label>Name (letters, digits, underscore)</label><input type="text" id="psname" maxlength="32">
-<label>Channels (JSON array; kinds: local with identifier = folder, promoted, all, own, artist, hashtag, reactions)</label>
-<textarea id="pschannels"></textarea>
-<div class="row"><select id="folderpick" style="flex:1"></select><button class="secondary small" onclick="addFolder()">Add folder channel</button></div>
-<div class="row"><button class="small" onclick="savePlayset()">Save</button><button class="secondary small" onclick="document.getElementById('editor').style.display='none'">Close</button></div>
+<div class="now-playing collapsed" id="now-playing">
+    <div class="now-playing-header" onclick="toggleNowPlaying()">
+        <button type="button" class="shuffle-btn" id="shuffle-btn" onclick="event.stopPropagation(); toggleShuffle();" aria-pressed="false">Shuffle is <span class="shuffle-state" id="shuffle-state">off</span></button>
+        <div class="now-playing-header-text">
+            <div class="now-playing-name" id="now-playing-name">&hellip;</div>
+            <div class="now-playing-stats" id="now-playing-stats"></div>
+        </div>
+        <span class="now-playing-toggle" id="now-playing-toggle">&#9660;</span>
+    </div>
+    <div class="now-playing-channels" id="now-playing-channels"></div>
 </div>
+<div class="arrow-row">
+    <button class="arrow-btn" id="back-btn" onclick="p64.post('/api/v1/action/previous')" title="Previous">&#9664;</button>
+    <button class="round-btn ghost" id="like-btn" type="button" title="Like on Makapix" onclick="toggleLike()">&#9829;</button>
+    <button class="pause-btn" id="pause-btn" onclick="togglePause()">Pause</button>
+    <button class="round-btn" id="info-btn" type="button" title="Artwork info" onclick="toggleInfo()">&#8505;&#65039;</button>
+    <button class="arrow-btn" id="next-btn" onclick="p64.post('/api/v1/action/next')" title="Next">&#9654;</button>
 </div>
-
-<div class="card"><h2>Widgets</h2>
-<div class="kv" id="sensorinfo">&hellip;</div>
-<div class="row"><div style="flex:1"><label>Main state</label><select id="main_state" onchange="setting({show:{main_state:this.value}})"><option value="animation_show">Animation show</option><option value="widget">Widget</option><option value="stream">Stream</option></select></div>
-<div style="flex:1"><label>Widget</label><select id="widget" onchange="setting({widgets:{widget:this.value}})"><option value="clock">Clock</option><option value="weather">Weather</option><option value="temperature">Temperature</option></select></div></div>
-<div class="row"><div style="flex:1"><label>Clock overlay</label><select id="overlay" onchange="setting({show:{clock_overlay:{enabled:this.value==='on'}}})"><option value="on">On</option><option value="off">Off</option></select></div>
-<div style="flex:1"><label>Overlay corner</label><select id="overlay_corner" onchange="setting({show:{clock_overlay:{corner:this.value}}})"><option value="top_left">Top left</option><option value="top_right">Top right</option><option value="bottom_left">Bottom left</option><option value="bottom_right">Bottom right</option></select></div>
-<div style="flex:1"><label>Clock font</label><select id="clock_font" onchange="setting({clock:{font:this.value},show:{clock_overlay:{font:this.value}}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div></div>
-<div class="row"><div style="flex:1"><label>Clock seconds</label><select id="clock_seconds" onchange="setting({clock:{seconds:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-<div style="flex:1"><label>24 h</label><select id="clock_h24" onchange="setting({clock:{h24:this.value==='on'},show:{clock_overlay:{h24:this.value==='on'}}})"><option value="on">24 h</option><option value="off">12 h</option></select></div>
-<div style="flex:1"><label>Blink colon</label><select id="clock_blink" onchange="setting({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div></div>
-<div class="row"><div style="flex:1"><label>Latitude</label><input type="number" id="lat" step="0.0001" onchange="saveLocation()"></div><div style="flex:1"><label>Longitude</label><input type="number" id="lon" step="0.0001" onchange="saveLocation()"></div>
-<div style="flex:1"><label>Units</label><select id="units" onchange="setting({weather:{units:this.value}})"><option value="metric">Metric</option><option value="imperial">Imperial</option></select></div></div>
-<div class="row"><div style="flex:1"><label>Interlude % clock</label><input type="number" id="il_clock" min="0" max="100" onchange="setting({widgets:{interlude_percent:{clock:+this.value}}})"></div>
-<div style="flex:1"><label>weather</label><input type="number" id="il_weather" min="0" max="100" onchange="setting({widgets:{interlude_percent:{weather:+this.value}}})"></div>
-<div style="flex:1"><label>temperature</label><input type="number" id="il_temp" min="0" max="100" onchange="setting({widgets:{interlude_percent:{temperature:+this.value}}})"></div></div>
+<div class="pill-bar" id="pill-bar"></div>
+<div class="upload-section collapsed" id="upload-section">
+    <div class="upload-header" onclick="document.getElementById('upload-section').classList.toggle('collapsed')">
+        <h3>Play from...</h3><span class="upload-toggle">&#9660;</span>
+    </div>
+    <div class="upload-content">
+        <form class="upload-form" id="upload-form" onsubmit="return uploadFile(event)">
+            <div class="drop-zone" id="drop-zone">
+                <div class="drop-zone-prompt"><span class="drop-icon">&#128193;</span><span>Drop a GIF, APNG, WebP, PNG or BMP here, or tap to browse</span></div>
+                <input type="file" id="file-input" accept=".webp,.gif,.png,.apng,.bmp,image/webp,image/gif,image/png,image/apng,image/bmp">
+            </div>
+            <div class="file-info" id="file-info"></div>
+            <div class="folder-row"><span>Save to</span><select id="folder-select"><option value="">animations/</option></select></div>
+            <button type="submit" class="upload-btn" id="upload-btn" disabled>Upload and play</button>
+            <div class="upload-progress" id="upload-progress"><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div></div>
+        </form>
+        <div class="show-url-row">
+            <input type="text" class="show-url-input" id="show-url-input" placeholder="https://.../artwork.gif or makapix.club/p/sqid">
+            <button type="button" class="show-url-btn" id="show-url-btn" onclick="showUrl()">Show</button>
+        </div>
+    </div>
 </div>
-
-<div class="card"><h2>Streams</h2>
-<div class="kv" id="streaminfo">&hellip;</div>
-<div class="row"><div style="flex:1"><label>Takeover</label><select id="st_takeover" onchange="setting({stream:{takeover:this.value==='on'}})"><option value="on">On</option><option value="off">Off</option></select></div>
-<div style="flex:1"><label>Silence timeout (ms)</label><input type="number" id="st_silence" min="500" max="60000" onchange="setting({stream:{silence_ms:+this.value}})"></div>
-<div style="flex:1"><label>DDP port</label><input type="number" id="st_ddp" min="1" max="65535" onchange="setting({stream:{ddp_port:+this.value}})"></div>
-<div style="flex:1"><label>Raw port</label><input type="number" id="st_raw" min="1" max="65535" onchange="setting({stream:{raw_udp_port:+this.value}})"></div></div>
-<div class="kv">Pixels over UDP: DDP (LedFx, xLights, WLED tooling; 64x64 or 128x128 RGB) or the raw p64 format (any size to 128x128). From a PC: <code>python tools\stream_send.py p64.local test</code>, <code>... image.gif</code>, <code>... screen --ddp --size 128</code>.</div>
-</div>
-
-<div class="card"><h2>Display</h2>
-<label>Brightness <b id="bval"></b> (1-255)</label><input type="range" id="brightness" min="1" max="255" oninput="document.getElementById('bval').textContent=this.value" onchange="setting({display:{brightness:+this.value}})">
-<div class="row"><div style="flex:1"><label>Panel mode</label><select id="panel_mode" onchange="setting({display:{panel_mode:this.value}})"><option value="quality">Quality (271 Hz, 1024 codes)</option><option value="photo">Photo (about 700 Hz)</option></select></div>
-<div style="flex:1"><label>Rotation</label><select id="rotation" onchange="setting({display:{rotation:+this.value}})"><option>0</option><option>90</option><option>180</option><option>270</option></select></div></div>
-<div class="row"><div style="flex:1"><label>Auto-swap (s, 0 = never)</label><input type="number" id="auto_swap" min="0" max="86400" onchange="setting({show:{auto_swap_seconds:+this.value}})"></div>
-<div style="flex:1"><label>Background</label><input type="color" id="background" onchange="var v=this.value;setting({display:{background:{r:parseInt(v.substr(1,2),16),g:parseInt(v.substr(3,2),16),b:parseInt(v.substr(5,2),16)}}})"></div></div>
-<div class="row"><div style="flex:1"><label>Pick mode</label><select id="pick_mode" onchange="setting({show:{pick_mode:this.value}})"><option value="random">Random</option><option value="recency">Recency (newest first)</option></select></div>
-<div style="flex:1"><label>Channel selection</label><select id="channel_select" onchange="setting({show:{channel_select:this.value}})"><option value="stochastic">Stochastic</option><option value="swrr">Smooth weighted round-robin</option></select></div></div>
-</div>
-
-<div class="card"><h2>Files <span class="kv" id="cardinfo"></span></h2>
-<div class="row"><input type="text" id="dir" value="animations" style="flex:1"><button class="secondary small" onclick="listFiles()">Open</button><button class="secondary small" onclick="var n=prompt('New folder name');if(n)api('/api/v1/files/mkdir?path='+encodeURIComponent((document.getElementById('dir').value?document.getElementById('dir').value+'/':'')+n),{method:'POST'}).then(listFiles).catch(function(e){toast(e.message)})">New folder</button></div>
-<ul class="files" id="files"></ul>
-<div class="row" style="margin-top:8px"><input type="file" id="upload" multiple accept=".gif,.png,.apng,.webp,.bmp"><button class="small" onclick="uploadFiles()">Upload to this folder</button></div>
-<div class="kv" id="uploadstatus"></div>
-</div>
-
-<div class="card"><h2>Network</h2>
-<div class="kv" id="netinfo">…</div>
-<label>Time zone</label><input type="text" id="timezone" list="tzlist" onchange="setting({network:{timezone:this.value}})"><datalist id="tzlist"></datalist>
-<label>Device name (p64-&lt;name&gt;.local)</label><input type="text" id="device_name" maxlength="16" onchange="setting({network:{device_name:this.value}})">
-<details style="margin-top:10px"><summary class="kv">Change Wi-Fi network</summary>
-<label>SSID</label><div class="row"><input type="text" id="ssid" list="nets" style="flex:1"><button class="secondary small" onclick="scan()">Scan</button></div><datalist id="nets"></datalist>
-<label>Password</label><input type="password" id="wpass">
-<button onclick="saveWifi()">Connect</button><button class="danger" onclick="if(confirm('Forget the Wi-Fi network? The device drops into setup mode.'))post('/api/v1/wifi/erase')">Erase Wi-Fi</button></details>
-</div>
-
-<div id="pinprompt" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9;align-items:center;justify-content:center"><div class="card" style="width:280px"><h2>PIN</h2><p class="kv">This p64 asks for its PIN.</p><input type="password" id="pin_entry" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="4 to 8 digits" onkeydown="if(event.key==='Enter')login()"><div class="row" style="margin-top:8px"><button onclick="login()">Unlock</button></div><div class="kv" id="pin_msg"></div></div></div>
-<div class="card"><h2>Security and inputs</h2>
-<div class="kv" id="authinfo">&hellip;</div>
-<div class="row"><div style="flex:1"><label>New PIN (empty clears)</label><input type="password" id="pin_new" inputmode="numeric" maxlength="8" placeholder="4 to 8 digits"></div>
-<div style="flex:1"><label>Current PIN</label><input type="password" id="pin_current" inputmode="numeric" maxlength="8"></div>
-<div style="flex:0"><label>&nbsp;</label><button class="secondary" onclick="setPin()">Save PIN</button></div></div>
-<div class="row"><div style="flex:1"><label>Tap gestures</label><select id="tap_enabled" onchange="setting({inputs:{tap_enabled:this.value==='on'}})"><option value="on">On (single = next, double = previous)</option><option value="off">Off</option></select></div>
-<div style="flex:1"><label>Tap sensitivity (1 firm .. 10 light)</label><input type="number" id="tap_sens" min="1" max="10" onchange="setting({inputs:{tap_sensitivity:+this.value}})"></div>
-<div style="flex:1"><label>Auto-rotation (IMU)</label><select id="rotation_auto" onchange="setting({display:{rotation_auto:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-<div style="flex:0"><label>&nbsp;</label><button class="secondary" onclick="calibrate()">Panel is upright now</button></div></div>
-<div class="kv" id="imuinfo">&hellip;</div>
-<div class="row" style="margin-top:8px"><button class="secondary" onclick="setTimeFromBrowser()">Set time from this browser</button><button class="secondary" onclick="factoryReset()" style="color:#f88">Factory reset&hellip;</button></div>
-</div>
-<div class="card"><h2>Update</h2>
-<div class="kv" id="updateinfo">&hellip;</div>
-<div class="row" style="margin-top:8px"><button class="secondary" onclick="post('/api/v1/update/check').then(updateInfo)">Check now</button><button id="installbtn" onclick="installUpdate()" style="display:none">Install</button><button id="rebootbtn" onclick="act('reboot')" style="display:none">Reboot into the new firmware</button><button class="secondary" id="rollbackbtn" onclick="rollbackUpdate()" style="display:none">Roll back</button></div>
-<div class="row" style="margin-top:8px"><div style="flex:2"><label>Or install from a URL (a local build)</label><input type="text" id="upd_url" placeholder="http://pc:8000/p64.bin"></div><div style="flex:2"><label>Its SHA256</label><input type="text" id="upd_sha" placeholder="64 hex digits"></div><div style="flex:0"><label>&nbsp;</label><button class="secondary" onclick="installUrl()">Install URL</button></div></div>
-</div>
-<div class="card"><h2>Diagnostics</h2>
-<div class="kv" id="diag">…</div>
-<div class="row" style="margin-top:8px"><button class="secondary small" onclick="loadLog()">Show log</button><button class="secondary small" onclick="bench()">Benchmark file…</button><button class="danger small" onclick="if(confirm('Reboot p64?'))post('/api/v1/action/reboot')">Reboot</button></div>
-<pre id="log" style="display:none"></pre>
-</div>
-<div class="toast" id="toast"></div>
+<div class="update-banner" id="update-banner" onclick="location.href='/update'"><h4>&#x2B06; Update available</h4><p id="update-version">A new firmware version is ready to install</p></div>
+<div class="cooldown-banner danger" id="banner-card"><h4>&#9888; No card</h4><p id="banner-card-text">No microSD card is mounted: local channels and uploads are unavailable; Makapix channels play from memory only.</p></div>
+<div class="cooldown-banner" id="banner-offline"><h4>&#9203; Offline</h4><p>The device is not connected to Wi-Fi. Makapix channels keep playing what is cached.</p></div>
+<div class="cooldown-banner danger" id="banner-pairing" onclick="location.href='/settings#makapix'" style="cursor:pointer"><h4>&#128081; Makapix pairing needed</h4><p>This playset has Makapix Club channels that need a paired device. Tap here to pair in Settings &rarr; Makapix.</p></div>
+<div class="cooldown-banner info" id="banner-noartwork"><h4>&#9432; Nothing to show</h4><p id="banner-noartwork-text"></p></div>
+<div class="cooldown-banner" id="banner-error"><h4>&#9888; Last error</h4><p id="banner-error-text"></p></div>
+<script src="/static/app.js"></script>
 <script>
-var S={},lastPos=-2,paused=false,PS=null;
-function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show')},3000)}
-function api(path,opt){return fetch(path,opt).then(function(r){if(r.status===401){showPin('');throw new Error('PIN required')}if(r.status===429){showPin('too many wrong PINs; wait');throw new Error('locked')}return r.json()}).then(function(j){if(!j.ok)throw new Error(j.error||'error');return j.data})}
-function showPin(msg){var p=document.getElementById('pinprompt');p.style.display='flex';document.getElementById('pin_msg').textContent=msg||'';setTimeout(function(){document.getElementById('pin_entry').focus()},50)}
-function login(){var pin=document.getElementById('pin_entry').value;fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin})}).then(function(r){return r.json()}).then(function(j){if(j.ok){document.getElementById('pinprompt').style.display='none';document.getElementById('pin_entry').value='';location.reload()}else{document.getElementById('pin_msg').textContent=j.error||'wrong PIN'}})}
-function setPin(){var n=document.getElementById('pin_new').value,c=document.getElementById('pin_current').value;api('/api/v1/auth/pin',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:n,current:c})}).then(function(d){toast(d.pin_set?'PIN set; sign in again':'PIN cleared');document.getElementById('pin_new').value='';document.getElementById('pin_current').value='';if(d.pin_set)location.reload();else authState()}).catch(function(e){toast(e.message)})}
-function authState(){fetch('/api/v1/auth').then(function(r){return r.json()}).then(function(j){var d=j.data||{};document.getElementById('authinfo').innerHTML='PIN <b>'+(d.pin_set?'set':'not set')+'</b>'+(d.pin_set?' · this browser is '+(d.authenticated?'signed in':'not signed in'):' · every page and API route is open on the LAN')+(d.locked_for_s?(' · locked for '+d.locked_for_s+' s'):'');if(d.pin_set&&!d.authenticated)showPin('')}).catch(function(){})}
-function calibrate(){post('/api/v1/action/calibrate_upright').then(function(d){if(d)toast('calibrated: gravity at '+d.gravity_angle_deg.toFixed(0)+' degrees is rotation '+d.auto_rotation)})}
-function setTimeFromBrowser(){post('/api/v1/action/set_time',{utc:Math.floor(Date.now()/1000)}).then(function(d){if(d)toast('time set ('+d.source+')')})}
-function factoryReset(){if(!confirm('Erase settings, Wi-Fi, Makapix pairing and the PIN, then reboot into setup mode? The card is not touched.'))return;var w=prompt('Type ERASE to confirm');if(w!=='ERASE')return;post('/api/v1/action/factory_reset',{confirm:'ERASE'}).then(function(){toast('erasing; the device reboots into setup mode')})}
-function updateInfo(){api('/api/v1/update').then(function(u){var t='running <b>'+esc(u.current_version)+'</b> · '+u.state.replace(/_/g,' ');if(u.state==='available')t+=': <b>'+esc(u.available_version)+'</b> ('+fmt(u.available_size)+')'+(u.sha256_published?'':' <span style="color:#f88">no checksum published</span>');if(u.state==='up_to_date')t+=' (latest '+esc(u.available_version)+')';if(u.state==='downloading')t+=' '+u.progress_percent.toFixed(0)+'% ('+fmt(u.bytes_read)+' of '+fmt(u.image_size)+')';if(u.state==='error')t+=': <span style="color:#f88">'+esc(u.error)+'</span>';if(u.last_check_age_s>=0)t+=' · checked '+Math.round(u.last_check_age_s/60)+' min ago';t+=' · releases at github.com/'+esc(u.repository);if(u.can_rollback)t+=' · other slot '+esc(u.rollback_partition)+' holds <b>'+esc(u.rollback_version)+'</b>';if(u.notes&&u.state==='available')t+='<br><span style="white-space:pre-wrap">'+esc(u.notes)+'</span>';document.getElementById('updateinfo').innerHTML=t;document.getElementById('installbtn').style.display=u.state==='available'?'':'none';document.getElementById('rebootbtn').style.display=u.state==='ready_to_reboot'?'':'none';document.getElementById('rollbackbtn').style.display=u.can_rollback?'':'none';if(u.state==='downloading'||u.state==='verifying'||u.state==='checking')setTimeout(updateInfo,1500)}).catch(function(){})}
-function installUpdate(){if(!confirm('Download and install the update? The panel keeps playing; a reboot follows when you choose.'))return;post('/api/v1/update/install').then(updateInfo)}
-function installUrl(){var u=document.getElementById('upd_url').value,h=document.getElementById('upd_sha').value.trim();if(!u||h.length!==64){toast('URL and its 64-digit SHA256 needed');return}post('/api/v1/update/install',{url:u,sha256:h}).then(updateInfo)}
-function rollbackUpdate(){if(!confirm('Boot the other slot\'s firmware? The device reboots now.'))return;post('/api/v1/update/rollback')}
-function imuInfo(){api('/api/v1/diag/imu').then(function(d){document.getElementById('imuinfo').innerHTML=d.present?('IMU: '+d.ax.toFixed(2)+', '+d.ay.toFixed(2)+', '+d.az.toFixed(2)+' g · gravity angle '+d.gravity_angle_deg.toFixed(0)+'° in-plane '+d.in_plane_g.toFixed(2)+' g · '+(d.calibrated?('calibrated, auto-rotation '+(d.resolved?d.auto_rotation:'unresolved')):'<b>not calibrated</b>: stand the panel upright and press the button')+' · tap threshold '+d.tap_threshold_g.toFixed(2)+' g, peak '+d.peak_g.toFixed(2)+' g, taps '+d.single_taps+'/'+d.double_taps+(d.last_event?(' (last '+d.last_event+' '+d.last_event_age_s.toFixed(0)+' s ago)'):'')):'no IMU'}).catch(function(){})}
-function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}).then(function(d){refresh();return d}).catch(function(e){toast(e.message)})}
-function act(a){return post('/api/v1/action/'+a)}
-function togglePause(){act(paused?'resume':'pause')}
-function likePost(id,like){api('/api/v1/makapix/like',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({post_id:id,like:like})}).then(function(){toast(like?'liked':'unliked')}).catch(function(e){toast(e.message)})}
-function playRef(){var v=document.getElementById('playref').value.trim();if(!v)return;var body=/^https?:\/\//.test(v)&&v.indexOf('makapix.club/p/')<0?{url:v}:{post:v};post('/api/v1/action/play',body).then(function(){toast('queued')})}
-function setting(patch){return api('/api/v1/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(function(s){fillSettings(s);toast('saved')}).catch(function(e){toast(e.message)})}
-function fmt(n){return n>1e9?(n/1e9).toFixed(1)+' GB':n>1e6?(n/1e6).toFixed(1)+' MB':n>1e3?(n/1e3).toFixed(0)+' KB':n+' B'}
-function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-function fillSettings(s){S=s;var d=s.display;document.getElementById('brightness').value=d.brightness;document.getElementById('bval').textContent=d.brightness;document.getElementById('panel_mode').value=d.panel_mode;document.getElementById('rotation').value=d.rotation;document.getElementById('auto_swap').value=s.show.auto_swap_seconds;document.getElementById('pick_mode').value=s.show.pick_mode;document.getElementById('channel_select').value=s.show.channel_select;var b=d.background;document.getElementById('background').value='#'+[b.r,b.g,b.b].map(function(v){return ('0'+v.toString(16)).slice(-2)}).join('');document.getElementById('timezone').value=s.network.timezone;document.getElementById('device_name').value=s.network.device_name;document.getElementById('main_state').value=s.show.main_state;document.getElementById('widget').value=s.widgets.widget;document.getElementById('overlay').value=s.show.clock_overlay.enabled?'on':'off';document.getElementById('overlay_corner').value=s.show.clock_overlay.corner;document.getElementById('clock_font').value=s.clock.font;document.getElementById('clock_seconds').value=s.clock.seconds?'on':'off';document.getElementById('clock_h24').value=s.clock.h24?'on':'off';document.getElementById('clock_blink').value=s.clock.blink_colon?'on':'off';if(s.weather.location_set){document.getElementById('lat').value=s.weather.latitude;document.getElementById('lon').value=s.weather.longitude}document.getElementById('units').value=s.weather.units;document.getElementById('il_clock').value=s.widgets.interlude_percent.clock;document.getElementById('il_weather').value=s.widgets.interlude_percent.weather;document.getElementById('il_temp').value=s.widgets.interlude_percent.temperature;document.getElementById('st_takeover').value=s.stream.takeover?'on':'off';document.getElementById('st_silence').value=s.stream.silence_ms;document.getElementById('st_ddp').value=s.stream.ddp_port;document.getElementById('st_raw').value=s.stream.raw_udp_port;document.getElementById('tap_enabled').value=s.inputs.tap_enabled?'on':'off';document.getElementById('tap_sens').value=s.inputs.tap_sensitivity;document.getElementById('rotation_auto').value=s.display.rotation_auto?'on':'off'}
-function saveLocation(){var la=parseFloat(document.getElementById('lat').value),lo=parseFloat(document.getElementById('lon').value);if(isNaN(la)||isNaN(lo))return;setting({weather:{latitude:la,longitude:lo}})}
-function fillStatus(d){var p=d.playback||{};var a=p.artwork;paused=!!p.paused;document.getElementById('pausebtn').textContent=paused?'▶ Resume':'⏸ Pause';document.getElementById('prevbtn').disabled=!(p.history&&p.history.can_back);
-var txt=a?('<b>'+esc(a.name)+'</b><br>'+a.format+' '+a.width+'x'+a.height+', '+fmt(a.bytes)+(a.animated?'':', static')+'<br>'+(a.channel?('channel <b>'+esc(a.channel)+'</b>'):'play-this')+' · playset <b>'+esc(p.playset?p.playset.name:'')+'</b>'):(paused?'<b>paused</b>':'<b>no artwork</b>'+(p.no_artwork?': '+esc(p.no_artwork):''));
-if(a&&a.post_id!=null){txt+='<br>Makapix post '+a.post_id+(a.sqid?(' <a href="https://makapix.club/p/'+esc(a.sqid)+'" target="_blank" style="color:#8b5cff">open</a>'):'')+' <button class="small secondary" onclick="likePost('+a.post_id+',true)">&#9829; Like</button><button class="small secondary" onclick="likePost('+a.post_id+',false)">Unlike</button>'}if(p.last_error)txt+='<br><span style="color:#f88">'+esc(p.last_error)+'</span>';txt+='<br>frames '+(p.frames||0)+', late '+(p.late||0)+', swaps '+(p.swaps||0);document.getElementById('playing').innerHTML=txt;
-var sn=d.sensor||{};var we=d.weather||{};document.getElementById('sensorinfo').innerHTML=(sn.valid?('sensor <b>'+sn.temperature_c.toFixed(1)+' C</b>, '+sn.humidity.toFixed(0)+'% RH, trend '+sn.trend_c_per_hour.toFixed(1)+' C/h'):'no sensor reading')+' · '+(we.valid?('weather <b>'+we.temperature+' '+(we.units==='imperial'?'F':'C')+'</b> '+we.condition+', today '+we.today_max+'/'+we.today_min+', '+Math.round(we.age_s/60)+' min old'):('weather: '+(we.error||'no data')))+(p.widget?(' · widget <b>'+p.widget+'</b> on the panel'):'');var st=d.stream||{};document.getElementById('streaminfo').innerHTML=(st.active?('<b>'+st.protocol+' '+st.width+'x'+st.height+'</b> from '+esc(st.sender)+' at '+(st.fps||0).toFixed(1)+' fps, latency '+(st.last_latency_ms||0).toFixed(1)+' ms'+(p.stream_up?' · on the panel':' · not shown (takeover off)')):'no stream')+' · frames '+(st.frames||0)+', incomplete '+(st.incomplete||0)+', rejected '+(st.rejected||0)+', lost '+(st.lost||0)+' · listening: DDP '+(st.ddp_listening?'on':'off')+', raw '+(st.raw_listening?'on':'off');var m=d.makapix||{};var mi='state <b>'+esc(m.state)+'</b>'+(m.online?'':' · offline')+(m.mqtt_connected?' · MQTT connected':'')+(m.activity?(' · '+esc(m.activity)):'')+'<br>refreshes '+m.refreshes+', downloads '+m.downloads+(m.download_failures?(' ('+m.download_failures+' failed)'):'')+', views '+m.views_sent+', commands '+m.commands+(m.player_key?('<br>player '+esc(m.player_key)):'')+(m.cert_expires_at?('<br>certificate until '+new Date(m.cert_expires_at*1000).toISOString().slice(0,10)):'')+(m.last_error?('<br><span style="color:#f88">'+esc(m.last_error)+'</span>'):'');document.getElementById('mkinfo').innerHTML=mi;var mc=document.getElementById('mkcode');if(m.state==='pairing'&&m.code){mc.style.display='block';mc.textContent=m.code;document.getElementById('mkinfo').innerHTML+='<br>enter this code at makapix.club (Settings, Players, Add device); '+Math.floor(m.code_seconds_left/60)+' min left'}else mc.style.display='none';document.getElementById('mkpair').style.display=(m.state==='unpaired'||m.state==='invalid')?'':'none';document.getElementById('mkcancel').style.display=m.state==='pairing'?'':'none';document.getElementById('mkunpair').style.display=(m.state==='paired'||m.state==='invalid')?'':'none';
-var as=p.auto_swap||{};document.getElementById('swapbadge').textContent=as.interval_s?('swap in '+(as.remaining_s<0?'-':as.remaining_s+' s')):'no auto-swap';
-var n=d.network;document.getElementById('netbadge').textContent=n.connected?('Wi-Fi '+n.rssi+' dBm'):(n.setup_mode?'setup mode':'offline');document.getElementById('netbadge').className='badge '+(n.connected?'ok':'warn');document.getElementById('timebadge').textContent=d.time.synced?d.time.local.replace('T',' '):'time unknown';document.getElementById('netinfo').innerHTML='<b>'+n.hostname+'.local</b> · '+(n.connected?('IP '+n.ip+', gateway '+n.gateway+', '+n.rssi+' dBm'):'not connected')+(d.network.ssid?(' · network <b>'+esc(n.ssid)+'</b>'):'');var c=d.card;document.getElementById('cardinfo').textContent=c.mounted?('card '+fmt(c.free_bytes)+' free of '+fmt(c.total_bytes)):('no card: '+c.error);var pn=d.panel||{};document.getElementById('diag').innerHTML='firmware <b>'+d.firmware.version+'</b> (IDF '+d.firmware.idf+'), up '+Math.floor(d.uptime_s/60)+' min · panel <b>'+(pn.refresh_hz||0).toFixed(1)+' Hz</b> '+pn.mode+', frames '+pn.frames+', late flips '+pn.late_flips+', timeouts '+pn.timeouts+(pn.stalled?' <b style="color:#f66">STALLED</b>':'')+' · heap internal <b>'+fmt(d.heap.internal_free)+'</b> (largest '+fmt(d.heap.internal_largest)+'), PSRAM '+fmt(d.heap.psram_free)+(function(r){if(!r)return '';var c=r.counters||{};return ' · last reset <b>'+r.reset_reason+'</b>, reboots: '+Object.keys(c).filter(function(k){return c[k]}).map(function(k){return k+' '+c[k]}).join(', ')+(r.crash&&r.crash.present?(' · <b style="color:#f66">crash</b> in '+esc(r.crash.task)+' at '+r.crash.pc+' <button class="small secondary" onclick="post(\'/api/v1/diag/coredump/erase\')">clear</button>'):'')+' · image '+(r.image?r.image.partition:'?')+(r.image&&r.image.pending_verify?' (awaiting confirmation)':'')+' · time from '+(d.time.source||'?')+(d.panel&&d.panel.night_active?' · <b>night</b> brightness':'')})(d.reliability);
-var pos=p.history?p.history.position:-1;if(pos!==lastPos||(p.history&&p.history.count!==(window._hc||-1))){lastPos=pos;window._hc=p.history?p.history.count:0;loadHistory();loadChannels()}
-if(PS&&p.playset&&PS.active!==p.playset.name){PS.active=p.playset.name;renderPills()}}
-function refresh(){api('/api/v1/status').then(fillStatus).catch(function(){})}
-function tick(){document.getElementById('frame').src='/api/v1/frame?t='+Date.now()}
-function renderPills(){var el=document.getElementById('pills');el.innerHTML='';function pill(name,enabled,reason){var s=document.createElement('span');s.className='pill'+(name===PS.active?' active':'')+(enabled?'':' off');s.textContent=name;if(!enabled)s.title=reason;else s.onclick=function(){post('/api/v1/action/play_playset',{name:name}).then(loadPlaysets)};el.appendChild(s)}PS.playsets.forEach(function(p){pill(p.name,true,'')});PS.builtins.forEach(function(b){pill(b.name,b.enabled,b.reason)})}
-function loadPlaysets(){api('/api/v1/playsets').then(function(d){PS=d;renderPills();var ul=document.getElementById('playsets');ul.innerHTML='';document.getElementById('pscount').textContent=d.playsets.length+' of '+d.max_playsets;d.playsets.forEach(function(p){var li=document.createElement('li');li.innerHTML='<span><b>'+esc(p.name)+'</b> <small class="kv">'+p.channels+' channel'+(p.channels==1?'':'s')+'</small></span><span></span>';var b=li.lastChild;var play=document.createElement('button');play.className='small';play.textContent='Play';play.onclick=function(){post('/api/v1/action/play_playset',{name:p.name})};b.appendChild(play);var ed=document.createElement('button');ed.className='secondary small';ed.textContent='Edit';ed.onclick=function(){editPlayset(p.name)};b.appendChild(ed);var x=document.createElement('button');x.className='danger small';x.textContent='✕';x.onclick=function(){if(confirm('Delete playset '+p.name+'?'))api('/api/v1/playsets/'+p.name,{method:'DELETE'}).then(loadPlaysets).catch(function(e){toast(e.message)})};b.appendChild(x);ul.appendChild(li)})}).catch(function(e){toast(e.message)})}
-function editPlayset(name){var ed=document.getElementById('editor');ed.style.display='block';document.getElementById('psname').value=name;document.getElementById('psname').disabled=!!name;api('/api/v1/folders').then(function(f){var s=document.getElementById('folderpick');s.innerHTML='';f.forEach(function(x){var o=document.createElement('option');o.value=x.folder;o.textContent=x.name+' ('+x.files+' files)';s.appendChild(o)})}).catch(function(){});if(name){api('/api/v1/playsets/'+name).then(function(p){document.getElementById('pschannels').value=JSON.stringify(p.channels.map(function(c){return {kind:c.kind,identifier:c.identifier,display_name:c.display_name,weight:c.weight,offset:c.offset}}),null,1)}).catch(function(e){toast(e.message)})}else{document.getElementById('pschannels').value='[\n {"kind":"local","identifier":"","weight":1}\n]'}}
-function addFolder(){var f=document.getElementById('folderpick').value;var t=document.getElementById('pschannels');var arr=[];try{arr=JSON.parse(t.value||'[]')}catch(e){}arr.push({kind:'local',identifier:f,weight:1});t.value=JSON.stringify(arr,null,1)}
-function savePlayset(){var name=document.getElementById('psname').value.trim();var ch;try{ch=JSON.parse(document.getElementById('pschannels').value)}catch(e){toast('channels: '+e.message);return}api('/api/v1/playsets/'+encodeURIComponent(name),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({channels:ch})}).then(function(){toast('saved');document.getElementById('editor').style.display='none';loadPlaysets()}).catch(function(e){toast(e.message)})}
-function loadHistory(){api('/api/v1/history').then(function(h){var ul=document.getElementById('history');ul.innerHTML='';if(!h.items.length){ul.innerHTML='<li><span class="kv">empty</span></li>';return}h.items.slice().reverse().forEach(function(it){var li=document.createElement('li');if(it.current)li.className='cur';li.innerHTML='<span>'+(it.current?'▶ ':'')+esc(it.name)+' <small class="kv">'+esc(it.channel||it.source)+', '+it.shown_s_ago+' s ago</small></span><span></span>';var b=document.createElement('button');b.className='secondary small';b.textContent='Show';b.onclick=function(){post('/api/v1/action/history_go',{position:it.index})};li.lastChild.appendChild(b);ul.appendChild(li)})}).catch(function(){})}
-function loadChannels(){api('/api/v1/channels').then(function(c){document.getElementById('channels').innerHTML=c.channels.map(function(ch){return '<b>'+esc(ch.display_name)+'</b> '+(ch.status?('<span style="color:#f88">'+esc(ch.status)+'</span>'):(ch.available+' files, '+Math.round(ch.share*100)+'%'))}).join(' · ')+(c.scanning?' · scanning…':'')}).catch(function(){})}
-function listFiles(){var dir=document.getElementById('dir').value;api('/api/v1/files?path='+encodeURIComponent(dir)).then(function(d){var ul=document.getElementById('files');ul.innerHTML='';if(dir){var up=document.createElement('li');up.innerHTML='<span>..</span>';up.onclick=function(){document.getElementById('dir').value=dir.split('/').slice(0,-1).join('');listFiles()};ul.appendChild(up)}d.entries.forEach(function(e){var li=document.createElement('li');var p=(dir?dir+'/':'')+e.name;li.innerHTML='<span>'+(e.dir?'📁 ':'')+esc(e.name)+(e.dir?'':' <small class="kv">'+fmt(e.size)+'</small>')+'</span><span></span>';var btns=li.lastChild;if(e.dir){var o=document.createElement('button');o.className='secondary small';o.textContent='Open';o.onclick=function(){document.getElementById('dir').value=p;listFiles()};btns.appendChild(o)}else{var b=document.createElement('button');b.className='small';b.textContent='Play';b.onclick=function(){post('/api/v1/action/play',{path:p})};btns.appendChild(b)}var x=document.createElement('button');x.className='danger small';x.textContent='✕';x.onclick=function(){if(confirm('Delete '+p+'?'))api('/api/v1/files?path='+encodeURIComponent(p),{method:'DELETE'}).then(listFiles).catch(function(e){toast(e.message)})};btns.appendChild(x);ul.appendChild(li)})}).catch(function(e){toast(e.message)})}
-function uploadFiles(){var inp=document.getElementById('upload');var dir=document.getElementById('dir').value;var files=Array.prototype.slice.call(inp.files);if(!files.length){toast('choose files first');return}var st=document.getElementById('uploadstatus');var i=0;function next(){if(i>=files.length){st.textContent='done';listFiles();return}var f=files[i++];st.textContent='uploading '+f.name+' ('+i+'/'+files.length+')';fetch('/api/v1/files?path='+encodeURIComponent((dir?dir+'/':'')+f.name),{method:'POST',body:f}).then(function(r){return r.json()}).then(function(j){if(!j.ok)toast(f.name+': '+j.error);next()}).catch(function(e){toast(e.message);next()})}next()}
-function scan(){api('/api/v1/wifi/scan').then(function(l){var d=document.getElementById('nets');d.innerHTML='';l.forEach(function(n){var o=document.createElement('option');o.value=n.ssid;d.appendChild(o)});toast(l.length+' networks')}).catch(function(e){toast(e.message)})}
-function saveWifi(){var s=document.getElementById('ssid').value,p=document.getElementById('wpass').value;if(!s){toast('SSID required');return}post('/api/v1/wifi',{ssid:s,password:p}).then(function(){toast('connecting; reload in a few seconds')})}
-function loadLog(){fetch('/api/v1/diag/log?bytes=16384').then(function(r){return r.text()}).then(function(t){var p=document.getElementById('log');p.style.display='block';p.textContent=t;p.scrollTop=p.scrollHeight})}
-function bench(){var p=prompt('Path of a file on the card (relative to the p64 folder)','animations/');if(!p)return;toast('benchmarking…');api('/api/v1/diag/bench?path='+encodeURIComponent(p)+'&loops=2').then(function(d){alert(d.format+' '+d.width+'x'+d.height+', '+d.frames+' frames: first '+d.first_frame_ms.toFixed(2)+' ms, average '+d.avg_frame_ms.toFixed(2)+' ms, max '+d.max_frame_ms.toFixed(2)+' ms, sustainable '+d.sustainable_fps.toFixed(1)+' fps (stored delay avg '+d.avg_delay_ms.toFixed(0)+' ms)')}).catch(function(e){toast(e.message)})}
-api('/api/v1/settings').then(fillSettings).catch(function(){});refresh();listFiles();loadPlaysets();authState();imuInfo();setInterval(imuInfo,5000);updateInfo();setInterval(updateInfo,30000);
-fetch('/api/v1/timezones').then(function(r){return r.json()}).then(function(l){var d=document.getElementById('tzlist');l.forEach(function(z){var o=document.createElement('option');o.value=z;d.appendChild(o)})}).catch(function(){});
-setInterval(tick,400);tick();setInterval(refresh,4000);
-try{var ws=new WebSocket('ws://'+location.host+'/api/v1/ws');ws.onmessage=function(m){try{var j=JSON.parse(m.data);if(j.type==='status')fillStatus(j.data)}catch(e){}}}catch(e){}
-</script></main></body></html>
+var S = null, playsets = null, channels = [], channelsPlayset = null, infoOpen = false, paused = false, current = null, shufflePending = false;
+p64.nav('home');
+
+// ── Live preview: the panel's own frame, refreshed once a second while the page is visible ──
+(function () {
+    var img = document.getElementById('preview'), busy = false;
+    function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        var next = new Image();
+        next.onload = function () { img.src = next.src; busy = false; };
+        next.onerror = function () { busy = false; };
+        next.src = '/api/v1/frame?t=' + Date.now();
+    }
+    setInterval(tick, 1000);
+})();
+
+function toggleNowPlaying() { document.getElementById('now-playing').classList.toggle('collapsed'); }
+function toggleInfo() { infoOpen = !infoOpen; renderInfo(); }
+function togglePause() { p64.post('/api/v1/action/' + (paused ? 'resume' : 'pause')).catch(function (e) { p64.toast(e.message, true); }); }
+function toggleLike() {
+    if (!current || current.post_id == null) return;
+    var liked = !!current.liked;
+    p64.post('/api/v1/makapix/like', { post_id: current.post_id, like: !liked }).then(function () {
+        current.liked = !liked; renderLike(); p64.toast(liked ? 'Unliked' : 'Liked');
+    }).catch(function (e) { p64.toast(e.message, true); });
+}
+function toggleShuffle() {
+    var btn = document.getElementById('shuffle-btn');
+    var on = !btn.classList.contains('active');
+    shufflePending = true;
+    setShuffle(on);
+    p64.setting({ show: { pick_mode: on ? 'random' : 'recency' } }, true).then(function () { shufflePending = false; }).catch(function () { shufflePending = false; });
+}
+function setShuffle(on) {
+    var btn = document.getElementById('shuffle-btn');
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    document.getElementById('shuffle-state').textContent = on ? 'on' : 'off';
+}
+function renderLike() {
+    var b = document.getElementById('like-btn');
+    var show = current && current.post_id != null && S && S.makapix && S.makapix.state === 'paired';
+    b.classList.toggle('ghost', !show);
+    b.classList.toggle('active', !!(current && current.liked));
+}
+function renderInfo() {
+    var area = document.getElementById('artwork-info');
+    if (!infoOpen || !S) { area.hidden = true; return; }
+    var p = S.playback || {}, a = p.artwork, rows = '';
+    function row(label, value) { rows += '<div class="artwork-info-row"><span class="artwork-info-label">' + label + ':</span><span>' + value + '</span></div>'; }
+    if (a) {
+        row('Title', p64.esc(a.name));
+        row('Format', p64.esc(a.format) + ' ' + a.width + 'x' + a.height + (a.animated ? ', animated' : ', still') + ', ' + p64.fmtBytes(a.bytes));
+        row('Channel', a.channel ? p64.esc(a.channel) : (a.source === 'play_this' ? 'play from...' : p64.esc(a.source || '')));
+        if (a.post_id != null) row('Makapix', 'post ' + a.post_id + (a.sqid ? ' <a href="https://makapix.club/p/' + p64.esc(a.sqid) + '" target="_blank" rel="noopener">open</a>' : ''));
+        row('Shown', p64.relative(a.since_s) + (a.frames_decoded ? ' · ' + a.frames_decoded + ' frames' : ''));
+    } else if (p.widget) {
+        row('Widget', p64.esc(p.widget));
+    } else if (p.stream_up) {
+        var st = S.stream || {};
+        row('Stream', p64.esc(st.protocol) + ' ' + st.width + 'x' + st.height + ' from ' + p64.esc(st.sender) + ' at ' + (st.fps || 0).toFixed(1) + ' fps');
+    } else {
+        row('Panel', paused ? 'paused' : (p.no_artwork || 'status screen'));
+    }
+    document.getElementById('artwork-info-rows').innerHTML = rows;
+    area.hidden = false;
+}
+function kindLetter(kind) { return kind === 'local' ? 'L' : 'M'; }
+function kindName(kind) { return { local: 'card', promoted: 'promoted', all: 'all', own: 'own', artist: 'artist', hashtag: 'hashtag', reactions: 'reactions', url_list: 'url list', pinned: 'pinned' }[kind] || kind; }
+function renderChannels() {
+    var c = document.getElementById('now-playing-channels'), html = '';
+    var now = Date.now() / 1000;
+    channels.forEach(function (ch) {
+        var cls = 'ps-ch-row' + (ch.refreshing ? ' refreshing' : '') + (ch.status && !ch.refreshing ? ' blocked' : '');
+        html += '<div class="' + cls + '" title="' + p64.esc(ch.status || '') + '">' +
+            '<span class="ps-badge ps-badge-type">' + kindLetter(ch.kind) + '</span>' +
+            '<span class="ps-badge ps-badge-sub">' + p64.esc(kindName(ch.kind)) + '</span>' +
+            '<span class="ps-ch-name">' + p64.esc(ch.display_name || ch.identifier || kindName(ch.kind)) + '</span>' +
+            (ch.identifier && ch.kind !== 'local' ? '<span class="ps-ch-id">' + p64.esc(ch.identifier) + '</span>' : '') +
+            '<span class="ps-ch-count">' + (ch.cached != null ? ch.cached : ch.available) + '/' + ch.entries + '</span>' +
+            (ch.last_refresh ? '<span class="ps-ch-time">' + p64.relative(now - ch.last_refresh) + '</span>' : '') +
+            '</div>';
+    });
+    c.innerHTML = html;
+    var cached = 0, total = 0;
+    channels.forEach(function (ch) { cached += (ch.cached != null ? ch.cached : ch.available) || 0; total += ch.entries || 0; });
+    document.getElementById('now-playing-stats').textContent = channels.length + ' ch · ' + cached + '/' + total + ' artworks';
+}
+function loadChannels() {
+    p64.get('/api/v1/channels').then(function (d) { channels = (d && d.channels) || []; renderChannels(); }).catch(function () {});
+}
+function loadPlaysets() {
+    p64.get('/api/v1/playsets').then(function (d) { playsets = d; renderPills(); }).catch(function () {});
+}
+function renderPills() {
+    var bar = document.getElementById('pill-bar');
+    if (!playsets) return;
+    var active = S && S.playback && S.playback.playset ? S.playback.playset.name : playsets.active;
+    bar.innerHTML = '';
+    (playsets.playsets || []).forEach(function (ps) {
+        var b = document.createElement('button');
+        b.className = 'pill-item kind-user' + (ps.name === active ? ' active' : '');
+        b.textContent = ps.name;
+        b.onclick = function () { playPlayset(ps.name); };
+        bar.appendChild(b);
+    });
+    (playsets.builtins || []).forEach(function (bi) {
+        var b = document.createElement('button');
+        b.className = 'pill-item kind-builtin' + (bi.name === active ? ' active' : '');
+        b.textContent = bi.name;
+        if (!bi.enabled) { b.disabled = true; b.title = bi.reason || 'unavailable'; b.style.opacity = '0.45'; }
+        b.onclick = function () { playPlayset(bi.name); };
+        bar.appendChild(b);
+    });
+}
+function playPlayset(name) {
+    p64.post('/api/v1/action/play_playset', { name: name }).then(function () { p64.toast('Playing ' + name); p64.refresh(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+function showBanner(id, on, text) {
+    var el = document.getElementById(id);
+    el.style.display = on ? 'block' : 'none';
+    if (text != null) { var t = el.querySelector('p'); if (t) t.textContent = text; }
+}
+p64.onStatus(function (d) {
+    S = d;
+    var p = d.playback || {};
+    paused = !!p.paused;
+    document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
+    document.getElementById('back-btn').disabled = !(p.history && p.history.can_back);
+    document.getElementById('now-playing-name').textContent = p.playset ? p.playset.name : '';
+    if (p.playset && p.playset.name !== channelsPlayset) { channelsPlayset = p.playset.name; loadChannels(); }
+    else if (p.playset && p.playset.scanning) loadChannels();
+    if (playsets && p.playset && p.playset.name !== playsets.active) { playsets.active = p.playset.name; renderPills(); }
+    var a = p.artwork;
+    if (a && (!current || current.name !== a.name || current.post_id !== a.post_id)) current = { name: a.name, post_id: a.post_id, liked: false };
+    if (!a) current = null;
+    renderLike();
+    renderInfo();
+    if (!shufflePending && d.settings_pick_mode) setShuffle(d.settings_pick_mode === 'random');
+    var mk = d.makapix || {};
+    var needsPairing = p.no_artwork === 'needs pairing' || (channels.some(function (c) { return c.status === 'needs pairing'; }));
+    showBanner('banner-card', d.card && !d.card.mounted);
+    showBanner('banner-offline', d.network && !d.network.connected && !d.network.setup_mode);
+    showBanner('banner-pairing', needsPairing && mk.state !== 'paired');
+    showBanner('banner-noartwork', !!p.no_artwork && !needsPairing, 'The device has no artwork to show: ' + (p.no_artwork || '') + '.');
+    showBanner('banner-error', !!p.last_error, p.last_error || '');
+    var up = document.getElementById('update-banner');
+    up.style.display = d.update_state === 'available' ? 'block' : 'none';
+    document.getElementById('live-tag').textContent = p.stream_up ? 'STREAM' : (p.widget ? 'WIDGET' : 'LIVE');
+});
+// The shuffle state comes from the settings document.
+setTimeout(function () { p64.get('/api/v1/settings').then(function (s) { setShuffle(s.show.pick_mode === 'random'); }).catch(function () {}); }, 600);
+
+// ── Play from... ──
+var dropZone = document.getElementById('drop-zone'), fileInput = document.getElementById('file-input'), fileInfo = document.getElementById('file-info'), uploadBtn = document.getElementById('upload-btn');
+dropZone.addEventListener('click', function () { fileInput.click(); });
+dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function () { dropZone.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function (e) { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; onFileChosen(); } });
+fileInput.addEventListener('change', onFileChosen);
+function onFileChosen() {
+    var f = fileInput.files[0];
+    if (!f) { fileInfo.className = 'file-info'; uploadBtn.disabled = true; return; }
+    if (f.size > 5 * 1024 * 1024) { fileInfo.innerHTML = '<strong style="color:var(--c-danger)">Too large.</strong> Artworks are at most 5 MB.'; fileInfo.className = 'file-info has-file'; uploadBtn.disabled = true; return; }
+    fileInfo.textContent = f.name + ' (' + p64.fmtBytes(f.size) + ')';
+    fileInfo.className = 'file-info has-file';
+    uploadBtn.disabled = false;
+}
+function uploadFile(ev) {
+    ev.preventDefault();
+    var f = fileInput.files[0];
+    if (!f) return false;
+    var folder = document.getElementById('folder-select').value;
+    var rel = 'animations/' + (folder ? folder + '/' : '') + f.name.replace(/[^A-Za-z0-9._ -]/g, '_');
+    var xhr = new XMLHttpRequest();
+    var prog = document.getElementById('upload-progress'), fill = document.getElementById('progress-fill');
+    prog.classList.add('active'); fill.style.width = '0%'; uploadBtn.disabled = true;
+    xhr.upload.onprogress = function (e) { if (e.lengthComputable) fill.style.width = Math.round(100 * e.loaded / e.total) + '%'; };
+    xhr.onload = function () {
+        prog.classList.remove('active');
+        var j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {}
+        if (xhr.status === 401) { p64.showPin(''); return; }
+        if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
+            p64.toast('Uploaded; playing');
+            p64.post('/api/v1/action/play', { path: rel }).catch(function (e) { p64.toast(e.message, true); });
+            fileInput.value = ''; onFileChosen();
+        } else { p64.toast(j.error || ('upload failed (' + xhr.status + ')'), true); uploadBtn.disabled = false; }
+    };
+    xhr.onerror = function () { prog.classList.remove('active'); uploadBtn.disabled = false; p64.toast('upload failed', true); };
+    xhr.open('POST', '/api/v1/files?path=' + encodeURIComponent(rel));
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.send(f);
+    return false;
+}
+function showUrl() {
+    var v = document.getElementById('show-url-input').value.trim();
+    if (!v) return;
+    var m = /makapix\.club\/p\/([A-Za-z0-9]+)/.exec(v);
+    var body = m ? { post: m[1] } : (/^https?:\/\//i.test(v) ? { url: v } : { post: v });
+    var btn = document.getElementById('show-url-btn');
+    btn.disabled = true;
+    p64.post('/api/v1/action/play', body).then(function () { p64.toast('Fetching...'); btn.disabled = false; }).catch(function (e) { p64.toast(e.message, true); btn.disabled = false; });
+}
+setTimeout(function () { p64.get('/api/v1/folders').then(function (fs) {
+    var sel = document.getElementById('folder-select');
+    (fs || []).forEach(function (f) { if (!f.folder) return; var o = document.createElement('option'); o.value = f.folder; o.textContent = 'animations/' + f.folder + '/'; sel.appendChild(o); });
+}).catch(function () {}); }, 900);
+
+p64.checkAuth();
+p64.startStatus();
+setTimeout(loadPlaysets, 300);
+</script>
+</body>
+</html>

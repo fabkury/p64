@@ -320,7 +320,7 @@ std::shared_ptr<T> psram_shared() {
 // --- public API ---------------------------------------------------------------------
 
 bool start() {
-  xTaskCreatePinnedToCore(sensor_task, "sensor", 3072, nullptr, 3, nullptr, 0);
+  xTaskCreatePinnedToCoreWithCaps(sensor_task, "sensor", 4096, nullptr, 3, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);  // I2C only
   // The weather fetch runs TLS on this task, which never touches flash, so its stack can
   // live in PSRAM.
   xTaskCreatePinnedToCoreWithCaps(weather_task, "weather", 12288, nullptr, 3, &g_weather_task, 0,

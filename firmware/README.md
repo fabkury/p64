@@ -28,6 +28,15 @@ Route reference: `docs/api.md`. Device tests: `tests/device/api_smoke.py` and
 `tests/device/content_smoke.py` (both need a card with files; `--corpus` uploads the
 host corpus).
 
+## Web UI
+
+`components/p64_web/ui/`: `index.html` (Home), `playsets.html`, `settings.html`,
+`update.html`, `static/common.css` and `static/theme.js` (p3a's stylesheet and themes,
+copied verbatim; update them from `reference/p3a/webui/static/` when p3a's change),
+`static/app.js` (shared helpers), `manifest.json` and the icons from
+`tools/gen_ui_icons.py`. Everything is embedded in the image (ADR 0005); a change needs
+a rebuild and flash. `tests/device/ui_smoke.py` checks the routes.
+
 ## Streams
 
 Pixels over UDP: DDP on 4048 (LedFx, xLights, WLED tooling) and the raw p64 format on

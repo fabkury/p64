@@ -27,7 +27,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face deferred) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
-| M10 | Full web UI port, acceptance tests, docs | pending | |
+| M10 | Full web UI port, acceptance tests, docs | in progress | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, PWA manifest and icons, `tests/device/ui_smoke.py`; acceptance tests and the setup-portal restyle remain |
 
 ## Log
 
@@ -322,4 +322,34 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 - M9 is complete. Not exercised on the device: a real GitHub release install (none is
   published yet; the check against the empty repository reports the 404 cleanly), the
   BOOT-hold reset, real taps and the auto-rotation direction (a hand on the shell).
-- Next: M10, the full web UI port (p3a layout), acceptance tests, docs.
+- M10, web UI (docs/architecture.md section 19): the dev page is replaced by p3a's
+  layout: Home (live preview, now-playing card with channel rows and the shuffle toggle,
+  transport with like and info, playset pills, "Play from..." with upload to a folder
+  and URL or Makapix link, banners), Playsets (list, built-ins, the editor with the
+  balance bar, channel cards with reorder, the add-channel dialog with Local folders
+  and the Makapix kinds with browser-side checks), Settings (Display, Widgets, Stream,
+  Network with the PIN and the time, Storage with the file manager, Makapix, System with
+  diagnostics and about) and Update. Shared `static/app.js`; p3a's `common.css` and
+  `theme.js` (five themes) verbatim; ETag revalidation; PWA manifest and icons.
+- Verified on the device (`tests/device/ui_smoke.py` 0 failures; Chrome on the LAN):
+  all four pages render in the Spectrum theme with the live preview, the now-playing
+  card (channel rows, shuffle), the pills, the built-ins list, the settings tabs and the
+  Update page (the rollback slot shown); the PIN prompt path is the same API the
+  tests exercise. Page load: 29 KB HTML plus 38 KB CSS, revalidated with an ETag.
+- Found on the device and fixed, the important one: opening the web UI crash-looped
+  the device (22 panics). The core dump named the WebSocket push task: its stack lives
+  in PSRAM, and the status document it builds every 2 s had gained (M9) the reboot
+  counters read from NVS and the other slot's description from flash; a flash read
+  turns the cache off and asserts on a PSRAM stack. Fix in two layers: those values
+  are cached in RAM at boot, and `system::on_internal_stack()` (flash_guard) now wraps
+  every NVS access (settings, state, Makapix credentials, the PIN), running it on a
+  short-lived internal-stack helper when the caller's stack is in PSRAM. With that in
+  place the Makapix worker (10 KB) and the sensor task moved to PSRAM stacks; the
+  system event task (132 bytes of headroom) and the TCP/IP task got room; cJSON
+  allocates in PSRAM; the ETag carries the build time (a dev rebuild with the same
+  version served the browser's cached old page); lwIP sockets 16 -> 24 (12 for the
+  server, a browser holds six plus the WebSocket). Internal RAM: 21 KB free at boot,
+  23.5 KB with the Home page open (was 9 KB before the changes).
+- Remaining for M10: the setup portal in the same style, the acceptance tests of spec
+  18 that can run unattended (a soak with counters), the analogue clock face, the
+  weather city search.

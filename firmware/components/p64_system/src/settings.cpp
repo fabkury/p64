@@ -7,6 +7,7 @@
 
 #include "cJSON.h"
 #include "esp_log.h"
+#include "p64/system/flash_guard.hpp"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "p64/system/event_bus.hpp"
@@ -373,7 +374,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
 
 namespace {
 
-bool nvs_write(const std::string &json) {
+bool nvs_write_impl(const std::string &json) {
   nvs_handle_t h;
   esp_err_t err = nvs_open(kNamespace, NVS_READWRITE, &h);
   if (err != ESP_OK) {
@@ -387,7 +388,7 @@ bool nvs_write(const std::string &json) {
   return err == ESP_OK;
 }
 
-bool nvs_read(std::string &json) {
+bool nvs_read_impl(std::string &json) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READONLY, &h) != ESP_OK) return false;
   size_t len = 0;
@@ -401,6 +402,9 @@ bool nvs_read(std::string &json) {
   nvs_close(h);
   return err == ESP_OK;
 }
+
+bool nvs_write(const std::string &json) { return on_internal_stack([&] { return nvs_write_impl(json); }); }
+bool nvs_read(std::string &json) { return on_internal_stack([&] { return nvs_read_impl(json); }); }
 
 }  // namespace
 

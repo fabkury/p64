@@ -6,6 +6,14 @@ Actions answer at once; the work happens on the main task. No authentication yet
 comes with M9). `tests/device/api_smoke.py` and `tests/device/content_smoke.py` exercise
 everything below against a live device.
 
+## Web UI
+
+`/` (Home), `/playsets`, `/settings` (tabs by `#display`, `#widgets`, `#stream`,
+`#network`, `#storage`, `#makapix`, `#system`), `/update`, `/static/common.css`,
+`/static/theme.js`, `/static/app.js`, `/manifest.json`, `/static/icon-192.png`,
+`/static/icon-512.png`, `/favicon.png`: embedded in the image, open (no PIN), served
+with an `ETag` of the firmware version (`If-None-Match` answers 304).
+
 ## Status and settings
 
 | Route | Method | What |

@@ -15,6 +15,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "p64/net/http_server.hpp"
+#include "p64/system/flash_guard.hpp"
 #include "p64/web/web.hpp"
 
 namespace p64::web {
@@ -56,9 +57,7 @@ void hash_pin(const uint8_t *salt, const std::string &pin, uint8_t out[32]) {
   mbedtls_sha256_free(&ctx);
 }
 
-void load() {
-  if (g_loaded) return;
-  g_loaded = true;
+void load_impl() {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READONLY, &h) != ESP_OK) return;
   size_t salt_len = sizeof(g_salt), hash_len = sizeof(g_hash);
@@ -70,7 +69,7 @@ void load() {
   ESP_LOGI(TAG, "PIN %s", g_pin_set ? "set: API routes need a session" : "not set");
 }
 
-bool store(const std::string &pin) {
+bool store_impl(const std::string &pin) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   bool ok;
@@ -87,6 +86,14 @@ bool store(const std::string &pin) {
   nvs_close(h);
   return ok;
 }
+
+void load() {
+  if (g_loaded) return;
+  g_loaded = true;
+  system::on_internal_stack([] { load_impl(); return true; });
+}
+
+bool store(const std::string &pin) { return system::on_internal_stack([&] { return store_impl(pin); }); }
 
 bool valid_pin(const std::string &pin) {
   if (pin.size() < 4 || pin.size() > 8) return false;
@@ -307,11 +314,14 @@ void register_routes() {
 }  // namespace auth
 
 void auth_erase() {
-  nvs_handle_t h;
-  if (nvs_open(auth::kNamespace, NVS_READWRITE, &h) != ESP_OK) return;
-  nvs_erase_all(h);
-  nvs_commit(h);
-  nvs_close(h);
+  system::on_internal_stack([] {
+    nvs_handle_t h;
+    if (nvs_open(auth::kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
+    nvs_erase_all(h);
+    nvs_commit(h);
+    nvs_close(h);
+    return true;
+  });
   std::lock_guard<std::mutex> lock(auth::g_mutex);
   auth::g_pin_set = false;
   ESP_LOGI(auth::TAG, "PIN erased");

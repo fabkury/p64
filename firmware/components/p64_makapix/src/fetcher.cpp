@@ -6,10 +6,12 @@
 #include <ctime>
 
 #include "cache.hpp"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "internal.hpp"
 #include "mqtt.hpp"
@@ -695,7 +697,8 @@ void fetcher_start() {
   if (g_jobs) return;
   g_jobs = xQueueCreate(8, sizeof(Job *));
   // Internal stack: TLS handshakes and the hardware crypto run on this task.
-  xTaskCreatePinnedToCore(task, "makapix", 10240, nullptr, 4, nullptr, 0);
+  // PSRAM stack: TLS and card I/O; its NVS writes run through the flash guard.
+  xTaskCreatePinnedToCoreWithCaps(task, "makapix", 12288, nullptr, 4, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 
 }  // namespace p64::makapix::internal

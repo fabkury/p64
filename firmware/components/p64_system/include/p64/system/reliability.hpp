@@ -26,5 +26,8 @@ void reset_counters();
 bool image_pending_verify();
 // Confirms the running image (no rollback) and resets the reboot counters.
 void mark_image_valid();
+// Re-reads the other slot's description (after an install). Flash read: call it from a
+// task with an internal-RAM stack only.
+void refresh_image_info();
 
 }  // namespace p64::system::reliability

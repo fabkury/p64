@@ -13,6 +13,16 @@ idf_component_register(
         "include"
     EMBED_TXTFILES
         "ui/index.html"
+        "ui/playsets.html"
+        "ui/settings.html"
+        "ui/update.html"
+        "ui/manifest.json"
+        "ui/static/common.css"
+        "ui/static/theme.js"
+        "ui/static/app.js"
+    EMBED_FILES
+        "ui/static/icon-192.png"
+        "ui/static/icon-512.png"
     REQUIRES
         p64_gfx
         p64_display

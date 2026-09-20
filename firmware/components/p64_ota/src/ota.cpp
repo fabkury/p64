@@ -5,22 +5,29 @@
 #include <mutex>
 
 #include "esp_app_desc.h"
-#include "esp_crt_bundle.h"
-#include "esp_https_ota.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "mbedtls/sha256.h"
 #include "p64/net/clock.hpp"
 #include "p64/net/fetch.hpp"
 #include "p64/net/wifi.hpp"
+#include "p64/system/reliability.hpp"
 #include "p64/system/settings.hpp"
 #include "sdkconfig.h"
 #include "version.hpp"
 
+// Two tasks, because of two constraints: TLS wants a deep stack (12 KB) that must not
+// come from the scarce internal heap, and flash writes must not run on a PSRAM stack
+// (the cache is off while they happen). So the worker (PSRAM stack) checks the release,
+// downloads the whole image into PSRAM through net::fetch and hashes it there; a small
+// internal-stack task then copies the buffer into the other slot.
 namespace p64::ota {
 namespace {
 
@@ -28,6 +35,8 @@ constexpr const char *TAG = "ota";
 constexpr uint64_t kCheckPeriodUs = 12ULL * 3600 * 1000000;
 constexpr uint64_t kFirstCheckUs = 90ULL * 1000000;
 constexpr size_t kNotesMax = 600;
+constexpr size_t kImageMax = 6 * 1024 * 1024;  // the slot is 8 MB; the image is about 2 MB
+constexpr size_t kFlashChunk = 16 * 1024;
 
 enum class Job : uint8_t { None, Check, Install };
 
@@ -38,6 +47,15 @@ Job g_job = Job::None;
 std::string g_job_url, g_job_sha;
 esp_timer_handle_t g_timer = nullptr;
 bool g_first_check_done = false;
+
+// The flash phase: the worker hands the PSRAM buffer over and waits.
+struct FlashJob {
+  const uint8_t *data;
+  size_t size;
+  const esp_partition_t *target;
+  esp_err_t result;
+  SemaphoreHandle_t done;
+};
 
 void set_state(State s, const std::string &error = "") {
   std::lock_guard<std::mutex> lock(g_mutex);
@@ -62,7 +80,6 @@ bool hex_to_bin(const std::string &hex, uint8_t out[32]) {
   return true;
 }
 
-// Reads the other slot's description for the rollback fields.
 void refresh_rollback() {
   const esp_partition_t *running = esp_ota_get_running_partition();
   const esp_partition_t *other = running ? esp_ota_get_next_update_partition(running) : nullptr;
@@ -165,27 +182,47 @@ bool fetch_sha256(const std::string &url, uint8_t out[32], std::string &error) {
   return true;
 }
 
-bool partition_sha256(const esp_partition_t *part, size_t length, uint8_t out[32]) {
-  std::vector<uint8_t> buf(4096);
+void sha256_of(const uint8_t *data, size_t len, uint8_t out[32]) {
   mbedtls_sha256_context ctx;
   mbedtls_sha256_init(&ctx);
   mbedtls_sha256_starts(&ctx, 0);
-  for (size_t off = 0; off < length; off += buf.size()) {
-    const size_t n = std::min(buf.size(), length - off);
-    if (esp_partition_read(part, off, buf.data(), n) != ESP_OK) {
-      mbedtls_sha256_free(&ctx);
-      return false;
-    }
-    mbedtls_sha256_update(&ctx, buf.data(), n);
-  }
+  for (size_t off = 0; off < len; off += 4096) mbedtls_sha256_update(&ctx, data + off, std::min<size_t>(4096, len - off));
   mbedtls_sha256_finish(&ctx, out);
   mbedtls_sha256_free(&ctx);
-  return true;
+}
+
+// Internal-stack task: copies the verified image into the slot and makes it bootable.
+void flash_task(void *arg) {
+  auto *job = static_cast<FlashJob *>(arg);
+  esp_ota_handle_t handle = 0;
+  esp_err_t err = esp_ota_begin(job->target, job->size, &handle);
+  if (err == ESP_OK) {
+    for (size_t off = 0; off < job->size && err == ESP_OK; off += kFlashChunk) {
+      const size_t n = std::min(kFlashChunk, job->size - off);
+      err = esp_ota_write(handle, job->data + off, n);
+      {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        g_status.bytes_read = static_cast<uint32_t>(off + n);
+      }
+    }
+    if (err == ESP_OK) {
+      err = esp_ota_end(handle);  // validates the image header and checksum
+    } else {
+      esp_ota_abort(handle);
+    }
+  }
+  if (err == ESP_OK) err = esp_ota_set_boot_partition(job->target);
+  if (err == ESP_OK) {
+    refresh_rollback();  // flash reads: fine here, this task's stack is internal
+    system::reliability::refresh_image_info();
+  }
+  job->result = err;
+  xSemaphoreGive(job->done);
+  vTaskDelete(nullptr);
 }
 
 bool do_install(const std::string &url, const std::string &sha_hex, std::string &error) {
   uint8_t expected[32];
-  bool have_expected = false;
   std::string sha_url;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -196,87 +233,81 @@ bool do_install(const std::string &url, const std::string &sha_hex, std::string 
       error = "sha256: 64 hex digits expected";
       return false;
     }
-    have_expected = true;
   } else if (!sha_url.empty()) {
     if (!fetch_sha256(sha_url, expected, error)) return false;
-    have_expected = true;
-  }
-  if (!have_expected) {
+  } else {
     error = "no SHA256 to verify against";
     return false;
   }
-  set_state(State::Downloading);
-  esp_http_client_config_t http = {};
-  http.url = url.c_str();
-  http.crt_bundle_attach = esp_crt_bundle_attach;
-  http.timeout_ms = 30000;
-  http.keep_alive_enable = true;
-  http.buffer_size = 4096;
-  http.buffer_size_tx = 1536;
-  http.user_agent = net::fetch::user_agent();
-  esp_https_ota_config_t cfg = {};
-  cfg.http_config = &http;
-  cfg.bulk_flash_erase = false;
-  esp_https_ota_handle_t handle = nullptr;
-  // One TLS session at a time (ADR 0009): the download takes the slot like any fetch.
-  net::fetch::tls_lock();
-  esp_err_t err = esp_https_ota_begin(&cfg, &handle);
-  if (err != ESP_OK) {
-    net::fetch::tls_unlock();
-    error = std::string("download did not start: ") + esp_err_to_name(err);
+  const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+  if (!target) {
+    error = "no other slot";
     return false;
   }
-  const int total = esp_https_ota_get_image_size(handle);
+  set_state(State::Downloading);
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_status.image_size = total > 0 ? static_cast<uint32_t>(total) : 0;
     g_status.bytes_read = 0;
+    g_status.image_size = 0;
   }
+  net::fetch::Request req;
+  req.url = url;
+  req.timeout_ms = 60000;
+  req.max_bytes = kImageMax;
   int64_t last_log = 0;
-  while (true) {
-    err = esp_https_ota_perform(handle);
-    if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) break;
-    const int read = esp_https_ota_get_image_len_read(handle);
+  req.progress = [&last_log](size_t received, int64_t total) {
     {
       std::lock_guard<std::mutex> lock(g_mutex);
-      g_status.bytes_read = read > 0 ? static_cast<uint32_t>(read) : 0;
+      g_status.bytes_read = static_cast<uint32_t>(received);
+      if (total > 0) g_status.image_size = static_cast<uint32_t>(total);
     }
     const int64_t now = esp_timer_get_time();
     if (now - last_log > 2000000) {
       last_log = now;
-      ESP_LOGI(TAG, "downloaded %d of %d bytes", read, total);
+      ESP_LOGI(TAG, "downloaded %u of %lld bytes", static_cast<unsigned>(received), static_cast<long long>(total));
     }
-  }
-  if (err != ESP_OK || !esp_https_ota_is_complete_data_received(handle)) {
-    esp_https_ota_abort(handle);
-    net::fetch::tls_unlock();
-    error = err != ESP_OK ? std::string("download failed: ") + esp_err_to_name(err) : "download incomplete";
+  };
+  net::fetch::Result res;  // the body lands in PSRAM (large allocations do)
+  if (!net::fetch::perform(req, res) || res.error != ESP_OK) {
+    error = std::string("download failed: ") + esp_err_to_name(res.error ? res.error : ESP_FAIL);
     return false;
   }
-  const int length = esp_https_ota_get_image_len_read(handle);
+  if (res.status != 200) {
+    error = "download answered " + std::to_string(res.status);
+    return false;
+  }
+  if (res.body.size() < 64 * 1024 || res.body[0] != 0xE9) {  // an ESP image starts with 0xE9
+    error = "that is not a firmware image";
+    return false;
+  }
   set_state(State::Verifying);
-  const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
   uint8_t actual[32];
-  if (!target || !partition_sha256(target, static_cast<size_t>(length), actual)) {
-    esp_https_ota_abort(handle);
-    net::fetch::tls_unlock();
-    error = "could not read the written image back";
-    return false;
-  }
+  sha256_of(res.body.data(), res.body.size(), actual);
   if (std::memcmp(actual, expected, sizeof(actual)) != 0) {
-    esp_https_ota_abort(handle);
-    net::fetch::tls_unlock();
     error = "SHA256 mismatch: the image is not the one published";
     ESP_LOGE(TAG, "%s", error.c_str());
     return false;
   }
-  err = esp_https_ota_finish(handle);  // validates the image and makes the slot bootable
-  net::fetch::tls_unlock();
-  if (err != ESP_OK) {
-    error = std::string("image rejected: ") + esp_err_to_name(err);
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_status.image_size = static_cast<uint32_t>(res.body.size());
+    g_status.bytes_read = 0;
+  }
+  FlashJob job{res.body.data(), res.body.size(), target, ESP_FAIL, xSemaphoreCreateBinary()};
+  // Flash writes need an internal stack; 4 KB is plenty for esp_ota_write from a buffer.
+  if (xTaskCreatePinnedToCore(flash_task, "ota_flash", 4096, &job, 5, nullptr, 0) != pdPASS) {
+    vSemaphoreDelete(job.done);
+    error = "could not start the flash writer";
     return false;
   }
-  ESP_LOGI(TAG, "update written to %s (%d bytes, SHA256 verified); reboot to run it", target->label, length);
+  xSemaphoreTake(job.done, portMAX_DELAY);
+  vSemaphoreDelete(job.done);
+  if (job.result != ESP_OK) {
+    error = std::string("flash write failed: ") + esp_err_to_name(job.result);
+    return false;
+  }
+  ESP_LOGI(TAG, "update written to %s (%u bytes, SHA256 verified); reboot to run it", target->label,
+           static_cast<unsigned>(res.body.size()));
   return true;
 }
 
@@ -315,7 +346,7 @@ void worker(void *) {
       set_state(State::Error, error);
     }
   }
-  refresh_rollback();
+  // No refresh_rollback() here: this task's stack is in PSRAM and that is a flash read.
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_busy = false;
@@ -332,9 +363,9 @@ bool queue(Job job, const std::string &url, const std::string &sha) {
     g_job_url = url;
     g_job_sha = sha;
   }
-  // Internal stack: the install writes flash (a PSRAM stack is not allowed to). The
-  // task lives only for the job, so the internal RAM comes back afterwards.
-  if (xTaskCreatePinnedToCore(worker, "ota", 8192, nullptr, 5, nullptr, 0) != pdPASS) {
+  // TLS needs a deep stack; it lives in PSRAM (no flash writes on this task) and only
+  // for the job's duration.
+  if (xTaskCreatePinnedToCoreWithCaps(worker, "ota", 12288, nullptr, 5, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_busy = false;
     return false;

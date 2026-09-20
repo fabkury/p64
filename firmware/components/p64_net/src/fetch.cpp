@@ -125,6 +125,7 @@ bool run(esp_http_client_handle_t client, const Request &request, Result &out, b
       break;
     }
     out.body.insert(out.body.end(), chunk, chunk + n);
+    if (request.progress) request.progress(out.body.size(), content_length > 0 ? content_length : -1);
   }
   if (!keep || out.error != ESP_OK || !esp_http_client_is_complete_data_received(client)) {
     esp_http_client_close(client);
