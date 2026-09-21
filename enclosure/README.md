@@ -384,7 +384,8 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 ## Verified with the v1 print
 
 The 2026-09-05 order of `output/v1/p64_enclosure_service.stl` (0.45 mm clearance) came back
-on 2026-09-18, printed by JLC3DP in black FDM PLA. Checked by hand the same day; the hand
+on 2026-09-18, printed by JLC3DP in black FDM PLA for $18.83 including shipping. Checked
+by hand the same day; the hand
 measurements are in `input/measurements.md` and the photos are `input/PXL_20260918_*.jpg`
 (open shell beside the panel, assembled display in hand, front, back and side standing on
 the desk, panel with controller and the right-angle cable, lit at night).

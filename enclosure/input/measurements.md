@@ -29,7 +29,8 @@ Notes:
 ## v1 shell print (received 2026-09-18)
 
 `output/v1/p64_enclosure_service.stl` (0.45 mm fit clearance), ordered from JLC3DP on
-2026-09-05 (order D2026090531500023), printed in black FDM PLA. Photos, all taken on
+2026-09-05 (order D2026090531500023, $18.83 including shipping), printed in black FDM
+PLA. Photos, all taken on
 2026-09-18:
 
 | File | Shows |

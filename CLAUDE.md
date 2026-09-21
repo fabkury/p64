@@ -8,23 +8,23 @@ p64 is a desktop 64x64 RGB LED matrix: Waveshare's ESP32-S3-RGB-Matrix driver bo
 plugged onto their RGB-Matrix-P2-64x64 panel, in a 3D-printed tabletop shell. Three
 folders of work live here, each with its own README that is the detailed reference:
 
-- `firmware/` — the p64 product firmware, started from zero on 2026-09-19. Its behaviour is
+- `firmware/`: the p64 product firmware, started from zero on 2026-09-19. Its behaviour is
   fixed by the product specification `docs/spec/p64-spec.md` (settled with the user on
   2026-09-19, settings and limits tables included) and the decisions in `docs/adr/`; the
   vocabulary is `CONTEXT.md`. Its design is `firmware/docs/architecture.md`, its state of
   progress `firmware/docs/PROGRESS.md` (read that first when resuming), its API
   `firmware/docs/api.md`. The "Firmware" section below has the commands. Do not carry
   code or patterns over from `hardware-tests/` on your own initiative.
-- `hardware-tests/` — the former `firmware/` (renamed on 2026-09-19; git history follows
+- `hardware-tests/`: the former `firmware/` (renamed on 2026-09-19; git history follows
   the rename, `git log --follow` works on its files): ESP-IDF v5.5 test firmware, C++20,
   directly on the `esphome/esp-hub75` DMA driver (vendored and patched under
   `hardware-tests/components/esp-hub75`). No Arduino, no LVGL, no Waveshare BSP (only
   its pin map was reused). It is the technical reference for the product firmware (what
   the hardware taught: pin map, driver patch, frame pacing, GDMA, network, microSD), not
   its architectural reference. The "Hardware tests" sections below describe it.
-- `enclosure/` — the OpenSCAD shell, versioned as separate `.scad` files with outputs
+- `enclosure/`: the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
-- `docs/hardware/` — wiring projects for the two rotary encoders (`encoders-a-solderless.md`,
+- `docs/hardware/`: wiring projects for the two rotary encoders (`encoders-a-solderless.md`,
   `encoders-b-soldered.md`, schematics drawn by `tools/draw_encoders.py` with schemdraw),
   written 2026-09-21 before any encoder was wired; the bench records in them are blank
   until measured.

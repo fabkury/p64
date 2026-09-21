@@ -54,17 +54,19 @@ prices on waveshare.com on 2026-09-21, before shipping:
 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | The driver board: ESP32-S3 with 32 MB flash and 16 MB PSRAM, Wi-Fi, HUB75 header, two USB-C ports, IMU, real-time clock, temperature sensor, microSD slot. Ships with the power lead and screws. [Wiki](https://docs.waveshare.com/ESP32-S3-RGB-Matrix). | $24.99 |
 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | The panel: 4096 RGB LEDs at a 2 mm pitch, 128 x 128 mm, GOB version (a protective layer over the LEDs). The [standard version](https://www.waveshare.com/rgb-matrix-p2-64x64.htm) without the layer is $28.99 and fits the same shell. [Wiki](https://docs.waveshare.com/RGB-Matrix-Px-64x64). | $31.99 |
 | [PSU-27W-USB-C-B](https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775) | A 5.1 V USB-C supply; any good 5 V 3 A USB-C supply works. US, EU and UK plugs. | $6.99 |
-| The shell | One support-free 3D print, about 80 g of PLA or PETG on a 140 x 140 mm bed, or a print bureau. Files in `enclosure/output/`. | a few dollars |
+| The shell | One support-free 3D print, about 80 g of PLA or PETG on a 140 x 140 mm bed, or a print bureau. Files in `enclosure/output/`. The v1 shell in the photos was printed by JLC3DP in black PLA for $18.83, shipping included. | $18.83 at a bureau, a few dollars of filament at home |
 | Small parts | Six M3 x 10 screws, a USB-C cable; for the current shell version two small 90-degree USB-C adapters. A microSD card is optional. | a few dollars |
 
-About $64 in electronics plus the print. You also need a computer with a USB-C cable to
+About $64 in electronics plus the print, so a little over $80 before the electronics'
+shipping. You also need a computer with a USB-C cable to
 flash the firmware the first time; after that the device updates itself over Wi-Fi.
 
 ## Build one
 
 [docs/build-your-own.md](docs/build-your-own.md) is the step-by-step guide. In short:
 
-1. Order the parts above and print `enclosure/output/v6/p64_enclosure_print.stl`.
+1. Order the parts above and print `enclosure/output/v6/p64_enclosure_print.stl` (or
+   `v1/`, the version that has been printed and verified; see the status below).
 2. Install ESP-IDF v5.5, build the firmware from `firmware/` and flash it over the
    board's USB port.
 3. Plug the board onto the panel, connect the power lead, slide the panel into the shell

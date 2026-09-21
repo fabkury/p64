@@ -31,8 +31,8 @@ Two versions matter:
   through one window in the back face, and the back has mounts for two rotary knobs. It
   needs a small notch cut by hand in the panel's plastic frame (marked in red in
   `enclosure/output/v6/render_frame_notch.png`). v6 has not been printed yet.
-- **v1, the proven one:** `enclosure/output/v1/p64_enclosure_print.stl`. Printed and
-  verified to fit. The cable is a right-angle USB-C plug pushed up into the port from
+- **v1, the proven one:** `enclosure/output/v1/p64_enclosure_print.stl`. Printed by
+  JLC3DP in black PLA for $18.83 including shipping, and verified to fit. The cable is a right-angle USB-C plug pushed up into the port from
   underneath, laid in a groove to a notch at the back. No knob mounts.
 
 Print settings: the file already lies on its back face, no supports; 0.2 mm layers,
