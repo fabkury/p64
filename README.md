@@ -44,6 +44,18 @@ The web UI, on a phone:
 |---|---|---|
 | Home: live preview, controls, channels | Playsets: your mixes and the built-ins | Settings: display, widgets, network, Makapix |
 
+More photos:
+
+| ![The bare panel on the bench, showing its first animation](docs/images/photos/p64-bare-panel-first-light.jpg) | ![The empty v1 shell seen from above](docs/images/photos/p64-shell-v1-empty-top.jpg) | ![The driver board and its leads behind the panel](docs/images/photos/p64-panel-back-wiring.jpg) |
+|---|---|---|
+| First light, before the shell | The v1 shell, empty | The driver board behind the panel |
+| ![The first artwork in the shell](docs/images/photos/p64-first-artwork-in-shell.jpg) | ![p64 held in one hand](docs/images/photos/p64-in-hand.jpg) | ![An artwork in a dark room](docs/images/photos/p64-artwork-in-a-dark-room.jpg) |
+| First artwork in the shell | In the hand | Lights off |
+| ![The weather widget](docs/images/photos/p64-brick-wall-weather.jpg) | ![A mosaic of small artworks](docs/images/photos/p64-brick-wall-artwork-mosaic.jpg) | ![The whole desk, p64 at the left](docs/images/photos/p64-desk-wide.jpg) |
+| The weather widget | A mosaic artwork | On the desk |
+
+The rest are in [`docs/images/photos/`](docs/images/photos/).
+
 ## What you need
 
 Three parts from Waveshare plug together, plus a print and a handful of screws. List
