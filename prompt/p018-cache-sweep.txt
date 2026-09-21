@@ -1,0 +1,5 @@
+When the user changes the size limit causing the channels to refresh, are dropped artworks actually deleted from the SD card?
+
+What would be the pros, the cons, the costs and the risks of implementing the following? "When an artwork gets evicted from a channel, it gets deleted from the SD card, even when that artwork also appears in other channels; artworks found to be missing at playback time are eventually redownloaded." Don't implement anything, just report back to me and include your recommendations.
+
+/grill-with-docs Let's go with recommendation 3 (the watermark policy) BUT with a CRITICAL simplification: delete artworks not played in the last X days (e.g. 30 days), thereby PRECLUDING the need to compare mtime across files (the play engine should touch mtime on playback, to mtime reflects last played time). Grill me to close any gaps about it, so implementation can begin.
