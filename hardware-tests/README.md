@@ -468,6 +468,9 @@ The main loop presents one frame per panel refresh.
   mode), mounted at boot; verified 2026-09-13 with a 32 GB card at 20 MHz.
 - Other board pins for later (schematic + Waveshare's `bsp/config.h`): I2C SDA=47 SCL=48;
   I2S MCLK=12 SCLK=43 LRCK=38 DOUT=21 DIN=39, PA enable=11; RTC INT=10; BOOT button=0.
+  The 4-pin JST-SH "GPIO" socket (U8): pin 1 IO45, 2 IO46, 3 3V3, 4 GND, with 10 k
+  pull-downs R59/R60 on IO45/IO46; the rotary-encoder wiring built on it is in
+  `docs/hardware/encoders-*.md`.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
   this setting. The chip marking itself is still unread; GENERIC may work too.

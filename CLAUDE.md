@@ -24,6 +24,10 @@ folders of work live here, each with its own README that is the detailed referen
   its architectural reference. The "Hardware tests" sections below describe it.
 - `enclosure/` — the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
+- `docs/hardware/` — wiring projects for the two rotary encoders (`encoders-a-solderless.md`,
+  `encoders-b-soldered.md`, schematics drawn by `tools/draw_encoders.py` with schemdraw),
+  written 2026-09-21 before any encoder was wired; the bench records in them are blank
+  until measured.
 
 Also: `firmware/reference/` is git-ignored upstream clones: Waveshare's example repo,
 `p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the

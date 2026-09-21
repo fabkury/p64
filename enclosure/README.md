@@ -117,6 +117,9 @@ was. Set `encoders = false` in v2 to get the v1 geometry back.
   STEMMA QT pin order differs, so use an SH-to-header cable pair rather than a straight
   SH-SH cable; IO45/IO46 carry 10 k pull-downs on the controller, so add 2.2 k pull-ups to
   3V3 on SDA and SCL. Second board: close jumper A0 (address 0x37).
+  The complete wiring projects, with schematics, bench procedure and firmware plan, are
+  `docs/hardware/encoders-a-solderless.md` (one encoder) and
+  `docs/hardware/encoders-b-soldered.md` (two encoders).
 
 Assembly additions, before step 2 of the list below: plug the STEMMA QT cables into both
 boards; from inside the shell push each board onto its four pegs with the shaft through
