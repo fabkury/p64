@@ -1,0 +1,11 @@
+Let's polish the way p64 queries Makapix Club for artworks.
+
+Review C:\Users\fab\F\Estudo\Tecnologia\p64\firmware\reference\makapix as necessary -- it should be possible to ask the server to send only artworks up to a maximum size limit.
+
+Implement this option in the web UI: maximum Makapix size, defaulting to 128x128 pixels. It should only allow:
+ - 32x32
+ - 64x64 (native)
+ - 128x128 (default)
+ - 256x256
+
+In other words, artworks bigger than 256x256 are never played by p64, even at the maximum setting.
