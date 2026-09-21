@@ -28,3 +28,6 @@ firmware/tests/host/build/
 Thumbs.db
 .DS_Store
 __pycache__/
+
+# Private outreach log (posts, metrics, feedback); kept local on purpose
+docs/outreach.md
