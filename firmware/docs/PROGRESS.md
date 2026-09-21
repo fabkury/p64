@@ -403,6 +403,19 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   every switch 34 to 55 ms, 813.8 / 271.3 Hz, frame lock kept, 0 timeouts, no stall,
   largest internal block unchanged (22.5 -> 21.5 KB, system noise). Open: the picture
   in Photo mode by eye and a camera measurement of the refresh.
+- 2026-09-21, the frozen artwork: the user's device had shown the same artwork for
+  minutes with `state: widget` and `auto_swap.remaining_s` -1. Diagnosed from the log
+  ring without a reset: the state had been set to Widget on the Settings page, then the
+  Promoted pill on Home (and later two taps) played artworks, since none of the artwork
+  paths looked at the main state while `tick()` returned before the timer whenever the
+  state was not Animation show; the clock overlay drew over the artwork too. Fix, settled
+  with the user (every artwork request switches the state, from Stream as well, persisted,
+  plus the timer and overlay guards and a device test): `enter_animation_show()` in
+  `show.cpp`, `swap_timer_runs()`, the overlay hook checks `show_active()`, and the
+  internal artwork paths (scan, prepared pick, Makapix change) are gated on the show, which
+  also closes a latent path where a card rescan or the boot restore could play an artwork
+  in Widget state. `tests/device/widgets_smoke.py` now covers the pill and Next from the
+  Widget state; `soak.py` restores the playset before the settings.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

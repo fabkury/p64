@@ -59,9 +59,8 @@ def main():
     time.sleep(2)
     without = frame(base)
     check(with_overlay != without, "the clock overlay changes the frame")
-    corner_with = lit(with_overlay[: 64 * 3 * 10])
-    corner_without = lit(without[: 64 * 3 * 10])
-    check(corner_with >= corner_without, "the overlay adds lit pixels to the top rows")
+    # The corner, not a pixel count: on a fully lit artwork the outline removes lit pixels.
+    check(with_overlay[: 64 * 3 * 8] != without[: 64 * 3 * 8], "the overlay changes the top rows")
     settings(base, {"show": {"clock_overlay": {"enabled": True}}})
 
     # The Widget state, each widget in turn.
@@ -74,6 +73,40 @@ def main():
         frames[w] = frame(base)
         check(lit(frames[w]) > 20, w + " draws something (%d lit pixels)" % lit(frames[w]))
     check(frames["clock"] != frames["temperature"] != frames["weather"], "the three widgets differ")
+
+    # An artwork request in the Widget state leaves it: the playset pill and Next both
+    # switch the device to the Animation show, persist it, and the swap timer runs again
+    # (the bug of 2026-09-21: an artwork frozen on the panel with the state still Widget).
+    playset = d["playback"]["playset"]["name"]
+    settings(base, {"show": {"main_state": "widget", "auto_swap_seconds": 5}})
+    time.sleep(2)
+    check(status(base)["playback"]["state"] == "widget", "back in the Widget state")
+    st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": playset})
+    check(st == 200, "play_playset accepted in the Widget state")
+    deadline = time.time() + 15
+    d = status(base)
+    while time.time() < deadline and not (d["playback"]["state"] == "animation_show" and d["playback"].get("artwork")):
+        time.sleep(1)
+        d = status(base)
+    check(d["playback"]["state"] == "animation_show" and bool(d["playback"].get("artwork")),
+          "the playset pill switched to the Animation show with an artwork up")
+    check(request(base, "GET", "/api/v1/settings")[1]["data"]["show"]["main_state"] == "animation_show",
+          "the switch is persisted in the settings")
+    check(d["playback"]["auto_swap"]["remaining_s"] >= 0, "the swap timer runs (%s s left)" % d["playback"]["auto_swap"]["remaining_s"])
+    swaps = d["playback"]["swaps"]
+    deadline = time.time() + 20
+    while time.time() < deadline and status(base)["playback"]["swaps"] == swaps:
+        time.sleep(1)
+    check(status(base)["playback"]["swaps"] > swaps, "an auto-swap followed")
+    settings(base, {"show": {"main_state": "widget"}})
+    time.sleep(2)
+    request(base, "POST", "/api/v1/action/next")
+    deadline = time.time() + 15
+    d = status(base)
+    while time.time() < deadline and d["playback"]["state"] != "animation_show":
+        time.sleep(1)
+        d = status(base)
+    check(d["playback"]["state"] == "animation_show", "Next in the Widget state switched to the Animation show")
 
     # The weather with a location (Greenwich).
     settings(base, {"weather": {"latitude": 51.4779, "longitude": -0.0015, "units": "metric"}})

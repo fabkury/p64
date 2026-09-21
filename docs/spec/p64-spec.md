@@ -313,7 +313,11 @@ Semantics are p3a's, unchanged:
 
 The device is always in exactly one main state: Animation show, Widget, or Stream. The
 main state is chosen by the user (web UI, API) and persisted. Stream takeover (8.3) and
-status screens (6.4) are overlays on the main state, not states.
+status screens (6.4) are overlays on the main state, not states. Any request for an
+artwork (choosing a playset, next, previous, history, play-this, a Makapix command, a
+tap on the shell) is also a choice: it switches the device to the Animation show and
+persists that, so an artwork never plays inside the Widget or Stream state (settled
+2026-09-21, after an artwork was found frozen on the panel with the state still Widget).
 
 ### 6.1 Animation show
 

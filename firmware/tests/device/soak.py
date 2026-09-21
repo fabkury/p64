@@ -104,8 +104,8 @@ def main():
     check(d["playback"]["swaps"] - swaps0 >= (minutes * 60 / interval) * 0.6, "artworks swapped (%d in %.0f min)" % (d["playback"]["swaps"] - swaps0, minutes))
     check(heap_min > 8000, "internal heap floor stayed above 8 KB (%d)" % heap_min)
     check(load.errors <= 2, "the status and preview polls kept answering (%d errors)" % load.errors)
+    request(base, "POST", "/api/v1/action/play_playset", {"name": original_playset})  # switches to the show, so first
     request(base, "PUT", "/api/v1/settings", {"show": {"main_state": original["show"]["main_state"], "auto_swap_seconds": original["show"]["auto_swap_seconds"]}})
-    request(base, "POST", "/api/v1/action/play_playset", {"name": original_playset})
     from api_smoke import failures
     print("soak: %d failures" % failures)
     return 1 if failures else 0

@@ -91,7 +91,10 @@ The status document carries `sensor {valid, temperature_c, humidity, trend_c_per
 and `weather {valid, error, age_s, temperature, units, humidity, code, condition, is_day,
 today_max, today_min, days:[{weekday, condition, max, min}]}`; `playback.state` is
 `animation_show`, `widget` or `stream` and `playback.widget` names the widget on the
-panel. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
+panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`,
+`history/go`, `resume`, `play`, the Makapix commands, a tap) switches
+`show.main_state` to `animation_show` and persists it (spec 6); a client that wants the
+Widget or Stream state back sets it again afterwards. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
 `show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind

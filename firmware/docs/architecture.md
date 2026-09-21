@@ -292,7 +292,16 @@ key changes, so the overlay ticks without a decode.
 
 The show owns the main state (spec 6): Animation show as before; Widget plays
 `widgets::make(kind)` and pauses the swap timer; Stream shows the waiting screen
-between streams (section 14). Interludes are rolled at auto-swap in the fixed order Clock,
+between streams (section 14). Every artwork request (`do_next`, `do_previous`,
+`do_go_to`, `do_resume`, `do_play_file`, the Activate commands) starts with
+`enter_animation_show()`, which flips the state, persists it through `settings_update`
+(the SettingsChanged event comes back to the loop as a no-op) and releases a stream the
+new state no longer allows; the internal paths (a scan landing, a prepared pick landing,
+a Makapix cache change) only put an artwork up when `show_active()`. The swap timer
+(`swap_timer_runs()`) runs whenever an artwork is up, whatever the state says, and for a
+widget only inside the show (an interlude); the overlay hook checks the state too. Before
+2026-09-21 the artwork paths ignored the state while the timer keyed on it, so a playset
+pill or a tap in Widget state left an artwork frozen on the panel. Interludes are rolled at auto-swap in the fixed order Clock,
 Weather, Temperature with the settings' percentages; a winner enters history as an
 `Interlude` item and revisiting it replays the widget. Manual next and previous never
 roll one. Frames with minute-long delays taught two rules: the player announces a new
