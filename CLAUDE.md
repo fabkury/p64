@@ -88,7 +88,8 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\pin_smoke.py http://<ip>` and
 `python tests\device\ota_smoke.py http://<ip> [--no-install]` and
 `python tests\device\ui_smoke.py http://<ip>` and
-`python tests\device\panel_mode_smoke.py http://<ip>` against the live device, and
+`python tests\device\panel_mode_smoke.py http://<ip>` and
+`python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log).
 

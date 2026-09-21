@@ -460,6 +460,26 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   site)" at 7.7 s). Observed, not changed: after a 64 -> 128 round trip the artists'
   cached counts restart low (23/184) and climb, so the entries dropped at 64 lose their
   cached flag and download again even when the file is still in the cache.
+- 2026-09-21, the cache sweep (spec 5.4 rewritten, ADR 0010): nothing ever deleted cached
+  artworks, and the spec's watermark eviction was never built. Settled with the user
+  through a grill: a plain age limit (`makapix.cache_retention_days`, 1 to 365, default
+  30, a field on the Makapix tab), applied to every file under `cache/`, `downloads/` and
+  `channels/`, even one a channel of the active playset still lists (the sweep clears the
+  cached flag in every loaded index and the download loop refetches it: churn accepted),
+  fired only when the local clock crosses into the night window while the schedule is
+  enabled and the clock synced (no catch-up, nothing persisted; a wrong-clock mtime before
+  2026 counts as old), stale flags of a returning channel left to the fail-at-playback
+  path. The loader touches a cache file's mtime after every successful read ("last
+  played"; ESP-IDF's FAT VFS implements `utime`). `POST /api/v1/diag/cache_sweep`
+  (`older_than_s`, `dry_run` default true) runs it on demand; the Makapix status gains
+  `cache {files, bytes, last_sweep, last_deleted, last_freed_bytes}`, shown on the
+  Storage tab; `tests/device/cache_sweep_smoke.py [--delete]` covers the setting, the
+  counters, a dry run, the touch and (with `--delete`) a real sweep of files not played
+  in the last hour followed by the re-download. Builds; NOT yet flashed or run on the
+  device: the board dropped off USB and the network during this session, so the next
+  step is `.	oolslash.ps1` then `python tests\device\cache_sweep_smoke.py
+  http://p64.local --delete`, then the numbers here. Also found: the `downloads_cap_mb`
+  setting (Storage tab) is not enforced anywhere; the sweep now ages `downloads/` out.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

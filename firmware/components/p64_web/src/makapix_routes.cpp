@@ -5,6 +5,7 @@
 #include "cJSON.h"
 #include "esp_timer.h"
 #include "p64/makapix/makapix.hpp"
+#include "p64/system/settings.hpp"
 #include "p64/net/http_server.hpp"
 #include "p64/web/web.hpp"
 
@@ -40,7 +41,40 @@ cJSON *status_json() {
   cJSON_AddNumberToObject(o, "download_failures", s.download_failures);
   cJSON_AddNumberToObject(o, "views_sent", s.views_sent);
   cJSON_AddNumberToObject(o, "commands", s.commands);
+  cJSON *c = cJSON_AddObjectToObject(o, "cache");
+  cJSON_AddNumberToObject(c, "files", s.cache_files);
+  cJSON_AddNumberToObject(c, "bytes", static_cast<double>(s.cache_bytes));
+  cJSON_AddNumberToObject(c, "last_sweep", s.last_sweep);
+  cJSON_AddNumberToObject(c, "last_deleted", s.last_sweep_deleted);
+  cJSON_AddNumberToObject(c, "last_freed_bytes", static_cast<double>(s.last_sweep_freed));
   return o;
+}
+
+// The cache sweep now (spec 5.4), for tests and for "what would go": older_than_s
+// defaults to the cache retention, dry_run to true.
+esp_err_t sweep_handler(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *age = cJSON_GetObjectItemCaseSensitive(body, "older_than_s");
+  const cJSON *dry = cJSON_GetObjectItemCaseSensitive(body, "dry_run");
+  const double age_s = (age && cJSON_IsNumber(age)) ? age->valuedouble : static_cast<double>(system::settings().cache_retention_days) * 86400.0;
+  const bool dry_run = dry ? cJSON_IsTrue(dry) : true;
+  cJSON_Delete(body);
+  if (age_s < 0 || age_s > 4294967295.0) return reply_error(req, "400 Bad Request", "INVALID_ARG", "older_than_s out of range");
+  makapix::SweepResult r;
+  std::string error;
+  if (!makapix::cache_sweep(static_cast<uint32_t>(age_s), dry_run, r, error)) return reply_error(req, "409 Conflict", "SWEEP_UNAVAILABLE", error);
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "dry_run", r.dry_run);
+  cJSON_AddNumberToObject(d, "older_than_s", r.older_than_s);
+  cJSON_AddNumberToObject(d, "examined", r.examined);
+  cJSON_AddNumberToObject(d, "bytes", static_cast<double>(r.bytes));
+  cJSON_AddNumberToObject(d, "deleted", r.deleted);
+  cJSON_AddNumberToObject(d, "freed_bytes", static_cast<double>(r.freed));
+  cJSON_AddNumberToObject(d, "indexes_deleted", r.indexes_deleted);
+  cJSON_AddNumberToObject(d, "downloads_deleted", r.downloads_deleted);
+  cJSON_AddNumberToObject(d, "took_ms", r.took_ms);
+  return reply_ok(req, d);
 }
 
 esp_err_t get_handler(httpd_req_t *req) { return reply_ok(req, status_json()); }
@@ -91,6 +125,7 @@ void register_routes() {
       {"/api/v1/makapix/pair/cancel", HTTP_POST, cancel_handler, nullptr, false, false, nullptr},
       {"/api/v1/makapix/unpair", HTTP_POST, unpair_handler, nullptr, false, false, nullptr},
       {"/api/v1/makapix/like", HTTP_POST, like_handler, nullptr, false, false, nullptr},
+      {"/api/v1/diag/cache_sweep", HTTP_POST, sweep_handler, nullptr, false, false, nullptr},
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
 }

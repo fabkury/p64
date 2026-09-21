@@ -153,6 +153,7 @@ void Settings::clamp() {
   channel_cache_size = clamp_to<uint16_t>(channel_cache_size, 32, 4096);
   // The four steps; anything else snaps up to the next one (256 is the canvas limit).
   makapix_max_side = makapix_max_side <= 32 ? 32 : makapix_max_side <= 64 ? 64 : makapix_max_side <= 128 ? 128 : 256;
+  cache_retention_days = clamp_to<uint16_t>(cache_retention_days, 1, 365);
 }
 
 std::string Settings::hostname() const { return device_name.empty() ? "p64" : "p64-" + device_name; }
@@ -244,6 +245,7 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(mk, "refresh_seconds", makapix_refresh_seconds);
   cJSON_AddNumberToObject(mk, "channel_cache_size", channel_cache_size);
   cJSON_AddNumberToObject(mk, "max_size", makapix_max_side);
+  cJSON_AddNumberToObject(mk, "cache_retention_days", cache_retention_days);
 
   cJSON *up = obj(root, "updates");
   cJSON_AddBoolToObject(up, "auto_check", auto_update_check);
@@ -367,6 +369,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   get_num(mk, "refresh_seconds", makapix_refresh_seconds);
   get_num(mk, "channel_cache_size", channel_cache_size);
   get_num(mk, "max_size", makapix_max_side);
+  get_num(mk, "cache_retention_days", cache_retention_days);
 
   const cJSON *up = sub(root, "updates");
   get_bool(up, "auto_check", auto_update_check);

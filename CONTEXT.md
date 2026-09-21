@@ -94,6 +94,20 @@ _Avoid_: vault (Makapix's word for its own file store)
 **Refresh**:
 Bringing a channel index up to date with its source. Scheduled per channel.
 
+**Last played**:
+The moment a cached artwork's file was last read for the show, whatever asked for it
+(a channel pick, history, play-this). A fresh download counts as played.
+
+**Cache retention**:
+How many days a cached artwork survives after it was last played. Older files are
+deleted by the nightly cache sweep even when a channel of the active playset still lists
+them; the channel downloads them again. Default 30, range 1 to 365, a user setting.
+
+**Cache sweep**:
+The deletion, once a night at the night schedule's start, of every cached artwork, URL
+download and channel index older than the cache retention. Never touches the user's own
+files. Runs only while the night schedule is enabled and the clock is synced.
+
 ### Playback
 
 **Animation show**:

@@ -250,6 +250,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <h3>Card</h3>
         <div class="info-row"><span class="info-label">Status</span><span class="info-value" id="card-status">-</span></div>
         <div class="info-row"><span class="info-label">Space</span><span class="info-value" id="card-space">-</span></div>
+        <div class="info-row"><span class="info-label">Makapix cache</span><span class="info-value" id="cache-size">-</span></div>
+        <div class="info-row"><span class="info-label">Last sweep</span><span class="info-value" id="cache-sweep">-</span></div>
         <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Downloads cap</label><input class="num-input" type="number" id="dl-cap" min="16" max="1024" onchange="save({storage:{downloads_cap_mb:+this.value}})"><span class="setting-hint" style="margin:0">MB kept for Makapix downloads</span></div>
         <div class="info-row"><span class="info-label">Root folder</span><span class="info-value mono" id="card-root">-</span></div>
         <div class="toggle-row" style="margin-top:8px"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatCard()">Format the card&hellip;</button></div>
@@ -292,6 +294,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label">Channel cache size</label><input class="num-input" type="number" id="mk-cache" min="32" max="4096" onchange="save({makapix:{channel_cache_size:+this.value}})"><span class="setting-hint" style="margin:0">artworks per channel</span></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="mk-size">Maximum artwork size</label><select class="sel" id="mk-size" style="min-width:0" onchange="save({makapix:{max_size:+this.value}})"><option value="32">32x32</option><option value="64">64x64 (native)</option><option value="128">128x128</option><option value="256">256x256</option></select></div>
         <div class="setting-hint">Channels leave out artworks wider or taller than this; nothing above 256x256 ever plays. Changing it refreshes every channel.</div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label">Cache retention</label><input class="num-input" type="number" id="mk-retention" min="1" max="365" onchange="save({makapix:{cache_retention_days:+this.value}})"><span class="setting-hint" style="margin:0">days</span></div>
+        <div class="setting-hint">Cached artworks not played for this long are deleted at the night schedule's start (Display tab), even ones a channel still lists; the channel downloads them again when it needs them. Nothing is deleted while the night schedule is off.</div>
         <div class="setting-hint" id="mk-counters"></div>
     </div>
 </div>
@@ -396,7 +400,7 @@ function fill(s) {
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
     sv('dl-cap', s.storage.downloads_cap_mb); document.getElementById('card-root').textContent = s.storage.card_root;
-    sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size); sv('mk-size', s.makapix.max_size);
+    sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size); sv('mk-size', s.makapix.max_size); sv('mk-retention', s.makapix.cache_retention_days);
     sc('auto-check', s.updates.auto_check);
 }
 function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }
@@ -484,6 +488,9 @@ p64.onStatus(function (d) {
     document.getElementById('card-status').textContent = c.mounted ? 'mounted' : ('no card' + (c.error ? ': ' + c.error : ''));
     document.getElementById('card-space').textContent = c.mounted ? p64.fmtBytes(c.free_bytes) + ' free of ' + p64.fmtBytes(c.total_bytes) : '-';
     var m = d.makapix || {};
+    var mc = m.cache || {};
+    document.getElementById('cache-size').textContent = c.mounted && mc.files != null ? mc.files + ' files, ' + p64.fmtBytes(mc.bytes || 0) + ' (counted at the last sweep)' : '-';
+    document.getElementById('cache-sweep').textContent = mc.last_sweep ? p64.relative(Date.now() / 1000 - mc.last_sweep) + ', ' + mc.last_deleted + ' deleted, ' + p64.fmtBytes(mc.last_freed_bytes || 0) + ' freed' : 'never (runs at the night schedule\'s start)';
     var ms = document.getElementById('mk-state');
     ms.textContent = m.state || '-';
     ms.className = 'status-badge ' + (m.state === 'paired' ? 'status-connected' : m.state === 'pairing' ? 'status-warn' : 'status-neutral');

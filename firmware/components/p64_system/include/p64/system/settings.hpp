@@ -102,6 +102,7 @@ struct Settings {
   uint32_t makapix_refresh_seconds = 14400;  // 60..86400
   uint16_t channel_cache_size = 2048;        // 32..4096
   uint16_t makapix_max_side = 128;           // 32, 64, 128 or 256: channels leave out wider or taller artworks
+  uint16_t cache_retention_days = 30;        // 1..365: the nightly cache sweep deletes files not played for longer
 
   // Updates
   bool auto_update_check = true;

@@ -34,6 +34,13 @@ struct Status {
   uint32_t cert_expires_at = 0;  // epoch seconds, 0 unknown
   uint32_t refreshes = 0, downloads = 0, download_failures = 0, views_sent = 0, commands = 0;
   std::string host;
+  // The card cache as the last sweep (or dry run) saw it: files under cache/, downloads/
+  // and channels/ and their bytes; when the last real sweep ran and what it removed.
+  uint32_t cache_files = 0;
+  uint64_t cache_bytes = 0;
+  uint32_t last_sweep = 0;  // epoch seconds, 0 never
+  uint32_t last_sweep_deleted = 0;
+  uint64_t last_sweep_freed = 0;
 };
 
 struct ChannelRef {
@@ -102,5 +109,20 @@ bool like(int32_t post_id, bool liked, std::string &error);
 // The Followed built-in: asks the server for followed_artists and hands the playset to
 // hooks.play_playset when it lands (asynchronous). False when not paired.
 bool play_followed(std::string &error);
+
+// The cache sweep (spec 5.4): deletes every file under cache/, downloads/ and channels/
+// whose mtime (last played, or last refresh for an index) is older than `older_than_s`,
+// or implausible (written under a wrong clock), and clears the cached flag of the
+// entries whose file went so the download loop fetches them again. Card I/O: seconds
+// for thousands of files; runs on the caller's task. False (with `error`) without a
+// card, without a synced clock, or while another sweep runs. A dry run only counts.
+struct SweepResult {
+  bool dry_run = true;
+  uint32_t older_than_s = 0;
+  uint32_t examined = 0, deleted = 0, indexes_deleted = 0, downloads_deleted = 0;
+  uint64_t bytes = 0, freed = 0;
+  uint32_t took_ms = 0;
+};
+bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::string &error);
 
 }  // namespace p64::makapix

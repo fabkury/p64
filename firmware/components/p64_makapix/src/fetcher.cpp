@@ -17,9 +17,11 @@
 #include "mqtt.hpp"
 #include "p64/content/makapix_index.hpp"
 #include "p64/decode/decoder.hpp"
+#include "p64/net/clock.hpp"
 #include "p64/playback/artwork.hpp"
 #include "p64/storage/card.hpp"
 #include "p64/system/event_bus.hpp"
+#include "p64/system/night.hpp"
 #include "p64/system/settings.hpp"
 
 namespace p64::makapix::internal {
@@ -631,6 +633,35 @@ void run_renew(Job *job) {
   finish(job, true, "");
 }
 
+// The cache sweep fires when the local clock crosses into the night window while the
+// device runs with a synced clock (spec 5.4). Booting inside the window, or enabling the
+// schedule inside it, arms the detector without firing; a night missed is skipped.
+void nightly_sweep_tick() {
+  static int64_t last_check_us = 0;
+  static bool armed = false;
+  static bool was_inside = false;
+  const int64_t now = esp_timer_get_time();
+  if (now - last_check_us < 10 * kSecond) return;
+  last_check_us = now;
+  const system::Settings s = system::settings();
+  struct tm lt = {};
+  if (!s.night.enabled || !net::clock::synced() || !net::clock::local_time(lt)) {
+    armed = false;
+    return;
+  }
+  const bool inside = system::night::in_window(s.night.start_minutes, s.night.end_minutes,
+                                              static_cast<uint16_t>(lt.tm_hour * 60 + lt.tm_min));
+  if (armed && !was_inside && inside) {
+    SweepResult r;
+    std::string error;
+    if (!cache_sweep(static_cast<uint32_t>(s.cache_retention_days) * 86400u, false, r, error)) {
+      ESP_LOGW(TAG, "nightly cache sweep skipped: %s", error.c_str());
+    }
+  }
+  was_inside = inside;
+  armed = true;
+}
+
 bool renewal_due() {
   uint32_t expires;
   State state;
@@ -673,6 +704,7 @@ void task(void *) {
       }
       continue;
     }
+    nightly_sweep_tick();
     const bool up = online();
     {
       std::lock_guard<std::mutex> lock(g_mutex);

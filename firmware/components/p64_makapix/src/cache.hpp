@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -30,5 +31,16 @@ bool memory_bytes(const std::string &path, std::vector<uint8_t> &out);
 uint64_t free_bytes();
 // Removes cached files of entries that vanished from an index (best effort).
 void remove_artwork(const content::MakapixEntry &e);
+
+// Walks cache/ (its shards), downloads/ and channels/ and deletes (or, dry, only counts)
+// every file whose mtime is older than `older_than_s` before `now` or implausible
+// (before 2026, or more than a day in the future). `on_artwork_deleted` gets the file
+// name of each cache/ file that went. Yields between shards.
+struct SweepStats {
+  uint32_t examined = 0, deleted = 0, indexes_deleted = 0, downloads_deleted = 0;
+  uint64_t bytes = 0, freed = 0;
+};
+void sweep(uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &stats,
+           const std::function<void(const std::string &name)> &on_artwork_deleted);
 
 }  // namespace p64::makapix::cache

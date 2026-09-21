@@ -1,5 +1,8 @@
 #include "p64/makapix/makapix.hpp"
 
+#include <algorithm>
+#include <array>
+#include <atomic>
 #include <cstring>
 #include <ctime>
 
@@ -11,6 +14,7 @@
 #include "mbedtls/x509_crt.h"
 #include "mqtt.hpp"
 #include "p64/content/playset_json.hpp"
+#include "p64/content/psram.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/wifi.hpp"
 #include "p64/system/event_bus.hpp"
@@ -621,6 +625,84 @@ bool like(int32_t post_id, bool liked, std::string &error) {
   vSemaphoreDelete(job.done);
   error = job.error;
   return job.ok;
+}
+
+bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::string &error) {
+  static std::atomic<bool> busy{false};
+  out = SweepResult{};
+  out.dry_run = dry_run;
+  out.older_than_s = older_than_s;
+  if (!cache::has_card()) {
+    error = "no card";
+    return false;
+  }
+  if (!net::clock::synced()) {
+    error = "the clock is not synced";
+    return false;
+  }
+  if (busy.exchange(true)) {
+    error = "a sweep is already running";
+    return false;
+  }
+  const int64_t t0 = esp_timer_get_time();
+  const uint32_t now = epoch_now();
+  // The storage keys of the cache files that went, sorted afterwards so the flag pass
+  // over the loaded indexes is a binary search per entry. In PSRAM: thousands of keys.
+  using Key = std::array<uint8_t, 16>;
+  std::vector<Key, content::PsramAllocator<Key>> gone;
+  cache::SweepStats st;
+  cache::sweep(now, older_than_s, dry_run, st, [&](const std::string &name) {
+    Key k;
+    if (name.size() >= 36 && content::parse_uuid(name.substr(0, 36).c_str(), k.data())) gone.push_back(k);
+  });
+  uint32_t unflagged = 0;
+  if (!dry_run && !gone.empty()) {
+    std::sort(gone.begin(), gone.end());
+    std::lock_guard<std::mutex> lock(g_mutex);
+    for (auto &ch : g_channels) {
+      if (!ch->loaded) continue;
+      bool changed = false;
+      for (content::MakapixEntry &e : ch->entries) {
+        if (!(e.flags & content::kMakapixCached)) continue;
+        Key k;
+        std::memcpy(k.data(), e.storage_key, 16);
+        if (!std::binary_search(gone.begin(), gone.end(), k)) continue;
+        e.flags &= static_cast<uint8_t>(~content::kMakapixCached);
+        changed = true;
+        ++unflagged;
+      }
+      if (changed) {
+        ch->dirty = true;
+        recount_cached(*ch);
+      }
+    }
+  }
+  out.examined = st.examined;
+  out.deleted = st.deleted;
+  out.indexes_deleted = st.indexes_deleted;
+  out.downloads_deleted = st.downloads_deleted;
+  out.bytes = st.bytes;
+  out.freed = st.freed;
+  out.took_ms = static_cast<uint32_t>((esp_timer_get_time() - t0) / 1000);
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_status.cache_files = dry_run ? st.examined : st.examined - st.deleted;
+    g_status.cache_bytes = dry_run ? st.bytes : st.bytes - st.freed;
+    if (!dry_run) {
+      g_status.last_sweep = now;
+      g_status.last_sweep_deleted = st.deleted;
+      g_status.last_sweep_freed = st.freed;
+    }
+  }
+  ESP_LOGI(TAG, "cache sweep%s: %u files (%llu KB) examined, %u older than %lu s deleted (%llu KB, %u indexes, %u downloads), "
+           "%u entries unflagged, %lu ms",
+           dry_run ? " (dry run)" : "", static_cast<unsigned>(st.examined), static_cast<unsigned long long>(st.bytes / 1024),
+           static_cast<unsigned>(st.deleted), static_cast<unsigned long>(older_than_s),
+           static_cast<unsigned long long>(st.freed / 1024), static_cast<unsigned>(st.indexes_deleted),
+           static_cast<unsigned>(st.downloads_deleted), static_cast<unsigned>(unflagged), static_cast<unsigned long>(out.took_ms));
+  busy = false;
+  if (unflagged) publish_channel_changed();
+  return true;
 }
 
 bool play_followed(std::string &error) {

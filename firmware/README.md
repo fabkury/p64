@@ -29,7 +29,8 @@ fonts, widgets' pure parts, the stream protocol, the night rule, the RTC codec, 
 orientation, the version rule. Device tests under `tests/device/` run against the
 live device: `api_smoke`, `content_smoke`, `makapix_smoke [--paired]`,
 `widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `pin_smoke`, `ota_smoke
-[--no-install]`, `ui_smoke`, and `soak --minutes N` for an unattended acceptance run.
+[--no-install]`, `ui_smoke`, `cache_sweep_smoke [--delete]`, and `soak --minutes N` for an
+unattended acceptance run.
 Tools: `stream_send.py` (send pixels), `release_assets.py` (the GitHub release assets),
 `gen_fonts.py`, `gen_weather_icons.py`, `gen_ui_icons.py`.
 

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cerrno>
 #include <sys/stat.h>
+#include <utime.h>
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -38,6 +39,13 @@ LoadCallback g_on_load;
 ScanCallback g_on_scan;
 std::atomic<uint32_t> g_next_id{1};
 
+bool is_cache_file(const std::string &path) {
+  for (const std::string &dir : {storage::cache_dir(), storage::downloads_dir()}) {
+    if (path.size() > dir.size() + 1 && path.compare(0, dir.size(), dir) == 0 && path[dir.size()] == '/') return true;
+  }
+  return false;
+}
+
 void do_load(Request &r) {
   auto *res = new LoadResult;
   res->id = r.id;
@@ -58,6 +66,10 @@ void do_load(Request &r) {
     res->error = error;
     g_on_load(res);
     return;
+  } else if (is_cache_file(r.path)) {
+    // Last played (spec 5.4): the cache sweep keeps a file for the retention period
+    // after this. The user's own files under animations/ keep their dates.
+    utime(r.path.c_str(), nullptr);
   }
   const int64_t t1 = esp_timer_get_time();
   res->bytes = bytes.size();

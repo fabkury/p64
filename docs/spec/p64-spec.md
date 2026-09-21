@@ -298,9 +298,14 @@ Semantics are p3a's, unchanged:
   number of files in PSRAM, evicting least recently played) so the show still runs; the
   web UI shows a persistent "no card" notice; local channels, pinned lists and history
   persistence are unavailable.
-- Card space: downloads pause when free space is below a floor; an age-based eviction
-  keeps free space above a watermark, never touching `animations/`, and deletes cached
-  files least recently played first.
+- Card space: downloads pause when free space is below a floor. The cache sweep (ADR
+  0010) runs once a night, at the night schedule's start, and deletes every cached
+  artwork not played for the cache retention (a setting, default 30 days), even one a
+  channel of the active playset still lists: the channel downloads it again when it
+  needs it. It also deletes URL downloads and channel indexes older than the retention,
+  never touches `animations/`, and does not run while the night schedule is off or the
+  clock is unknown. A file's last-played time is its modification time, touched whenever
+  the file is read for the show (a fresh download counts as played).
 - One TLS download at a time, in addition to the persistent Makapix connection; the
   memory budget for both is fixed at design time (ADR 0009).
 
@@ -310,8 +315,8 @@ Semantics are p3a's, unchanged:
   arbitrary URL.
 - From Makapix: "send to device" commands (show artwork, play channel, play playset).
 - URL downloads are transient: stored in `downloads/` on the card (capped in size, oldest
-  evicted; in memory without a card), so they replay from history but do not enter any
-  local channel. Uploads from the file manager are local files in the folder the user
+  evicted, and aged out by the cache sweep like cached artworks; in memory without a
+  card), so they replay from history but do not enter any local channel. Uploads from the file manager are local files in the folder the user
   chose (default `animations/`).
 - A play-this artwork holds the panel for one auto-swap interval like any artwork, then
   the show continues from the active playset. A play-this with interval 0 stays until the
@@ -525,10 +530,11 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
   - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
     server, set time from browser, PIN, erase Wi-Fi and restart in setup mode.
-  - Storage: card status and space, root folder, the file manager (browse folders, upload,
+  - Storage: card status and space, the Makapix cache size and last sweep, root folder,
+    the file manager (browse folders, upload,
     create folder, rename, delete, play now), explicit format with confirmation.
   - Makapix: pairing status and code, player key, certificate expiry, pair, unpair, refresh
-    interval, channel cache size.
+    interval, channel cache size, maximum artwork size, cache retention.
   - System: firmware version and build, uptime, reboot, factory reset, diagnostics (panel
     health, refresh rate, late frames, memory, tasks, log, reboot counters, last crash),
     About (licences and font attributions).
@@ -693,6 +699,7 @@ All persisted unless noted. Ranges are inclusive.
 | Storage | downloads cap | 16 to 1024 MB | 64 |
 | Makapix | refresh interval; channel cache size | 60 to 86400 s; 32 to 4096 | 14400; 2048 |
 | Makapix | maximum artwork size | 32, 64, 128 or 256 (pixels per side; other values snap up) | 128 |
+| Makapix | cache retention | 1 to 365 days (the nightly cache sweep's age limit) | 30 |
 | Makapix | credentials | player key, certificate, private key, CA, token (NVS, separate) | unset |
 | Updates | automatic check | on/off | on |
 

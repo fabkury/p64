@@ -7,6 +7,8 @@
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "p64/storage/card.hpp"
 
 namespace p64::makapix::cache {
@@ -156,6 +158,54 @@ uint64_t free_bytes() { return has_card() ? storage::info().free : 0; }
 void remove_artwork(const content::MakapixEntry &e) {
   std::string error;
   if (has_card()) storage::remove_path(artwork_path(e), error);
+}
+
+namespace {
+
+constexpr uint32_t kPlausibleEpoch = 1767225600;  // 2026-01-01: anything earlier was written under a wrong clock
+
+enum class Folder : uint8_t { Cache, Downloads, Channels };
+
+void sweep_folder(const std::string &dir, Folder kind, uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &st,
+                  const std::function<void(const std::string &name)> &on_artwork_deleted) {
+  for (const storage::FileInfo &f : storage::list(dir)) {
+    if (f.directory) continue;
+    const std::string path = dir + "/" + f.name;
+    struct stat sb = {};
+    if (stat(path.c_str(), &sb) != 0) continue;
+    ++st.examined;
+    st.bytes += f.size;
+    const uint32_t mtime = sb.st_mtime > 0 ? static_cast<uint32_t>(sb.st_mtime) : 0;
+    const bool implausible = mtime < kPlausibleEpoch || mtime > now + 86400;
+    if (!implausible && now - mtime <= older_than_s) continue;
+    if (!dry_run) {
+      std::string error;
+      if (!storage::remove_path(path, error)) {  // e.g. open by the loader this instant: next night
+        ESP_LOGW(TAG, "sweep: %s not removed: %s", path.c_str(), error.c_str());
+        continue;
+      }
+    }
+    ++st.deleted;
+    st.freed += f.size;
+    if (kind == Folder::Channels) ++st.indexes_deleted;
+    if (kind == Folder::Downloads) ++st.downloads_deleted;
+    if (kind == Folder::Cache) on_artwork_deleted(f.name);
+  }
+}
+
+}  // namespace
+
+void sweep(uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &stats,
+           const std::function<void(const std::string &name)> &on_artwork_deleted) {
+  if (!has_card()) return;
+  const std::string cache = storage::cache_dir();
+  for (const storage::FileInfo &shard : storage::list(cache)) {
+    if (!shard.directory) continue;
+    sweep_folder(cache + "/" + shard.name, Folder::Cache, now, older_than_s, dry_run, stats, on_artwork_deleted);
+    vTaskDelay(pdMS_TO_TICKS(2));  // downloads and refreshes get their turn
+  }
+  sweep_folder(storage::downloads_dir(), Folder::Downloads, now, older_than_s, dry_run, stats, on_artwork_deleted);
+  sweep_folder(storage::channels_dir(), Folder::Channels, now, older_than_s, dry_run, stats, on_artwork_deleted);
 }
 
 }  // namespace p64::makapix::cache

@@ -79,7 +79,8 @@ Channel kinds: `local` (identifier = folder under `animations/`, "" = the root),
 
 | Route | Method | Body | What |
 |---|---|---|---|
-| `/api/v1/makapix` | GET | | `{state: unpaired|pairing|paired|invalid, host, player_key, code, code_seconds_left, online, mqtt_connected, activity, last_error, cert_expires_at, refreshes, downloads, download_failures, views_sent, commands}` (also under `makapix` in the status document) |
+| `/api/v1/makapix` | GET | | `{state: unpaired|pairing|paired|invalid, host, player_key, code, code_seconds_left, online, mqtt_connected, activity, last_error, cert_expires_at, refreshes, downloads, download_failures, views_sent, commands, cache {files, bytes, last_sweep, last_deleted, last_freed_bytes}}` (also under `makapix` in the status document; `cache` counts the card cache as the last sweep or dry run saw it) |
+| `/api/v1/diag/cache_sweep` | POST | `{"older_than_s": N, "dry_run": true|false}` (defaults: the cache retention setting in seconds, true) | the cache sweep now (spec 5.4): deletes, or with `dry_run` only counts, every file under `cache/`, `downloads/` and `channels/` not played (or refreshed) for `older_than_s`, and clears the cached flag of the entries whose file went; answers `{dry_run, older_than_s, examined, bytes, deleted, freed_bytes, indexes_deleted, downloads_deleted, took_ms}`, 409 without a card, without a synced clock or while a sweep runs |
 | `/api/v1/makapix/pair` | POST | | asks the server for a pairing code; `code` appears in the status within seconds and on the panel |
 | `/api/v1/makapix/pair/cancel` | POST | | drops the code |
 | `/api/v1/makapix/unpair` | POST | | erases the credentials, closes the MQTT session |

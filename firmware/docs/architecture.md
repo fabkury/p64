@@ -243,6 +243,17 @@ one artwork download, then a short sleep.
   (atomic write); 404s and undecodable files are flagged in the index and not retried
   until the entry changes. Without a card a PSRAM memory cache (48 files, 6 MB) takes
   their place and the loader reads `mem:` paths from it.
+- The cache sweep (spec 5.4, ADR 0010): `cache_sweep()` walks the 256 shards of `cache/`,
+  then `downloads/` and `channels/`, and deletes every file whose mtime is older than the
+  cache retention or implausible (before 2026 or a day in the future: written under a
+  wrong clock), collecting the storage keys of the artworks that went in a PSRAM vector
+  and clearing their cached flag in every loaded index with a binary search per entry, so
+  the download loop fetches them again. The loader sets a cache file's mtime with
+  `utime()` after every successful read for the show ("last played"). The fetcher loop
+  polls the local time every 10 s and fires the sweep when the clock crosses into the
+  night window (`system::night::in_window`) while the schedule is enabled and the clock
+  synced; booting or enabling the schedule inside the window only arms the detector.
+  `POST /api/v1/diag/cache_sweep` runs it on the HTTP task with any age, dry by default.
 - The show treats a Makapix channel like a local one whose pickable entries are the
   cached ones; `MakapixChannelChanged` events make it re-read the index snapshot and
   update the scheduler's counts, and a pick prepared from a tiny cache is replaced as
