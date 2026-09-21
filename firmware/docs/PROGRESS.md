@@ -477,7 +477,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   counters, a dry run, the touch and (with `--delete`) a real sweep of files not played
   in the last hour followed by the re-download. Builds; NOT yet flashed or run on the
   device: the board dropped off USB and the network during this session, so the next
-  step is `.	oolslash.ps1` then `python tests\device\cache_sweep_smoke.py
+  step is `.\tools\flash.ps1` then `python tests\device\cache_sweep_smoke.py
   http://p64.local --delete`, then the numbers here. Also found: the `downloads_cap_mb`
   setting (Storage tab) is not enforced anywhere; the sweep now ages `downloads/` out.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
