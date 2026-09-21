@@ -325,8 +325,12 @@ void snapshot_makapix(ChannelRuntime &ch) {
   ch.mk_cached.clear();
   if (makapix::snapshot(ref_of(ch.spec), snap)) {
     ch.mk_entries = std::move(snap.entries);
+    // Pickable: cached and within the size limit (an index walked before the limit was
+    // lowered still lists bigger artworks until its refresh lands).
+    const uint16_t max_side = system::settings().makapix_max_side;
     for (size_t i = 0; i < ch.mk_entries.size() && i < 65535; ++i) {
-      if (ch.mk_entries[i].flags & content::kMakapixCached) ch.mk_cached.push_back(static_cast<uint16_t>(i));
+      const content::MakapixEntry &e = ch.mk_entries[i];
+      if ((e.flags & content::kMakapixCached) && content::fits_side(e, max_side)) ch.mk_cached.push_back(static_cast<uint16_t>(i));
     }
   }
   ch.available = static_cast<uint32_t>(ch.mk_cached.size());

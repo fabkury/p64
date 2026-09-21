@@ -85,6 +85,12 @@ Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refr
 (epoch seconds), `refreshing` and `error`. History items and the status artwork carry
 `post_id` and `sqid` for Makapix artworks.
 
+`settings.makapix.max_size` (32, 64, 128 or 256; default 128; other numbers snap up to the
+next step) is the maximum artwork size of the Makapix channels: the paired listings carry
+it as `width`/`height` `lte` criteria, the promoted feed is filtered on the device, and
+entries over it are never picked. Writing a different value refreshes every channel.
+Play-this and the site's commands are not limited by it (only by the 256x256 canvas).
+
 ## Widgets (M7)
 
 The status document carries `sensor {valid, temperature_c, humidity, trend_c_per_hour}`

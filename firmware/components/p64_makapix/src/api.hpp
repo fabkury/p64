@@ -32,8 +32,11 @@ int credentials(const std::string &player_key, creds::Credentials &out, std::str
 // `session` (optional) keeps the connection open across pages.
 bool promoted_page(const std::string &cursor, content::MakapixEntries &out, std::string &next_cursor, bool &has_more,
                    std::string &error, net::fetch::Session *session = nullptr);
-bool query_page(const std::string &token, const ChannelRef &ref, const std::string &cursor, content::MakapixEntries &out,
-                std::string &next_cursor, bool &has_more, std::string &error, net::fetch::Session *session = nullptr);
+// `max_side` goes to the server as width/height `lte` criteria (the promoted feed has no
+// such filter; the fetcher drops oversized entries from both listings anyway).
+bool query_page(const std::string &token, const ChannelRef &ref, uint16_t max_side, const std::string &cursor,
+                content::MakapixEntries &out, std::string &next_cursor, bool &has_more, std::string &error,
+                net::fetch::Session *session = nullptr);
 // A single post by public sqid (anonymous).
 bool post_by_sqid(const std::string &sqid, content::MakapixEntry &out, std::string &title, std::string &error);
 

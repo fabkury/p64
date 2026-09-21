@@ -76,6 +76,34 @@ void set_activity(const std::string &activity) {
 
 void publish_channel_changed() { system::publish(system::Event::MakapixChannelChanged); }
 
+uint16_t g_max_side = 0;  // the size limit the channel indexes were walked with
+
+// A changed size limit walks every channel again so the indexes hold only what plays
+// (the show skips oversized entries meanwhile, and in indexes older than the change).
+void on_settings_changed() {
+  const uint16_t side = system::settings().makapix_max_side;
+  bool changed;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    changed = side != g_max_side;
+    g_max_side = side;
+    if (changed) {
+      for (auto &ch : g_channels) {
+        if (ch->refreshing) {
+          ch->rewalk = true;
+        } else {
+          ch->next_refresh_us = 0;
+          ch->retry_at_us = 0;
+        }
+      }
+    }
+  }
+  if (changed) {
+    ESP_LOGI(TAG, "size limit %ux%u: every channel refreshes", side, side);
+    publish_channel_changed();
+  }
+}
+
 bool online() { return net::wifi::status().connected && net::clock::synced(); }
 
 uint32_t epoch_now() {
@@ -375,7 +403,11 @@ bool start(const Hooks &hooks) {
   fetcher_start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { on_network_change(true); });
   system::subscribe(system::Event::TimeSynced, [](const system::Message &) { on_network_change(true); });
-  system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { mqtt::publish_state(); });
+  g_max_side = system::settings().makapix_max_side;
+  system::subscribe(system::Event::SettingsChanged, [](const system::Message &) {
+    on_settings_changed();
+    mqtt::publish_state();
+  });
   if (paired()) {
     ESP_LOGI(TAG, "paired as %s; certificate valid until %lu", g_creds.player_key.c_str(),
              static_cast<unsigned long>(g_status.cert_expires_at));

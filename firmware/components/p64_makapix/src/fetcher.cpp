@@ -39,6 +39,7 @@ size_t g_round_robin = 0;
 net::fetch::Session g_vault;  // the file host connection, kept open across downloads
 int64_t g_vault_used_us = 0;
 constexpr int64_t kVaultIdleUs = 20 * kSecond;
+constexpr int64_t kWalkIdleUs = 60 * kSecond;  // a walk paused longer (its channel left the playset) restarts
 uint32_t g_unsaved_downloads = 0;
 int64_t g_next_renewal_check_us = 0;
 
@@ -202,9 +203,10 @@ void finish_walk(Channel *ch, bool ok, const std::string &error) {
       if (ch->download_cursor >= ch->entries.size()) ch->download_cursor = 0;
       ++g_status.refreshes;
       save = true;
-      ESP_LOGI(TAG, "channel %s: %u entries in %lu pages (%u cached, %u dropped)", ch->id.c_str(),
+      ESP_LOGI(TAG, "channel %s: %u entries in %lu pages (%u cached, %u dropped, %u over the size limit)", ch->id.c_str(),
                static_cast<unsigned>(ch->entries.size()), static_cast<unsigned long>(ch->walk_pages),
-               static_cast<unsigned>(ch->cached), static_cast<unsigned>(dropped));
+               static_cast<unsigned>(ch->cached), static_cast<unsigned>(dropped), static_cast<unsigned>(ch->walk_oversized));
+      if (ch->rewalk) ch->next_refresh_us = 0;  // the size limit changed while this walk ran
     } else {
       ch->walk_fresh = content::MakapixEntries();
       ++ch->fail_streak;
@@ -217,6 +219,8 @@ void finish_walk(Channel *ch, bool ok, const std::string &error) {
                static_cast<long long>(std::min(wait, kRetryMaxUs) / kSecond));
     }
     ch->walk_pages = 0;
+    ch->walk_oversized = 0;
+    ch->rewalk = false;
   }
   if (save) {
     content::MakapixEntries copy;
@@ -245,13 +249,20 @@ void refresh_step(Channel *ch) {
     ref = ch->ref;
     token = g_creds.api_token;
     paired = g_status.state == State::Paired && !token.empty();
-    first = !ch->refreshing;
+    // A walk pauses while its channel is out of the playset; resumed much later, its
+    // kept-alive connection is dead (ESP_ERR_HTTP_WRITE_DATA, seen 2026-09-21) and its
+    // cursor may be stale, so it starts over.
+    const bool stale = ch->refreshing && esp_timer_get_time() - ch->walk_last_us > kWalkIdleUs;
+    if (stale) ESP_LOGI(TAG, "channel %s: refresh paused too long; starting over", ch->id.c_str());
+    first = !ch->refreshing || stale;
+    ch->walk_last_us = esp_timer_get_time();
     if (first) {
       ch->refreshing = true;
       ch->error.clear();
       ch->walk_cursor.clear();
       ch->walk_fresh.clear();
       ch->walk_pages = 0;
+      ch->walk_oversized = 0;
       ch->walk_session = std::make_unique<net::fetch::Session>();
     }
     cursor = ch->walk_cursor;
@@ -262,25 +273,34 @@ void refresh_step(Channel *ch) {
     return;
   }
   const size_t cap = system::settings().channel_cache_size;
+  const uint16_t max_side = system::settings().makapix_max_side;
   set_activity("refreshing " + ch->id + " (page " + std::to_string(ch->walk_pages + 1) + ")");
   content::MakapixEntries page;
   std::string next, error;
   bool more = false;
-  const bool ok = paired ? api::query_page(token, ref, cursor, page, next, more, error, ch->walk_session.get())
+  const bool ok = paired ? api::query_page(token, ref, max_side, cursor, page, next, more, error, ch->walk_session.get())
                          : api::promoted_page(cursor, page, next, more, error, ch->walk_session.get());
   if (!ok) {
     finish_walk(ch, false, error);
     return;
   }
+  // The size limit, on the device as well: the promoted feed has no size filter, and a
+  // listing that ignored the criteria must not fill the index with what cannot play.
+  const bool listed_none = page.empty();
+  const size_t listed = page.size();
+  page.erase(std::remove_if(page.begin(), page.end(),
+                            [max_side](const content::MakapixEntry &e) { return !content::fits_side(e, max_side); }),
+             page.end());
   bool done;
   bool cold;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
+    ch->walk_oversized += static_cast<uint32_t>(listed - page.size());
     ch->walk_fresh.insert(ch->walk_fresh.end(), page.begin(), page.end());
     if (ch->walk_fresh.size() > cap) ch->walk_fresh.resize(cap);
     ++ch->walk_pages;
     ch->walk_cursor = next;
-    done = !more || ch->walk_fresh.size() >= cap || page.empty();
+    done = !more || ch->walk_fresh.size() >= cap || listed_none;
     cold = ch->entries.empty();
     if (!done && cold) {
       // Nothing to play yet: let the first pages count so downloads start now.

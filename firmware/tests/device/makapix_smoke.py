@@ -58,6 +58,17 @@ def main():
     st, j = request(base, "GET", "/api/v1/playsets")
     b = {x["name"]: x for x in j["data"]["builtins"]}
     check(b["Promoted"]["enabled"], "Promoted built-in enabled")
+
+    # The maximum artwork size (spec 5.3 and 16): four steps, other values snap up.
+    st, j = request(base, "GET", "/api/v1/settings")
+    max_size = j["data"]["makapix"]["max_size"]
+    check(max_size in (32, 64, 128, 256), "makapix.max_size is one of the four steps (%s)" % max_size)
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": 100}})
+    check(st == 200 and j["data"]["makapix"]["max_size"] == 128, "max_size 100 snaps up to 128")
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": 1000}})
+    check(st == 200 and j["data"]["makapix"]["max_size"] == 256, "max_size 1000 snaps to 256")
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": max_size}})
+    check(st == 200 and j["data"]["makapix"]["max_size"] == max_size, "max_size restored to %d" % max_size)
     check(b["All"]["enabled"] == paired, "All built-in enabled only when paired")
     check(b["Followed"]["enabled"] == paired, "Followed built-in enabled only when paired")
 
@@ -67,6 +78,8 @@ def main():
                  "Promoted shows an artwork", 120)
     a = d["playback"].get("artwork", {})
     check(a.get("channel") == "Promoted" and a.get("post_id") is not None, "the artwork carries its post id")
+    check(a.get("width", 0) <= max_size and a.get("height", 0) <= max_size,
+          "the artwork fits the size limit (%sx%s within %d)" % (a.get("width"), a.get("height"), max_size))
     ch = channels(base)
     check(len(ch) == 1 and ch[0]["kind"] == "promoted", "one promoted channel")
     check(ch[0]["entries"] > 0 and ch[0]["cached"] > 0, "promoted listed %d, cached %d" % (ch[0]["entries"], ch[0]["cached"]))

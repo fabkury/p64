@@ -273,6 +273,14 @@ Semantics are p3a's, unchanged:
 
 - Each channel keeps an index of up to the per-channel cap: hard cap 4096 entries,
   default 2048, user setting per device ("channel cache size").
+- Makapix channels list only artworks that fit the "maximum artwork size" setting (both
+  sides within 32, 64, 128 or 256 pixels; default 128): the paired listings ask the server
+  for it (`width`/`height` `lte` criteria of `query_posts`), the anonymous promoted feed
+  has no such filter so the device drops the oversized entries as they are listed, and the
+  show never picks an oversized entry from an index walked before the setting changed. A
+  change of the setting refreshes every channel. Explicit requests (play-this, the site's
+  commands, URLs, the card) are not subject to it; the 256x256 canvas limit (section 17)
+  applies to everything.
 - Makapix channels refresh every 4 h by default (60 s to 24 h), walking the server's
   listing newest-first up to the cap, dropping entries that vanished, marking entries whose
   file changed on the server for re-download.
@@ -684,6 +692,7 @@ All persisted unless noted. Ranges are inclusive.
 | Storage | card root | path under `/sdcard` | `/p64` |
 | Storage | downloads cap | 16 to 1024 MB | 64 |
 | Makapix | refresh interval; channel cache size | 60 to 86400 s; 32 to 4096 | 14400; 2048 |
+| Makapix | maximum artwork size | 32, 64, 128 or 256 (pixels per side; other values snap up) | 128 |
 | Makapix | credentials | player key, certificate, private key, CA, token (NVS, separate) | unset |
 | Updates | automatic check | on/off | on |
 

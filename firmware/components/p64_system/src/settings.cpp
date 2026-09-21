@@ -151,6 +151,8 @@ void Settings::clamp() {
   downloads_cap_mb = clamp_to<uint16_t>(downloads_cap_mb, 16, 1024);
   makapix_refresh_seconds = clamp_to<uint32_t>(makapix_refresh_seconds, 60, 86400);
   channel_cache_size = clamp_to<uint16_t>(channel_cache_size, 32, 4096);
+  // The four steps; anything else snaps up to the next one (256 is the canvas limit).
+  makapix_max_side = makapix_max_side <= 32 ? 32 : makapix_max_side <= 64 ? 64 : makapix_max_side <= 128 ? 128 : 256;
 }
 
 std::string Settings::hostname() const { return device_name.empty() ? "p64" : "p64-" + device_name; }
@@ -241,6 +243,7 @@ std::string Settings::to_json() const {
   cJSON *mk = obj(root, "makapix");
   cJSON_AddNumberToObject(mk, "refresh_seconds", makapix_refresh_seconds);
   cJSON_AddNumberToObject(mk, "channel_cache_size", channel_cache_size);
+  cJSON_AddNumberToObject(mk, "max_size", makapix_max_side);
 
   cJSON *up = obj(root, "updates");
   cJSON_AddBoolToObject(up, "auto_check", auto_update_check);
@@ -363,6 +366,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   const cJSON *mk = sub(root, "makapix");
   get_num(mk, "refresh_seconds", makapix_refresh_seconds);
   get_num(mk, "channel_cache_size", channel_cache_size);
+  get_num(mk, "max_size", makapix_max_side);
 
   const cJSON *up = sub(root, "updates");
   get_bool(up, "auto_check", auto_update_check);

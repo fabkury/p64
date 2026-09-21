@@ -416,6 +416,27 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   also closes a latent path where a card rescan or the boot restore could play an artwork
   in Widget state. `tests/device/widgets_smoke.py` now covers the pill and Next from the
   Widget state; `soak.py` restores the playset before the settings.
+- 2026-09-21, the maximum artwork size: a Makapix setting (`makapix.max_size`, 32, 64,
+  128 or 256 pixels per side, default 128, a select on the Makapix tab). Settled with the
+  user: channels only (play-this, the site's commands, URLs and the card stay free up to
+  the 256x256 canvas), both sides within the limit, server criteria plus a play-time skip
+  as the safety net, and a change refreshes every channel. The paired `query_posts` takes
+  `width`/`height` `lte` criteria (`reference/makapix/docs/player/querying-artwork.md`);
+  the anonymous promoted feed has no size filter (`/api/feed/promoted` only takes
+  `fields`, `limit` and `cursor`), so `refresh_step()` drops the oversized entries of every
+  page (counted in the refresh log line) and `snapshot_makapix()` in `show.cpp` leaves them
+  out of the pickable list. `tests/device/makapix_smoke.py` checks the snapping and that
+  the artworks Promoted plays fit the limit. Verified on the paired device: the Promoted
+  index of 292 entries re-walks to 229 at 128 (5 pages) and to 136 at 64 (3 pages), the
+  server honouring the criteria (0 dropped on the device), each re-walk within 10 s of the
+  setting write; `makapix_smoke.py --paired` passes; internal heap unchanged (21.8 KB
+  free). Found on the way: a walk interrupted by a playset switch (the channel leaves the
+  playset mid-walk, so the worker stops serving it) resumed nine minutes later on its
+  kept-alive connection and failed with `ESP_ERR_HTTP_WRITE_DATA` (the server had closed
+  it), costing a 30 s retry; `refresh_step()` now starts a walk over when its last page is
+  more than 60 s old (`kWalkIdleUs`); verified by switching to Local 1.5 s into a walk and
+  back 75 s later: "refresh paused too long; starting over", then 292 entries in 6 pages
+  at 256, no failure.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

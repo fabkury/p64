@@ -101,6 +101,7 @@ struct Settings {
   // Makapix
   uint32_t makapix_refresh_seconds = 14400;  // 60..86400
   uint16_t channel_cache_size = 2048;        // 32..4096
+  uint16_t makapix_max_side = 128;           // 32, 64, 128 or 256: channels leave out wider or taller artworks
 
   // Updates
   bool auto_update_check = true;

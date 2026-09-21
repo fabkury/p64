@@ -216,8 +216,9 @@ bool promoted_page(const std::string &cursor, content::MakapixEntries &out, std:
 
 const char *server_channel(const ChannelRef &ref) { return server_channel_name(ref.kind); }
 
-bool query_page(const std::string &token, const ChannelRef &ref, const std::string &cursor, content::MakapixEntries &out,
-                std::string &next_cursor, bool &has_more, std::string &error, net::fetch::Session *session) {
+bool query_page(const std::string &token, const ChannelRef &ref, uint16_t max_side, const std::string &cursor,
+                content::MakapixEntries &out, std::string &next_cursor, bool &has_more, std::string &error,
+                net::fetch::Session *session) {
   cJSON *body = cJSON_CreateObject();
   cJSON_AddStringToObject(body, "request_type", "query_posts");
   cJSON_AddStringToObject(body, "channel", server_channel(ref));
@@ -235,6 +236,15 @@ bool query_page(const std::string &token, const ChannelRef &ref, const std::stri
   cJSON_AddNumberToObject(body, "limit", kPageLimit);
   cJSON *fields = cJSON_AddArrayToObject(body, "include_fields");
   for (const char *f : {"width", "height", "frame_count", "artwork_modified_at"}) cJSON_AddItemToArray(fields, cJSON_CreateString(f));
+  // AMP criteria (docs/player/querying-artwork.md): only artworks that fit the size limit.
+  cJSON *criteria = cJSON_AddArrayToObject(body, "criteria");
+  for (const char *side : {"width", "height"}) {
+    cJSON *c = cJSON_CreateObject();
+    cJSON_AddStringToObject(c, "field", side);
+    cJSON_AddStringToObject(c, "op", "lte");
+    cJSON_AddNumberToObject(c, "value", max_side);
+    cJSON_AddItemToArray(criteria, c);
+  }
   net::fetch::Result r;
   cJSON *reply = nullptr;
   const bool ok = request_json("POST", base_url() + "/player/rpc", token, body, kMaxListingBytes, r, "query_posts", error,

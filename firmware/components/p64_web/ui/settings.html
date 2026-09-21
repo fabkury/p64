@@ -290,6 +290,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <h3>Channels</h3>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Refresh interval</label><input class="num-input" type="number" id="mk-refresh" min="60" max="86400" onchange="save({makapix:{refresh_seconds:+this.value}})"><span class="setting-hint" style="margin:0">s</span></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label">Channel cache size</label><input class="num-input" type="number" id="mk-cache" min="32" max="4096" onchange="save({makapix:{channel_cache_size:+this.value}})"><span class="setting-hint" style="margin:0">artworks per channel</span></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="mk-size">Maximum artwork size</label><select class="sel" id="mk-size" style="min-width:0" onchange="save({makapix:{max_size:+this.value}})"><option value="32">32x32</option><option value="64">64x64 (native)</option><option value="128">128x128</option><option value="256">256x256</option></select></div>
+        <div class="setting-hint">Channels leave out artworks wider or taller than this; nothing above 256x256 ever plays. Changing it refreshes every channel.</div>
         <div class="setting-hint" id="mk-counters"></div>
     </div>
 </div>
@@ -394,7 +396,7 @@ function fill(s) {
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
     sv('dl-cap', s.storage.downloads_cap_mb); document.getElementById('card-root').textContent = s.storage.card_root;
-    sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size);
+    sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size); sv('mk-size', s.makapix.max_size);
     sc('auto-check', s.updates.auto_check);
 }
 function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }

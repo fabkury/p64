@@ -32,12 +32,15 @@ struct Channel {
   bool loaded = false;  // the index file was looked for
   bool dirty = false;   // flags changed since the last save
   bool active = false;  // in the active playset
+  bool rewalk = false;  // the size limit changed during a walk: walk again as soon as it ends
   uint32_t download_cursor = 0;
   std::string error;
   // A refresh in progress: one page per worker step, the connection kept open.
   std::string walk_cursor;
   content::MakapixEntries walk_fresh;
   uint32_t walk_pages = 0;
+  uint32_t walk_oversized = 0;  // listed entries over the size limit, dropped
+  int64_t walk_last_us = 0;     // monotonic, the last page; a walk paused longer than kWalkIdleUs starts over
   std::unique_ptr<net::fetch::Session> walk_session;
 };
 
