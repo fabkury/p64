@@ -35,6 +35,10 @@ constexpr int64_t kRenewalCheckUs = 24LL * 3600 * kSecond;
 constexpr uint32_t kRenewalWindowDays = 45;
 
 QueueHandle_t g_jobs = nullptr;
+// A Followed request that arrived before the network and the clock were up (the boot
+// restore of a saved Followed playset queues it seconds before Wi-Fi connects); it runs
+// as soon as the fetcher is online. Only the fetcher task touches it.
+Job *g_parked_followed = nullptr;
 size_t g_round_robin = 0;
 net::fetch::Session g_vault;  // the file host connection, kept open across downloads
 int64_t g_vault_used_us = 0;
@@ -660,6 +664,10 @@ void task(void *) {
     if (xQueueReceive(g_jobs, &job, pdMS_TO_TICKS(500)) == pdTRUE && job) {
       if (online() || job->type == JobType::Like) {
         run_job(job);
+      } else if (job->type == JobType::Followed && !job->done) {
+        ESP_LOGI(TAG, "Followed requested offline; parked until the network is up");
+        delete g_parked_followed;
+        g_parked_followed = job;
       } else {
         finish(job, false, "offline");
       }
@@ -671,6 +679,12 @@ void task(void *) {
       g_status.online = up;
     }
     if (!up) continue;
+    if (g_parked_followed) {
+      Job *parked = g_parked_followed;
+      g_parked_followed = nullptr;
+      run_job(parked);
+      continue;
+    }
     State state;
     int64_t next_poll;
     {
