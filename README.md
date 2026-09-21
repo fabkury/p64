@@ -6,7 +6,7 @@ card and from [Makapix Club](https://makapix.club), shows a clock, the weather a
 temperature, and takes live pixel streams from your computer. Open source, built from two
 off-the-shelf Waveshare boards, no soldering.
 
-![p64 on a desk, playing an animation with the clock overlay](docs/images/p64-hero.jpg)
+![p64 on a desk, playing an animation with the clock overlay](docs/images/photos/p64-hero.jpg)
 
 ## What it does
 
@@ -32,11 +32,11 @@ off-the-shelf Waveshare boards, no soldering.
 - **Updates itself.** Firmware updates come from GitHub Releases with a verified install
   and rollback. Nothing is downloaded or installed without you pressing the button.
 
-| ![Analogue clock face](docs/images/p64-clock-face.jpg) | ![An artwork with the time overlay](docs/images/p64-artwork.jpg) | ![Next to a laptop, for scale](docs/images/p64-on-the-desk.jpg) |
+| ![Analogue clock face](docs/images/photos/p64-clock-face.jpg) | ![An artwork with the time overlay](docs/images/photos/p64-artwork.jpg) | ![Next to a laptop, for scale](docs/images/photos/p64-on-the-desk.jpg) |
 |---|---|---|
 | The analogue clock face | Time overlay on an artwork | 128 mm square, for scale |
 
-![A short clip of an animation playing with the clock overlay](docs/images/p64-playing.gif)
+![A short clip of an animation playing with the clock overlay](docs/images/photos/p64-playing.gif)
 
 The web UI, on a phone:
 
@@ -97,7 +97,7 @@ there yet, as of 2026-09-21:
 | `firmware/` | The product firmware: ESP-IDF v5.5, C++20, on a patched `esp-hub75` driver. Its README has the build, flash and test commands; `firmware/docs/` has the architecture, the API and the progress log. |
 | `enclosure/` | The OpenSCAD shell, one file per version, with ready-to-print STL/3MF and renders under `enclosure/output/vN/`. Its README has the design rationale and the print settings. |
 | `docs/spec/p64-spec.md`, `CONTEXT.md`, `docs/adr/` | What the device does (the specification), the vocabulary, and the decisions that are hard to reverse. |
-| `docs/build-your-own.md`, `docs/images/` | The build guide and the photos. |
+| `docs/build-your-own.md`, `docs/images/` | The build guide, the photos (`photos/`) and the web UI screenshots. |
 | `docs/hardware/` | Wiring projects for the two rotary encoders, with schematics. |
 | `hardware-tests/` | The test firmware that brought up the board and panel; the technical reference for what the hardware taught (pin map, driver patch, frame pacing, DMA). |
 | `prompt/` | The task prompt of each development session, in order. |

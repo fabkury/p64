@@ -29,7 +29,7 @@ folders of work live here, each with its own README that is the detailed referen
   written 2026-09-21 before any encoder was wired; the bench records in them are blank
   until measured.
 
-The repository README is written for newcomers (what p64 is, photos under `docs/images/`,
+The repository README is written for newcomers (what p64 is, photos under `docs/images/photos/`,
 the parts list with dated Waveshare prices, an honest status) and `docs/build-your-own.md`
 is the step-by-step build guide; keep both truthful when the status changes (first
 release, v6 printed, encoders wired).
