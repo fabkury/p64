@@ -1,0 +1,21 @@
+Let's talk about the two rotary encoders for the p64 project.
+
+I have with me these materials:
+
+ - 2 x Anodized Aluminum Machined Knob - Silver - 20mm Diameter (https://www.adafruit.com/product/5528)
+
+ - 2 x Adafruit I2C Stemma QT Rotary Encoder Breakout with Encoder - STEMMA QT / Qwiic (https://www.adafruit.com/product/5880)
+
+ - STEMMA QT / Qwiic JST SH 4-pin to Premium Male Headers Cable - 150mm Long (https://www.adafruit.com/product/4209)
+
+ - STEMMA QT / Qwiic JST SH 4-pin Cable with Premium Female Sockets - 150mm Long (https://www.adafruit.com/product/4397)
+
+ - STEMMA QT / Qwiic JST SH 4-Pin Cable - 50mm Long (https://www.adafruit.com/product/4399)
+
+ - California JOS 2.2K Ohm Carbon Film Single Fixed Resistor 1/2 W (0.5 Watts) 5% Tolerance (40 Pack) (https://www.amazon.com/dp/B0BR699G4V)
+ 
+ - ELEGOO 400-Point Solderless Breadboard with 4 Power Rails 3PCS (https://www.amazon.com/dp/B01EV640I6)
+
+ - If I need other materials, please let me know.
+
+Please guide me on how to wire the rotary encoders to the main board. We should probably perform some kind of test first, to ensure everything corresponds to expectations and works, before committing to fully implementing the encoders in the firmware -- but I do actually leave the decision up to you (it's ok if you prefer to go straight into the firmware implementation and make tests in there). Whatever the case, DON'T implement anything right now, just give me instructions and tell me your plans first.

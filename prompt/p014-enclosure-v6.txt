@@ -1,0 +1,9 @@
+I have another model doing work on this repository at the same time, but their work is only inside folder firmware/. Let's work on folder enclosure/ at the same time.
+
+Here's what I need you to do:
+ - Let's work on v6 of the enclosure, and edit it "in place". In other words, we won't create a new version v7, instead, our edits will become v6.
+
+The edits that are needed are:
+ - The current enclosure has mostly sharp edges. While at some places (e.g. the inner wall where the enclosure meets the panel) this is desirable for an accurate finish, in most other places chamfered or rounded corners are preferred because they're softer to the human touch.
+
+Please make the needed edits. Remember that there is another model doing work at the same time inside folder firmware/.
