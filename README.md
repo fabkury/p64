@@ -38,6 +38,12 @@ off-the-shelf Waveshare boards, no soldering.
 
 ![A short clip of an animation playing with the clock overlay](docs/images/p64-playing.gif)
 
+The web UI, on a phone:
+
+| ![Home page](docs/images/web-ui-home.png) | ![Playsets page](docs/images/web-ui-playsets.png) | ![Settings page](docs/images/web-ui-settings.png) |
+|---|---|---|
+| Home: live preview, controls, channels | Playsets: your mixes and the built-ins | Settings: display, widgets, network, Makapix |
+
 ## What you need
 
 Three parts from Waveshare plug together, plus a print and a handful of screws. List
