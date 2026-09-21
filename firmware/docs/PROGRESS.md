@@ -437,6 +437,29 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   more than 60 s old (`kWalkIdleUs`); verified by switching to Local 1.5 s into a walk and
   back 75 s later: "refresh paused too long; starting over", then 292 entries in 6 pages
   at 256, no failure.
+- 2026-09-21, live channel counts in the web UI: the user tapped Followed on the Home
+  pill and the per-channel counts stood still until a reload. Two causes: the WebSocket
+  push did not listen to `MakapixChannelChanged` (an index refreshed, an artwork cached),
+  and the Home page refetched `/api/v1/channels` only on a playset name change or a card
+  scan. Settled with the user: change counters in the status document rather than
+  per-channel counts in every push. `playback.playset.version` (show.cpp, bumped in
+  `install()` and `on_makapix_changed()`, after the change is applied, then
+  `web::notify()`) and `playsets_version` (api.cpp, bumped and pushed on
+  `PlaysetsChanged`, `MakapixStateChanged`, `CardMounted`, `CardFailed`,
+  `LocalFilesChanged`). The Home page refetches the channels when the first moves, at most
+  every 2 s, and the playsets when the second moves; the Playsets page reloads its list
+  and folders on the second. `api_smoke.py` checks both fields. Verified in Chrome on the
+  device: with Followed open, lowering `makapix.max_size` to 64 took the pill from 304/304
+  to 135/135 to 102/102 with "just now" stamps, restoring 128 climbed 103/264, 107/271,
+  130/304, no reload; internal heap 30.9 KB free at boot, unchanged. Found on the way and
+  fixed: a saved Followed playset never came back after a reboot, because `restore()`
+  queues the Followed job at 1.7 s and the fetcher answered "offline" (Wi-Fi connects at
+  4 to 6 s), leaving an empty playset and "no artwork: empty"; the fetcher now parks an
+  offline Followed job and runs it once online (log: "Followed requested offline; parked
+  until the network is up", then "activating playset Followed (5 channels, from the
+  site)" at 7.7 s). Observed, not changed: after a 64 -> 128 round trip the artists'
+  cached counts restart low (23/184) and climb, so the entries dropped at 64 lose their
+  cached flag and download again even when the file is still in the cache.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

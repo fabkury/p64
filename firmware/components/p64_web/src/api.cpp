@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cinttypes>
 #include <cstring>
 #include <ctime>
@@ -138,6 +139,11 @@ cJSON *parse_body(httpd_req_t *req) {
 
 // --- status -------------------------------------------------------------------
 
+// Bumped on the events after which the playset list, the built-ins' availability or the
+// card folders may differ (a playset saved or deleted, pairing, the card, the files): the
+// web UI refetches /api/v1/playsets and /api/v1/folders when the number moves.
+static std::atomic<uint32_t> g_playsets_version{0};
+
 cJSON *build_status() {
   cJSON *d = cJSON_CreateObject();
   cJSON_AddNumberToObject(d, "api_version", kApiVersion);
@@ -218,6 +224,7 @@ cJSON *build_status() {
   cJSON_AddItemToObject(d, "stream", stream::status_json());
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());
   cJSON_AddStringToObject(d, "update_state", ota::state_name(ota::status().state));
+  cJSON_AddNumberToObject(d, "playsets_version", g_playsets_version.load());
   {
     cJSON *in = cJSON_AddObjectToObject(d, "inputs");
     cJSON_AddBoolToObject(in, "imu_present", inputs::imu_present());
@@ -648,6 +655,16 @@ void init(const Hooks &hooks) {
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { ws::notify(); });
   system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { ws::notify(); });
   system::subscribe(system::Event::PlaybackSwapped, [](const system::Message &) { ws::notify(); });
+  // The show bumps its own channel version and notifies once it has applied a Makapix
+  // change or installed a scan; these events change what the pages list.
+  for (const system::Event e : {system::Event::PlaysetsChanged, system::Event::MakapixStateChanged,
+                                system::Event::CardMounted, system::Event::CardFailed,
+                                system::Event::LocalFilesChanged}) {
+    system::subscribe(e, [](const system::Message &) {
+      ++g_playsets_version;
+      ws::notify();
+    });
+  }
   ESP_LOGI(TAG, "API v%d registered", kApiVersion);
 }
 

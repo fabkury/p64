@@ -34,6 +34,7 @@
 #include "p64/system/settings.hpp"
 #include "p64/system/state_store.hpp"
 #include "p64/stream/stream.hpp"
+#include "p64/web/web.hpp"
 #include "p64/widgets/widgets.hpp"
 #include "status_screens.hpp"
 
@@ -151,6 +152,10 @@ gfx::Frame *g_scratch = nullptr;  // PSRAM; status screens are drawn here
 
 content::Playset g_playset;
 std::vector<ChannelRuntime> g_channels;
+// Bumped whenever the channel list or its counts change (a scan installed, a Makapix
+// index or cache change applied): the web UI refetches /api/v1/channels when the number
+// in the status document moves.
+uint32_t g_channels_version = 0;
 content::Scheduler g_scheduler;
 content::History g_history;
 uint32_t g_generation = 0;  // bumps per scan request; results carry it back
@@ -724,6 +729,8 @@ void install(loader::ScanResult &r) {
   }
   apply_scheduler_modes(system::settings());
   update_counts();
+  ++g_channels_version;
+  web::notify();
   g_last_scan_ms = r.took_ms;
   ESP_LOGI(TAG, "playset %s: %u channels, %u local entries%s, scan %u ms%s", g_playset.name.c_str(),
            static_cast<unsigned>(g_channels.size()), static_cast<unsigned>(entries),
@@ -878,6 +885,8 @@ void on_makapix_changed() {
   }
   if (!any) return;
   update_counts();
+  ++g_channels_version;
+  web::notify();
   // A pick prepared while the cache was still tiny (the same artwork again, or one of
   // a handful) is replaced once there is something to choose from.
   if (g_prepared && g_prepared_pick.makapix && g_prepared_pick.channel >= 0 &&
@@ -1304,6 +1313,7 @@ cJSON *status_json() {
   cJSON_AddBoolToObject(ps, "builtin", g_playset.builtin);
   cJSON_AddNumberToObject(ps, "channels", static_cast<double>(g_channels.size()));
   cJSON_AddBoolToObject(ps, "scanning", g_scan_running);
+  cJSON_AddNumberToObject(ps, "version", g_channels_version);
   if (g_current) {
     cJSON *a = cJSON_AddObjectToObject(p, "artwork");
     cJSON_AddStringToObject(a, "name", g_current->name().c_str());
@@ -1356,6 +1366,7 @@ cJSON *channels_json() {
   cJSON *root = cJSON_CreateObject();
   cJSON_AddStringToObject(root, "playset", g_playset.name.c_str());
   cJSON_AddBoolToObject(root, "scanning", g_scan_running);
+  cJSON_AddNumberToObject(root, "version", g_channels_version);
   cJSON_AddNumberToObject(root, "last_scan_ms", g_last_scan_ms);
   cJSON *arr = cJSON_AddArrayToObject(root, "channels");
   for (size_t i = 0; i < g_channels.size(); ++i) {

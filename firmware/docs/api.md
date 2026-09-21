@@ -21,7 +21,7 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 | `/api/v1/status` | GET | firmware, uptime, heap, network, time, card, panel health, `playback` (below) |
 | `/api/v1/settings` | GET | the settings document (spec section 16 groups) |
 | `/api/v1/settings` | PUT | merge the keys present, clamped to their ranges; returns the document |
-| `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and on events |
+| `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and at once on events (Wi-Fi, a swap, a settings write, a channel list or count change, a playset saved or deleted, pairing, the card, the files) |
 | `/api/v1/frame` | GET | the panel's current logical frame as PNG (live preview) |
 | `/api/v1/frame.raw` | GET | the same as 64x64x3 RGB888 bytes |
 | `/api/v1/action/set_time` | POST | `{"utc": <seconds since 1970>}`: sets the clock by hand (and the RTC); source becomes `manual` |
@@ -30,12 +30,18 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 | `/api/v1/diag/imu` | GET | live accelerometer reading (g), gravity angle and in-plane magnitude, calibration and resolution state, the tap threshold, the peak impulse of the last 2 s, tap counters, samples and read errors |
 | `/api/v1/action/calibrate_upright` | POST | `{"rotation": 0|90|180|270}` (default: the display's current rotation): "the panel is upright now" becomes auto-rotation's reference |
 
-`playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning}`, `artwork
+`playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning, version}`, `artwork
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
 channel_index, source}` (absent on a status screen or pause), `no_artwork` (reason or
 ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
 {interval_s, remaining_s}`, `prepared`, `swaps`, `load_failures`, `frames`, `late`,
-`skipped`.
+`skipped`. Two change counters let a page refetch only when something moved: `playback.playset.version`
+grows whenever the channel list or its counts change (a scan installed, a Makapix index
+refreshed, an artwork cached), `playsets_version` whenever the playset list, the
+built-ins' availability or the card folders may differ (a playset saved or deleted,
+pairing, the card, the files). The Home page refetches `/api/v1/channels` on the first
+and at most every 2 s, `/api/v1/playsets` on the second; the Playsets page reloads on the
+second.
 
 ## Show (M5)
 
@@ -51,7 +57,7 @@ channel_index, source}` (absent on a status screen or pause), `no_artwork` (reas
 | `/api/v1/action/play` | POST | `{"path":"animations/x.gif"}` | play-this from the card (422 when missing) |
 | `/api/v1/action/play_playset` | POST | `{"name":"..."}` | activate a playset (built-in or stored; 404 otherwise) |
 | `/api/v1/history` | GET | | `{count, position, items:[{index, kind, source, name, path, channel, channel_index, playset, shown_s_ago, current}]}` |
-| `/api/v1/channels` | GET | | the active playset's channels: `{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}` |
+| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (Makapix channels add `cached`, `last_refresh`, `refreshing`, `error`) |
 | `/api/v1/folders` | GET | | folders that can be local channels: `[{folder, name, files}]` |
 
 ## Playsets (M5)

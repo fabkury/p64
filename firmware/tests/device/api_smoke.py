@@ -62,6 +62,8 @@ def main():
     check(d.get("api_version") == 1, "api_version 1")
     check(d.get("panel", {}).get("refresh_hz", 0) > 100, f"panel refresh {d.get('panel', {}).get('refresh_hz', 0):.1f} Hz")
     check(d.get("heap", {}).get("internal_free", 0) > 20000, f"internal heap free {d.get('heap', {}).get('internal_free')}")
+    check(isinstance(d.get("playback", {}).get("playset", {}).get("version"), int), "status carries playback.playset.version")
+    check(isinstance(d.get("playsets_version"), int), "status carries playsets_version")
 
     st, j = request(base, "GET", "/api/v1/settings")
     check(st == 200 and "display" in j.get("data", {}), "GET /api/v1/settings")

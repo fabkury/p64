@@ -177,6 +177,10 @@ body { justify-content: flex-start; overflow-x: hidden; }
 <script src="/static/app.js"></script>
 <script>
 var S = null, playsets = null, channels = [], channelsPlayset = null, infoOpen = false, paused = false, current = null, shufflePending = false;
+// The status document carries playback.playset.version (the channel list or its counts
+// changed) and playsets_version (the playset list changed); the page refetches on a
+// change, the channels at most every 2 s while a playset fills its cache.
+var channelsVersion = null, channelsTimer = null, channelsLoadedAt = 0, playsetsVersion = null;
 p64.nav('home');
 
 // ── Live preview: the panel's own frame, refreshed once a second while the page is visible ──
@@ -266,7 +270,14 @@ function renderChannels() {
     document.getElementById('now-playing-stats').textContent = channels.length + ' ch · ' + cached + '/' + total + ' artworks';
 }
 function loadChannels() {
+    if (channelsTimer) { clearTimeout(channelsTimer); channelsTimer = null; }
+    channelsLoadedAt = Date.now();
     p64.get('/api/v1/channels').then(function (d) { channels = (d && d.channels) || []; renderChannels(); }).catch(function () {});
+}
+function scheduleChannels() {
+    if (channelsTimer) return;
+    var wait = Math.max(0, 2000 - (Date.now() - channelsLoadedAt));
+    channelsTimer = setTimeout(loadChannels, wait);
 }
 function loadPlaysets() {
     p64.get('/api/v1/playsets').then(function (d) { playsets = d; renderPills(); }).catch(function () {});
@@ -307,8 +318,10 @@ p64.onStatus(function (d) {
     document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
     document.getElementById('back-btn').disabled = !(p.history && p.history.can_back);
     document.getElementById('now-playing-name').textContent = p.playset ? p.playset.name : '';
-    if (p.playset && p.playset.name !== channelsPlayset) { channelsPlayset = p.playset.name; loadChannels(); }
-    else if (p.playset && p.playset.scanning) loadChannels();
+    if (p.playset && p.playset.name !== channelsPlayset) { channelsPlayset = p.playset.name; channelsVersion = p.playset.version; loadChannels(); }
+    else if (p.playset && p.playset.version !== channelsVersion) { channelsVersion = p.playset.version; scheduleChannels(); }
+    if (playsetsVersion !== null && d.playsets_version !== playsetsVersion) loadPlaysets();
+    playsetsVersion = d.playsets_version;
     if (playsets && p.playset && p.playset.name !== playsets.active) { playsets.active = p.playset.name; renderPills(); }
     var a = p.artwork;
     if (a && (!current || current.name !== a.name || current.post_id !== a.post_id)) current = { name: a.name, post_id: a.post_id, liked: false };

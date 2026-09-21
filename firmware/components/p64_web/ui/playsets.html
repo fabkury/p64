@@ -382,7 +382,13 @@ function savePlayset(play) {
 }
 p64.checkAuth();
 p64.startStatus();
-p64.onStatus(function (d) { if (d.playback && d.playback.playset && d.playback.playset.name !== state.active) { state.active = d.playback.playset.name; renderList(); } });
+var playsetsVersion = null;
+p64.onStatus(function (d) {
+    if (d.playback && d.playback.playset && d.playback.playset.name !== state.active) { state.active = d.playback.playset.name; renderList(); }
+    // The list, the built-ins' availability or the folders changed (another browser, pairing, the card).
+    if (playsetsVersion !== null && d.playsets_version !== playsetsVersion) load();
+    playsetsVersion = d.playsets_version;
+});
 load();
 </script>
 </body>
