@@ -524,6 +524,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   process taking up to 3 s, so timing-sensitive tests take the IP (README). The
   boot-time heap minimum still varies between 10 and 70 KB from boot to boot (the second
   TLS handshake next to the MQTT session), which proposal P-M1 addresses.
+- 2026-09-22, steps 3 and 4 of the review roadmap (prompt p024,
+  `docs/review-2026-09/steps3-4-results.md`): the host tests run on doctest (56 named
+  cases in `tests/host/unit/`, 22 180 assertions, `run.py --tc/--junit/--werror/--sanitize`);
+  GitHub Actions runs them with ASan, UBSan and `-Werror` and builds the firmware with the
+  size budgets on every push (`.github/workflows/firmware.yml`, green); warnings in p64
+  code are errors in the firmware build. Pure files with host tests: `timing.hpp` (the
+  player's timeline, the renderer's schedule), `settings_model.cpp`, the Makapix
+  `contract.cpp`, `main/show_rules.cpp`, plus six files that were pure but never compiled
+  on the host. Found: the renderer's copy-lead average truncated and let the schedule
+  slip a refresh period about once in 1 760 frames (now rounded up); a passed-through
+  POSIX time zone rule with '/' is refused (recorded, not changed). New device test
+  `timing_smoke.py` (spec 18.4): 24.93, 10.04 and 60.01 fps where 25, 10 and 60 are
+  due, no late frame. Device: timing, makapix --paired, widgets, stream, content, api
+  and ops smoke tests pass.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
