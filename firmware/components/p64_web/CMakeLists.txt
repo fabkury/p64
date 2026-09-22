@@ -9,6 +9,7 @@ idf_component_register(
         "src/ws.cpp"
         "src/ui.cpp"
         "src/auth.cpp"
+        "src/auth_rules.cpp"
     INCLUDE_DIRS
         "include"
     EMBED_TXTFILES

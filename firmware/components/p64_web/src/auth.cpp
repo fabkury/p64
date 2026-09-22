@@ -17,6 +17,7 @@
 #include "p64/net/http_server.hpp"
 #include "p64/system/flash_guard.hpp"
 #include "p64/web/web.hpp"
+#include "auth_rules.hpp"
 
 namespace p64::web {
 
@@ -29,23 +30,14 @@ namespace {
 
 constexpr const char *TAG = "auth";
 constexpr const char *kNamespace = "p64auth";
-constexpr int kMaxSessions = 8;
-constexpr int kMaxFailures = 5;
-constexpr int64_t kLockoutUs = 30LL * 1000 * 1000;
 constexpr const char *kCookie = "p64_session";
-
-struct Session {
-  char token[33] = {};
-  int64_t last_seen_us = 0;
-};
 
 std::mutex g_mutex;
 bool g_loaded = false;
 bool g_pin_set = false;
 uint8_t g_salt[16], g_hash[32];
-Session g_sessions[kMaxSessions];
-int g_failures = 0;
-int64_t g_locked_until_us = 0;
+rules::Sessions g_sessions;  // the session table and the lockout: auth_rules.cpp, host-tested
+rules::Lockout g_lockout;
 
 void hash_pin(const uint8_t *salt, const std::string &pin, uint8_t out[32]) {
   mbedtls_sha256_context ctx;
@@ -95,19 +87,10 @@ void load() {
 
 bool store(const std::string &pin) { return system::on_internal_stack([&] { return store_impl(pin); }); }
 
-bool valid_pin(const std::string &pin) {
-  if (pin.size() < 4 || pin.size() > 8) return false;
-  for (char c : pin) {
-    if (c < '0' || c > '9') return false;
-  }
-  return true;
-}
+using rules::valid_pin;
 
 // Locked: how many seconds remain (0 when not locked).
-int locked_seconds() {
-  const int64_t now = esp_timer_get_time();
-  return g_locked_until_us > now ? static_cast<int>((g_locked_until_us - now + 999999) / 1000000) : 0;
-}
+int locked_seconds() { return g_lockout.locked_seconds(esp_timer_get_time()); }
 
 // Checks a PIN under the lock; counts failures.
 bool check_pin(const std::string &pin) {
@@ -115,44 +98,16 @@ bool check_pin(const std::string &pin) {
   if (locked_seconds() > 0) return false;
   uint8_t h[32];
   hash_pin(g_salt, pin, h);
-  if (std::memcmp(h, g_hash, sizeof(h)) == 0) {
-    g_failures = 0;
-    return true;
-  }
-  if (++g_failures >= kMaxFailures) {
-    g_failures = 0;
-    g_locked_until_us = esp_timer_get_time() + kLockoutUs;
-    ESP_LOGW(TAG, "%d wrong PINs: locked for 30 s", kMaxFailures);
-  }
-  return false;
-}
-
-Session *find_session(const char *token) {
-  for (Session &s : g_sessions) {
-    if (s.token[0] && std::strcmp(s.token, token) == 0) return &s;
-  }
-  return nullptr;
+  bool just_locked = false;
+  const bool ok = g_lockout.attempt(std::memcmp(h, g_hash, sizeof(h)) == 0, esp_timer_get_time(), &just_locked);
+  if (just_locked) ESP_LOGW(TAG, "%d wrong PINs: locked for 30 s", rules::Lockout::kMaxFailures);
+  return ok;
 }
 
 const char *new_session() {
-  Session *slot = nullptr;
-  for (Session &s : g_sessions) {
-    if (!s.token[0]) {
-      slot = &s;
-      break;
-    }
-    if (!slot || s.last_seen_us < slot->last_seen_us) slot = &s;  // evict the least recent
-  }
-  static const char hex[] = "0123456789abcdef";
   uint8_t raw[16];
   esp_fill_random(raw, sizeof(raw));
-  for (int i = 0; i < 16; ++i) {
-    slot->token[i * 2] = hex[raw[i] >> 4];
-    slot->token[i * 2 + 1] = hex[raw[i] & 15];
-  }
-  slot->token[32] = 0;
-  slot->last_seen_us = esp_timer_get_time();
-  return slot->token;
+  return g_sessions.create(raw, esp_timer_get_time());
 }
 
 std::string header(httpd_req_t *req, const char *name) {
@@ -192,10 +147,7 @@ bool authenticated(httpd_req_t *req) {
     if (bearer.compare(0, 7, "Bearer ") == 0) token = bearer.substr(7);
   }
   if (!token.empty()) {
-    if (Session *s = find_session(token.c_str())) {
-      s->last_seen_us = esp_timer_get_time();
-      return true;
-    }
+    if (g_sessions.touch(token.c_str(), esp_timer_get_time())) return true;
   }
   const std::string pin = header(req, "X-P64-Pin");
   if (!pin.empty()) return check_pin(pin);
@@ -262,7 +214,7 @@ esp_err_t auth_logout(httpd_req_t *req) {
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     const std::string token = cookie_value(req);
-    if (Session *s = find_session(token.c_str())) s->token[0] = 0;
+    g_sessions.end(token.c_str());
   }
   const std::string cookie = std::string(kCookie) + "=; Path=/; Max-Age=0";
   httpd_resp_set_hdr(req, "Set-Cookie", cookie.c_str());
@@ -286,7 +238,7 @@ esp_err_t auth_pin_put(httpd_req_t *req) {
   load();
   if (g_pin_set && !check_pin(current)) return reply_error(req, "401 Unauthorized", "WRONG_PIN", "current PIN wrong");
   if (!store(pin)) return reply_error(req, "500 Internal Server Error", "NVS", "could not store the PIN");
-  for (Session &s : g_sessions) s.token[0] = 0;  // every browser signs in again
+  g_sessions.end_all();  // every browser signs in again
   ESP_LOGI(TAG, "PIN %s", pin.empty() ? "cleared" : "set");
   return reply_ok(req, state_json(!g_pin_set));
 }

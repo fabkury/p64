@@ -78,6 +78,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_net", "src", "tz.cpp"),
     os.path.join(COMPONENTS, "p64_makapix", "src", "contract.cpp"),
     os.path.join(COMPONENTS, "p64_makapix", "src", "policy.cpp"),
+    os.path.join(COMPONENTS, "p64_web", "src", "auth_rules.cpp"),
     os.path.join(FIRMWARE, "main", "status_screens.cpp"),
     os.path.join(FIRMWARE, "main", "boot_animation.cpp"),
     os.path.join(FIRMWARE, "main", "show_rules.cpp"),
@@ -98,6 +99,7 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
     os.path.join(COMPONENTS, "p64_stream", "include"),
@@ -125,6 +127,7 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
     os.path.join(COMPONENTS, "p64_stream", "include"),
