@@ -239,13 +239,14 @@ enc_board_t = 1.6;
 enc_hole_p  = 20.32;    // four 2.5 mm plated mounting holes on this square, encoder at the centre
 enc_hole_d  = 2.5;
 // Bourns PEC11 15 mm-shaft encoder as soldered on the 5880 (PEC11 datasheet)
-enc_body_h  = 6.5;      // PCB top face to the bushing base (the panel mounting surface)
+enc_body_h  = 6.5;      // PCB top face to the bushing base (the panel mounting surface); measured 6.5 on 2026-09-22
 enc_body_w  = 13.2;     // body footprint 12.5 x 13.2, sits at 45 deg on the board
 enc_bush_d  = 7.0;      // M7 x 0.75 bushing
-enc_bush_l  = 5.0;      // threaded length (7.0 on the 20 mm-shaft PEC11R-4220F)
-enc_shaft_l = 15;       // bushing base to shaft tip
+enc_bush_l  = 6.0;      // threaded length, measured on a 5880 on 2026-09-22 (datasheet: 5.0 for the 15 mm shaft, 7.0 from
+                        // 20 mm up); only sets how far the bushing stands out and the thread left for the nut
+enc_shaft_l = 15;       // bushing base to shaft tip (measured 15.0 on 2026-09-22)
 enc_shaft_d = 6.0;
-enc_nut_h   = 2.5;      // flat washer + hex nut, as supplied with the encoder
+enc_nut_h   = 2.5;      // flat washer + hex nut, as supplied with the encoder; measured 2.5 stacked on 2026-09-22
 // shell features
 enc_wall_hole = 7.4;    // clearance hole for the M7 bushing
 enc_spot_d    = 14;     // spot-face on the outer face: a flat seat for washer and nut on the sloping wall
@@ -254,8 +255,8 @@ enc_post_d    = 4.5;    // locating posts under the four board holes (4.5 stays 
 enc_peg_d     = 2.2;    // peg entering the 2.5 mm plated hole
 enc_peg_h     = 2.0;    // board thickness + 0.4 mm
 enc_keepout   = 2.5;    // vent slots closer than this to a board are dropped
-knob_d = 20;            // mock-up only: Adafruit 5527..5531 machined knob
-knob_h = 12.5;
+knob_d = 20;            // mock-up only: the user's knob, measured 2026-09-22 (20.0 x 15.5)
+knob_h = 15.5;
 
 $fn = 48;
 

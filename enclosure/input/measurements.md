@@ -70,22 +70,22 @@ Checked on the panel the same day:
   shell design (v7) therefore assumes a notch cut through the plate strip below the
   ports, see `README.md` (v6).
 
-## Adafruit 5880 rotary encoder breakout (p64b; two on hand, not measured yet)
+## Adafruit 5880 rotary encoder breakout (p64b)
 
 The shell's numbers for the board come from Adafruit's EagleCAD file
 (`adafruit-5880/README.md`) and for the encoder from the Bourns PEC11 datasheet, checked
-on 2026-09-22; three inputs are in neither source. Fill the table with calipers when the
-boards are at hand; a value that differs from the model changes the shell (`enc_*` in
-`src/p64_enclosure_v7.scad`, then regenerate p64b).
+on 2026-09-22. Measured with calipers on one of the user's two boards the same day:
 
-| Item | Model | Measured | Sets |
+| Item | Model | Measured 2026-09-22 | Sets |
 |---|---|---|---|
-| Shaft tip to the bushing base (the body's top face) | 15.0 | | `enc_shaft_l`; 15 = the 5.0 mm bushing, 20 = 7.0 (`enc_bush_l`) |
-| Threaded bushing length | 5.0 | | `enc_bush_l`: post height, thread left for the nut through the 2.4 mm wall |
-| PCB top face (component side) to the bushing base | 6.5 | | `enc_body_h` |
-| PCB thickness | 1.6 | | `enc_board_t` (peg length is board + 0.4) |
-| Washer + nut stacked, height | 2.5 | | `enc_nut_h` (needs to be at or under the thread left, 3.0) |
-| Mounting hole spacing (centre to centre) | 20.32 | | `enc_hole_p` (board file; a check) |
-| Mounting hole diameter | 2.5 | | `enc_hole_d` (board file; the 2.2 mm pegs) |
-| Board width | 25.4 | | `enc_board` (board file; a check) |
-| Knob: diameter and height, if bought | 20 x 12.5 | | mock-up only (`knob_d`, `knob_h`) |
+| Shaft tip to the bushing base (the body's top face) | 15.0 | 15.0 | `enc_shaft_l`; the 15 mm shaft, so the datasheet's 5.0 mm bushing |
+| Threaded bushing length | 5.0 (datasheet) | 6.0, "to the best of my efforts" | `enc_bush_l`, now 6.0: the bushing stands 3.6 mm proud of the face and leaves 4.0 mm of thread for the nut (needs 2.5); the board's position does not depend on it |
+| PCB top face (component side) to the bushing base | 6.5 | 6.5 | `enc_body_h` |
+| PCB thickness | 1.6 | 1.6 | `enc_board_t` |
+| Washer + nut stacked, height | 2.5 | 2.5 | `enc_nut_h` |
+| Washer outer diameter, nut across corners | under 14 (the spot-face) | not measured | the 14 mm spot-face; an M7 nut and washer are about 11 to 12 mm, so a check, not a worry |
+| Tallest feature below the PCB (pin stubs, solder) | 0 (not modelled) | about 3.0 | the room there is 4.1 mm (board bottom 7.2 mm behind the frame's back face, ledge top at 3.1): clear by 1 mm |
+| Mounting hole diameter | 2.5 | 2.5 | `enc_hole_d` (the 2.2 mm pegs) |
+| Mounting hole spacing | 20.32 | not measured (board file) | `enc_hole_p` |
+| Board width | 25.4 | 25.4 | `enc_board` |
+| Knob, diameter x height | 20 x 12.5 (mock-up) | 20.0 x 15.5 | `knob_d`, `knob_h`, mock-up only: the knob end is now 35.1 mm behind the frame's back face, 13 mm past the shell's bottom edge |

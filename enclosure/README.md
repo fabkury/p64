@@ -210,18 +210,21 @@ every margin.
 - **Hardware assumed:** two Adafruit 5880 boards (I2C "seesaw" rotary encoder breakout:
   25.4 x 25.4 mm PCB with four 2.5 mm plated holes on a 20.32 mm square, a Bourns
   PEC11-style 24-detent encoder with push switch soldered at the centre, 15 mm D-shaft,
-  M7 x 0.75 bushing 5 mm long, 6.5 mm body height) and 20 mm set-screw knobs. Checked on
-  2026-09-22 against the sources: the board outline, corner radius, hole size and hole
+  M7 x 0.75 bushing, 6.5 mm body height) and 20 mm set-screw knobs. Checked on
+  2026-09-22 against the sources and, the same day, with calipers on one of the user's
+  boards (`input/measurements.md`: shaft 15.0, body 6.5, PCB 1.6, holes 2.5, board 25.4,
+  washer plus nut 2.5, all as modelled; the bushing measured 6.0 instead of the
+  datasheet's 5.0 and the model now uses 6.0, which only changes how far it stands out;
+  the pin stubs under the board reach 3.0 mm into the 4.1 mm available there; the knob
+  is 20 x 15.5). Against the sources: the board outline, corner radius, hole size and hole
   square come from Adafruit's EagleCAD board file, stored in `input/adafruit-5880/` with
   the numbers read from it; the encoder's body height (6.5 mm from the mounting surface),
   the 12.5 x 13.2 mm body, the M7 x 0.75 bushing, the 6.0 mm shaft with its 4.5 mm flat
   and the bushing length per shaft length (5.0 mm for the 15 mm shaft, 7.0 for 20 mm and
   longer) come from the Bourns PEC11 datasheet (rev. 05/11, cited under Sources). All of
-  them match the model. Not in any source and still assumed: the PCB thickness (1.6 mm),
-  the washer plus nut height (2.5 mm), and which shaft length Adafruit solders (the
-  product page only says "standard PEC11-pinout"; a 20 mm shaft would need
-  `enc_bush_l = 7`). `input/measurements.md` has the caliper list for the two boards on
-  hand.
+  them match the model. Not measured yet: the washer's outer diameter and the nut across
+  its corners, which must fit the 14 mm spot-face (an M7 nut and washer are about 11 to
+  12 mm).
 - **Where:** the shafts leave the back face at (+-47, -25) mm in the shell's coordinates,
   i.e. 19 mm in from each side edge and 41 mm up from the bottom edge, one knob per side.
   That spot is clear of the (+-56.85, 0) and (+-44, -56.85) bosses and the controller
@@ -230,14 +233,15 @@ every margin.
   wall. Four 4.5 mm posts hang from the cavity back and end in 2.2 mm pegs that enter the
   board's holes, so the board cannot turn. The bushing passes through a 7.4 mm hole; a
   14 mm, 0.4 mm-deep spot-face on the outside gives the supplied washer and nut a flat seat
-  on the sloping wall and 3.0 mm of thread (the bushing stands 2.6 mm proud of the face).
+  on the sloping wall and 4.0 mm of thread (the 6.0 mm bushing stands 3.6 mm proud of the
+  face).
   The nut takes the knob's push force; the pegs only key the board.
 - **Numbers** (printed by the `echo` lines): cavity 15.2 mm deep at the encoder; board
   bottom 7.2 mm behind the frame back face (ledge top is at 3.1 mm); posts 8.3 mm from the
   nearest boss; board edge 4.5 mm from the side wall; shaft 12.6 mm proud of the face; knob
-  end 32 mm behind the frame back face. The knobs are therefore the deepest point of the
-  shell, 10 mm past the bottom edge: the display stands exactly as without them, but laid
-  on its back it rests on the knobs.
+  end 35 mm behind the frame back face with the user's 15.5 mm knob. The knobs are
+  therefore the deepest point of the shell, 13 mm past the bottom edge: the display stands
+  exactly as without them, but laid on its back it rests on the knobs.
 - **Vents:** the lower band loses its outer two columns on each side (x = +-36 and +-42)
   where the boards sit; p64a keeps them.
 - **Board orientation:** the side wall is only 4.5 mm from the board's outer edge, so turn
@@ -383,8 +387,7 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 | FDM print allowance | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the v7 window against the model when it arrives. |
 | LED board / mask outline | 128.0 mm | `board` | Waveshare's quoted panel size; the drawing has the frame (127.8) and not the board. The rim runs 1.5 mm beside the board with 0.2 mm clearance per side (`board_clr`). Measure the board and the mask at their widest; if over 128.0, set `board` and the pocket steps out (the wall there drops below 2 mm past 128.0, the echo warns). |
 | LED board + mask thickness in front of the frame | 2.5 mm | `panel_stack` | From the v1 print, where the mask stood 2.5 mm proud of a rim that ended at the frame. Sets the lip together with `proud`. |
-| Encoder shaft length on the 5880 (p64b) | 15 mm, so a 5.0 mm bushing | `enc_shaft_l`, `enc_bush_l` | Adafruit does not state which PEC11 it solders. The datasheet ties the bushing length to the shaft length (5.0 for 15 mm, 7.0 from 20 mm up); the bushing sets the post height and the thread left for the nut. Measure on the boards on hand (`input/measurements.md`). |
-| Encoder PCB thickness and washer + nut height (p64b) | 1.6 mm, 2.5 mm | `enc_board_t`, `enc_nut_h` | Neither is in the board file or the datasheet (the datasheet only says one washer and one nut are supplied). Measure on the boards on hand. |
+| Encoder washer outer diameter and nut across corners (p64b) | under 14 mm | `enc_spot_d` | Not measured yet; the 14 mm spot-face must take both. Everything else about the 5880 was measured on 2026-09-22 (`input/measurements.md`). |
 
 ## Verified with the v1 print
 
