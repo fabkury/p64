@@ -538,6 +538,19 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `timing_smoke.py` (spec 18.4): 24.93, 10.04 and 60.01 fps where 25, 10 and 60 are
   due, no late frame. Device: timing, makapix --paired, widgets, stream, content, api
   and ops smoke tests pass.
+- 2026-09-22, step 4 of the review roadmap completed (prompt p025,
+  `docs/review-2026-09/step4-results.md`): the show's whole logic is `main/show_core.cpp`
+  behind the `ShowEnv` interface with its state in one `State` (`show.cpp` is the shell),
+  driven on the host through nine scenarios by a fake env; the Makapix worker's decisions
+  are `policy.cpp`; the site's commands and the MQTT payloads, the OTA release document,
+  the PIN's rules, the widget faces and the driver's plane arithmetic (`p64_bcm.h`) are
+  pure files with host tests; `tests/device/ws_smoke.py` holds the WebSocket push open.
+  98 host cases, 128 079 assertions. Found and fixed: the LUT fit still collapsed when a
+  plane was blanked (the fix of 2026-09-20 kept the weights in order but not the fit's
+  walk; latent, the profiles in use never blank a plane and keep their 229 and 179
+  codes); the cache sweep deleted files whose mtime was up to a day in the future (an
+  unsigned wrap). Device tests fixed for state assumptions (content, makapix,
+  panel_mode). Every device test passes on the final build.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

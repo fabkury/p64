@@ -28,6 +28,7 @@ candidate for demotion to a compile-time option.
 | `proposals.md` | the ranked roadmap: every proposal with its measured or estimated gain, its cost, its risk, and whether it breaks anything |
 | `tier1-results.md` | what tier 1 of the roadmap did on 2026-09-22 (prompt p022): the commits, the measurements before and after, the verification of the configuration change |
 | `steps3-4-results.md` | what the next session did (prompt p024): doctest and GitHub Actions, and the first pure cores (timing, settings, the Makapix contract, the show's rules), with what their tests found and what remains |
+| `step4-results.md` | the rest of step 4 (prompt p025): the fetcher policy, the show core behind `ShowEnv`, the WebSocket test, the seams, and the two latent bugs their tests found |
 | `evidence-memory.md` | the code inventory behind `memory.md`: every task, allocation and config item, with file and line |
 | `evidence-cpu.md` | the code inventory behind `cpu.md`: every periodic activity, per-frame path, event handler and blocking hazard |
 | `evidence-testing.md` | the code inventory behind `testing.md`: coverage by file, seams graded, the device scripts, the regression table |

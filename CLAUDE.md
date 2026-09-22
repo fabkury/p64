@@ -102,6 +102,7 @@ firmware build too (`firmware/CMakeLists.txt`). Device tests:
 `python tests\device\ui_smoke.py http://<ip>` and
 `python tests\device\panel_mode_smoke.py http://<ip>` and
 `python tests\device\timing_smoke.py http://<ip>` (playback cadence, spec 18.4) and
+`python tests\device\ws_smoke.py http://<ip>` (the WebSocket push held open) and
 `python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log; give the
@@ -122,8 +123,12 @@ sits at 75 to 80 KB free (largest block 45 KB) since the review of 2026-09-22
 largest); anything new that wants internal RAM (a task stack, a TLS session, a buffer)
 must be measured on the device (`GET /api/v1/diag/memory`, `tools\cpu_sample.py`) before
 it is kept. Rules that bugs have lived in go into pure files beside the code that uses
-them (`settings_model.cpp`, `p64/playback/timing.hpp`, `p64_makapix/src/contract.cpp`,
-`main/show_rules.cpp`) and get host tests. A task whose stack is in PSRAM
+them and get host tests: the show is `main/show_core.cpp` behind the `ShowEnv` interface
+(`show.cpp` is only the shell; scenario tests drive the core with a fake env), and the
+pure halves elsewhere are `p64/playback/timing.hpp`, `settings_model.cpp`,
+`p64_makapix/src/contract.cpp` and `policy.cpp`, `p64_web/src/auth_rules.cpp`,
+`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp`, and the driver's
+`src/platforms/gdma/p64_bcm.h`. New logic goes into those, not into the shells. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
 OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is
 wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap any new

@@ -29,7 +29,9 @@ fonts, widgets' pure parts, the stream protocol, the night rule, the RTC codec, 
 orientation, the version rule. Device tests under `tests/device/` run against the
 live device: `api_smoke`, `content_smoke`, `makapix_smoke [--paired]`,
 `widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `pin_smoke`, `ota_smoke
-[--no-install]`, `ui_smoke`, `cache_sweep_smoke [--delete]`, and `soak --minutes N` for an
+[--no-install]`, `ui_smoke`, `cache_sweep_smoke [--delete]`, `panel_mode_smoke`,
+`timing_smoke` (playback cadence), `ws_smoke` (the WebSocket push held open), and
+`soak --minutes N` for an
 unattended acceptance run. The resource floors (internal RAM free and largest block at
 steady state and over a soak, core 0 busy share, image size, static internal RAM) live
 in `budgets.json`: `api_smoke` and `soak` check the runtime ones against the device,

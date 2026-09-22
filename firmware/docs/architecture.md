@@ -13,7 +13,7 @@ for the ESP32-S3; each component has one job, a public header set under
 
 | Component | Job | Depends on | Host-testable |
 |---|---|---|---|
-| `hub75` | vendored esphome/esp-hub75 0.3.6 with the p64 patch (from the hardware tests) | IDF | no |
+| `hub75` | vendored esphome/esp-hub75 0.3.6 with the p64 patch (from the hardware tests) | IDF | partly (`p64_bcm.h`: the plane windows and the LUT fit) |
 | `animatedgif` | vendored bitbank2/AnimatedGIF | none | yes |
 | `p64_gfx` | `Frame` (RGB888, panel-sized, logical orientation), `Rgb`, blending, rotation, `Scaler`, bitmap fonts and text | none | yes |
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
@@ -23,13 +23,13 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
 | `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the local folder index) |
 | `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP, time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table) |
-| `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | no |
-| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | partly (`contract`: the server's post and page documents, the download URL) |
-| `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly |
+| `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
+| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
+| `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
-| `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`: the version rule) |
-| `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | partly (`show_rules`: the show's decisions; `status_screens`, `boot_animation`) |
+| `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
+| `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | partly (`show_core`: the whole show logic behind `ShowEnv`, driven through scenarios by a fake; `show_rules`, `status_screens`, `boot_animation`; `show.cpp` is the shell) |
 
 Host-testable files have no ESP-IDF include; `tests/host/run.py` builds them with the
 PC's g++ and runs the doctest cases under `tests/host/unit/` and the pixel-exact image
