@@ -14,7 +14,8 @@ as absolute floors that fail the tests.
 | `f51eb8f` | P-T7 | the written rule in CLAUDE.md (tests travel with the code; the budgets file) |
 | `3f05d31` | P-C1, P-M7 | the show loop at priority 5; `settings_view()` for the per-frame paths and the NVS write outside the settings mutex; `Display::health()` without the 200 us busy-wait; `wifi.cpp` NVS through the flash guard |
 | `94faea2` | P-T6 | `budgets.json`, `tools/cpu_sample.py`, `tools/check_size.py`; `api_smoke.py` and `soak.py` check the floors |
-| (config) | P-M2, P-M7 | `sdkconfig.defaults`: the five internal-RAM lines, the MQTT task on core 0, run-time statistics |
+| `55c5c30` | P-M2, P-M7 | `sdkconfig.defaults`: the five internal-RAM lines, the MQTT task on core 0, run-time statistics |
+| `b3d9a62`, `dc70ea4` | | the architecture and README updates, this record; `check_size.py` on the venv's legacy size JSON |
 
 ## Measurements
 
@@ -26,7 +27,7 @@ configuration lines; "tier 1" adds the code changes.
 |---|---|---|---|---|---|
 | Committed | 13 to 23 KB | 11.7 to 20 KB | 939 B to 7.8 KB | 150 127 B | 3.3 % |
 | P-M2 | 71 to 80 KB | 45 to 47 KB | 9.7 KB (first boot after the flash), 69 KB (after the OTA reboot) | 123 951 B | 4.7 % |
-| Tier 1 (P-M2 + code) | 74.7 KB | 45 KB | 50.5 KB | 123 951 B | 3.9 % |
+| Tier 1 (P-M2 + code) | 74.7 to 80 KB | 45 to 47 KB | 50.5 to 60 KB | 120 083 B | 3.9 % idle; 7.8 % over the soak with the browser poll |
 | Variant C (tier 1 with the two Wi-Fi IRAM options back on) | 57.3 KB | 32.8 KB | 31.8 KB | 138 099 B | |
 
 The P-M2 figures are higher than the review's experiment B (54 to 58 KB) because the
@@ -45,7 +46,7 @@ Verification of P-M2 (the list from `proposals.md`):
 | `panel_mode_smoke.py` | | 12 switches, 813.8 / 271.3 Hz, 0 timeouts, largest block 45 056 B unchanged | ok |
 | `ota_smoke.py` | | install from the PC over HTTP in 21 s, boot from `ota_1`, confirmation, rollback to `ota_0` | ok (the kernel in flash coexists with the flash writes) |
 | `stream_smoke.py` | | see below | ok |
-| `soak.py --minutes 45` with the browser poll | 45 min on 2026-09-19: 0 late flips, floor 13.8 KB | pending at the time of writing; the result is appended below | |
+| `soak.py --minutes 45` with the browser poll (Promoted at 5 s swaps, status and preview polled every second) | 45 min on 2026-09-19: 540 swaps, 0 late flips, floor 13.8 KB | 529 swaps, 32 619 frames, 0 late flips, 0 timeouts, no stall, no reboot, heap floor 59 243 B (typical 64 to 70 KB), core 0 busy 7.8 % with the poll on, 0 poll errors | ok |
 
 The stream test needed attribution. Two consecutive runs on the P-M2 build lost most of
 the 128x128 bursts (4 of 10 frames counted, 21 and 51 incomplete frames) with the RSSI

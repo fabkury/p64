@@ -499,6 +499,31 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   an HTTPS command channel in place of MQTT over mTLS. The per-task run time and heap
   attribution added to `diag/memory` for the measurements live on the unmerged branch
   `review/cpu-instrumentation`. The device was flashed back to the committed build.
+- 2026-09-22, tier 1 of the review roadmap (prompt p022, `docs/review-2026-09/tier1-results.md`):
+  `sdkconfig.defaults` sends allocations above 1 KB to PSRAM and moves the Wi-Fi driver's
+  hot code, the FreeRTOS kernel and the ring buffer to flash, pins the MQTT task to core 0
+  and turns the run-time statistics on; the show loop sets its priority to the documented
+  5 (it ran at 1); `system::settings_view()` gives the overlay hook, the widget sources
+  and the stream sink the settings without a copy, and `settings_update()` writes NVS
+  outside the settings mutex; `Display::health()` compares the descriptor pointer across
+  calls instead of busy-waiting 200 us under the driver mutex; `wifi.cpp`'s NVS goes
+  through the flash guard. `budgets.json` holds the floors, checked by `api_smoke.py`
+  (steady state), `soak.py` (the floor and core 0's share over a run) and
+  `tools/check_size.py` (the image and the static internal RAM); `tools/cpu_sample.py`
+  prints per-task CPU shares from `diag/memory`; CLAUDE.md has the rule that tests
+  travel with the code. Measured on the device: internal RAM 75 to 80 KB free with a
+  45 to 47 KB largest block (13 to 23 KB and 12 to 20 KB in the morning), static DIRAM
+  120 083 B (150 127 B), image 2 078 240 B; throughput through the HTTP server not worse
+  (RX 4.9 Mbit/s, TX 3.3 Mbit/s against 3.7 and 3.4); `panel_mode_smoke`, `ota_smoke`,
+  `api_smoke`, `ops_smoke`, `widgets_smoke`, `stream_smoke` (0 incomplete frames) and a
+  45-minute soak with the browser poll (529 swaps, 32 619 frames, 0 late flips, 0
+  timeouts, heap floor 59 243 B, core 0 busy 7.8 %) all pass; host tests 86 files exact.
+  Found on the way: two stream runs at RSSI -70 dBm lost most 128x128 bursts and an A/B
+  with the Wi-Fi IRAM options restored cleared them of blame (the loss was the radio);
+  `stream_smoke`'s "30 fps measured at 0.0 fps" is the first mDNS resolution of the test
+  process taking up to 3 s, so timing-sensitive tests take the IP (README). The
+  boot-time heap minimum still varies between 10 and 70 KB from boot to boot (the second
+  TLS handshake next to the MQTT session), which proposal P-M1 addresses.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
