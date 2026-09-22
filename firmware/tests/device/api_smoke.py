@@ -9,6 +9,7 @@ byte, delete), play-this on an uploaded file, and optionally uploads the host co
 runs the decode benchmark on each file. Exit code 1 on any failure. Needs Pillow.
 """
 
+import contextlib
 import hashlib
 import io
 import json
@@ -49,6 +50,27 @@ def request(base, method, path, body=None, content_type="application/json", time
             return e.code, json.loads(payload)
         except ValueError:
             return e.code, payload
+
+
+@contextlib.contextmanager
+def playset_restored(base):
+    """Puts back the playset that was active when the block began, even when the block
+    raised midway: a smoke test leaves the device playing what it found."""
+    st, j = request(base, "GET", "/api/v1/status")
+    original = j["data"]["playback"]["playset"]["name"] if st == 200 else ""
+    try:
+        yield original
+    finally:
+        if original:
+            st, _ = request(base, "POST", "/api/v1/action/play_playset", {"name": original})
+            active = ""
+            deadline = time.time() + 15  # activation is asynchronous ("activating": true)
+            while st == 200 and time.time() < deadline:
+                active = request(base, "GET", "/api/v1/status")[1]["data"]["playback"]["playset"]["name"]
+                if active == original:
+                    break
+                time.sleep(0.25)
+            check(st == 200 and active == original, "restored the playset %s (%s active)" % (original, active or "none"))
 
 
 def budgets():

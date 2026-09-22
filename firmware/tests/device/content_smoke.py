@@ -7,13 +7,14 @@ Needs a card with artwork files in animations/ (run api_smoke.py --corpus first)
 Exercises: the playset list with its built-ins, creating, reading, rejecting, activating
 and deleting a user playset, the channels view, next/previous/history navigation,
 history_go, pause/resume, reset_timer, play-this from a file, and the Local built-in.
+The playset active at the start is active again at the end.
 Exit code 1 on any failure.
 """
 
 import sys
 import time
 
-from api_smoke import check, request
+from api_smoke import check, playset_restored, request
 
 
 def status(base):
@@ -34,9 +35,7 @@ def wait_for(base, predicate, what, timeout=10.0):
     return p
 
 
-def main():
-    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
-
+def run(base):
     st, j = request(base, "GET", "/api/v1/playsets")
     check(st == 200 and j.get("ok"), "GET /api/v1/playsets")
     d = j["data"]
@@ -157,7 +156,7 @@ def main():
     st, j = request(base, "POST", "/api/v1/action/play", {"path": "animations/does_not_exist.gif"})
     check(st == 422, "play-this of a missing file is rejected (" + str(st) + ")")
 
-    # Clean up: delete the playset, go back to Local.
+    # Clean up: delete the playset; then the Local built-in on its own.
     st, j = request(base, "DELETE", "/api/v1/playsets/smoke_test")
     check(st == 200, "DELETE playset smoke_test")
     st, j = request(base, "GET", "/api/v1/playsets/smoke_test")
@@ -167,6 +166,11 @@ def main():
     st, j = request(base, "GET", "/api/v1/channels")
     check(st == 200 and all(c["kind"] == "local" for c in j["data"]["channels"]), "Local built-in has only local channels (%d)" % len(j["data"]["channels"]))
 
+
+def main():
+    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
+    with playset_restored(base):
+        run(base)
     from api_smoke import failures
     print("content smoke: %d failures" % failures)
     return 1 if failures else 0
