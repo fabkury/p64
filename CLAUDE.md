@@ -317,7 +317,7 @@ the design rationale, the budget, the verified dimensions and the list of things
 could not be verified. Versions v1 to v6 (v1 is the only printed one, the fit evidence)
 live in `enclosure/archive/pre-v7/` with their own README; do not bring their features
 back without asking. Rules that have held across versions: every wall or rib 2 mm or
-thicker (the insert's glued 1 mm sole and bottom wall are the named exceptions); check any
+thicker (the insert's glued 1.2 mm sole and bottom wall are the named exceptions; 1.2 is also JLC3DP's thin-wall line); check any
 new geometry against the Waveshare drawings in `enclosure/input/` and record hand
 measurements in `input/measurements.md`.
 

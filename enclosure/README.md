@@ -130,8 +130,8 @@ inserted before closing the shell.
   that both seat fully and that the bodies clear the wall (that check also verifies the
   downward side of the budget, see below).
 - **Cradle insert** (`part = "insert"`, `p64_cradle_insert.stl`): a 34 x 7 x 6 mm second
-  print: a U (1.0 mm bottom wall, 2 mm side walls up to the bodies' top face, open towards
-  the controller) around the last 6 mm of the bodies, standing on a 1.0 mm sole that lies
+  print: a U (1.2 mm bottom wall, 2 mm side walls up to the bodies' top face, open towards
+  the controller) around the last 6 mm of the bodies, standing on a 1.2 mm sole that lies
   on the cavity back and reaches 3 mm beyond the window on each side and 1 mm below it.
   Its opening has 0.55 mm of clearance in x and 0.75 in y (0.3/0.5 plus the print
   allowance), because it is glued to the cavity back while sitting on the real adapters and
@@ -142,10 +142,14 @@ inserted before closing the shell.
   below; above the bodies the 1.95 mm strip stays open into the cavity (a bar there would
   sit in front of the mic1 hole at the worst case). Two 1.5 x 1.2 mm rails on the cavity
   back bracket the sole with the whole x budget of play: a guide for placing it and a shear
-  key for the glue. The 1.0 mm sole and bottom wall are deliberate exceptions to the 2 mm
+  key for the glue. The 1.2 mm sole and bottom wall are deliberate exceptions to the 2 mm
   rule: the sole is a glued lamination on the 2.4 mm wall, the bottom wall is backed by
-  the shell's bottom wall within 0.56 mm (0.15 mm when the bodies sit as low as they
-  physically can; that is why it is 1.0 and not 2). The wall's own 2.4 mm depth keeps the
+  the shell's bottom wall within 0.36 mm (a 0.05 mm overlap only if the bodies sat as low
+  as they physically can, which would just lift the glued insert by that much; that is
+  why it is 1.2 and not 2). 1.2 mm is JLC3DP's thin-wall line: at 1.0 their check flagged
+  the insert on 2026-09-22, and a 1 mm entry chamfer along the bottom wall tapered it to
+  a knife edge. The entry chamfer is now 0.8 mm on the side walls only (1.2 mm left at
+  the edge); the bottom wall has none. The wall's own 2.4 mm depth keeps the
   plugs from ever leaving the receptacles: a plug shell is 6.5 mm long.
 - **Ledge relief:** the seating ledge is cut away over 30.3 mm centred below the ports
   (`ledge_relief`); in the previous design the bodies passed 0.7 mm above it.

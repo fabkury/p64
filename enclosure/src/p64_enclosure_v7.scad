@@ -196,10 +196,12 @@ win_slack  = 0.1;         // extra on the window's lower edge beyond the physica
 ins_clr     = [0.3, 0.5];  // opening clearance per side in x and y, before print_clr (v6's cradle values); the insert is glued
                            // in place on the real adapters, so it takes no share of the position budget
 ins_depth   = 6;           // sole + walls, in front of the cavity back (v6's cradle depth)
-ins_sole_t  = 1.0;         // the plate that glues to the cavity back around the window (a glued lamination, hence under 2 mm)
+ins_sole_t  = 1.2;         // the plate that glues to the cavity back around the window (a glued lamination, hence under 2 mm)
 ins_wall_t  = 2;           // side walls
-ins_bot_t   = 1.0;         // bottom wall: the room between the bodies and the shell's bottom wall, which backs it, is 1.6 mm at
+ins_bot_t   = 1.2;         // bottom wall: the room between the bodies and the shell's bottom wall, which backs it, is 1.6 mm at
                            // most and 1.15 when the bodies sit as low as they physically can (see the echo)
+ins_chamfer = 0.8;         // entry chamfer on the SIDE walls only: 2.0 - 0.8 leaves 1.2 at the edge; the bottom wall gets none
+                           // (a chamfer there tapered it to a knife edge, JLC's thin-wall check, 2026-09-22)
 ins_lap     = 3;           // how far the sole reaches beyond the window on each side (the glue land)
 ins_top_cut = 2.5;         // the sole ends this far below the bodies' top face: clear of the mic1 hole even at the worst case
 ins_rails   = true;        // two ribs on the cavity back bracketing the sole: a guide for placing it, a shear key for the glue
@@ -545,9 +547,9 @@ module insert_in_place() {              // where it sits in the shell (design co
             below_cavity_back();        // both end at the cavity back
         }
         translate([ad_ctr[0], ad_ctr[1], z0 - 1]) linear_extrude(ins_depth + 3) ins_open2d();   // the bodies' prism, along Z
-        hull() {                        // entry chamfer for the bodies sliding in with the panel
-            translate([ad_ctr[0], ad_ctr[1], z0 - 0.01])       linear_extrude(0.01) offset(r = ad_chamfer) ins_open2d();
-            translate([ad_ctr[0], ad_ctr[1], z0 + ad_chamfer]) linear_extrude(0.01) ins_open2d();
+        hull() {                        // entry chamfer for the bodies sliding in with the panel: widened in x only
+            translate([ad_ctr[0], ad_ctr[1], z0 - 0.01])        linear_extrude(0.01) minkowski() { ins_open2d(); square([2*ins_chamfer, 0.001], center = true); }
+            translate([ad_ctr[0], ad_ctr[1], z0 + ins_chamfer]) linear_extrude(0.01) ins_open2d();
         }
     }
 }
