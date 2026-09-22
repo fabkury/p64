@@ -17,7 +17,7 @@ import threading
 import time
 import urllib.request
 
-from api_smoke import check, request
+from api_smoke import check, request, budgets
 
 
 def status(base):
@@ -64,6 +64,8 @@ def main():
     p0, r0 = d0["panel"], d0["reliability"]["counters"]
     swaps0 = d0["playback"]["swaps"]
     heap_min = d0["heap"]["internal_free"]
+    b = budgets()
+    cpu0 = request(base, "GET", "/api/v1/diag/memory")[1]["data"]
     load = WsLoad(base)
     load.start()
     t0 = time.time()
@@ -102,7 +104,14 @@ def main():
     check(not stalled and not p["stalled"], "no DMA stall")
     check(p["late_flips"] - p0["late_flips"] <= 2, "late flips stayed at zero or one (%d)" % (p["late_flips"] - p0["late_flips"]))
     check(d["playback"]["swaps"] - swaps0 >= (minutes * 60 / interval) * 0.6, "artworks swapped (%d in %.0f min)" % (d["playback"]["swaps"] - swaps0, minutes))
-    check(heap_min > 8000, "internal heap floor stayed above 8 KB (%d)" % heap_min)
+    check(heap_min >= b["soak_internal_free_min"], "internal heap floor %d >= budget %d" % (heap_min, b["soak_internal_free_min"]))
+    cpu1 = request(base, "GET", "/api/v1/diag/memory")[1]["data"]
+    if "uptime_us" in cpu1 and cpu1["tasks"] and "run_time" in cpu1["tasks"][0]:
+        dt = cpu1["uptime_us"] - cpu0["uptime_us"]
+        before = {t["name"]: t["run_time"] for t in cpu0["tasks"]}
+        busy0 = sum((t["run_time"] - before[t["name"]]) / dt * 100.0 for t in cpu1["tasks"]
+                    if t["name"] in before and t["core"] == 0 and not t["name"].startswith("IDLE"))
+        check(busy0 <= b["core0_busy_percent_max"], "core 0 busy %.1f %% <= budget %d %% over the soak" % (busy0, b["core0_busy_percent_max"]))
     check(load.errors <= 2, "the status and preview polls kept answering (%d errors)" % load.errors)
     request(base, "POST", "/api/v1/action/play_playset", {"name": original_playset})  # switches to the show, so first
     request(base, "PUT", "/api/v1/settings", {"show": {"main_state": original["show"]["main_state"], "auto_swap_seconds": original["show"]["auto_swap_seconds"]}})

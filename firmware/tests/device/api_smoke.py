@@ -51,17 +51,35 @@ def request(base, method, path, body=None, content_type="application/json", time
             return e.code, payload
 
 
+def budgets():
+    """The resource floors in firmware/budgets.json (docs/review-2026-09/)."""
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "budgets.json")) as f:
+        return json.load(f)
+
+
+def check_heap_budget(base, b):
+    """Steady-state internal RAM against the budget: free and largest block."""
+    st, j = request(base, "GET", "/api/v1/diag/memory")
+    h = j.get("data", {}).get("heap", {}).get("internal", {}) if st == 200 else {}
+    check(h.get("free", 0) >= b["internal_free_min"],
+          "internal heap free %s >= budget %d" % (h.get("free"), b["internal_free_min"]))
+    check(h.get("largest_free", 0) >= b["internal_largest_block_min"],
+          "internal largest block %s >= budget %d" % (h.get("largest_free"), b["internal_largest_block_min"]))
+    print("     heap: free %s, largest %s, minimum since boot %s" % (h.get("free"), h.get("largest_free"), h.get("minimum_free")))
+
+
 def main():
     base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
     with_corpus = "--corpus" in sys.argv
     with_bench = "--bench" in sys.argv
+    b = budgets()
 
     st, j = request(base, "GET", "/api/v1/status")
     check(st == 200 and j.get("ok"), "GET /api/v1/status")
     d = j.get("data", {})
     check(d.get("api_version") == 1, "api_version 1")
     check(d.get("panel", {}).get("refresh_hz", 0) > 100, f"panel refresh {d.get('panel', {}).get('refresh_hz', 0):.1f} Hz")
-    check(d.get("heap", {}).get("internal_free", 0) > 20000, f"internal heap free {d.get('heap', {}).get('internal_free')}")
+    check_heap_budget(base, b)
     check(isinstance(d.get("playback", {}).get("playset", {}).get("version"), int), "status carries playback.playset.version")
     check(isinstance(d.get("playsets_version"), int), "status carries playsets_version")
 

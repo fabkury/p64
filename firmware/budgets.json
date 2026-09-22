@@ -1,0 +1,10 @@
+{
+  "_comment": "Resource floors and ceilings the firmware must hold (docs/review-2026-09/). A change that breaks one raises it here deliberately, in the same commit, with the reason in the commit message. Runtime values are checked by tests/device/api_smoke.py (steady state) and tests/device/soak.py (the floor over a run); the static ones are read from `idf.py size` by tools/check_size.py and, later, by CI. Set on 2026-09-22 from the measurements after the configuration change P-M2.",
+  "image_bytes_max": 2300000,
+  "static_diram_bytes_max": 140000,
+  "internal_free_min": 48000,
+  "internal_largest_block_min": 32768,
+  "soak_internal_free_min": 32768,
+  "core0_busy_percent_max": 10,
+  "late_flips_per_soak_max": 2
+}

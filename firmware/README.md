@@ -30,9 +30,15 @@ orientation, the version rule. Device tests under `tests/device/` run against th
 live device: `api_smoke`, `content_smoke`, `makapix_smoke [--paired]`,
 `widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `pin_smoke`, `ota_smoke
 [--no-install]`, `ui_smoke`, `cache_sweep_smoke [--delete]`, and `soak --minutes N` for an
-unattended acceptance run.
+unattended acceptance run. The resource floors (internal RAM free and largest block at
+steady state and over a soak, core 0 busy share, image size, static internal RAM) live
+in `budgets.json`: `api_smoke` and `soak` check the runtime ones against the device,
+`tools/check_size.py` the static ones against a build; a change that breaks a floor
+raises it there deliberately (rule of 2026-09-22, `docs/review-2026-09/`).
 Tools: `stream_send.py` (send pixels), `release_assets.py` (the GitHub release assets),
-`gen_fonts.py`, `gen_weather_icons.py`, `gen_ui_icons.py`.
+`cpu_sample.py` (per-task CPU shares and heap figures from `diag/memory`; heap owners
+too when the build has `CONFIG_HEAP_TASK_TRACKING`), `check_size.py`, `gen_fonts.py`,
+`gen_weather_icons.py`, `gen_ui_icons.py`.
 
 ## Fonts and icons
 
