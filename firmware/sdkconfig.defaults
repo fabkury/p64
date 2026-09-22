@@ -16,8 +16,7 @@ CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_IGNORE_NOTFOUND=y
-# Allocations above this size that do not ask for internal memory come from PSRAM.
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+# CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL is set at the end of this file (1024 since 2026-09-22).
 CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
 
 # --- Partition table: two 8 MB app slots, 64 KB NVS, 256 KB core dump, data ---
@@ -143,6 +142,27 @@ CONFIG_FATFS_LFN_HEAP=y
 CONFIG_FATFS_API_ENCODING_UTF_8=y
 CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096
 
-# review instrumentation (branch review/cpu-instrumentation): per-task run time in diag/memory
+# Diagnostics (review of 2026-09-22, docs/review-2026-09/): per-task run time in
+# GET /api/v1/diag/memory (costs nothing measurable; tools/cpu_sample.py reads it).
+# Heap attribution by task (heap_by_task in the same document) costs about 4 KB of
+# internal RAM, so it stays off: set CONFIG_HEAP_TASK_TRACKING=y in a diagnosis build.
 CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
-CONFIG_HEAP_TASK_TRACKING=y
+CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U64=y
+
+# Internal RAM (review of 2026-09-22, measured: 13 KB free / 11.7 KB largest block became
+# 54-58 KB / 32.7 KB with these five lines, pacing unchanged). Allocations above 1 KB go
+# to PSRAM first (the esp-mqtt and esp_http_client 4 KB buffers, small artworks and
+# canvases, the PEMs; network buffers in PSRAM cost nothing measurable), and the Wi-Fi
+# driver's hot code, the FreeRTOS kernel and the ring buffer live in flash instead of the
+# SRAM the heap shares with them (26 KB). The card path is unaffected: it uses POSIX
+# reads and writes with an explicit internal bounce buffer (M4).
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024
+CONFIG_ESP_WIFI_IRAM_OPT=n
+CONFIG_ESP_WIFI_RX_IRAM_OPT=n
+CONFIG_FREERTOS_PLACE_FUNCTIONS_INTO_FLASH=y
+CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y
+
+# The esp-mqtt task on core 0 like every other network task (architecture section 2;
+# it was unpinned until the review of 2026-09-22).
+CONFIG_MQTT_TASK_CORE_SELECTION_ENABLED=y
+CONFIG_MQTT_USE_CORE_0=y
