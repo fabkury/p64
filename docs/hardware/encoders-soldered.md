@@ -1,8 +1,8 @@
-# Option B: two rotary encoders, with soldering
+# Soldered option: two rotary encoders, with soldering
 
-Written 2026-09-21, before anything was built. This is the complete project for the two
+Written 2026-09-21, before anything was built. Both options belong to **p64b**, the variant with encoders; p64a has none. This is the complete project for the two
 Adafruit 5880 encoders on the p64, from the parts on the table to two working knobs
-inside the v6 shell. Its sibling, [Option A](encoders-a-solderless.md), is the one-encoder
+inside the p64b shell (enclosure v7b). Its sibling, [the solderless option](encoders-solderless.md), is the one-encoder
 project without soldering; the electrical facts (section 3 there) are the same and are
 only summarised here.
 
@@ -42,7 +42,7 @@ Still needed:
 
 ## 2. Electrical summary
 
-Full reasoning and numbers in Option A, section 3. In one table:
+Full reasoning and numbers in the solderless option, section 3. In one table:
 
 | Fact | Consequence |
 |---|---|
@@ -101,7 +101,7 @@ one blob of solder. Do it before the bench build, on the board that will be knob
 
 ## 4. Bench build
 
-Same as Option A, section 4, with the second board chained. Nothing is powered until
+Same as the solderless option, section 4, with the second board chained. Nothing is powered until
 step 5.
 
 ![bench map](img/bench-map-two-boards.svg)
@@ -147,7 +147,7 @@ Bench record:
 
 ## 5. Firmware
 
-Identical to Option A, section 6, with two devices. Only the differences:
+Identical to the solderless option, section 6, with two devices. Only the differences:
 
 - **Probe (stage B):** the driver opens both addresses; at start the NeoPixel of 0x36 goes
   green and that of 0x37 blue for two seconds, so the boards identify themselves;

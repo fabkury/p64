@@ -66,20 +66,31 @@ prices on waveshare.com on 2026-09-21, before shipping:
 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | The driver board: ESP32-S3 with 32 MB flash and 16 MB PSRAM, Wi-Fi, HUB75 header, two USB-C ports, IMU, real-time clock, temperature sensor, microSD slot. Ships with the power lead and screws. [Wiki](https://docs.waveshare.com/ESP32-S3-RGB-Matrix). | $24.99 |
 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | The panel: 4096 RGB LEDs at a 2 mm pitch, 128 x 128 mm, GOB version (a protective layer over the LEDs). The [standard version](https://www.waveshare.com/rgb-matrix-p2-64x64.htm) without the layer is $28.99 and fits the same shell. [Wiki](https://docs.waveshare.com/RGB-Matrix-Px-64x64). | $31.99 |
 | [PSU-27W-USB-C-B](https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775) | A 5.1 V USB-C supply; any good 5 V 3 A USB-C supply works. US, EU and UK plugs. | $6.99 |
-| The shell | One support-free 3D print, about 80 g of PLA or PETG on a 140 x 140 mm bed, or a print bureau. Files in `enclosure/output/`. The v1 shell in the photos was printed by JLC3DP in black PLA for $18.83, shipping included. | $18.83 at a bureau, a few dollars of filament at home |
+| The shell | One support-free 3D print, about 80 g of PLA or PETG on a 140 x 140 mm bed, or a print bureau, plus a 2 g insert. Files in `enclosure/output/p64a/` or `p64b/`. The v1 shell in the photos was printed by JLC3DP in black PLA for $18.83, shipping included. | $18.83 at a bureau, a few dollars of filament at home |
 | Small parts | Six M3 x 10 screws, a USB-C cable; for the current shell version two small 90-degree USB-C adapters. A microSD card is optional. | a few dollars |
 
 About $64 in electronics plus the print, so a little over $80 before the electronics'
 shipping. You also need a computer with a USB-C cable to
 flash the firmware the first time; after that the device updates itself over Wi-Fi.
 
+## Two variants
+
+p64 comes in two variants, both supported for good (decided 2026-09-22):
+
+- **p64a, solder-less:** no rotary encoders. Two boards plug together, the power lead goes
+  into screw terminals, the shell is `enclosure/output/p64a/`.
+- **p64b, with soldering:** two rotary encoder knobs on the back of the shell
+  (`enclosure/output/p64b/`), wired to the board's GPIO socket as in `docs/hardware/`.
+
+The firmware is the same; p64a simply has no knobs to read.
+
 ## Build one
 
 [docs/build-your-own.md](docs/build-your-own.md) is the step-by-step guide. In short:
 
-1. Order the parts above and print `enclosure/output/v7/p64_enclosure_print.stl` plus
-   the small `p64_cradle_insert.stl` next to it (or `v1/`, the version that has been
-   printed and verified; see the status below).
+1. Order the parts above and print `p64_enclosure_print.stl` plus the small
+   `p64_cradle_insert.stl` from `enclosure/output/p64a/v7a/` (no knobs, no soldering) or
+   `enclosure/output/p64b/v7b/` (two knobs, soldered wiring); see the two variants above.
 2. Install ESP-IDF v5.5, build the firmware from `firmware/` and flash it over the
    board's USB port.
 3. Plug the board onto the panel, connect the power lead, slide the panel into the shell
@@ -97,9 +108,8 @@ there yet, as of 2026-09-21:
   ESP-IDF. A first GitHub release with a ready-to-flash image is planned; the updater is
   already in the firmware and waits for it.
 - **The shell in the photos is v1.** The current design, v7, adds a window for the USB-C
-  cables and mounts for two rotary knobs, and is not printed yet (v7 is v6 with room for
-  the measurement errors around the USB-C window, settled on 2026-09-22). v1 is proven
-  and needs a right-angle USB-C cable instead.
+  cables (and, in p64b, mounts for the two knobs) and is not printed yet. v1 is proven,
+  archived under `enclosure/archive/pre-v7/`, and needs a right-angle USB-C cable instead.
 - **The two knobs are designed, not wired.** Their wiring projects are in
   `docs/hardware/`; the firmware has the input hooks ready.
 - **Some acceptance measurements** in the specification still need instruments.
@@ -109,7 +119,7 @@ there yet, as of 2026-09-21:
 | Path | What it is |
 |---|---|
 | `firmware/` | The product firmware: ESP-IDF v5.5, C++20, on a patched `esp-hub75` driver. Its README has the build, flash and test commands; `firmware/docs/` has the architecture, the API and the progress log. |
-| `enclosure/` | The OpenSCAD shell, one file per version, with ready-to-print STL/3MF and renders under `enclosure/output/vN/`. Its README has the design rationale and the print settings. |
+| `enclosure/` | The OpenSCAD shell (one source, two variant files), with ready-to-print STL/3MF and renders under `enclosure/output/p64a/` and `p64b/`. Its README has the design rationale and the print settings; the earlier versions are under `enclosure/archive/pre-v7/`. |
 | `docs/spec/p64-spec.md`, `CONTEXT.md`, `docs/adr/` | What the device does (the specification), the vocabulary, and the decisions that are hard to reverse. |
 | `docs/build-your-own.md`, `docs/images/` | The build guide, the photos (`photos/`) and the web UI screenshots. |
 | `docs/hardware/` | Wiring projects for the two rotary encoders, with schematics. |

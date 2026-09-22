@@ -8,7 +8,9 @@ power lead goes into screw terminals.
 The state of things on 2026-09-21: the firmware is complete for version 1 and runs
 daily on one device, but there is no ready-made firmware image yet, so step 3 compiles it
 from source. The shell in the photos is version 1; the current design (v7) is not printed
-yet. Both are covered below.
+yet. Both are covered below. p64 comes in two variants: **p64a** without rotary knobs
+(no soldering at all) and **p64b** with two knobs on the back (soldered wiring, see
+`docs/hardware/`); pick one before printing, the shells differ.
 
 ## 1. Order the parts
 
@@ -17,7 +19,7 @@ yet. Both are covered below.
 | Waveshare ESP32-S3-RGB-Matrix | The driver board. Ships with the panel power lead (VH4 plug to bare wires), a 4-pin SH1.0 cable, screws and a small speaker that p64 does not use. |
 | Waveshare RGB-Matrix-P2-64x64-B (or the standard RGB-Matrix-P2-64x64) | The 128 x 128 mm panel. The "-B" GOB version has a protective layer over the LEDs; both fit the shell. |
 | A 5 V USB-C power supply, 3 A or more | Waveshare's PSU-27W-USB-C-B or any good phone charger. A laptop's USB port also powers it, but not at full brightness on bright content: full white at brightness 255 draws close to the panel's 15 W. |
-| A USB-C cable | To power the device and, the first time, to flash it from a computer. For the v1 shell it must be a right-angle ("up/down angled") plug; for v7 any cable, plus two small 90-degree USB-C adapters (19.3 x 12.7 x 8 mm aluminium body, hand-measured in `enclosure/input/measurements.md`). |
+| A USB-C cable | To power the device and, the first time, to flash it from a computer. For the v1 shell it must be a right-angle ("up/down angled") plug; for v7 any cable, plus two small 90-degree USB-C adapters (19.3 x 12.7 x 8 mm aluminium body, hand-measured in `enclosure/input/measurements.md`) and a drop of cyanoacrylate for the insert. |
 | Six M3 x 10 screws | Into the panel's brass inserts. The heads sit 17 mm deep, so a long PH1 or hex driver is needed. |
 | microSD card (optional) | FAT32. For your own files and for the Makapix cache; the device also runs without one. |
 
@@ -26,15 +28,15 @@ yet. Both are covered below.
 Everything is in `enclosure/`; its [README](../enclosure/README.md) explains the design.
 Two versions matter:
 
-- **v7, the current design:** `enclosure/output/v7/p64_enclosure_print.stl` (or `.3mf`)
-  plus the small `enclosure/output/v7/p64_cradle_insert.stl`, a second print that is
-  glued inside at the first assembly. Cables plug into two 90-degree USB-C adapters that
-  stay on the board's ports, reached through one window in the back face, and the back
-  has mounts for two rotary knobs. It needs a small notch cut by hand in the panel's
-  plastic frame (marked in red in `enclosure/output/v7/render_frame_notch.png`). v7 has
-  not been printed yet; its window has room for the measurement errors the design
-  carries, see the enclosure README's v7 section.
-- **v1, the proven one:** `enclosure/output/v1/p64_enclosure_print.stl`. Printed by
+- **v7, the current design:** `p64_enclosure_print.stl` (or `.3mf`) plus the small
+  `p64_cradle_insert.stl`, a second print that is glued inside at the first assembly,
+  both from `enclosure/output/p64a/v7a/` (no knobs) or `enclosure/output/p64b/v7b/` (two
+  knobs). Cables plug into two 90-degree USB-C adapters that stay on the board's ports,
+  reached through one window in the back face. It needs a small notch cut by hand in the
+  panel's plastic frame (marked in red in `render_frame_notch.png` next to the STL). v7
+  has not been printed yet; its window has room for the measurement errors the design
+  carries, see the enclosure README.
+- **v1, the proven one:** `enclosure/archive/pre-v7/output/v1/p64_enclosure_print.stl`. Printed by
   JLC3DP in black PLA for $18.83 including shipping, and verified to fit. The cable is a right-angle USB-C plug pushed up into the port from
   underneath, laid in a groove to a notch at the back. No knob mounts.
 
@@ -85,7 +87,8 @@ reachable in the shell.
 3. v7 only: push a 90-degree adapter onto each of the board's USB-C ports, body towards
    the frame's edge, after cutting the frame notch. At the first assembly, glue the
    cradle insert to the inside of the back wall while the adapters carry it (the
-   enclosure README, v7, has the steps).
+   enclosure README's Assembly section has the steps). p64b: fit the two encoder boards
+   on their pegs and nuts before the panel goes in.
 4. Slide the panel into the shell from the front with the board at the **bottom**, so the
    USB-C ports point at the wedge. It seats on the ledge and the six bosses.
 5. Fit the six M3 x 10 screws from the back.

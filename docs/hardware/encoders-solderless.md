@@ -1,8 +1,8 @@
-# Option A: one rotary encoder, no soldering
+# Solderless option: one rotary encoder, no soldering
 
-Written 2026-09-21, before anything was built. This is the complete project for one
+Written 2026-09-21, before anything was built. Both options belong to **p64b**, the variant with encoders; p64a has none. This is the complete project for one
 Adafruit 5880 encoder on the p64, from the parts on the table to a working knob inside
-the shell, without a soldering iron. Its sibling, [Option B](encoders-b-soldered.md), is
+the shell, without a soldering iron. Its sibling, [the soldered option](encoders-soldered.md), is
 the two-encoder project with soldering. Both share the same electrical facts, the same
 bench test and the same firmware plan; they differ in the number of boards, in how the
 second address is set and in how the harness is made permanent.
@@ -43,7 +43,7 @@ On hand (2026-09-21):
 | Adafruit 5528, 20 mm aluminium knob, 6 mm bore, set screw | the knob cap |
 | Adafruit 4209, JST-SH 4-pin to premium male headers, 150 mm | controller socket to breadboard |
 | Adafruit 4397, JST-SH 4-pin to premium female sockets, 150 mm | breadboard to encoder board |
-| Adafruit 4399, JST-SH to JST-SH, 50 mm | not needed with one board (Option B uses it) |
+| Adafruit 4399, JST-SH to JST-SH, 50 mm | not needed with one board (the soldered option uses it) |
 | 2.2 kΩ resistors, 1/2 W, 5 % (40) | two pull-ups; the wattage is irrelevant here, 1/4 W would be neater |
 | ELEGOO 400-point breadboards (3) | the bench junction |
 | Multimeter | pin identification and the idle-level measurement |
@@ -132,7 +132,7 @@ The ESP32-S3 reads a HIGH only above 0.75 x 3.3 V = 2.475 V (datasheet VIH). Cas
 |---|---|---|---|
 | one 5880, nothing else | 10 k | 1.65 V | fails: the bus never reads idle |
 | one 5880 + 2.2 k on each line | 1.80 k | 2.80 V | ok |
-| two 5880 + 2.2 k (Option B) | 1.53 k | 2.86 V | ok |
+| two 5880 + 2.2 k (soldered option) | 1.53 k | 2.86 V | ok |
 | Qwiic Twist alone (its own 2.2 k) | 2.2 k | 2.70 V | ok, small margin |
 | 5880 + Qwiic Twist (appendix) | 1.80 k | 2.80 V | ok |
 | pull-downs not fitted | any | 3.3 V | ok, no resistors needed |

@@ -24,15 +24,22 @@ folders of work live here, each with its own README that is the detailed referen
   its architectural reference. The "Hardware tests" sections below describe it.
 - `enclosure/`: the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
-- `docs/hardware/`: wiring projects for the two rotary encoders (`encoders-a-solderless.md`,
-  `encoders-b-soldered.md`, schematics drawn by `tools/draw_encoders.py` with schemdraw),
+- `docs/hardware/`: wiring projects for the two rotary encoders of p64b
+  (`encoders-solderless.md`, `encoders-soldered.md`, schematics drawn by
+  `tools/draw_encoders.py` with schemdraw),
   written 2026-09-21 before any encoder was wired; the bench records in them are blank
   until measured.
 
 The repository README is written for newcomers (what p64 is, photos under `docs/images/photos/`,
 the parts list with dated Waveshare prices, an honest status) and `docs/build-your-own.md`
 is the step-by-step build guide; keep both truthful when the status changes (first
-release, v6 printed, encoders wired).
+release, v7 printed, encoders wired).
+
+p64 has two variants, supported for good (decided 2026-09-22): **p64a**, solder-less,
+without rotary encoders; **p64b**, with soldering, with the two rotary encoders. The
+enclosure has one source and two variant files (`enclosure/src/p64_enclosure_v7a.scad`
+and `_v7b.scad`), outputs under `enclosure/output/p64a/` and `p64b/`; the firmware is
+shared. Anything new that touches the encoders is a p64b matter.
 
 Also: `firmware/reference/` is git-ignored upstream clones: Waveshare's example repo,
 `p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the
@@ -288,22 +295,26 @@ Style: `hardware-tests/.clang-format` (Google, 2 spaces, 120 columns), same as t
 
 ## Enclosure
 
-OpenSCAD, one file per version (`src/p64_enclosure.scad` = v1 as printed and ordered;
-`_v2` .. `_v7` add features). **v7 is the version to print**: v4's panel-mount USB-C
-sockets did not fit inside the v1 print, so v6 leaves two small 90-degree adapters on the
-controller's ports behind one window in the back face and needs a hand-cut notch in the
-panel frame's back plate (README, v6); v7 (2026-09-22) is v6 with a named tolerance
-budget around that window (the port position is only known to +-1 mm, from a photo), the
-seating ledge relieved below the ports and the cradle as a separate small print glued in
-on the real adapters (README, v7; a second STL, `p64_cradle_insert.stl`). v3, v4, v5 and
-v6 are kept alternatives. Each version
-writes the same file names into its own `output/vN/`
-(`p64_enclosure_print.stl`/`.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for
-bureaus, `render_*.png`). The exact `openscad` commands per version and per render are in
-`enclosure/README.md`, together with the design rationale, verified dimensions and the
-list of things that could not be verified. Rules that have held across versions: never
-modify v1; every wall or rib 2 mm or thicker; check any new geometry against the Waveshare
-drawings in `enclosure/input/` and record hand measurements in `input/measurements.md`.
+OpenSCAD. **v7 is the design** (`src/p64_enclosure_v7.scad`, the whole geometry), rendered
+through two three-line variant files that include it and set `encoders`:
+`src/p64_enclosure_v7a.scad` (p64a, no encoders, outputs in `output/p64a/v7a/`) and
+`src/p64_enclosure_v7b.scad` (p64b, two encoders, `output/p64b/v7b/`). Render the variant
+files, never the source, so a change is made once and both folders are regenerated. What
+v7 is: two small 90-degree USB-C adapters stay on the controller's ports behind one window
+in the back face, sized by a named tolerance budget (the port position is only known to
++-1 mm, from a photo; the frame's own wall bounds the downward side), a hand-cut notch in
+the panel frame's back plate, the seating ledge relieved below the ports, and the cradle
+as a separate small print (`p64_cradle_insert.stl`) glued in on the real adapters at the
+first assembly. Every output folder has the same file names (`p64_enclosure_print.stl`/
+`.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for bureaus, the insert,
+`render_*.png`). The exact `openscad` commands are in `enclosure/README.md`, together with
+the design rationale, the budget, the verified dimensions and the list of things that
+could not be verified. Versions v1 to v6 (v1 is the only printed one, the fit evidence)
+live in `enclosure/archive/pre-v7/` with their own README; do not bring their features
+back without asking. Rules that have held across versions: every wall or rib 2 mm or
+thicker (the insert's glued 1 mm sole and bottom wall are the named exceptions); check any
+new geometry against the Waveshare drawings in `enclosure/input/` and record hand
+measurements in `input/measurements.md`.
 
 ## Working conventions
 
