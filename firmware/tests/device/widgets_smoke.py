@@ -51,8 +51,14 @@ def main():
     check(sn.get("valid"), "sensor reading valid: %.1f C, %.0f %% RH" % (sn.get("temperature_c", 0), sn.get("humidity", 0)))
     check(-20 < sn.get("temperature_c", -100) < 80, "sensor temperature plausible")
 
-    # The clock overlay on an artwork: enabling and disabling it changes the frame.
+    # The clock overlay on an artwork: enabling and disabling it changes the frame. The
+    # overlay only draws over an artwork, so wait for one (right after a boot the playset
+    # may still be activating; the check failed that way on 2026-09-22).
     settings(base, {"show": {"main_state": "animation_show", "clock_overlay": {"enabled": True, "corner": "top_left"}}})
+    t0 = time.time()
+    while not status(base)["playback"].get("artwork", {}).get("name") and time.time() - t0 < 60:
+        time.sleep(1)
+    check(bool(status(base)["playback"].get("artwork", {}).get("name")), "an artwork is up for the overlay check")
     time.sleep(2)
     with_overlay = frame(base)
     settings(base, {"show": {"clock_overlay": {"enabled": False}}})
