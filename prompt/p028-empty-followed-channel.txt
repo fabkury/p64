@@ -1,0 +1,13 @@
+I am looking at p64.local, and I see this:
+
+
+artist
+@Sendew
+Rxn
+0/0
+1 h ago
+
+
+This is one of the channels inside the playset currently playing, "Followed." Notice it has 0 artworks -- it basically failed to refresh.
+
+Please diagnose what's wrong and propose fixes. Don't actually fix anything, just propose fixes first. Remember that the p64 device is connected to this laptop via USB-C.
