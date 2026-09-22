@@ -14,6 +14,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "internal.hpp"
+#include "policy.hpp"
 #include "mqtt.hpp"
 #include "p64/content/makapix_index.hpp"
 #include "p64/decode/decoder.hpp"
@@ -27,10 +28,8 @@
 namespace p64::makapix::internal {
 namespace {
 
-constexpr int64_t kSecond = 1000000;
+using policy::kSecond;
 constexpr int64_t kPollIntervalUs = 3 * kSecond;
-constexpr int64_t kRetryBaseUs = 30 * kSecond;
-constexpr int64_t kRetryMaxUs = 15 * 60 * kSecond;
 constexpr uint64_t kFreeSpaceFloor = 64ULL * 1024 * 1024;  // downloads stop below this (spec 5.4)
 constexpr uint32_t kSaveEveryDownloads = 8;
 constexpr int64_t kRenewalCheckUs = 24LL * 3600 * kSecond;
@@ -45,7 +44,6 @@ size_t g_round_robin = 0;
 net::fetch::Session g_vault;  // the file host connection, kept open across downloads
 int64_t g_vault_used_us = 0;
 constexpr int64_t kVaultIdleUs = 20 * kSecond;
-constexpr int64_t kWalkIdleUs = 60 * kSecond;  // a walk paused longer (its channel left the playset) restarts
 uint32_t g_unsaved_downloads = 0;
 int64_t g_next_renewal_check_us = 0;
 
@@ -151,17 +149,7 @@ void poll_credentials() {
 
 Channel *next_channel_needing_service() {
   std::lock_guard<std::mutex> lock(g_mutex);
-  const int64_t now = esp_timer_get_time();
-  for (auto &ch : g_channels) {
-    if (ch->active && ch->refreshing) return ch.get();  // a page walk in progress
-  }
-  for (auto &ch : g_channels) {
-    if (!ch->active) continue;
-    if (!ch->loaded) return ch.get();
-    if (ch->retry_at_us && now < ch->retry_at_us) continue;
-    if (ch->next_refresh_us == 0 || now >= ch->next_refresh_us) return ch.get();
-  }
-  return nullptr;
+  return policy::next_channel_needing_service(g_channels, esp_timer_get_time());
 }
 
 void load_channel(Channel *ch) {
@@ -178,8 +166,8 @@ void load_channel(Channel *ch) {
       ch->last_refresh = last_refresh;
       recount_cached(*ch);
       // Fresh enough: the next refresh waits for the interval; else refresh now.
-      const int64_t age = now > last_refresh ? static_cast<int64_t>(now - last_refresh) : 0;
-      ch->next_refresh_us = age >= interval ? 0 : esp_timer_get_time() + (interval - age) * kSecond;
+      const uint32_t age = now > last_refresh ? now - last_refresh : 0;
+      ch->next_refresh_us = policy::next_refresh_after_load(age, interval, esp_timer_get_time());
       ESP_LOGI(TAG, "channel %s: %u entries from the card, %u cached, %lld s old", ch->id.c_str(),
                static_cast<unsigned>(ch->entries.size()), static_cast<unsigned>(ch->cached), static_cast<long long>(age));
     }
@@ -216,13 +204,11 @@ void finish_walk(Channel *ch, bool ok, const std::string &error) {
     } else {
       ch->walk_fresh = content::MakapixEntries();
       ++ch->fail_streak;
-      int64_t wait = kRetryBaseUs;
-      for (uint32_t i = 1; i < ch->fail_streak && wait < kRetryMaxUs; ++i) wait *= 2;
-      if (error == "needs pairing") wait = kRetryMaxUs;
-      ch->retry_at_us = esp_timer_get_time() + std::min(wait, kRetryMaxUs);
+      const int64_t wait = policy::retry_delay_us(ch->fail_streak, error);
+      ch->retry_at_us = esp_timer_get_time() + wait;
       ch->error = error;
       ESP_LOGW(TAG, "channel %s: refresh failed: %s (retry in %lld s)", ch->id.c_str(), error.c_str(),
-               static_cast<long long>(std::min(wait, kRetryMaxUs) / kSecond));
+               static_cast<long long>(wait / kSecond));
     }
     ch->walk_pages = 0;
     ch->walk_oversized = 0;
@@ -258,9 +244,9 @@ void refresh_step(Channel *ch) {
     // A walk pauses while its channel is out of the playset; resumed much later, its
     // kept-alive connection is dead (ESP_ERR_HTTP_WRITE_DATA, seen 2026-09-21) and its
     // cursor may be stale, so it starts over.
-    const bool stale = ch->refreshing && esp_timer_get_time() - ch->walk_last_us > kWalkIdleUs;
-    if (stale) ESP_LOGI(TAG, "channel %s: refresh paused too long; starting over", ch->id.c_str());
-    first = !ch->refreshing || stale;
+    const policy::StepStart start = policy::begin_step(ch->refreshing, ch->walk_last_us, esp_timer_get_time());
+    if (start.stale) ESP_LOGI(TAG, "channel %s: refresh paused too long; starting over", ch->id.c_str());
+    first = start.first;
     ch->walk_last_us = esp_timer_get_time();
     if (first) {
       ch->refreshing = true;
@@ -293,22 +279,21 @@ void refresh_step(Channel *ch) {
   // The size limit, on the device as well: the promoted feed has no size filter, and a
   // listing that ignored the criteria must not fill the index with what cannot play.
   const bool listed_none = page.empty();
-  const size_t listed = page.size();
-  page.erase(std::remove_if(page.begin(), page.end(),
-                            [max_side](const content::MakapixEntry &e) { return !content::fits_side(e, max_side); }),
-             page.end());
+  const size_t oversized = policy::drop_oversized(page, max_side);
   bool done;
   bool cold;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    ch->walk_oversized += static_cast<uint32_t>(listed - page.size());
+    ch->walk_oversized += static_cast<uint32_t>(oversized);
     ch->walk_fresh.insert(ch->walk_fresh.end(), page.begin(), page.end());
     if (ch->walk_fresh.size() > cap) ch->walk_fresh.resize(cap);
     ++ch->walk_pages;
     ch->walk_cursor = next;
-    done = !more || ch->walk_fresh.size() >= cap || listed_none;
-    cold = ch->entries.empty();
-    if (!done && cold) {
+    const policy::PageOutcome outcome =
+        policy::after_page(ch->walk_fresh.size(), cap, more, listed_none, ch->entries.empty());
+    done = outcome.done;
+    cold = outcome.install_now;
+    if (cold) {
       // Nothing to play yet: let the first pages count so downloads start now.
       ch->entries = ch->walk_fresh;
       recount_cached(*ch);
@@ -327,24 +312,10 @@ void refresh_step(Channel *ch) {
 // Picks the next entry to fetch, round-robin across the active channels.
 bool next_download(Channel *&channel, content::MakapixEntry &entry, size_t &index) {
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (g_channels.empty()) return false;
-  const size_t n = g_channels.size();
-  for (size_t k = 0; k < n; ++k) {
-    Channel &ch = *g_channels[(g_round_robin + k) % n];
-    if (!ch.active || !ch.loaded || ch.entries.empty()) continue;
-    for (size_t t = 0; t < ch.entries.size(); ++t) {
-      const size_t i = (ch.download_cursor + t) % ch.entries.size();
-      const content::MakapixEntry &e = ch.entries[i];
-      if (e.flags & (content::kMakapixCached | content::kMakapixMissing | content::kMakapixRejected)) continue;
-      channel = &ch;
-      entry = e;
-      index = i;
-      ch.download_cursor = static_cast<uint32_t>((i + 1) % ch.entries.size());
-      g_round_robin = (g_round_robin + k + 1) % n;
-      return true;
-    }
-  }
-  return false;
+  channel = policy::next_download(g_channels, g_round_robin, index);
+  if (!channel) return false;
+  entry = channel->entries[index];
+  return true;
 }
 
 void flag_entry(Channel *ch, size_t index, const content::MakapixEntry &entry, uint8_t flag) {
@@ -693,14 +664,19 @@ void task(void *) {
   while (true) {
     Job *job = nullptr;
     if (xQueueReceive(g_jobs, &job, pdMS_TO_TICKS(500)) == pdTRUE && job) {
-      if (online() || job->type == JobType::Like) {
-        run_job(job);
-      } else if (job->type == JobType::Followed && !job->done) {
-        ESP_LOGI(TAG, "Followed requested offline; parked until the network is up");
-        delete g_parked_followed;
-        g_parked_followed = job;
-      } else {
-        finish(job, false, "offline");
+      switch (policy::job_disposition(online(), job->type == JobType::Like, job->type == JobType::Followed,
+                                      job->done != nullptr)) {
+        case policy::JobDisposition::Run:
+          run_job(job);
+          break;
+        case policy::JobDisposition::Park:
+          ESP_LOGI(TAG, "Followed requested offline; parked until the network is up");
+          delete g_parked_followed;
+          g_parked_followed = job;
+          break;
+        case policy::JobDisposition::Fail:
+          finish(job, false, "offline");
+          break;
       }
       continue;
     }

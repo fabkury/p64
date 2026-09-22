@@ -7,6 +7,7 @@ idf_component_register(
         "src/fetcher.cpp"
         "src/api.cpp"
         "src/contract.cpp"
+        "src/policy.cpp"
         "src/cache.cpp"
         "src/credentials.cpp"
         "src/mqtt.cpp"
