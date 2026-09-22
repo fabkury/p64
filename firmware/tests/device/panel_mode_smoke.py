@@ -46,6 +46,16 @@ def main():
     switches = int(sys.argv[sys.argv.index("--switches") + 1]) if "--switches" in sys.argv else 12
     gap = float(sys.argv[sys.argv.index("--gap") + 1]) if "--gap" in sys.argv else 1.5
 
+    # The heap settles once the network sessions are up; right after a boot the MQTT
+    # handshake alone moves the largest block by 16 KB (seen 2026-09-22), so wait for it.
+    deadline = time.time() + 90
+    while time.time() < deadline:
+        st, j = request(base, "GET", "/api/v1/status")
+        mk = j.get("data", {}).get("makapix", {}) if st == 200 else {}
+        if mk.get("state") != "paired" or mk.get("mqtt_connected"):
+            break
+        time.sleep(2)
+    time.sleep(5)
     before = panel(base)
     original = before["mode"]
     mem_before = memory(base)
