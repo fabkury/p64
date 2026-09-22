@@ -18,7 +18,7 @@ firmware/dependencies.lock.old
 
 # Upstream clones kept locally for reference (see firmware/README.md)
 firmware/reference/
-firmware/tests/host/build/
+firmware/tests/host/build*/
 
 # Editors and OS
 .vscode/

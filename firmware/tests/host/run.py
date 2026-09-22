@@ -12,9 +12,15 @@ PC's gcc/g++ (the exact decoder code the board runs), then:
      black), delays after the browser rule, and the scaled output against a Python twin
      of the scaling rule.
 
-Usage: python tests/host/run.py [--keep] [--no-files] [file ...]
+Usage: python tests/host/run.py [--keep] [--no-files] [--sanitize] [--werror]
+                                [--junit FILE] [--tc PATTERN] [file ...]
 Needs gcc/g++ on PATH, Pillow (the system Python has it; the ESP-IDF venv does not),
-and a prior firmware build (managed_components/espressif__zlib).
+cJSON from ESP-IDF (IDF_PATH, default C:\esp\v5.5.4\esp-idf) and zlib from
+managed_components (a prior firmware build or `idf.py reconfigure`). The unit tests are
+doctest cases under tests/host/unit/; --tc runs the cases matching a pattern.
+--sanitize builds with AddressSanitizer and UndefinedBehaviorSanitizer (not on Windows,
+where MinGW lacks them) into a separate build folder; --werror makes warnings in p64
+code errors (vendored code keeps its warnings); CI uses both.
 """
 
 import argparse
@@ -37,8 +43,10 @@ IDF_PATH = os.environ.get("IDF_PATH", r"C:\esp\v5.5.4\esp-idf")
 CJSON = os.path.join(IDF_PATH, "components", "json", "cJSON")
 DST_W, DST_H = 64, 64
 
+UNIT_SOURCES = sorted(glob.glob(os.path.join(HERE, "unit", "*.cpp")))
 CXX_SOURCES = [
     os.path.join(HERE, "main.cpp"),
+    *UNIT_SOURCES,
     os.path.join(COMPONENTS, "p64_gfx", "src", "frame.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "scaler.cpp"),
     os.path.join(COMPONENTS, "p64_decode", "src", "format.cpp"),
@@ -78,6 +86,8 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(HERE, "third_party"),     # doctest.h
+    os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
@@ -96,6 +106,7 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),
     os.path.join(COMPONENTS, "p64_playback", "include"),
@@ -120,14 +131,29 @@ def newest_mtime(paths):
     return latest
 
 
+SANITIZE = False
+WERROR = False
+VENDORED = (os.path.join(COMPONENTS, "animatedgif"), os.path.join(HERE, "third_party"))
+VENDORED_INCLUDES = (os.path.join(COMPONENTS, "animatedgif"), os.path.join(HERE, "third_party"), LIBPNG, ZLIB,
+                     os.path.join(COMPONENTS, "libwebp"), CJSON)
+
+
+def sanitizer_flags():
+    return ["-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-fno-sanitize-recover=undefined"] if SANITIZE else []
+
+
 def compile_object(src, obj, is_cxx, header_mtime):
     if os.path.exists(obj) and os.path.getmtime(obj) > max(os.path.getmtime(src), header_mtime):
         return
-    inc = ["-I" + i for i in INCLUDES]
+    # Vendored headers as system headers: their warnings are not ours to fix.
+    inc = ["-isystem" + i if i.startswith(VENDORED_INCLUDES) else "-I" + i for i in INCLUDES]
     if is_cxx:
-        cmd = ["g++", "-std=c++20", "-O2", "-Wall", "-Wextra", "-D__LINUX__", *inc, "-c", src, "-o", obj]
+        warn = ["-Wall", "-Wextra"]
+        if WERROR and not src.startswith(VENDORED):
+            warn.append("-Werror")
+        cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
     else:
-        cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", *inc, "-c", src, "-o", obj]
+        cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
     subprocess.run(cmd, check=True)
 
 
@@ -150,7 +176,9 @@ def build(build_dir):
         print("linking host tests...")
         # -static: a dynamically linked MinGW build picks up whichever libstdc++ DLL comes
         # first on PATH and crashes at load time when it is from another toolchain.
-        subprocess.run(["g++", "-static", *objects, "-o", exe], check=True)
+        # The sanitizers need the dynamic runtime (and are Linux/macOS only).
+        link = sanitizer_flags() if SANITIZE else ["-static"]
+        subprocess.run(["g++", *link, *objects, "-o", exe], check=True)
     return exe
 
 
@@ -400,13 +428,27 @@ def main():
     ap.add_argument("files", nargs="*", help="artwork files (default: both corpora)")
     ap.add_argument("--keep", action="store_true", help="keep the dumped frames in tests/host/build/frames")
     ap.add_argument("--no-files", action="store_true", help="unit tests only")
+    ap.add_argument("--sanitize", action="store_true", help="ASan + UBSan build (Linux/macOS)")
+    ap.add_argument("--werror", action="store_true", help="warnings in p64 code are errors")
+    ap.add_argument("--junit", help="write the unit test results as JUnit XML to this file")
+    ap.add_argument("--tc", help="run only the unit test cases matching this doctest pattern")
     args = ap.parse_args()
+    global SANITIZE, WERROR
+    SANITIZE, WERROR = args.sanitize, args.werror
+    if SANITIZE and os.name == "nt":
+        sys.exit("--sanitize needs Linux or macOS (MinGW has no ASan/UBSan)")
 
-    build_dir = os.path.join(HERE, "build")
+    build_dir = os.path.join(HERE, "build-san" if SANITIZE else ("build-werror" if WERROR else "build"))
     os.makedirs(build_dir, exist_ok=True)
     exe = build(build_dir)
 
-    unit = subprocess.run([exe, "unit"], capture_output=True, text=True)
+    unit_args = [exe]
+    if args.tc:
+        unit_args.append("-tc=" + args.tc)
+    unit = subprocess.run(unit_args, capture_output=True, text=True)
+    if args.junit:
+        with open(args.junit, "w", encoding="utf-8") as f:
+            f.write(subprocess.run(unit_args + ["-r=junit"], capture_output=True, text=True).stdout)
     print(unit.stdout, end="")
     if unit.returncode != 0:
         print(unit.stderr)
