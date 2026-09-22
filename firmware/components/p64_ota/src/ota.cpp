@@ -21,6 +21,7 @@
 #include "p64/system/reliability.hpp"
 #include "p64/system/settings.hpp"
 #include "sdkconfig.h"
+#include "release.hpp"
 #include "version.hpp"
 
 // Two tasks, because of two constraints: TLS wants a deep stack (12 KB) that must not
@@ -63,23 +64,6 @@ void set_state(State s, const std::string &error = "") {
   g_status.error = error;
 }
 
-bool hex_to_bin(const std::string &hex, uint8_t out[32]) {
-  if (hex.size() < 64) return false;
-  for (int i = 0; i < 32; ++i) {
-    unsigned v = 0;
-    for (int k = 0; k < 2; ++k) {
-      const char c = hex[i * 2 + k];
-      v <<= 4;
-      if (c >= '0' && c <= '9') v |= c - '0';
-      else if (c >= 'a' && c <= 'f') v |= c - 'a' + 10;
-      else if (c >= 'A' && c <= 'F') v |= c - 'A' + 10;
-      else return false;
-    }
-    out[i] = static_cast<uint8_t>(v);
-  }
-  return true;
-}
-
 void refresh_rollback() {
   const esp_partition_t *running = esp_ota_get_running_partition();
   const esp_partition_t *other = running ? esp_ota_get_next_update_partition(running) : nullptr;
@@ -116,39 +100,16 @@ bool do_check(std::string &error) {
     error = "GitHub answered " + std::to_string(res.status);
     return false;
   }
-  cJSON *root = cJSON_ParseWithLength(reinterpret_cast<const char *>(res.body.data()), res.body.size());
-  if (!root) {
-    error = "release JSON unreadable";
+  release::Release r;
+  if (!release::parse(reinterpret_cast<const char *>(res.body.data()), res.body.size(), CONFIG_P64_OTA_ASSET, kNotesMax,
+                      r, error)) {
     return false;
   }
-  const cJSON *tag = cJSON_GetObjectItemCaseSensitive(root, "tag_name");
-  const cJSON *body = cJSON_GetObjectItemCaseSensitive(root, "body");
-  const cJSON *assets = cJSON_GetObjectItemCaseSensitive(root, "assets");
-  std::string version = tag && cJSON_IsString(tag) ? tag->valuestring : "";
-  if (!version.empty() && (version[0] == 'v' || version[0] == 'V')) version.erase(0, 1);
-  std::string notes = body && cJSON_IsString(body) ? body->valuestring : "";
-  if (notes.size() > kNotesMax) notes = notes.substr(0, kNotesMax) + "...";
-  std::string bin_url, sha_url;
-  uint32_t size = 0;
-  const std::string sha_name = std::string(CONFIG_P64_OTA_ASSET) + ".sha256";
-  const cJSON *asset;
-  cJSON_ArrayForEach(asset, assets) {
-    const cJSON *name = cJSON_GetObjectItemCaseSensitive(asset, "name");
-    const cJSON *url = cJSON_GetObjectItemCaseSensitive(asset, "browser_download_url");
-    const cJSON *sz = cJSON_GetObjectItemCaseSensitive(asset, "size");
-    if (!name || !cJSON_IsString(name) || !url || !cJSON_IsString(url)) continue;
-    if (std::strcmp(name->valuestring, CONFIG_P64_OTA_ASSET) == 0) {
-      bin_url = url->valuestring;
-      if (sz && cJSON_IsNumber(sz)) size = static_cast<uint32_t>(sz->valuedouble);
-    } else if (sha_name == name->valuestring) {
-      sha_url = url->valuestring;
-    }
-  }
-  cJSON_Delete(root);
-  if (version.empty()) {
-    error = "release without a tag";
-    return false;
-  }
+  const std::string &version = r.version;
+  const std::string &notes = r.notes;
+  const std::string &bin_url = r.bin_url;
+  const std::string &sha_url = r.sha_url;
+  const uint32_t size = r.size;
   std::lock_guard<std::mutex> lock(g_mutex);
   g_status.available_version = version;
   g_status.notes = notes;
@@ -173,9 +134,7 @@ bool fetch_sha256(const std::string &url, uint8_t out[32], std::string &error) {
     return false;
   }
   std::string text = net::fetch::body_string(res);
-  size_t start = 0;
-  while (start < text.size() && !isxdigit(static_cast<unsigned char>(text[start]))) ++start;
-  if (!hex_to_bin(text.substr(start), out)) {
+  if (!release::digest_from_checksum_file(text, out)) {
     error = "checksum file unreadable";
     return false;
   }
@@ -229,7 +188,7 @@ bool do_install(const std::string &url, const std::string &sha_hex, std::string 
     sha_url = g_status.sha256_url;
   }
   if (!sha_hex.empty()) {
-    if (!hex_to_bin(sha_hex, expected)) {
+    if (!release::hex_to_bin(sha_hex, expected)) {
       error = "sha256: 64 hex digits expected";
       return false;
     }
