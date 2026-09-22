@@ -1,0 +1,14 @@
+Thanks.
+
+Let's now organize this project:
+ 1. The working version of the enclosure is v7. All others should be archived. This includes cleaning legacy context about pre-v7 enclosures from READMEs and CLAUDE.md files, so we stay focused. The legacy context can be deposited into other files that can be read separately if one ever needs more information about pre-v7 enclosures.
+ 2. I want to "fork" this project into parallel variants:
+ - p64a: Solder-less, does not have rotary encoders. Basically a v7 but without anything related to the two rotary encoders.
+ - p64b: Requires soldering, has two rotary encoders. This is v7 as is.
+
+We're going to support both variants of this project, on a permanent basis.
+
+Please get us going with the enclosure work:
+ 0. Archive the old enclosures and their legacy context.
+ 1. Reorganize the enclosure/output/ folder in v64a and v64b subfolders.
+ 2. Create a new version of v7, into the folder of p64a outputs, called "v7a", which is literally a copy of v7 minus anything related to the rotary encoders.
