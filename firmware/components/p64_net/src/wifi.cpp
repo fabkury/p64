@@ -15,6 +15,7 @@
 #include "nvs.h"
 #include "p64/net/dns_hijack.hpp"
 #include "p64/system/event_bus.hpp"
+#include "p64/system/flash_guard.hpp"
 #include "sdkconfig.h"
 
 // Locking discipline: g_mutex guards the state fields only. No Wi-Fi driver call is made
@@ -47,7 +48,7 @@ esp_timer_handle_t g_reconnect_timer = nullptr;
 
 // --- NVS ----------------------------------------------------------------------
 
-bool nvs_load(std::string &ssid, std::string &password) {
+bool nvs_load_impl(std::string &ssid, std::string &password) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READONLY, &h) != ESP_OK) return false;
   char s[33] = {0}, p[65] = {0};
@@ -62,7 +63,7 @@ bool nvs_load(std::string &ssid, std::string &password) {
   return true;
 }
 
-bool nvs_store(const std::string &ssid, const std::string &password) {
+bool nvs_store_impl(const std::string &ssid, const std::string &password) {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   esp_err_t err = nvs_set_str(h, "ssid", ssid.c_str());
@@ -72,7 +73,7 @@ bool nvs_store(const std::string &ssid, const std::string &password) {
   return err == ESP_OK;
 }
 
-bool nvs_erase() {
+bool nvs_erase_impl() {
   nvs_handle_t h;
   if (nvs_open(kNamespace, NVS_READWRITE, &h) != ESP_OK) return false;
   nvs_erase_all(h);
@@ -80,6 +81,16 @@ bool nvs_erase() {
   nvs_close(h);
   return err == ESP_OK;
 }
+
+// Every NVS access through the flash guard (architecture section 20): the callers today
+// all run on internal stacks, but nothing else enforced it (review of 2026-09-22).
+bool nvs_load(std::string &ssid, std::string &password) {
+  return system::on_internal_stack([&] { return nvs_load_impl(ssid, password); });
+}
+bool nvs_store(const std::string &ssid, const std::string &password) {
+  return system::on_internal_stack([&] { return nvs_store_impl(ssid, password); });
+}
+bool nvs_erase() { return system::on_internal_stack([] { return nvs_erase_impl(); }); }
 
 // --- driver helpers (never called with g_mutex held) --------------------------
 

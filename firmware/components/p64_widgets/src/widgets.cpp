@@ -55,7 +55,8 @@ void sensor_task(void *) {
   while (true) {
     float t = 0, h = 0;
     if (g_sensor_present && shtc3::read(t, h)) {
-      const system::Settings s = system::settings();
+      const std::shared_ptr<const system::Settings> view = system::settings_view();
+      const system::Settings &s = *view;
       const int64_t now = esp_timer_get_time();
       std::lock_guard<std::mutex> lock(g_mutex);
       g_reading.valid = true;
@@ -84,7 +85,8 @@ TaskHandle_t g_weather_task = nullptr;
 void weather_task(void *) {
   while (true) {
     ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(30000));
-    const system::Settings s = system::settings();
+    const std::shared_ptr<const system::Settings> view = system::settings_view();
+    const system::Settings &s = *view;
     if (!s.weather.location_set) continue;
     if (!net::wifi::status().connected || !net::clock::synced()) continue;
     const int64_t now = esp_timer_get_time();
@@ -174,7 +176,8 @@ class ClockSource : public playback::FrameSource {
   const std::string &name() const override { return name_; }
   bool is_static() const override { return false; }
   bool next_frame(Frame &out, uint32_t &delay_ms, int64_t due_us) override {
-    const system::Settings s = system::settings();
+    const std::shared_ptr<const system::Settings> view = system::settings_view();
+    const system::Settings &s = *view;
     const gfx::fonts::Font &font = font_named(s.clock.font);
     out.clear(s.clock.background);
     tm t;
@@ -223,7 +226,8 @@ class WeatherSource : public playback::FrameSource {
   const std::string &name() const override { return name_; }
   bool is_static() const override { return false; }
   bool next_frame(Frame &out, uint32_t &delay_ms, int64_t) override {
-    const system::Settings s = system::settings();
+    const std::shared_ptr<const system::Settings> view = system::settings_view();
+    const system::Settings &s = *view;
     const gfx::fonts::Font &font = gfx::fonts::default_font();
     const Rgb ink = s.clock.colour;
     const Rgb dim{140, 140, 160};
@@ -287,7 +291,8 @@ class TemperatureSource : public playback::FrameSource {
   const std::string &name() const override { return name_; }
   bool is_static() const override { return false; }
   bool next_frame(Frame &out, uint32_t &delay_ms, int64_t) override {
-    const system::Settings s = system::settings();
+    const std::shared_ptr<const system::Settings> view = system::settings_view();
+    const system::Settings &s = *view;
     const gfx::fonts::Font &font = gfx::fonts::default_font();
     const Rgb ink = s.clock.colour;
     const Rgb dim{140, 140, 160};
@@ -366,7 +371,8 @@ const char *widget_name(system::WidgetKind kind) {
 }
 
 uint32_t overlay_key() {
-  const system::Settings s = system::settings();
+  const std::shared_ptr<const system::Settings> view = system::settings_view();
+  const system::Settings &s = *view;
   if (!s.clock_overlay.enabled || !net::clock::synced()) return 0;
   tm t;
   if (!local_time_at(0, t)) return 0;
@@ -379,7 +385,8 @@ uint32_t overlay_key() {
 }
 
 void draw_overlay(Frame &frame) {
-  const system::Settings s = system::settings();
+  const std::shared_ptr<const system::Settings> view = system::settings_view();
+  const system::Settings &s = *view;
   tm t;
   if (!s.clock_overlay.enabled || !local_time_at(0, t)) return;
   const gfx::fonts::Font &font = font_named(s.clock_overlay.font);

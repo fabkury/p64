@@ -69,7 +69,7 @@ void count_incomplete() {
 }
 
 void arm_silence() {
-  const uint32_t ms = system::settings().stream_silence_ms;
+  const uint32_t ms = system::settings_view()->stream_silence_ms;
   esp_timer_stop(g_silence);
   esp_timer_start_once(g_silence, static_cast<uint64_t>(ms) * 1000);
 }
@@ -86,7 +86,7 @@ void on_silence(void *) {
     }
   }
   if (ended) {
-    ESP_LOGI(TAG, "stream ended: no frame for %lu ms", static_cast<unsigned long>(system::settings().stream_silence_ms));
+    ESP_LOGI(TAG, "stream ended: no frame for %lu ms", static_cast<unsigned long>(system::settings_view()->stream_silence_ms));
     system::publish(system::Event::StreamEnded);
   }
 }
@@ -103,7 +103,7 @@ void deliver(const char *protocol, Format format, int width, int height, bool pa
     g_scaler_w = width;
     g_scaler_h = height;
   }
-  g_scaler->scale(g_canvas, *g_scratch, system::settings().background);
+  g_scaler->scale(g_canvas, *g_scratch, system::settings_view()->background);
   const int64_t now = esp_timer_get_time();
   bool started = false;
   {

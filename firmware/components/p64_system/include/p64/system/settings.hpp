@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "p64/gfx/frame.hpp"
@@ -119,8 +120,12 @@ struct Settings {
 
 // Loads the document from NVS (defaults for anything missing) at boot.
 bool settings_init();
-// A snapshot of the current settings.
+// A snapshot of the current settings (a copy: six strings; fine off the hot paths).
 Settings settings();
+// The current settings without a copy: a shared, immutable document replaced on every
+// update. For the per-frame paths (the overlay hook, the widget sources, the stream
+// sink), which must not copy strings or wait on a lock a core-0 task holds for long.
+std::shared_ptr<const Settings> settings_view();
 // Applies a change and persists it. The mutator sees the current document; the result
 // is clamped, saved, and announced. Returns false when NVS refused the write.
 bool settings_update(const std::function<void(Settings &)> &mutate);

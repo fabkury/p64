@@ -442,26 +442,40 @@ void Display::note_timeout(uint32_t fetching) {
 }
 
 Display::Health Display::health() const {
-  std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(driver_mutex_));
   Health h;
-  h.stalled = stall_reported_;
-  h.frames = totals_.frames + stats_.frames;
-  h.late_flips = totals_.late_flips + stats_.late_flips;
-  h.timeouts = totals_.timeouts + stats_.timeouts;
-  h.dma_priority = driver_ ? driver_->get_dma_priority() : -1;
-  h.transition_bit = driver_ ? driver_->get_lsb_msb_transition_bit() : 0;
-  h.bit_depth = driver_ ? driver_->get_bit_planes() : 0;
-  h.refresh_hz = period_us_ > 0 ? 1e6 / period_us_ : 0;
-  h.mode = mode_;
-  h.restarts = restarts_;
-  h.dma_sync = lcd_dma_channel_ >= 0;
-  // Probe: a streaming DMA advances its descriptor pointer every few microseconds.
-  int ch = lcd_dma_channel_ >= 0 ? lcd_dma_channel_ : (driver_ ? driver_->get_dma_channel_id() : -1);
+  int ch;
+  {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(driver_mutex_));
+    h.stalled = stall_reported_;
+    h.frames = totals_.frames + stats_.frames;
+    h.late_flips = totals_.late_flips + stats_.late_flips;
+    h.timeouts = totals_.timeouts + stats_.timeouts;
+    h.dma_priority = driver_ ? driver_->get_dma_priority() : -1;
+    h.transition_bit = driver_ ? driver_->get_lsb_msb_transition_bit() : 0;
+    h.bit_depth = driver_ ? driver_->get_bit_planes() : 0;
+    h.refresh_hz = period_us_ > 0 ? 1e6 / period_us_ : 0;
+    h.mode = mode_;
+    h.restarts = restarts_;
+    h.dma_sync = lcd_dma_channel_ >= 0;
+    ch = lcd_dma_channel_ >= 0 ? lcd_dma_channel_ : (driver_ ? driver_->get_dma_channel_id() : -1);
+  }
+  // A streaming DMA advances its descriptor pointer every few microseconds. The status
+  // document asks every 2 s: the pointer has moved since the previous call, or, when it
+  // reads the same (the first call, or one chance in a thousand that the loop is at the
+  // same descriptor), a probe bounded to 20 us confirms. This replaced a 200 us busy-wait
+  // under the driver mutex (review of 2026-09-22).
   if (ch >= 0) {
+    const int64_t now = esp_timer_get_time();
     const uint32_t a = GDMA.channel[ch].out.dscr;
-    esp_rom_delay_us(200);
-    const uint32_t b = GDMA.channel[ch].out.dscr;
-    h.dma_moving = a != b;
+    bool moving = probe_us_ != 0 && a != probe_dscr_;
+    if (!moving) {
+      uint32_t b = a;
+      while (b == a && esp_timer_get_time() - now < 20) b = GDMA.channel[ch].out.dscr;
+      moving = b != a;
+    }
+    h.dma_moving = moving;
+    probe_dscr_ = a;
+    probe_us_ = now;
   }
   return h;
 }

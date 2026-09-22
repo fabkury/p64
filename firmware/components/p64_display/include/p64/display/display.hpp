@@ -54,7 +54,7 @@ class Display {
     Mode mode = Mode::Quality;
     int restarts = 0;      // driver re-creations (mode switches)
     bool dma_sync = false;  // frame boundaries come from the DMA (else timed waits)
-    bool dma_moving = false;  // the DMA descriptor pointer advanced during the probe
+    bool dma_moving = false;  // the DMA descriptor pointer advanced since the previous health()
   };
 
   // Builds the driver from sdkconfig (pins, panel, timing) in Quality mode and starts
@@ -129,6 +129,8 @@ class Display {
   int64_t last_flip_us_ = 0;
   int64_t last_boundary_us_ = 0;  // 0 until the first frame boundary has been observed
   int64_t last_yield_us_ = 0;     // when the wait last blocked (lets the idle task run)
+  mutable uint32_t probe_dscr_ = 0;  // descriptor pointer seen by the previous health()
+  mutable int64_t probe_us_ = 0;     // when (0 until the first call)
   Stats stats_;
   Stats totals_;  // since begin()
   // Physical-orientation copy of the last presented frame (internal RAM, DMA-friendly).

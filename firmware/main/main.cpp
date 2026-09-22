@@ -94,6 +94,12 @@ extern "C" void app_main() {
   p64::system::logring::init(32 * 1024);
   const esp_app_desc_t *app = esp_app_get_description();
   ESP_LOGI(TAG, "p64 firmware %s (IDF %s), built %s %s", app->version, app->idf_ver, app->date, app->time);
+  // This task becomes the show loop. ESP-IDF starts app_main at priority 1, below every
+  // other task on core 0; the architecture (section 2) puts the show loop at 5, level
+  // with httpd, the event dispatcher and MQTT and above the fetcher, the loader and the
+  // widgets' tasks, so a TLS handshake never holds the user's commands (review of
+  // 2026-09-22, which found it still at 1).
+  vTaskPrioritySet(nullptr, 5);
 
   init_nvs();
   p64::system::reliability::init();
