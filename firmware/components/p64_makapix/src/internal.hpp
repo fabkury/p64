@@ -69,6 +69,7 @@ uint32_t cert_not_after(const std::string &pem);
 // Jobs for the worker.
 enum class JobType : uint8_t { Provision, PlayPost, PlayUrl, ShowArtwork, Like, View, Followed, Renew };
 struct Job {
+  explicit Job(JobType t) : type(t) {}
   JobType type;
   std::string text;  // sqid, URL, ...
   int32_t number = 0;
