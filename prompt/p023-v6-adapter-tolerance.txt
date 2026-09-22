@@ -1,0 +1,2 @@
+Let's talk about the v6 of the enclosure. I am concerned about 1 thing:
+ - If either our measurements of the position of the driver board's USB-C ports, or the size and exact shape of the USB-C 90-degree adapters, is slightly off, how much "offness" can the design accomodate? Is the area around the 90-degree adapters slighly bigger than necessary, to accomodate potential miscalculations/mismeasurements?
