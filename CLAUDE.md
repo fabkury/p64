@@ -292,6 +292,13 @@ drawings in `enclosure/input/` and record hand measurements in `input/measuremen
 ## Working conventions
 
 - One commit per logical step, with a descriptive message; never push.
+- The principal, main prompts in each session (which might be more than one) must be
+  written down, verbatim, into the prompt/ folder for backup/auditing purposes. (Rule
+  set by the user on 2026-09-22.) Mechanics: one file per main prompt, named
+  `prompt/pNNN-short-slug.txt` with the next free number; the text exactly as the user
+  wrote it, nothing added; committed on its own as `prompt: pNNN (what it asked)`. A
+  main prompt is one that starts or redirects the session's work; follow-up remarks,
+  answers to questions and small corrections are not written down.
 - Each area's README is the living record: when the hardware teaches something (pin map,
   orientation, driver quirk, measured numbers), write it there, not only in code comments.
 - Numbers that come from Waveshare drawings or from measurement are stated with their
