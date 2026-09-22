@@ -487,6 +487,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `built` date in the status document comes from ESP-IDF's app descriptor, whose object
   file only recompiles on a full rebuild, so it still reads Sep 19 after incremental
   builds; trust the firmware's behaviour or the flash log, not that date.
+- 2026-09-22, the architecture review (`docs/review-2026-09/`, prompt p021): memory, CPU
+  and testing discipline audited from the code and measured on the device. Internal RAM
+  is the one resource in trouble (13 to 23 KB free, low-water marks of 939 and 1 055 bytes read
+  within the first fifteen minutes of two boots); CPU is not (core 0 3 to 5 % busy, core 1 9 to 44 %); the pure
+  layers are well tested and the state and timing code is not. Two configuration
+  experiments were flashed and measured: the always-internal threshold at 1024 plus the
+  Wi-Fi and FreeRTOS code moved out of internal RAM took the device from 13 KB free and an
+  11.7 KB largest block to 54-58 KB and 32.7 KB, with pacing unchanged; `proposals.md`
+  ranks that first, then the pure-core split of show, renderer, player and fetcher, then
+  an HTTPS command channel in place of MQTT over mTLS. The per-task run time and heap
+  attribution added to `diag/memory` for the measurements live on the unmerged branch
+  `review/cpu-instrumentation`. The device was flashed back to the committed build.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
