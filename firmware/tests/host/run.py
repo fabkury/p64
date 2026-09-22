@@ -71,6 +71,13 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_stream", "src", "protocol.cpp"),
     os.path.join(COMPONENTS, "p64_system", "src", "night.cpp"),
     os.path.join(COMPONENTS, "p64_system", "src", "rtc_codec.cpp"),
+    os.path.join(COMPONENTS, "p64_system", "src", "settings_model.cpp"),
+    os.path.join(COMPONENTS, "p64_gfx", "src", "png_encode.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "local_index.cpp"),
+    os.path.join(COMPONENTS, "p64_playback", "src", "artwork.cpp"),
+    os.path.join(COMPONENTS, "p64_net", "src", "tz.cpp"),
+    os.path.join(FIRMWARE, "main", "status_screens.cpp"),
+    os.path.join(FIRMWARE, "main", "boot_animation.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "tap.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "orientation.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "version.cpp"),
@@ -86,6 +93,9 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(COMPONENTS, "p64_net", "include"),
+    os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
+    os.path.join(FIRMWARE, "main"),                    # status_screens.hpp, boot_animation.hpp (only those)
     os.path.join(HERE, "third_party"),     # doctest.h
     os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
@@ -106,6 +116,9 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(COMPONENTS, "p64_net", "include"),
+    os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
+    os.path.join(FIRMWARE, "main"),                    # status_screens.hpp, boot_animation.hpp (only those)
     os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),
@@ -159,7 +172,8 @@ def compile_object(src, obj, is_cxx, header_mtime):
         warn = ["-Wall", "-Wextra"]
         if WERROR and not src.startswith(VENDORED):
             warn.append("-Werror")
-        cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", *sanitizer_flags(src), *inc, "-c", src, "-o", obj]
+        tests_dir = "-DP64_HOST_TESTS_DIR=\"" + HERE.replace("\\", "/") + "\""
+        cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", tests_dir, *sanitizer_flags(src), *inc, "-c", src, "-o", obj]
     else:
         cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
     subprocess.run(cmd, check=True)
