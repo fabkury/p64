@@ -6,6 +6,7 @@
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "contract.hpp"
 #include "internal.hpp"
 #include "mqtt_client.h"
 #include "p64/system/event_bus.hpp"
@@ -37,23 +38,9 @@ void publish(const std::string &t, const std::string &payload, bool retain) {
 }
 
 void publish_capabilities() {
-  cJSON *root = cJSON_CreateObject();
   const esp_app_desc_t *app = esp_app_get_description();
-  cJSON_AddStringToObject(root, "firmware_version", app ? app->version : "0");
-  cJSON *features = cJSON_AddObjectToObject(root, "features");
-  cJSON_AddItemToObject(features, "pause", cJSON_CreateObject());
-  cJSON *brightness = cJSON_AddObjectToObject(features, "brightness");
-  cJSON_AddNumberToObject(brightness, "min", 1);
-  cJSON_AddNumberToObject(brightness, "max", 255);
-  cJSON_AddNumberToObject(brightness, "step", 1);
-  cJSON *rotation = cJSON_AddObjectToObject(features, "rotation");
-  cJSON *values = cJSON_AddArrayToObject(rotation, "values");
-  for (int v : {0, 90, 180, 270}) cJSON_AddItemToArray(values, cJSON_CreateNumber(v));
-  char *text = cJSON_PrintUnformatted(root);
-  cJSON_Delete(root);
-  if (!text) return;
-  publish(topic("capabilities"), text, true);
-  cJSON_free(text);
+  const std::string text = contract::capabilities_json(app ? app->version : "0");
+  if (!text.empty()) publish(topic("capabilities"), text, true);
 }
 
 void on_event(void *, esp_event_base_t, int32_t event_id, void *event_data) {
@@ -216,68 +203,30 @@ void stop() {
 bool connected() { return g_connected; }
 
 void publish_status(int32_t current_post_id) {
-  cJSON *root = cJSON_CreateObject();
-  cJSON_AddStringToObject(root, "player_key", g_key.c_str());
-  cJSON_AddStringToObject(root, "status", "online");
-  if (current_post_id >= 0) cJSON_AddNumberToObject(root, "current_post_id", current_post_id);
   const esp_app_desc_t *app = esp_app_get_description();
-  cJSON_AddStringToObject(root, "firmware_version", app ? app->version : "0");
-  char *text = cJSON_PrintUnformatted(root);
-  cJSON_Delete(root);
-  if (!text) return;
-  publish(g_status_topic, text, false);
-  cJSON_free(text);
+  const std::string text = contract::status_json(g_key, current_post_id, app ? app->version : "0");
+  if (!text.empty()) publish(g_status_topic, text, false);
 }
 
 void publish_state() {
-  const system::Settings s = system::settings();
-  cJSON *root = cJSON_CreateObject();
-  cJSON_AddBoolToObject(root, "is_paused", internal::g_hooks.is_paused ? internal::g_hooks.is_paused() : false);
-  cJSON_AddNumberToObject(root, "brightness", s.brightness);
-  cJSON_AddNumberToObject(root, "rotation", s.rotation);
-  char *text = cJSON_PrintUnformatted(root);
-  cJSON_Delete(root);
-  if (!text) return;
-  publish(topic("state"), text, true);
-  cJSON_free(text);
+  const std::shared_ptr<const system::Settings> s = system::settings_view();
+  const bool paused = internal::g_hooks.is_paused ? internal::g_hooks.is_paused() : false;
+  const std::string text = contract::state_json(paused, s->brightness, s->rotation);
+  if (!text.empty()) publish(topic("state"), text, true);
 }
 
 bool publish_view(const api::ViewEvent &v) {
   if (!g_connected) return false;
-  cJSON *root = cJSON_CreateObject();
-  cJSON_AddNumberToObject(root, "post_id", v.post_id);
-  cJSON_AddStringToObject(root, "timestamp", v.timestamp.c_str());
-  cJSON_AddStringToObject(root, "timezone", "");
-  cJSON_AddStringToObject(root, "intent", v.intentional ? "artwork" : "channel");
-  cJSON_AddNumberToObject(root, "play_order", v.play_order);
-  cJSON_AddStringToObject(root, "channel", v.channel.c_str());
-  cJSON_AddStringToObject(root, "player_key", g_key.c_str());
-  if (!v.user_sqid.empty()) cJSON_AddStringToObject(root, "channel_user_sqid", v.user_sqid.c_str());
-  if (!v.hashtag.empty()) cJSON_AddStringToObject(root, "channel_hashtag", v.hashtag.c_str());
-  cJSON_AddBoolToObject(root, "request_ack", false);
-  char *text = cJSON_PrintUnformatted(root);
-  cJSON_Delete(root);
-  if (!text) return false;
+  const std::string text = contract::view_json(v, g_key);
+  if (text.empty()) return false;
   publish(topic("view"), text, false);
-  cJSON_free(text);
   return true;
 }
 
 void publish_ack(const std::string &command_id, const char *status, const char *error) {
   if (command_id.empty()) return;
-  cJSON *root = cJSON_CreateObject();
-  cJSON_AddStringToObject(root, "command_id", command_id.c_str());
-  cJSON_AddStringToObject(root, "status", status);
-  if (error) {
-    cJSON_AddStringToObject(root, "error", error);
-  } else {
-    cJSON_AddNullToObject(root, "error");
-  }
-  char *text = cJSON_PrintUnformatted(root);
-  cJSON_Delete(root);
-  if (!text) return;
-  publish(topic("command/ack"), text, false);
-  cJSON_free(text);
+  const std::string text = contract::ack_json(command_id, status, error);
+  if (!text.empty()) publish(topic("command/ack"), text, false);
 }
 
 }  // namespace p64::makapix::mqtt

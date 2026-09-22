@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "cJSON.h"
+#include "contract.hpp"
 #include "credentials.hpp"
 #include "p64/content/makapix_index.hpp"
 #include "p64/content/playset.hpp"
@@ -40,14 +41,7 @@ bool query_page(const std::string &token, const ChannelRef &ref, uint16_t max_si
 // A single post by public sqid (anonymous).
 bool post_by_sqid(const std::string &sqid, content::MakapixEntry &out, std::string &title, std::string &error);
 
-struct ViewEvent {
-  int32_t post_id = 0;
-  std::string timestamp;  // ISO 8601 UTC
-  bool intentional = false;
-  uint8_t play_order = 2;  // 0 server order, 1 created, 2 random
-  std::string channel;     // server channel name
-  std::string user_sqid, hashtag;
-};
+using ViewEvent = contract::ViewEvent;
 bool view(const std::string &token, const ViewEvent &v, std::string &error);
 bool reaction(const std::string &token, int32_t post_id, bool add, std::string &error);
 bool get_playset(const std::string &token, const std::string &name, content::Playset &out, std::string &error);

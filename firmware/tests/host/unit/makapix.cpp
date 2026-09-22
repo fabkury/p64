@@ -208,4 +208,110 @@ TEST_CASE("makapix policy: a Followed request made offline is parked, not failed
   CHECK(policy::job_disposition(false, true, false, true) == JobDisposition::Run);
 }
 
+// --- commands from the site and the payloads the device publishes (MQTT) ---------------
+
+using Cmd = contract::Command;
+
+Cmd command(const std::string &json) { return contract::parse_command(json.data(), json.size()); }
+
+TEST_CASE("makapix commands: the documented examples (docs/mqtt-api/commands.md)") {
+  Cmd c = command(R"({"command_id":"cmd-001","command_type":"swap_next","payload":{},"timestamp":"2024-01-15T10:30:00Z"})");
+  CHECK(c.kind == Cmd::Kind::Next);
+  CHECK(c.id == "cmd-001");
+  CHECK(c.ack_status.empty());  // navigation is not acknowledged
+  CHECK(command(R"({"command_id":"cmd-002","command_type":"swap_back","payload":{}})").kind == Cmd::Kind::Back);
+
+  c = command(std::string(R"({"command_id":"cmd-003","command_type":"show_artwork","payload":{"post_id":12345,
+    "storage_key":")") + kUuid + R"(","storage_shard":"21/32","native_format":"png","width":64,"height":64}})");
+  REQUIRE(c.kind == Cmd::Kind::ShowArtwork);
+  CHECK_EQ(c.entry.post_id, 12345);
+  CHECK(std::string(c.entry.shard) == "21/32");
+  CHECK(c.name == "post 12345");
+  CHECK(contract::download_url(c.entry, "vault.makapix.club", false).find("/21/32/") != std::string::npos);
+
+  c = command(R"({"command_id":"cmd-004","command_type":"play_channel","payload":{"channel_name":"promoted"}})");
+  REQUIRE(c.kind == Cmd::Kind::PlayPlayset);
+  REQUIRE_EQ(c.playset.channels.size(), 1u);
+  CHECK(c.playset.channels[0].kind == p64::content::ChannelKind::MakapixPromoted);
+  CHECK(c.playset.name == "Makapix");
+
+  c = command(R"({"command_id":"cmd-005","command_type":"play_channel","payload":{"channel_name":"by_user",
+    "user_sqid":"k5fNx","user_handle":"pixelartist"}})");
+  REQUIRE(c.kind == Cmd::Kind::PlayPlayset);
+  CHECK(c.playset.channels[0].kind == p64::content::ChannelKind::MakapixArtist);
+  CHECK(c.playset.channels[0].identifier == "k5fNx");
+  CHECK(c.playset.channels[0].display_name == "@pixelartist");
+
+  c = command(R"({"command_id":"cmd-006","command_type":"play_channel","payload":{"channel_name":"hashtag","hashtag":"landscape"}})");
+  REQUIRE(c.kind == Cmd::Kind::PlayPlayset);
+  CHECK(c.playset.channels[0].identifier == "landscape");
+
+  c = command(R"({"command_id":"cmd-007","command_type":"play_playset","payload":{"playset_name":"followed_artists",
+    "channels":[{"type":"user","identifier":"k5fNx","display_name":"@pixelartist","weight":10},
+    {"type":"named","name":"promoted","display_name":"Promoted","weight":5}],"exposure_mode":"manual","pick_mode":"recency"}})");
+  REQUIRE(c.kind == Cmd::Kind::PlayPlayset);
+  CHECK(c.playset.name == "Followed");  // the site's followed_artists is the Followed built-in
+  CHECK(c.playset.builtin);
+  CHECK_EQ(c.playset.channels.size(), 2u);
+}
+
+TEST_CASE("makapix commands: the set_* commands are acknowledged, ok or with the reason") {
+  Cmd c = command(R"({"command_id":"a","command_type":"set_brightness","payload":{"value":40}})");
+  CHECK(c.kind == Cmd::Kind::SetBrightness);
+  CHECK_EQ(c.brightness, 40);
+  CHECK((c.ack_status == "ok" && c.republish_state));
+  c = command(R"({"command_id":"b","command_type":"set_brightness","payload":{"value":0}})");
+  CHECK(c.kind == Cmd::Kind::None);
+  CHECK((c.ack_status == "error" && c.ack_error == "brightness must be 1 to 255"));
+  c = command(R"({"command_id":"c","command_type":"set_paused","payload":{"paused":true}})");
+  CHECK((c.kind == Cmd::Kind::SetPaused && c.paused && c.ack_status == "ok"));
+  c = command(R"({"command_id":"d","command_type":"set_paused","payload":{"paused":"yes"}})");
+  CHECK((c.kind == Cmd::Kind::None && c.ack_status == "error"));
+  c = command(R"({"command_id":"e","command_type":"set_rotation","payload":{"value":270}})");
+  CHECK((c.kind == Cmd::Kind::SetRotation && c.rotation == 270));
+  c = command(R"({"command_id":"f","command_type":"set_rotation","payload":{"value":45}})");
+  CHECK(c.ack_error == "rotation must be 0, 90, 180, or 270");
+  CHECK(command(R"({"command_id":"g","command_type":"set_mirror","payload":{}})").ack_status == "unsupported");
+  CHECK(command(R"({"command_id":"h","command_type":"teleport","payload":{}})").ack_status == "unsupported");
+  CHECK(command(R"({"command_type":"teleport","payload":{}})").ack_status.empty());  // no id, nobody to answer
+}
+
+TEST_CASE("makapix commands: unusable payloads are refused without acting") {
+  CHECK(command("{not json").kind == Cmd::Kind::Invalid);
+  CHECK(command(R"({"command_id":"x","command_type":"show_artwork","payload":{"post_id":1,"storage_key":"abc123-def456-789",
+    "native_format":"png"}})").kind == Cmd::Kind::None);  // the docs' example key is not a UUID
+  CHECK(command(R"({"command_id":"x","command_type":"play_channel","payload":{"channel_name":"giphy"}})").kind == Cmd::Kind::None);
+  Cmd c = command(R"({"command_id":"x","command_type":"play_playset","payload":{"playset_name":"p",
+    "channels":[{"type":"url_list","identifier":"x"}]}})");
+  CHECK(c.kind == Cmd::Kind::None);  // URL lists are not supported yet: nothing to play
+  CHECK(!c.warning.empty());
+  // A p3a's "sdcard" channel is this device's own card.
+  c = command(R"({"command_id":"x","command_type":"play_playset","payload":{"playset_name":"p",
+    "channels":[{"type":"sdcard","identifier":""},{"type":"url_list","identifier":"x"}]}})");
+  REQUIRE(c.kind == Cmd::Kind::PlayPlayset);
+  REQUIRE_EQ(c.playset.channels.size(), 1u);
+  CHECK(c.playset.channels[0].kind == p64::content::ChannelKind::Local);
+}
+
+TEST_CASE("makapix payloads: status, state, capabilities, view and ack") {
+  CHECK(contract::status_json("7e98", 42, "0.1.0") ==
+        R"({"player_key":"7e98","status":"online","current_post_id":42,"firmware_version":"0.1.0"})");
+  CHECK(contract::status_json("7e98", -1, "0.1.0").find("current_post_id") == std::string::npos);
+  CHECK(contract::state_json(true, 40, 90) == R"({"is_paused":true,"brightness":40,"rotation":90})");
+  CHECK(contract::capabilities_json("0.1.0") ==
+        R"({"firmware_version":"0.1.0","features":{"pause":{},"brightness":{"min":1,"max":255,"step":1},)"
+        R"("rotation":{"values":[0,90,180,270]}}})");
+  contract::ViewEvent v;
+  v.post_id = 7;
+  v.timestamp = "2026-09-22T12:00:00Z";
+  v.channel = "by_user";
+  v.user_sqid = "k5fNx";
+  const std::string view = contract::view_json(v, "7e98");
+  CHECK(view.find(R"("intent":"channel")") != std::string::npos);
+  CHECK(view.find(R"("channel_user_sqid":"k5fNx")") != std::string::npos);
+  CHECK(view.find("channel_hashtag") == std::string::npos);
+  CHECK(contract::ack_json("cmd-1", "ok", nullptr) == R"({"command_id":"cmd-1","status":"ok","error":null})");
+  CHECK(contract::ack_json("cmd-1", "error", "no") == R"({"command_id":"cmd-1","status":"error","error":"no"})");
+}
+
 }  // namespace

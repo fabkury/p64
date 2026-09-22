@@ -10,6 +10,7 @@
 #include "cache.hpp"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "contract.hpp"
 #include "internal.hpp"
 #include "mbedtls/x509_crt.h"
 #include "mqtt.hpp"
@@ -174,16 +175,6 @@ uint32_t cert_not_after(const std::string &pem) {
 }  // namespace internal
 namespace {
 
-std::string str(const cJSON *obj, const char *key) {
-  const cJSON *v = cJSON_GetObjectItemCaseSensitive(obj, key);
-  return (v && cJSON_IsString(v) && v->valuestring) ? v->valuestring : "";
-}
-
-double num(const cJSON *obj, const char *key, double fallback) {
-  const cJSON *v = cJSON_GetObjectItemCaseSensitive(obj, key);
-  return (v && cJSON_IsNumber(v)) ? v->valuedouble : fallback;
-}
-
 void on_view_timer(void *) { view_timer_fired(); }
 
 void on_network_change(bool up) {
@@ -225,131 +216,50 @@ const char *server_channel_name(content::ChannelKind kind) {
 namespace internal {
 
 void handle_command(const char *json, size_t len) {
-  cJSON *root = cJSON_ParseWithLength(json, len);
-  if (!root) {
-    ESP_LOGW(TAG, "command: not JSON");
+  // Parsing is contract::parse_command (pure, host-tested); this only acts.
+  const contract::Command c = contract::parse_command(json, len);
+  if (c.kind == contract::Command::Kind::Invalid) {
+    ESP_LOGW(TAG, "%s", c.warning.c_str());
     return;
   }
-  const std::string id = str(root, "command_id");
-  const std::string type = str(root, "command_type");
-  const cJSON *payload = cJSON_GetObjectItemCaseSensitive(root, "payload");
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_status.commands;
   }
-  ESP_LOGI(TAG, "command %s", type.c_str());
-  if (type == "swap_next") {
-    if (g_hooks.next) g_hooks.next();
-  } else if (type == "swap_back") {
-    if (g_hooks.previous) g_hooks.previous();
-  } else if (type == "show_artwork") {
-    content::MakapixEntry e = {};
-    e.post_id = static_cast<int32_t>(num(payload, "post_id", -1));
-    const std::string key = str(payload, "storage_key");
-    const std::string shard = str(payload, "storage_shard");
-    const content::MakapixFormat format = content::makapix_format_from_name(str(payload, "native_format"));
-    if (e.post_id >= 0 && content::parse_uuid(key.c_str(), e.storage_key) && format != content::MakapixFormat::Unknown) {
-      std::strncpy(e.shard, shard.c_str(), sizeof(e.shard) - 1);
-      e.format = static_cast<uint8_t>(format);
-      e.width = static_cast<uint16_t>(num(payload, "width", 0));
-      e.height = static_cast<uint16_t>(num(payload, "height", 0));
+  ESP_LOGI(TAG, "command %s", c.type.c_str());
+  if (!c.warning.empty()) ESP_LOGW(TAG, "%s", c.warning.c_str());
+  switch (c.kind) {
+    case contract::Command::Kind::Next:
+      if (g_hooks.next) g_hooks.next();
+      break;
+    case contract::Command::Kind::Back:
+      if (g_hooks.previous) g_hooks.previous();
+      break;
+    case contract::Command::Kind::ShowArtwork: {
       auto *job = new Job{JobType::ShowArtwork};
-      job->entry = e;
-      job->name = "post " + std::to_string(e.post_id);
+      job->entry = c.entry;
+      job->name = c.name;
       submit(job);
-    } else {
-      ESP_LOGW(TAG, "show_artwork: incomplete payload");
+      break;
     }
-  } else if (type == "play_channel") {
-    const std::string name = str(payload, "channel_name");
-    content::ChannelSpec spec;
-    bool ok = true;
-    if (name == "all") {
-      spec.kind = content::ChannelKind::MakapixAll;
-    } else if (name == "promoted") {
-      spec.kind = content::ChannelKind::MakapixPromoted;
-    } else if (name == "user") {
-      spec.kind = content::ChannelKind::MakapixOwn;
-    } else if (name == "by_user") {
-      spec.kind = content::ChannelKind::MakapixArtist;
-      spec.identifier = str(payload, "user_sqid");
-      spec.display_name = str(payload, "user_handle");
-      if (!spec.display_name.empty()) spec.display_name = "@" + spec.display_name;
-    } else if (name == "hashtag") {
-      spec.kind = content::ChannelKind::MakapixHashtag;
-      spec.identifier = str(payload, "hashtag");
-    } else {
-      ok = false;
-    }
-    std::string e;
-    if (ok && spec.validate(e)) {
-      content::Playset p;
-      p.name = "Makapix";
-      p.channels.push_back(spec);
-      if (g_hooks.play_playset) g_hooks.play_playset(p);
-    } else {
-      ESP_LOGW(TAG, "play_channel: unusable payload (%s)", e.c_str());
-    }
-  } else if (type == "play_playset") {
-    content::Playset p;
-    std::string e;
-    if (content::playset_from_json(payload, p, e)) {
-      const std::string name = str(payload, "playset_name");
-      p.name = name.empty() ? "Makapix" : name;
-      content::Builtin b;
-      p.builtin = content::builtin_from_name(p.name, b) || p.name == "followed_artists";
-      if (p.name == "followed_artists") p.name = content::builtin_name(content::Builtin::Followed);
-      // Drop channels this device cannot play (sdcard from a p3a, reserved kinds).
-      for (auto it = p.channels.begin(); it != p.channels.end();) {
-        std::string ce;
-        if (!it->supported() || !it->validate(ce)) {
-          it = p.channels.erase(it);
-        } else {
-          ++it;
-        }
-      }
-      if (!p.channels.empty() && g_hooks.play_playset) {
-        g_hooks.play_playset(p);
-      } else {
-        ESP_LOGW(TAG, "play_playset: no playable channels");
-      }
-    } else {
-      ESP_LOGW(TAG, "play_playset: %s", e.c_str());
-    }
-  } else if (type == "set_paused") {
-    const cJSON *v = cJSON_GetObjectItemCaseSensitive(payload, "paused");
-    if (v && cJSON_IsBool(v)) {
-      if (g_hooks.set_paused) g_hooks.set_paused(cJSON_IsTrue(v));
-      mqtt::publish_ack(id, "ok", nullptr);
-      mqtt::publish_state();
-    } else {
-      mqtt::publish_ack(id, "error", "missing or invalid 'paused' field");
-    }
-  } else if (type == "set_brightness") {
-    const double v = num(payload, "value", -1);
-    if (v >= 1 && v <= 255) {
-      if (g_hooks.set_brightness) g_hooks.set_brightness(static_cast<uint8_t>(v));
-      mqtt::publish_ack(id, "ok", nullptr);
-      mqtt::publish_state();
-    } else {
-      mqtt::publish_ack(id, "error", "brightness must be 1 to 255");
-    }
-  } else if (type == "set_rotation") {
-    const double v = num(payload, "value", -1);
-    if (v == 0 || v == 90 || v == 180 || v == 270) {
-      if (g_hooks.set_rotation) g_hooks.set_rotation(static_cast<uint16_t>(v));
-      mqtt::publish_ack(id, "ok", nullptr);
-      mqtt::publish_state();
-    } else {
-      mqtt::publish_ack(id, "error", "rotation must be 0, 90, 180, or 270");
-    }
-  } else if (type == "set_mirror") {
-    mqtt::publish_ack(id, "unsupported", nullptr);
-  } else {
-    ESP_LOGW(TAG, "command %s: unknown", type.c_str());
-    if (!id.empty()) mqtt::publish_ack(id, "unsupported", nullptr);
+    case contract::Command::Kind::PlayPlayset:
+      if (g_hooks.play_playset) g_hooks.play_playset(c.playset);
+      break;
+    case contract::Command::Kind::SetPaused:
+      if (g_hooks.set_paused) g_hooks.set_paused(c.paused);
+      break;
+    case contract::Command::Kind::SetBrightness:
+      if (g_hooks.set_brightness) g_hooks.set_brightness(c.brightness);
+      break;
+    case contract::Command::Kind::SetRotation:
+      if (g_hooks.set_rotation) g_hooks.set_rotation(c.rotation);
+      break;
+    case contract::Command::Kind::None:
+    case contract::Command::Kind::Invalid:
+      break;
   }
-  cJSON_Delete(root);
+  if (!c.ack_status.empty()) mqtt::publish_ack(c.id, c.ack_status.c_str(), c.ack_error.empty() ? nullptr : c.ack_error.c_str());
+  if (c.republish_state) mqtt::publish_state();
 }
 
 void view_timer_fired() {
