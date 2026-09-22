@@ -84,8 +84,17 @@ TEST_CASE("show: channel status texts (spec 6.4)") {
   CHECK(rules::channel_status(mk) == "needs pairing");
   mk.paired = true;
   CHECK(rules::channel_status(mk) == "no listing yet");
+  // A listing that landed empty is not a missing listing (the @Sendew channel of
+  // 2026-09-22: an artist with no posts read "no listing yet" after a good refresh).
+  mk.refreshed = true;
+  CHECK(rules::channel_status(mk) == "no artworks");
+  mk.oversized = 3;
+  mk.max_side = 128;
+  CHECK(rules::channel_status(mk) == "nothing fits 128 px (3 too large)");
   mk.online = false;
   CHECK(rules::channel_status(mk) == "offline");
+  mk.refreshed = false;
+  mk.oversized = 0;
   mk.index_entries = 50;
   CHECK(rules::channel_status(mk) == "downloading");
   mk.cached = 1;

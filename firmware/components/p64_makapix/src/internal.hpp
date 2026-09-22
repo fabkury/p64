@@ -25,6 +25,7 @@ struct Channel {
   content::MakapixEntries entries;
   uint32_t cached = 0;
   uint32_t last_refresh = 0;    // epoch seconds
+  uint32_t last_oversized = 0;  // listed at the last refresh but over the size limit (not saved)
   int64_t next_refresh_us = 0;  // monotonic; 0 = as soon as possible
   int64_t retry_at_us = 0;      // after a failure
   uint32_t fail_streak = 0;

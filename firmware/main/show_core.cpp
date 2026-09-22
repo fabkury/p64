@@ -85,6 +85,9 @@ std::string channel_status(const ChannelRuntime &ch) {
     f.online = ms.online;
     f.index_entries = ch.mk_entries.size();
     f.cached = ch.mk_cached.size();
+    f.refreshed = ch.mk_last_refresh != 0;
+    f.oversized = ch.mk_oversized;
+    f.max_side = settings().makapix_max_side;
   }
   return rules::channel_status(f);
 }
@@ -152,8 +155,12 @@ void snapshot_makapix(ChannelRuntime &ch) {
   makapix::ChannelSnapshot snap;
   ch.mk_entries.clear();
   ch.mk_cached.clear();
+  ch.mk_last_refresh = 0;
+  ch.mk_oversized = 0;
   if (g_env->makapix_snapshot(ref_of(ch.spec), snap)) {
     ch.mk_entries = std::move(snap.entries);
+    ch.mk_last_refresh = snap.last_refresh;
+    ch.mk_oversized = snap.oversized;
     // Pickable: cached and within the size limit (an index walked before the limit was
     // lowered still lists bigger artworks until its refresh lands).
     const uint16_t max_side = settings().makapix_max_side;
@@ -1104,6 +1111,7 @@ cJSON *channels_json() {
       if (g_env->makapix_snapshot(ref_of(ch.spec), snap)) {
         cJSON_AddNumberToObject(o, "cached", snap.cached);
         cJSON_AddNumberToObject(o, "last_refresh", snap.last_refresh);
+        cJSON_AddNumberToObject(o, "oversized", snap.oversized);
         cJSON_AddBoolToObject(o, "refreshing", snap.refreshing);
         cJSON_AddStringToObject(o, "error", snap.error.c_str());
       }

@@ -55,12 +55,15 @@ body { justify-content: flex-start; overflow-x: hidden; }
 .ps-ch-row.refreshing { animation: ps-pulse 1.8s ease-in-out infinite; }
 @keyframes ps-pulse { 0%, 100% { background: color-mix(in srgb, var(--c-on-primary) 8%, transparent); } 50% { background: color-mix(in srgb, var(--c-on-primary) 22%, transparent); } }
 .ps-ch-row.blocked { background: color-mix(in srgb, var(--c-warning) 22%, transparent); border-left: 3px solid var(--c-warning); opacity: 0.85; animation: none; }
+.ps-ch-row.empty { opacity: 0.6; }
 .ps-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 3px; text-transform: uppercase; flex-shrink: 0; }
 .ps-badge-type { background: color-mix(in srgb, var(--c-on-primary) 25%, transparent); color: var(--c-on-primary); }
 .ps-badge-sub { background: rgba(0,0,0,0.22); color: color-mix(in srgb, var(--c-on-primary) 90%, transparent); }
 .ps-ch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-on-primary); }
 .ps-ch-id { color: color-mix(in srgb, var(--c-on-primary) 65%, transparent); font-size: 0.65rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
 .ps-ch-count { white-space: nowrap; color: color-mix(in srgb, var(--c-on-primary) 85%, transparent); flex-shrink: 0; }
+.ps-ch-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; flex-shrink: 1; font-style: italic;
+    color: color-mix(in srgb, var(--c-on-primary) 75%, transparent); font-size: 0.6rem; }
 .ps-ch-time { white-space: nowrap; color: color-mix(in srgb, var(--c-on-primary) 55%, transparent); font-size: 0.6rem; flex-shrink: 0; }
 .arrow-row { width: min(420px, 100%); display: flex; gap: 18px; align-items: center; justify-content: space-between; }
 .arrow-btn { background: var(--c-card-bg); border: none; border-radius: 50%; width: 72px; height: 72px; display: flex; align-items: center;
@@ -250,17 +253,21 @@ function renderInfo() {
 }
 function kindLetter(kind) { return kind === 'local' ? 'L' : 'M'; }
 function kindName(kind) { return { local: 'card', promoted: 'promoted', all: 'all', own: 'own', artist: 'artist', hashtag: 'hashtag', reactions: 'reactions', url_list: 'url list', pinned: 'pinned' }[kind] || kind; }
+// A channel whose listing landed empty is not blocked: it simply has nothing (yet).
+function emptyStatus(status) { return status === 'no artworks' || status.indexOf('nothing fits ') === 0; }
 function renderChannels() {
     var c = document.getElementById('now-playing-channels'), html = '';
     var now = Date.now() / 1000;
     channels.forEach(function (ch) {
-        var cls = 'ps-ch-row' + (ch.refreshing ? ' refreshing' : '') + (ch.status && !ch.refreshing ? ' blocked' : '');
+        var quiet = ch.status && !ch.refreshing;
+        var cls = 'ps-ch-row' + (ch.refreshing ? ' refreshing' : '') + (quiet ? (emptyStatus(ch.status) ? ' empty' : ' blocked') : '');
         html += '<div class="' + cls + '" title="' + p64.esc(ch.status || '') + '">' +
             '<span class="ps-badge ps-badge-type">' + kindLetter(ch.kind) + '</span>' +
             '<span class="ps-badge ps-badge-sub">' + p64.esc(kindName(ch.kind)) + '</span>' +
             '<span class="ps-ch-name">' + p64.esc(ch.display_name || ch.identifier || kindName(ch.kind)) + '</span>' +
             (ch.identifier && ch.kind !== 'local' ? '<span class="ps-ch-id">' + p64.esc(ch.identifier) + '</span>' : '') +
             '<span class="ps-ch-count">' + (ch.cached != null ? ch.cached : ch.available) + '/' + ch.entries + '</span>' +
+            (quiet ? '<span class="ps-ch-status">' + p64.esc(ch.status) + '</span>' : '') +
             (ch.last_refresh ? '<span class="ps-ch-time">' + p64.relative(now - ch.last_refresh) + '</span>' : '') +
             '</div>';
     });

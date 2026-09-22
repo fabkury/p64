@@ -56,6 +56,7 @@ struct ChannelSnapshot {
   content::MakapixEntries entries;  // the index, newest first
   uint32_t cached = 0;              // entries whose file is in the cache
   uint32_t last_refresh = 0;        // epoch seconds, 0 never
+  uint32_t oversized = 0;           // listed at the last refresh but over the size limit (RAM only; 0 after a reboot)
   bool refreshing = false;
   std::string error;                // the last refresh failure ("" when fine)
 };

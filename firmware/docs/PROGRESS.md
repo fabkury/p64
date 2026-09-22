@@ -551,6 +551,16 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   codes); the cache sweep deleted files whose mtime was up to a day in the future (an
   unsigned wrap). Device tests fixed for state assumptions (content, makapix,
   panel_mode). Every device test passes on the final build.
+- 2026-09-22, an empty channel told apart from a missing listing (prompt p028): the
+  Followed artist @Sendew (`Rxn`) read "0/0" with the status "no listing yet" although
+  its refresh had landed without error; the site reports 0 posts for that artist. The
+  status is now "no artworks" when a listing landed empty and "nothing fits N px (M too
+  large)" when everything listed was over the size limit (`oversized`, a new RAM-only
+  field of `/api/v1/channels`); the Home page shows the status on the row, dimmed for an
+  empty channel, orange only for real obstacles. Host case extended (`show: channel
+  status texts`); verified on the device (the row reads "0/0 no artworks 1 h ago");
+  ui, content and api smoke tests pass. The "nothing fits" text is host-tested only.
+  Note: `content_smoke.py` leaves the Local playset active.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

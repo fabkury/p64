@@ -57,7 +57,7 @@ second.
 | `/api/v1/action/play` | POST | `{"path":"animations/x.gif"}` | play-this from the card (422 when missing) |
 | `/api/v1/action/play_playset` | POST | `{"name":"..."}` | activate a playset (built-in or stored; 404 otherwise) |
 | `/api/v1/history` | GET | | `{count, position, items:[{index, kind, source, name, path, channel, channel_index, playset, shown_s_ago, current}]}` |
-| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (Makapix channels add `cached`, `last_refresh`, `refreshing`, `error`) |
+| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (Makapix channels add `cached`, `last_refresh`, `oversized`, `refreshing`, `error`) |
 | `/api/v1/folders` | GET | | folders that can be local channels: `[{folder, name, files}]` |
 
 ## Playsets (M5)
@@ -89,7 +89,12 @@ Channel kinds: `local` (identifier = folder under `animations/`, "" = the root),
 | `/api/v1/action/play` | POST | `{"url":"http(s)://..."}` | play-this of an arbitrary artwork URL (downloaded into `downloads/`) |
 
 Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refresh`
-(epoch seconds), `refreshing` and `error`. History items and the status artwork carry
+(epoch seconds), `oversized` (entries the last refresh listed but dropped for being over
+the size limit; kept in RAM only, 0 after a reboot until the next refresh), `refreshing`
+and `error`. A Makapix channel with nothing cached has the `status` "downloading" (its
+index has entries), "offline", "no listing yet" (no refresh has landed), "no artworks"
+(the refresh landed empty) or "nothing fits N px (M too large)" (everything listed was
+over the size limit). History items and the status artwork carry
 `post_id` and `sqid` for Makapix artworks.
 
 `settings.makapix.max_size` (32, 64, 128 or 256; default 128; other numbers snap up to the

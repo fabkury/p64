@@ -93,6 +93,8 @@ struct ChannelRuntime {
   content::LocalEntries entries;      // local channels
   content::MakapixEntries mk_entries; // Makapix channels: the index
   std::vector<uint16_t> mk_cached;    // indexes into mk_entries of the cached ones (pickable)
+  uint32_t mk_last_refresh = 0;       // Makapix channels: epoch seconds of the last listing, 0 never
+  uint32_t mk_oversized = 0;          // Makapix channels: listed then but over the size limit
   uint32_t available = 0;             // entries neither missing nor rejected (local) or cached (Makapix)
   std::string status;                 // "" when the channel can supply artworks, else why not
 };

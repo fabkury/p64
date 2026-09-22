@@ -190,6 +190,7 @@ void finish_walk(Channel *ch, bool ok, const std::string &error) {
       ch->entries = std::move(fresh);
       recount_cached(*ch);
       ch->last_refresh = epoch_now();
+      ch->last_oversized = ch->walk_oversized;
       ch->next_refresh_us = esp_timer_get_time() + static_cast<int64_t>(interval) * kSecond;
       ch->retry_at_us = 0;
       ch->fail_streak = 0;

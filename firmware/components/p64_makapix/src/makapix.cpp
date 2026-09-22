@@ -409,6 +409,7 @@ bool snapshot(const ChannelRef &ref, ChannelSnapshot &out) {
   out.entries = ch->entries;
   out.cached = ch->cached;
   out.last_refresh = ch->last_refresh;
+  out.oversized = ch->last_oversized;
   out.refreshing = ch->refreshing;
   out.error = ch->error;
   return true;

@@ -27,6 +27,9 @@ struct ChannelFacts {
   bool online = true;
   size_t index_entries = 0;  // Makapix: entries in the index
   size_t cached = 0;         // Makapix: entries cached and within the size limit
+  bool refreshed = false;    // Makapix: a listing has landed (last_refresh set)
+  uint32_t oversized = 0;    // Makapix: listed at that refresh but over the size limit
+  uint16_t max_side = 0;     // Makapix: the size limit, for the text
 };
 // Why a channel cannot supply artworks right now ("" when it can).
 std::string channel_status(const ChannelFacts &f);
