@@ -138,8 +138,16 @@ VENDORED_INCLUDES = (os.path.join(COMPONENTS, "animatedgif"), os.path.join(HERE,
                      os.path.join(COMPONENTS, "libwebp"), CJSON)
 
 
-def sanitizer_flags():
-    return ["-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-fno-sanitize-recover=undefined"] if SANITIZE else []
+def sanitizer_flags(src=None):
+    if not SANITIZE:
+        return []
+    flags = ["-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-fno-sanitize-recover=undefined"]
+    # AnimatedGIF reads 16-bit fields through casts on 64-bit hosts (its ALLOWS_UNALIGNED
+    # path, x86-64 only; the ESP32-S3 build takes the byte-wise macros), which UBSan's
+    # alignment check reports. Vendored code, host-only path: that one check is off there.
+    if src is not None and src.startswith(VENDORED):
+        flags.append("-fno-sanitize=alignment")
+    return flags
 
 
 def compile_object(src, obj, is_cxx, header_mtime):
@@ -151,7 +159,7 @@ def compile_object(src, obj, is_cxx, header_mtime):
         warn = ["-Wall", "-Wextra"]
         if WERROR and not src.startswith(VENDORED):
             warn.append("-Werror")
-        cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
+        cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", *sanitizer_flags(src), *inc, "-c", src, "-o", obj]
     else:
         cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
     subprocess.run(cmd, check=True)
