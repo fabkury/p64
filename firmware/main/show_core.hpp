@@ -1,0 +1,214 @@
+// p64 -- the show core: the Animation show, the Widget and Stream states, history,
+// playsets and their channels, the auto-swap, pause, play-this, status screens and the
+// stream takeover (spec 4.5 to 6, 8.3), as code with no ESP-IDF include. Everything it
+// does to the world goes through ShowEnv; show.cpp is the shell that owns the command
+// queue, the task and the device's ShowEnv, and tests/host/unit/show.cpp drives the core
+// with a fake one through whole scenarios. Review of 2026-09-22, proposal P-T1.
+//
+// Not thread-safe: the shell calls it from the show loop, and the API's readers under the
+// shell's mutex. The three atomics the player's overlay hook reads are the exception.
+#pragma once
+
+#include <cstdarg>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "cJSON.h"
+#include "loader.hpp"
+#include "p64/content/history.hpp"
+#include "p64/content/playset.hpp"
+#include "p64/content/scheduler.hpp"
+#include "p64/gfx/frame.hpp"
+#include "p64/makapix/makapix.hpp"
+#include "p64/net/wifi.hpp"
+#include "p64/playback/artwork.hpp"
+#include "p64/playback/frame_source.hpp"
+#include "p64/stream/stream.hpp"
+#include "p64/system/settings.hpp"
+#include "show_rules.hpp"
+
+namespace p64::show {
+
+// The world as the core sees it. The device's implementation lives in show.cpp.
+class ShowEnv {
+ public:
+  virtual ~ShowEnv() = default;
+
+  // Time, chance, settings.
+  virtual int64_t now_us() = 0;
+  virtual uint32_t random() = 0;
+  virtual std::shared_ptr<const system::Settings> settings() = 0;
+  virtual void persist_main_state(system::MainState state) = 0;
+  virtual void persist_active_playset(const std::string &name) = 0;
+  virtual bool load_playset(const std::string &name, content::Playset &out, std::string &error) = 0;
+
+  // The panel.
+  virtual void play(std::shared_ptr<playback::FrameSource> source) = 0;
+  virtual std::shared_ptr<playback::FrameSource> static_frame(const char *name, const gfx::Frame &frame) = 0;
+  virtual std::shared_ptr<playback::FrameSource> widget(system::WidgetKind kind) = 0;
+  virtual const char *widget_name(system::WidgetKind kind) = 0;
+  virtual std::shared_ptr<playback::FrameSource> stream_source() = 0;
+  virtual void stream_wake() = 0;
+  virtual stream::Status stream_status() = 0;
+  struct RenderTotals {
+    uint32_t frames = 0, late = 0, skipped = 0;
+  };
+  virtual RenderTotals render_totals() = 0;
+
+  // The card (through the loader task: results come back as on_loaded/on_scanned).
+  virtual uint32_t load(const std::string &path, gfx::Rgb background) = 0;
+  virtual void scan(uint32_t generation, const content::Playset &playset) = 0;
+  virtual bool card_mounted() = 0;
+  virtual std::string storage_root() = 0;
+  virtual std::string animations_dir() = 0;
+  virtual std::string downloads_dir() = 0;
+
+  // Makapix Club.
+  virtual makapix::Status makapix_status() = 0;
+  virtual bool makapix_paired() = 0;
+  virtual void makapix_set_active_channels(const std::vector<makapix::ChannelRef> &refs) = 0;
+  virtual bool makapix_snapshot(const makapix::ChannelRef &ref, makapix::ChannelSnapshot &out) = 0;
+  virtual std::string makapix_artwork_path(const content::MakapixEntry &entry) = 0;
+  virtual void makapix_note_shown(int32_t post_id, const makapix::ChannelRef *channel, bool play_this) = 0;
+  virtual void makapix_note_hidden() = 0;
+  virtual void makapix_note_load_failed(const content::MakapixEntry &entry, bool missing) = 0;
+  virtual bool makapix_play_followed(std::string &error) = 0;
+
+  // Network, notifications, log.
+  virtual net::wifi::Status wifi_status() = 0;
+  virtual void playback_swapped(int32_t history_position) = 0;  // the PlaybackSwapped event
+  virtual void notify_web() = 0;
+  virtual void vlog(char level, const char *format, va_list args) = 0;  // 'E', 'W', 'I', 'D'
+};
+
+namespace core {
+
+// The runtime of one channel of the active playset.
+struct ChannelRuntime {
+  content::ChannelSpec spec;
+  bool makapix = false;
+  content::LocalEntries entries;      // local channels
+  content::MakapixEntries mk_entries; // Makapix channels: the index
+  std::vector<uint16_t> mk_cached;    // indexes into mk_entries of the cached ones (pickable)
+  uint32_t available = 0;             // entries neither missing nor rejected (local) or cached (Makapix)
+  std::string status;                 // "" when the channel can supply artworks, else why not
+};
+
+struct Pick {
+  uint32_t generation = 0;  // the playset generation it was made against
+  int channel = -1;
+  int entry = -1;     // index in the channel's pickable list
+  uint32_t pool = 0;  // pickable entries in the channel at pick time
+  bool makapix = false;
+  content::MakapixEntry mk_entry = {};
+  std::string path;
+  std::string name;
+  std::string channel_name;
+};
+
+struct Pending {
+  enum class Purpose : uint8_t { None, Navigate, PlayThis, Resume } purpose = Purpose::None;
+  uint32_t load_id = 0;
+  int direction = 0;  // navigation: -1 previous, +1 next, 0 exact
+  content::HistoryItem item;
+};
+
+enum class Screen : uint8_t { None, Pairing, Paired, Connected };
+
+// Everything the show knows. One value, so a test resets it by assignment and reads it.
+struct State {
+  content::Playset playset;
+  std::vector<ChannelRuntime> channels;
+  // Bumped whenever the channel list or its counts change: the web UI refetches
+  // /api/v1/channels when the number in the status document moves.
+  uint32_t channels_version = 0;
+  content::Scheduler scheduler;
+  content::History history;
+  uint32_t generation = 0;  // bumps per scan request; results carry it back
+
+  bool paused = false;
+  int64_t swap_at_us = 0;      // when the current item went up
+  int64_t boot_until_us = 0;   // the boot animation holds the panel until then
+  std::shared_ptr<playback::Artwork> current;  // the artwork on the panel (null: status screen or pause)
+  std::string status_reason;   // the "no artwork" reason on the panel ("" when none)
+  std::string last_error;      // the last load or activation failure, for the UI
+  Screen screen = Screen::None;  // a status screen that holds the panel
+  int64_t screen_until_us = 0;   // when a timed screen ends (0 = until its cause ends)
+  std::shared_ptr<playback::FrameSource> widget;  // the widget on the panel (Widget state or an interlude)
+  bool widget_up = false;
+  system::WidgetKind widget_kind = system::WidgetKind::Clock;
+  bool want_widget = false;  // the Widget state waits for the boot animation
+  rules::Stage<std::shared_ptr<playback::FrameSource>> stage;  // on the panel, and behind a stream
+  bool stream_active = false;  // stream frames are arriving (StreamStarted .. StreamEnded)
+  bool want_stream = false;    // a takeover waits for the boot animation or a screen
+
+  Pick prepared_pick;
+  std::shared_ptr<playback::Artwork> prepared;
+  uint32_t prepared_load_id = 0;
+  bool want_prepared_now = false;
+  uint32_t prepare_failures = 0;
+  Pending pending;
+
+  bool scan_running = false;
+  bool scan_again = false;
+  bool activate_after_scan = false;
+  int64_t rescan_due_us = 0;
+  int64_t retry_at_us = 0;
+  uint32_t swaps = 0;
+  uint32_t load_failures = 0;
+  uint32_t last_scan_ms = 0;
+};
+
+// Sets the world and the scratch frame the status screens are drawn into, and resets the
+// state (the tests call it before each scenario).
+void init(ShowEnv &env, gfx::Frame &scratch);
+const State &state();
+
+// The boot animation holds the panel for `boot_ms` (spec 15.1); `source` shows meanwhile.
+void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms);
+// Activates the saved playset (`saved_name`, "" when none) or the spec's fallback, and
+// enters the saved main state.
+void restore(const std::string &saved_name);
+
+// Commands (from the API, the site, the IMU).
+void next();
+void previous();
+void go_to(size_t history_index);
+void pause();
+void resume();
+void reset_timer();
+void refresh();
+void play_file(const std::string &path, int32_t post_id, const std::string &name);
+void activate(const std::string &name);
+void activate_transient(const content::Playset &playset);
+
+// Events and results.
+void on_loaded(std::unique_ptr<loader::LoadResult> result);
+void on_scanned(std::unique_ptr<loader::ScanResult> result);
+void card_changed();
+void files_changed();
+void settings_changed();
+void makapix_changed();
+void makapix_state(makapix::State state);
+void wifi_connected();
+void stream_started();
+void stream_ended();
+
+// Periodic work, and how long the loop may sleep before it has something to do.
+void tick();
+int64_t wait_us();
+
+// Readers.
+bool overlay_allowed();  // an artwork is up, no stream, the show runs (any task)
+bool is_paused();
+int32_t current_post_id();  // the Makapix post on the panel, -1 otherwise
+const std::string &active_playset_name();
+cJSON *status_json();
+cJSON *channels_json();
+cJSON *history_json();
+
+}  // namespace core
+}  // namespace p64::show

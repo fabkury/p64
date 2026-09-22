@@ -4,6 +4,7 @@ idf_component_register(
         "boot_animation.cpp"
         "show.cpp"
         "show_rules.cpp"
+        "show_core.cpp"
         "loader.cpp"
         "status_screens.cpp"
         "ops.cpp"
