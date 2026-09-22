@@ -71,7 +71,7 @@ the MQTT handshake was still running after a flash.
 On the flashed builds, against the IP: `content`, `widgets`, `stream`, `timing`, `api`,
 `ops`, `ui`, `makapix --paired`, `pin`, `panel_mode`, `cache_sweep` (dry run) and the new
 `ws_smoke` pass. The boot log showed the parked Followed job run once online (parked at
-1.7 s, activated at 7.8 s). The 45-minute soak on the final build, Promoted at 5 s swaps with the status and preview polled every second: 522 swaps, 33 153 frames, 0 late flips, 0 timeouts, no stall, no reboot, internal heap floor 54 163 B (typical 70 to 74 KB), core 0 busy 8.4 %, 0 poll errors, against 59 243 B and 7.8 % after tier 1: the restructuring cost nothing measurable.
+1.7 s, activated at 7.8 s). The 45-minute soak on the final build, Promoted at 5 s swaps with the status and preview polled every second: 522 swaps, 33 153 frames, 0 late flips, 0 timeouts, no stall, no reboot, internal heap floor 54 163 B (typical 70 to 74 KB), core 0 busy 8.4 %, 0 poll errors, against 59 243 B and 7.8 % after tier 1. The 5 KB lower floor is within the 10 to 70 KB boot-to-boot variation of the minimum seen today and well inside the 32 KB budget; the typical free heap and the panel figures did not move.
 
 ## What remains
 
