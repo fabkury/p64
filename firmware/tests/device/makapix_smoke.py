@@ -74,7 +74,10 @@ def main():
 
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "Promoted"})
     check(st == 200, "activate Promoted")
-    d = wait_for(base, lambda d: d["playback"]["playset"]["name"] == "Promoted" and d["playback"].get("artwork"),
+    # The previous playset's artwork stays up until the first Promoted one is ready (the
+    # seamless swap, spec 3.6), so wait for an artwork from the new channel (2026-09-22).
+    d = wait_for(base, lambda d: d["playback"]["playset"]["name"] == "Promoted"
+                 and (d["playback"].get("artwork") or {}).get("channel") == "Promoted",
                  "Promoted shows an artwork", 120)
     a = d["playback"].get("artwork", {})
     check(a.get("channel") == "Promoted" and a.get("post_id") is not None, "the artwork carries its post id")
