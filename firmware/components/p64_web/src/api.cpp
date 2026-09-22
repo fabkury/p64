@@ -10,6 +10,9 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#if CONFIG_HEAP_TASK_TRACKING
+#include "esp_heap_task_info.h"
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "p64/decode/decoder.hpp"
@@ -550,13 +553,57 @@ esp_err_t diag_memory(httpd_req_t *req) {
 #if configUSE_TRACE_FACILITY
   const UBaseType_t count = uxTaskGetNumberOfTasks();
   std::vector<TaskStatus_t> status(count + 4);
-  const UBaseType_t got = uxTaskGetSystemState(status.data(), status.size(), nullptr);
+  configRUN_TIME_COUNTER_TYPE total_run_time = 0;
+  const UBaseType_t got = uxTaskGetSystemState(status.data(), status.size(), &total_run_time);
+  cJSON_AddNumberToObject(d, "total_run_time", static_cast<double>(total_run_time));
+  cJSON_AddNumberToObject(d, "uptime_us", static_cast<double>(esp_timer_get_time()));
   for (UBaseType_t i = 0; i < got; ++i) {
     cJSON *t = cJSON_CreateObject();
     cJSON_AddStringToObject(t, "name", status[i].pcTaskName);
     cJSON_AddNumberToObject(t, "priority", status[i].uxCurrentPriority);
     cJSON_AddNumberToObject(t, "stack_free", status[i].usStackHighWaterMark);
+    cJSON_AddNumberToObject(t, "core", static_cast<int>(xTaskGetCoreID(status[i].xHandle)));
+    cJSON_AddNumberToObject(t, "run_time", static_cast<double>(status[i].ulRunTimeCounter));
     cJSON_AddItemToArray(tasks, t);
+  }
+#endif
+#if CONFIG_HEAP_TASK_TRACKING
+  // Review instrumentation: which task allocated how much of each heap (blocks of tasks
+  // that no longer exist, and allocations made before the scheduler ran, show as handles).
+  {
+    static heap_task_totals_t totals[48];
+    static heap_task_block_t blocks[1];
+    size_t num_totals = 0;
+    heap_task_info_params_t params = {};
+    params.caps[0] = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+    params.mask[0] = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+    params.caps[1] = MALLOC_CAP_SPIRAM;
+    params.mask[1] = MALLOC_CAP_SPIRAM;
+    params.tasks = nullptr;
+    params.num_tasks = 0;
+    params.totals = totals;
+    params.num_totals = &num_totals;
+    params.max_totals = sizeof(totals) / sizeof(totals[0]);
+    params.blocks = blocks;
+    params.max_blocks = 0;
+    heap_caps_get_per_task_info(&params);
+    cJSON *owners = cJSON_AddArrayToObject(d, "heap_by_task");
+    for (size_t i = 0; i < num_totals; ++i) {
+      cJSON *o = cJSON_CreateObject();
+      const char *name = nullptr;
+      if (totals[i].task) {
+        for (UBaseType_t k = 0; k < got; ++k)
+          if (status[k].xHandle == totals[i].task) name = status[k].pcTaskName;
+      }
+      char handle[24];
+      snprintf(handle, sizeof handle, "%p", static_cast<void *>(totals[i].task));
+      cJSON_AddStringToObject(o, "task", name ? name : (totals[i].task ? handle : "(pre-scheduler/ISR)"));
+      cJSON_AddNumberToObject(o, "internal_bytes", totals[i].size[0]);
+      cJSON_AddNumberToObject(o, "internal_blocks", totals[i].count[0]);
+      cJSON_AddNumberToObject(o, "psram_bytes", totals[i].size[1]);
+      cJSON_AddNumberToObject(o, "psram_blocks", totals[i].count[1]);
+      cJSON_AddItemToArray(owners, o);
+    }
   }
 #endif
   return reply_ok(req, d);
