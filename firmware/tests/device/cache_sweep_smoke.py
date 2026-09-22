@@ -10,13 +10,14 @@ finds at least one file young enough to keep. With --delete it also runs a real 
 of everything not played in the last hour, checks that the affected channels' cached
 counts drop and that the download loop brings them back up (the churn the policy
 accepts: the device downloads the deleted artworks again). Needs a card and a synced
-clock; the Promoted playset is activated and left playing. Exit code 1 on any failure.
+clock; the Promoted playset is activated, and the playset active at the start is active
+again at the end. Exit code 1 on any failure.
 """
 
 import sys
 import time
 
-from api_smoke import check, request
+from api_smoke import check, playset_restored, request
 
 
 def status(base):
@@ -54,10 +55,7 @@ def sweep(base, older_than_s=None, dry_run=True):
     return request(base, "POST", "/api/v1/diag/cache_sweep", body)
 
 
-def main():
-    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
-    delete = "--delete" in sys.argv
-
+def run(base, delete):
     d = status(base)
     if not d.get("card", {}).get("mounted"):
         print("no card mounted: nothing to sweep")
@@ -122,6 +120,12 @@ def main():
         low = after
         wait_for(base, lambda d: cached_total(base) > low, "the download loop brings deleted artworks back", 120)
     return 0
+
+
+def main():
+    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
+    with playset_restored(base):
+        return run(base, "--delete" in sys.argv)
 
 
 if __name__ == "__main__":

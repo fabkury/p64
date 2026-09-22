@@ -8,13 +8,13 @@ works anonymously: the Makapix status document, the Promoted playset (listing an
 first downloads), play-this of a post by sqid and by site URL, play-this of a plain URL,
 and the built-ins' availability. With --paired (after pairing through the web UI) it also
 checks the MQTT connection flag, likes, the All playset and the Followed activation.
-Exit code 1 on any failure.
+The playset active at the start is active again at the end. Exit code 1 on any failure.
 """
 
 import sys
 import time
 
-from api_smoke import check, request
+from api_smoke import check, playset_restored, request
 
 
 def status(base):
@@ -41,10 +41,7 @@ def channels(base):
     return j["data"]["channels"]
 
 
-def main():
-    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
-    paired = "--paired" in sys.argv
-
+def run(base, paired):
     st, j = request(base, "GET", "/api/v1/makapix")
     check(st == 200 and j.get("ok"), "GET /api/v1/makapix")
     m = j["data"]
@@ -137,9 +134,11 @@ def main():
         st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "Followed"})
         check(st == 404, "Followed needs pairing (%d)" % st)
 
-    # Back to Local.
-    st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "Local"})
-    check(st == 200, "activate Local again")
+
+def main():
+    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
+    with playset_restored(base):
+        run(base, "--paired" in sys.argv)
     from api_smoke import failures
     print("makapix smoke: %d failures" % failures)
     return 1 if failures else 0
