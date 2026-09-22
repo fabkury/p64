@@ -1,0 +1,97 @@
+# p64 firmware CI (review of 2026-09-22, proposal P-T4; docs/review-2026-09/).
+#
+# host:     the ESP-IDF-free code on the PC compiler: the doctest unit tests and the
+#           image corpora checked pixel-exact against Pillow, built with AddressSanitizer,
+#           UndefinedBehaviorSanitizer and -Werror for p64 code (tests/host/run.py).
+# firmware: the ESP-IDF v5.5.4 build (warnings in p64 code are errors, see
+#           firmware/CMakeLists.txt), the size budgets of firmware/budgets.json
+#           (tools/check_size.py), and the image with its SHA256 as artifacts.
+#
+# The device tests (tests/device/) stay manual: they need the board on the LAN.
+
+name: firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - "hardware-tests/assets/gifs/**"
+      - ".github/workflows/firmware.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - "hardware-tests/assets/gifs/**"
+      - ".github/workflows/firmware.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: firmware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain and Pillow
+        run: |
+          apt-get update -qq && apt-get install -y -qq g++ > /dev/null
+          . "$IDF_PATH/export.sh" > /dev/null
+          python -m pip install -q pillow
+      - name: Fetch the managed components (zlib)
+        working-directory: firmware
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py reconfigure > /dev/null
+      - name: Host tests (ASan, UBSan, -Werror)
+        working-directory: firmware
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          python tests/host/run.py --sanitize --werror --junit host-junit.xml
+      - name: Upload the unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-junit
+          path: firmware/host-junit.xml
+          if-no-files-found: ignore
+
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        working-directory: firmware
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py build
+      - name: Size budgets
+        working-directory: firmware
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py size | tail -30
+          python tools/check_size.py
+      - name: Image and checksum
+        working-directory: firmware/build
+        run: sha256sum p64.bin | tee p64.bin.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p64-firmware
+          path: |
+            firmware/build/p64.bin
+            firmware/build/p64.bin.sha256
+            firmware/build/bootloader/bootloader.bin
+            firmware/build/partition_table/partition-table.bin
+            firmware/build/ota_data_initial.bin
+            firmware/build/flash_args
