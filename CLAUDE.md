@@ -76,8 +76,13 @@ Commands, all from `firmware/` in PowerShell 7 (same scripts as the hardware tes
 <seconds>` with the IDF venv's python (`C:\Espressif\tools\python\v5.5.4\venv`); it does
 not reset the board, so to capture a boot log keep it open while
 `POST /api/v1/action/reboot` restarts the firmware. Tests: `python tests\host\run.py`
-(host build of the ESP-IDF-free components: unit tests plus the image corpora checked
-pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
+(host build of the ESP-IDF-free files: the doctest cases under `tests\host\unit\` plus
+the image corpora checked pixel-exact against Pillow; needs gcc/g++ and the system Python
+with Pillow; `--tc "show*"` runs matching cases, `--werror`, `--sanitize` (Linux/WSL
+only) and `--junit FILE` are what CI uses). GitHub Actions (`.github/workflows/firmware.yml`)
+runs the host tests with ASan, UBSan and `-Werror` and the ESP-IDF build with
+`tools\check_size.py` on every push to main; warnings in p64 code are errors in the
+firmware build too (`firmware/CMakeLists.txt`). Device tests:
 `python tests\device\api_smoke.py http://<ip> [--corpus]`,
 `python tests\device\content_smoke.py http://<ip>` and
 `python tests\device\makapix_smoke.py http://<ip> [--paired]`,
@@ -89,22 +94,29 @@ pixel-exact against Pillow; needs gcc/g++ and the system Python with Pillow),
 `python tests\device\ota_smoke.py http://<ip> [--no-install]` and
 `python tests\device\ui_smoke.py http://<ip>` and
 `python tests\device\panel_mode_smoke.py http://<ip>` and
+`python tests\device\timing_smoke.py http://<ip>` (playback cadence, spec 18.4) and
 `python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
-development device answers at http://p64.local; its IP is in the boot log).
+development device answers at http://p64.local; its IP is in the boot log; give the
+timing-sensitive tests the IP, since the first mDNS lookup of a process can take 3 s).
 
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
 `firmware/sdkconfig` deleted; Wi-Fi credentials live only in the git-ignored
 `firmware/sdkconfig.secrets` (`CONFIG_P64_DEV_WIFI_SSID/PASSWORD`, seeded into NVS when
 NVS has none) and are never echoed into summaries; `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL`
-is 4096, so anything large or long-lived (frames, indexes, task stacks of I/O tasks)
+is 1024 (since 2026-09-22; the Wi-Fi driver's hot code and the FreeRTOS kernel also live
+in flash), and anything large or long-lived (frames, indexes, task stacks of I/O tasks)
 is placed in PSRAM explicitly; the core-1 idle watchdog is off on purpose (a slow
 artwork keeps the player busy by design); both playback tasks live on core 1, all
 network and storage tasks on core 0; the main task is the show loop and never does card
 I/O. Internal RAM is the scarce resource: with the Makapix MQTT session up the heap
-sits at 25 to 30 KB free (largest block 24 KB), so anything new that wants internal
-RAM (a task stack, a TLS session, a buffer) must be measured on the device
-(`GET /api/v1/diag/memory`) before it is kept. A task whose stack is in PSRAM
+sits at 75 to 80 KB free (largest block 45 KB) since the review of 2026-09-22
+(`docs/review-2026-09/`), and `firmware/budgets.json` holds the floors (48 KB free, 32 KB
+largest); anything new that wants internal RAM (a task stack, a TLS session, a buffer)
+must be measured on the device (`GET /api/v1/diag/memory`, `tools\cpu_sample.py`) before
+it is kept. Rules that bugs have lived in go into pure files beside the code that uses
+them (`settings_model.cpp`, `p64/playback/timing.hpp`, `p64_makapix/src/contract.cpp`,
+`main/show_rules.cpp`) and get host tests. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
 OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is
 wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap any new

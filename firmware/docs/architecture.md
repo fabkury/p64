@@ -18,23 +18,27 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_gfx` | `Frame` (RGB888, panel-sized, logical orientation), `Rgb`, blending, rotation, `Scaler`, bitmap fonts and text | none | yes |
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
 | `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | no |
-| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly |
-| `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (queue) |
+| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `rtc_codec`, `settings_model`: the settings document's clamps, enums and JSON) |
+| `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
-| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history) |
-| `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP, time zone table, HTTP fetch helper with the TLS gate | IDF | no |
+| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the local folder index) |
+| `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP, time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table) |
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | no |
-| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | no |
+| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | partly (`contract`: the server's post and page documents, the download URL) |
 | `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
-| `p64_ops` | OTA, factory reset, diagnostics endpoints' data | IDF | no |
-| `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | no |
+| `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`: the version rule) |
+| `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | partly (`show_rules`: the show's decisions; `status_screens`, `boot_animation`) |
 
-Host-testable components keep every file free of ESP-IDF includes; `tools/hosttest/`
-builds them with the PC's g++ and runs their tests (the hardware tests' `gifcheck`
-approach, generalised). Everything else is verified on the device through the serial
-console and the API.
+Host-testable files have no ESP-IDF include; `tests/host/run.py` builds them with the
+PC's g++ and runs the doctest cases under `tests/host/unit/` and the pixel-exact image
+corpora (the hardware tests' `gifcheck` approach, generalised); GitHub Actions runs the
+same with AddressSanitizer, UndefinedBehaviorSanitizer and `-Werror` on every push
+(`.github/workflows/firmware.yml`). Where a file mixes rules with hardware, the rules
+move to a pure file beside it (`settings_model`, `timing.hpp`, `contract`, `show_rules`;
+review of 2026-09-22). Everything else is verified on the device through the API
+(`tests/device/`).
 
 ## 2. Tasks and cores
 
@@ -134,7 +138,7 @@ with alpha pre-blended over the background colour in gamma space, frame delay, r
 - BMP: p3a's decoder ported (1 to 32 bit, RLE, alpha masks).
 - Format from magic bytes; the extension is never trusted.
 
-The decode benchmark (`tools/bench/`) measures every decoder at 64, 128 and 256 px on
+The decode benchmark (`GET /api/v1/diag/bench`, `api_smoke.py --bench`) measures every decoder at 64, 128 and 256 px on
 the device and on the host; results go to `firmware/README.md`.
 
 ## 6. Memory budget (ESP32-S3-WROOM-2: ~350 KB internal usable, 16 MB PSRAM)
@@ -181,7 +185,7 @@ logical frame, 2 to 4 fps while a client is connected), the UI embedded through
 
 `tools/*.ps1` from the hardware tests (build, flash, monitor, port, erase, idf) adapted to
 this project; `tools/serial_peek.py` reads the console without resetting the board;
-`tools/hosttest/` builds and runs the host tests; `tools/bench/` the decode benchmark.
+`tests/host/run.py` builds and runs the host tests; `diag/bench` is the decode benchmark.
 `sdkconfig.defaults` is the source of truth; `sdkconfig` is generated and ignored.
 
 ## 10. Milestones
