@@ -68,43 +68,61 @@ def main():
 
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "smoke_test"})
     check(st == 200 and j["data"]["activating"], "POST action/play_playset smoke_test")
-    p = wait_for(base, lambda p: p["playset"]["name"] == "smoke_test" and p.get("artwork"), "smoke_test plays an artwork")
+    # Right after a boot the "connected" screen holds the panel for 15 s (spec 15.1), and
+    # the first artwork waits for it; hence the longer wait (2026-09-22).
+    p = wait_for(base, lambda p: p["playset"]["name"] == "smoke_test" and p.get("artwork"), "smoke_test plays an artwork",
+                 30)
     check(p.get("artwork", {}).get("channel") == "animations", "artwork came from the local channel")
 
     st, j = request(base, "GET", "/api/v1/channels")
     check(st == 200 and j["data"]["playset"] == "smoke_test" and len(j["data"]["channels"]) == 2, "GET /api/v1/channels")
     chs = j["data"]["channels"]
     check(chs[0]["available"] > 0 and chs[0]["status"] == "", "local channel has files: " + str(chs[0]["available"]))
-    check(chs[1]["status"] != "" and chs[1]["available"] == 0, "promoted channel reports its status: " + chs[1]["status"])
-    check(abs(chs[0]["share"] - 1.0) < 0.01, "the only available channel gets the whole share")
+    # Promoted either has cached artworks (then it is available and takes its weight, 1 of
+    # 4) or reports why not; which one depends on what the device has downloaded before.
+    if chs[1]["available"] > 0:
+        check(chs[1]["status"] == "", "promoted channel available with %d cached" % chs[1]["available"])
+        check(abs(chs[0]["share"] - 0.75) < 0.01, "the local channel gets its 3:1 share (%.2f)" % chs[0]["share"])
+    else:
+        check(chs[1]["status"] != "", "promoted channel reports its status: " + chs[1]["status"])
+        check(abs(chs[0]["share"] - 1.0) < 0.01, "the only available channel gets the whole share")
 
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "nope_missing"})
     check(st == 404, "activating an unknown playset is 404 (" + str(st) + ")")
 
-    # Navigation: three nexts, then two previous, then forward again.
+    # Navigation: three nexts, then two previous, then forward again. History holds 32
+    # items; once full, a push drops the oldest and the position stays at 31, so every
+    # position below is counted back from where the three nexts end (2026-09-22: the
+    # test assumed a history with room and failed on a device that had run all day).
     seen = []
-    pos0 = status(base)["history"]["position"]
     for i in range(3):
+        before = status(base)
         st, j = request(base, "POST", "/api/v1/action/next")
         check(st == 200, "POST action/next")
-        p = wait_for(base, lambda p, n=pos0 + i + 1: p["history"]["position"] == n, "history position advanced to %d" % (pos0 + i + 1))
-        seen.append(p["artwork"]["name"] if p.get("artwork") else None)
+        old = (before.get("artwork") or {}).get("name"), before["history"]["count"], before["history"]["position"]
+        p = wait_for(base, lambda p, old=old: p.get("artwork") and
+                     ((p["artwork"]["name"], p["history"]["count"], p["history"]["position"]) != old),
+                     "next %d put a new history item up" % (i + 1))
+        seen.append(p["artwork"].get("path") if p.get("artwork") else None)
+    top = status(base)["history"]["position"]
     st, j = request(base, "GET", "/api/v1/history")
-    check(st == 200 and j["data"]["count"] >= 4 and j["data"]["position"] == pos0 + 3, "GET /api/v1/history count %d position %d" % (j["data"]["count"], j["data"]["position"]))
+    check(st == 200 and j["data"]["count"] >= 4 and j["data"]["position"] == top,
+          "GET /api/v1/history count %d position %d" % (j["data"]["count"], j["data"]["position"]))
     items = j["data"]["items"]
     check(items[j["data"]["position"]]["current"], "the current history item is flagged")
+    check([it["path"] for it in items[top - 2:top + 1]] == seen, "history ends with the three artworks shown")
     st, j = request(base, "POST", "/api/v1/action/previous")
-    p = wait_for(base, lambda p: p["history"]["position"] == pos0 + 2, "previous walks back to %d" % (pos0 + 2))
-    check(p.get("artwork", {}).get("name") == seen[1], "previous shows the earlier artwork again")
+    p = wait_for(base, lambda p: p["history"]["position"] == top - 1, "previous walks back to %d" % (top - 1))
+    check(p.get("artwork", {}).get("path") == seen[1], "previous shows the earlier artwork again")
     st, j = request(base, "POST", "/api/v1/action/previous")
-    p = wait_for(base, lambda p: p["history"]["position"] == pos0 + 1, "previous walks back to %d" % (pos0 + 1))
-    check(p.get("artwork", {}).get("name") == seen[0], "previous shows the first of the three again")
+    p = wait_for(base, lambda p: p["history"]["position"] == top - 2, "previous walks back to %d" % (top - 2))
+    check(p.get("artwork", {}).get("path") == seen[0], "previous shows the first of the three again")
     st, j = request(base, "POST", "/api/v1/action/next")
-    p = wait_for(base, lambda p: p["history"]["position"] == pos0 + 2, "next walks forward to %d" % (pos0 + 2))
-    check(p.get("artwork", {}).get("name") == seen[1], "next walks forward through history")
-    st, j = request(base, "POST", "/api/v1/action/history_go", {"position": pos0 + 3})
-    p = wait_for(base, lambda p: p["history"]["position"] == pos0 + 3, "history_go jumps to %d" % (pos0 + 3))
-    check(p.get("artwork", {}).get("name") == seen[2], "history_go shows that item")
+    p = wait_for(base, lambda p: p["history"]["position"] == top - 1, "next walks forward to %d" % (top - 1))
+    check(p.get("artwork", {}).get("path") == seen[1], "next walks forward through history")
+    st, j = request(base, "POST", "/api/v1/action/history_go", {"position": top})
+    p = wait_for(base, lambda p: p["history"]["position"] == top, "history_go jumps to %d" % top)
+    check(p.get("artwork", {}).get("path") == seen[2], "history_go shows that item")
 
     # Pause darkens, resume restores the same artwork.
     before = status(base)["artwork"]["name"]
@@ -132,7 +150,9 @@ def main():
         pos = status(base)["history"]["position"]
         st, j = request(base, "POST", "/api/v1/action/play", {"path": "animations/" + target})
         check(st == 200, "POST action/play " + target)
-        p = wait_for(base, lambda p: p["history"]["position"] == pos + 1, "play-this entered history")
+        want = min(pos + 1, 31)  # a full history keeps the position at 31
+        p = wait_for(base, lambda p: p["history"]["position"] == want and (p.get("artwork") or {}).get("name") == target,
+                     "play-this entered history")
         check(p.get("artwork", {}).get("source") == "play_this" and p["artwork"]["name"] == target, "play-this artwork is current")
     st, j = request(base, "POST", "/api/v1/action/play", {"path": "animations/does_not_exist.gif"})
     check(st == 422, "play-this of a missing file is rejected (" + str(st) + ")")
