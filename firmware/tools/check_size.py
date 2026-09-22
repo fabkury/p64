@@ -25,18 +25,16 @@ def main():
         print("no build under %s" % build)
         return 2
     image = os.path.getsize(binary)
-    out = subprocess.run([sys.executable, "-m", "esp_idf_size", "--format", "json2", mapfile], capture_output=True, text=True)
+    out = subprocess.run([sys.executable, "-m", "esp_idf_size", "--format", "json", mapfile], capture_output=True, text=True)
     if out.returncode != 0:
         print("esp_idf_size failed: %s" % out.stderr.strip())
         return 2
     report = json.loads(out.stdout)
-    diram = None
-    for name, layout in report.get("layout", {}).items() if isinstance(report.get("layout"), dict) else []:
-        if name == "DIRAM":
-            diram = layout.get("used")
+    # The legacy JSON (esp_idf_size 1.x, the one in the v5.5.4 venv) reports used_diram;
+    # newer versions list the memory types under "layout".
+    diram = report.get("used_diram")
     if diram is None:
-        # json2 lists the memory types under "layout" as a list in some versions
-        for layout in report.get("layout", []):
+        for layout in report.get("layout", []) if isinstance(report.get("layout"), list) else []:
             if isinstance(layout, dict) and layout.get("name") == "DIRAM":
                 diram = layout.get("used")
     failures = 0
