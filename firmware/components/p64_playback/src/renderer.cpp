@@ -109,17 +109,11 @@ void Renderer::run() {
       ++stats_.skipped;
       continue;
     }
-    // When the frame should become visible: its due time, but no earlier than the
-    // previous frame's minimum stay (measured on the schedule, not on when the copy
-    // finished, or every frame would slip by the copy time). A new generation cuts at once.
-    // The schedule starts at the first frame's actual visibility, so it is attainable;
-    // the player's due time only pulls a frame later than that when decoding was late.
-    const bool scheduled = slot->generation == last_generation_ && last_visible_us_ != 0;
-    const int64_t schedule_us = scheduled ? last_visible_us_ + last_delay_us_ : slot->due_us;
-    const int64_t target = std::max<int64_t>(slot->due_us, schedule_us);
-    // The copy into the driver takes several milliseconds (7.5 ms at 10 planes), so it
-    // starts that much ahead of the target and the flip lands on the boundary after it.
-    const int64_t start_at = target - copy_lead_us_;
+    // Target and copy start from the schedule (timing.hpp): the due time, no earlier
+    // than the previous frame's minimum stay; the copy (7.5 ms at 10 planes) starts that
+    // much ahead so the flip lands on the boundary after the target.
+    const timing::Schedule::Plan plan = schedule_.plan(slot->generation, slot->due_us);
+    const int64_t start_at = plan.start_at_us;
     // Sleep towards the target in short steps: a newer generation announced meanwhile
     // (a swap, a widget) must not wait behind a frame due a minute from now.
     bool cut = false;
@@ -137,21 +131,9 @@ void Renderer::run() {
     const int64_t t_start = esp_timer_get_time();
     display_->present(slot->frame);
     const int64_t t_end = esp_timer_get_time();
-    copy_lead_us_ = (copy_lead_us_ * 7 + (t_end - t_start)) / 8;
-    // The schedule carries durations exactly (spec 4.3: no cumulative drift): the next
-    // target is this target plus the delay, even though the flip lands on the refresh
-    // grid up to one period after it. Only a present that missed by more than a period
-    // re-anchors the schedule for everything after it (the frame was late; no catch-up).
-    // Anchoring on the copy's end time instead drifted 1 % slow (0.5 ms per frame), which
-    // let the player run out of its three-frame lead and report every frame late.
-    const int64_t visible = t_end > target + period_us ? t_end : target;
-    // A frame the player produced late re-anchored the timeline and cannot be on the
-    // old schedule; the player counts those. Here only presentation lateness counts.
-    const bool late = scheduled && !slot->decoded_late && t_end > schedule_us + period_us;
+    const bool late =
+        schedule_.presented(plan, slot->generation, slot->delay_us, slot->decoded_late, t_start, t_end, period_us);
     last_present_us_ = t_end;
-    last_visible_us_ = visible;
-    last_delay_us_ = slot->delay_us;
-    last_generation_ = slot->generation;
     if (preview_) {
       std::lock_guard<std::mutex> lock(preview_mutex_);
       preview_->copy_from(slot->frame);

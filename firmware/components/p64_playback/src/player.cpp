@@ -1,4 +1,5 @@
 #include "p64/playback/player.hpp"
+#include "p64/playback/timing.hpp"
 
 #include <algorithm>
 
@@ -13,7 +14,7 @@ namespace p64::playback {
 namespace {
 
 constexpr const char *TAG = "player";
-constexpr uint32_t kMinFrameUs = 16667;  // the 60 fps presentation cap (spec 4.3)
+constexpr uint32_t kMinFrameUs = timing::kMinFrameUs;
 constexpr TickType_t kIdleWait = pdMS_TO_TICKS(100);
 
 }  // namespace
@@ -79,8 +80,7 @@ void Player::task_entry(void *arg) { static_cast<Player *>(arg)->run(); }
 
 void Player::run() {
   std::shared_ptr<FrameSource> src;  // the task's own reference to the current source
-  int64_t next_due_us = 0;
-  bool first = true;
+  timing::Timeline timeline;          // due times (timing.hpp, host-tested)
   bool exhausted = false;  // static source fully produced: nothing more to ask for
   uint32_t last_overlay_key = 0;
   auto overlay_key = [this]() -> uint32_t {
@@ -106,7 +106,7 @@ void Player::run() {
       }
       queue_->announce_generation(generation_);  // the renderer frees the old slots now
       src = std::move(incoming);
-      first = true;
+      timeline.restart();
       exhausted = false;
       continue;
     }
@@ -136,7 +136,8 @@ void Player::run() {
     }
     const int64_t t0 = esp_timer_get_time();
     uint32_t delay_ms = 0;
-    const bool ok = src->next_frame(slot->frame, delay_ms, first ? 0 : next_due_us);
+    const int64_t for_us = timeline.next_due_us();
+    const bool ok = src->next_frame(slot->frame, delay_ms, for_us);
     const int64_t t1 = esp_timer_get_time();
     if (ok) {
       const uint32_t key = overlay_key();
@@ -152,22 +153,15 @@ void Player::run() {
       current_.reset();
       continue;
     }
-    const uint32_t delay_us = std::max<uint32_t>(delay_ms * 1000u, kMinFrameUs);
-    int64_t due;
-    bool late = false;
-    if (first) {
-      due = t1;  // a new source shows as soon as its first frame exists
-    } else if (t1 > next_due_us) {
-      due = t1;  // produced late: the timeline re-anchors here, no frame is skipped
-      late = true;
-    } else {
-      due = next_due_us;
-    }
-    slot->due_us = due;
-    slot->delay_us = delay_us;
+    // First frame: due at once; late: the timeline re-anchors here, nothing is skipped.
+    const timing::Timeline::Stamp stamp = timeline.produced(t1, delay_ms);
+    const bool late = stamp.late;
+    const uint32_t delay_us = stamp.delay_us;
+    slot->due_us = stamp.due_us;
+    slot->delay_us = stamp.delay_us;
     slot->generation = generation_;
-    slot->first = first;
-    slot->decoded_late = late;
+    slot->first = stamp.first;
+    slot->decoded_late = stamp.late;
     queue_->producer_publish();
     if (late) {
       // Debug level: an artwork whose frames decode slower than their delays is late on
@@ -176,12 +170,10 @@ void Player::run() {
       if (t1 - last_report_us > 1000000) {
         last_report_us = t1;
         ESP_LOGD(TAG, "late frame: %s frame %lu decoded %lld us after its due time (decode %lld us, delay %lu us)",
-                 src->name().c_str(), static_cast<unsigned long>(stats_.frames), static_cast<long long>(t1 - next_due_us),
+                 src->name().c_str(), static_cast<unsigned long>(stats_.frames), static_cast<long long>(t1 - for_us),
                  static_cast<long long>(t1 - t0), static_cast<unsigned long>(delay_us));
       }
     }
-    next_due_us = due + delay_us;
-    first = false;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       ++stats_.frames;

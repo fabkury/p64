@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "p64/display/display.hpp"
 #include "p64/playback/frame_queue.hpp"
+#include "p64/playback/timing.hpp"
 
 namespace p64::playback {
 
@@ -54,10 +55,7 @@ class Renderer {
   gfx::Frame *preview_ = nullptr;  // allocated in PSRAM by start()
   bool have_preview_ = false;
   int64_t last_present_us_ = 0;  // when the last copy finished (the flip was issued)
-  int64_t last_visible_us_ = 0;  // when the last frame became visible on the schedule
-  int64_t copy_lead_us_ = 7500;  // running average of the copy time; the copy starts this early
-  uint32_t last_delay_us_ = 0;
-  uint32_t last_generation_ = 0;
+  timing::Schedule schedule_;  // the presentation rule (timing.hpp, host-tested)
 };
 
 }  // namespace p64::playback

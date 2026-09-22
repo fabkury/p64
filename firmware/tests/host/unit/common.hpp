@@ -14,6 +14,7 @@
 #include "p64/gfx/frame.hpp"
 #include "p64/gfx/scaler.hpp"
 #include "p64/playback/frame_queue.hpp"
+#include "p64/playback/timing.hpp"
 #include "cJSON.h"
 #include "p64/content/history.hpp"
 #include "p64/content/playset.hpp"
