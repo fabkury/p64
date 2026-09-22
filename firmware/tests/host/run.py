@@ -98,6 +98,7 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
     os.path.join(COMPONENTS, "p64_stream", "include"),
     os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp, policy.hpp (only those)
@@ -124,6 +125,7 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
     os.path.join(COMPONENTS, "p64_stream", "include"),
     os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp, policy.hpp (only those)

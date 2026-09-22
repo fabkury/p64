@@ -15,6 +15,7 @@
 
 #include "gdma_dma.h"
 #include "../../color/color_lut.h"  // p64 patch: get_lut() for fit_lut_to_weights()
+#include "p64_bcm.h"                // p64 patch: the plane windows and the LUT fit
 #include <cmath>                    // p64 patch
 #include <cstdio>                   // p64 patch
 #include "../../color/color_convert.h"    // For RGB565 scaling utilities
@@ -1009,46 +1010,10 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t bri
   // (Upstream gave every plane the full window, so the low planes all weighed one
   // transmission and the distinct levels collapsed to transmissions + 1.)
   int windows[16] = {};
-  uint32_t weight_below = 0;  // on-time of all planes below the current one, per frame
-  for (int bit = 0; bit < active_planes_; bit++) {
-    int display_pixels = (max_pixels * effective_brightness) >> 8;
-    if (bit <= lsbMsbTransitionBit_) display_pixels >>= (lsbMsbTransitionBit_ + 1 - bit);
-
-    // Edge case fallback for very low brightness
-    //
-    // Even with the brightness floor, integer truncation can result in display_pixels=0
-    // for some configurations. This fallback ensures at least 1 pixel is enabled for
-    // the most significant bits, which contribute most to perceived brightness.
-    //
-    // The threshold increases with brightness: at very low brightness only bit 7 gets
-    // the minimum; as brightness increases, more bits naturally exceed 0 anyway.
-    //   effective_brightness 1-15:   only bit 7 guaranteed minimum
-    //   effective_brightness 16-31:  bits 6-7 guaranteed minimum
-    //   effective_brightness 32-47:  bits 5-7 guaranteed minimum, etc.
-    const int min_bit_for_display = std::max(0, active_planes_ - 1 - (effective_brightness >> 4));
-    if (effective_brightness > 0 && display_pixels == 0 && bit >= min_bit_for_display) {
-      display_pixels = 1;
-    }
-
-    // Reserve at least 1 pixel blanking to prevent ghosting at maximum brightness.
-    // Without this margin, brightness=255 would enable all pixels including those
-    // near the LAT pulse, potentially causing visible artifacts.
-    display_pixels = std::min(display_pixels, max_pixels - 1);
-
-    // p64 patch: the LUT fit (fit_lut_to_weights) needs every plane to weigh at least the
-    // sum of the planes below it, so that a larger code never means less light. The
-    // one-pixel fallback can break that when several low planes all floor to one clock
-    // (ten planes at transition bit 6 gave planes 0, 1 and 2 one clock each, and the fit
-    // then mapped every input to code 3: a posterized, nearly black picture). A plane
-    // that would weigh less than the planes below it is blanked instead; it still costs
-    // its transmission but no longer corrupts the code order.
-    const uint32_t reps = bit <= lsbMsbTransitionBit_ ? 1u : (1u << (bit - lsbMsbTransitionBit_ - 1));
-    if (static_cast<uint32_t>(display_pixels) * reps < weight_below) display_pixels = 0;
-    weight_below += static_cast<uint32_t>(display_pixels) * reps;
-
-    windows[bit] = display_pixels;
-    plane_on_pixels_[bit] = static_cast<uint16_t>(display_pixels);
-  }
+  // p64 patch: the arithmetic (halving windows, the one-clock fallback, blanking a plane
+  // that would break the superincreasing weights) lives in p64_bcm.h, host-tested.
+  p64bcm::plane_windows(max_pixels, effective_brightness, active_planes_, lsbMsbTransitionBit_, windows);
+  for (int bit = 0; bit < active_planes_; bit++) plane_on_pixels_[bit] = static_cast<uint16_t>(windows[bit]);
   for (int bit = active_planes_; bit < bit_depth_; bit++) plane_on_pixels_[bit] = 0;
 
   for (int row = 0; row < num_rows_; row++) {
@@ -1136,35 +1101,16 @@ void GdmaDma::set_brightness_oe() {
 void GdmaDma::fit_lut_to_weights() {
   uint32_t total = 0;
   for (int bit = 0; bit < bit_depth_; bit++) {
-    const uint32_t reps = bit <= lsbMsbTransitionBit_ ? 1u : (1u << (bit - lsbMsbTransitionBit_ - 1));
-    plane_weight_[bit] = bit < active_planes_ ? plane_on_pixels_[bit] * reps : 0;
+    plane_weight_[bit] = bit < active_planes_ ? plane_on_pixels_[bit] * p64bcm::plane_reps(bit, lsbMsbTransitionBit_) : 0;
     total += plane_weight_[bit];
   }
   if (total == 0) return;
   // The compile-time gamma table spans 0..2^HUB75_BIT_DEPTH-1 whatever the number of
   // planes in the chain; the codes span 0..2^active_planes_-1.
-  const uint16_t *ideal = get_lut();
-  const uint32_t ideal_max = (1u << HUB75_BIT_DEPTH) - 1;
-  const uint32_t max_code = (1u << active_planes_) - 1;
-  auto weight_of = [this](uint32_t code) {
-    uint32_t w = 0;
-    for (int bit = 0; bit < active_planes_; bit++) {
-      if (code & (1u << bit)) w += plane_weight_[bit];
-    }
-    return w;
-  };
-  uint32_t code = 0;
-  double w_code = 0;
-  for (int i = 0; i < 256; i++) {
-    const double target = static_cast<double>(ideal[i]) * total / ideal_max;
-    while (code < max_code) {
-      const double w_next = weight_of(code + 1);
-      if (std::fabs(w_next - target) > std::fabs(w_code - target)) break;
-      code++;
-      w_code = w_next;
-    }
-    lut_[i] = static_cast<uint16_t>(code);
-  }
+  uint32_t weights[16] = {};
+  for (int bit = 0; bit < active_planes_; bit++) weights[bit] = plane_weight_[bit];
+  const unsigned fitted_distinct =
+      p64bcm::fit_lut(get_lut(), (1u << HUB75_BIT_DEPTH) - 1, weights, active_planes_, lut_);
   if (log_windows_) {  // once per refresh profile, not on every brightness change
     log_windows_ = false;
     char text[128];
@@ -1173,10 +1119,7 @@ void GdmaDma::fit_lut_to_weights() {
       n += snprintf(text + n, sizeof(text) - static_cast<size_t>(n), "%s%u", bit ? " " : "",
                     static_cast<unsigned>(plane_on_pixels_[bit]));
     }
-    unsigned distinct = 1;
-    for (int i = 1; i < 256; i++) {
-      if (lut_[i] != lut_[i - 1]) distinct++;
-    }
+    const unsigned distinct = fitted_distinct;
     ESP_LOGI(TAG,
              "Bit-plane OE windows in pixel clocks, plane 0..%d: %s; LUT fitted to their on-times (full white %lu of "
              "%lu clocks per frame, %u distinct codes)",
