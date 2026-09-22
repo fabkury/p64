@@ -1,0 +1,18 @@
+It's a fresh new day and I have statistics from the Reddit post (https://www.reddit.com/r/esp32/comments/1wmi6ny/p64_desktop_led_matrix_on_esp32s3/, which we know you can't access). The numbers are:
+
+Time since post was posted: 20 hours
+Messages at the top:
+ - "Nice work! This is the #2 post on r/esp32 today!"
+ - "This is your #4 post of all time"
+Views: 15K
+Upvotes: 128
+Upvote Ratio: 100%
+Comments: 6
+Shares: 64
+Reposts: 2
+Awards: 0
+
+Please do:
+ 0. Write down this prompt verbatim into prompt/, since this is a "main prompt" in this session. ALSO write down this rule in CLAUDE.md: "The principal, main prompts in each session (which might be more than one) must be written down, verbatim, into the prompt/ folder for backup/auditing purposes." In other words, I am asking you to establish a new formal, hard rule for you to follow, starting from this prompt.
+ 1. Take note of those stats above as part of our structured outreach efforts for the p64 project.
+ 2. Then guide me about something: should I post on another subreddit today, e.g. r/esp32projects?
