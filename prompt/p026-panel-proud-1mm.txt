@@ -1,0 +1,4 @@
+Thanks.
+I have one more modification to make to both v7a and v7b:
+ - Currently the LED panel sits about 2.5 mm "proud" of the enclosure edge. What this means is that the LED panel sits about 2.5 mm "higher" than the enclosure.
+ - Please reduce that to 1 mm.
