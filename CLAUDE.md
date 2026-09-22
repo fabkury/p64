@@ -295,7 +295,7 @@ drawings in `enclosure/input/` and record hand measurements in `input/measuremen
 
 ## Working conventions
 
-- One commit per logical step, with a descriptive message; never push.
+- One commit per logical step, with a descriptive message.
 - The principal, main prompts in each session (which might be more than one) must be
   written down, verbatim, into the prompt/ folder for backup/auditing purposes. (Rule
   set by the user on 2026-09-22.) Mechanics: one file per main prompt, named
