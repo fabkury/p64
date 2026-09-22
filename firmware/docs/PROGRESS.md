@@ -475,11 +475,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `cache {files, bytes, last_sweep, last_deleted, last_freed_bytes}`, shown on the
   Storage tab; `tests/device/cache_sweep_smoke.py [--delete]` covers the setting, the
   counters, a dry run, the touch and (with `--delete`) a real sweep of files not played
-  in the last hour followed by the re-download. Builds; NOT yet flashed or run on the
-  device: the board dropped off USB and the network during this session, so the next
-  step is `.\tools\flash.ps1` then `python tests\device\cache_sweep_smoke.py
-  http://p64.local --delete`, then the numbers here. Also found: the `downloads_cap_mb`
-  setting (Storage tab) is not enforced anywhere; the sweep now ages `downloads/` out.
+  in the last hour followed by the re-download. Verified on the device on 2026-09-22
+  (`cache_sweep_smoke.py --delete`, 20 checks, 0 failures): a dry run walked 553 files
+  (67 MB) in 5.2 s; the real sweep of files not played in the last hour deleted 550 of
+  them (66 MB, 9 indexes) in 17.8 s and unflagged 529 entries, Promoted went 229 to 4
+  cached and was back at 229/229 about eight minutes later on its own; the nightly
+  trigger fired 11 s after the local clock crossed into a night window set two minutes
+  ahead (30-day retention, 197 files examined, 0 deleted, 2.9 s); internal heap 22.6 KB
+  free with the re-download running. The `downloads_cap_mb` setting (Storage tab) is
+  not enforced anywhere; the sweep now ages `downloads/` out. Fact that bites: the
+  `built` date in the status document comes from ESP-IDF's app descriptor, whose object
+  file only recompiles on a full rebuild, so it still reads Sep 19 after incremental
+  builds; trust the firmware's behaviour or the flash log, not that date.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
