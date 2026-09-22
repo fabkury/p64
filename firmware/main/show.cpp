@@ -36,6 +36,7 @@
 #include "p64/stream/stream.hpp"
 #include "p64/web/web.hpp"
 #include "p64/widgets/widgets.hpp"
+#include "show_rules.hpp"
 #include "status_screens.hpp"
 
 namespace p64::show {
@@ -174,9 +175,9 @@ bool g_widget_up = false;
 system::WidgetKind g_widget_kind = system::WidgetKind::Clock;
 bool g_want_widget = false;                  // the Widget state waits for the boot animation
 std::atomic<bool> g_artwork_up{false};       // read by the overlay hook on the player task
-std::shared_ptr<playback::FrameSource> g_on_panel;  // the last source the show handed to the player
-std::shared_ptr<playback::FrameSource> g_behind;    // what the state put up while a stream holds the panel
-std::atomic<bool> g_stream_up{false};        // a stream holds the panel (read by the overlay hook)
+// What is on the panel and what a stream keeps behind it (show_rules.hpp, host-tested).
+rules::Stage<std::shared_ptr<playback::FrameSource>> g_stage;
+std::atomic<bool> g_stream_up{false};        // mirrors g_stage.stream_up() for the overlay hook
 bool g_stream_active = false;                // stream frames are arriving (StreamStarted .. StreamEnded)
 bool g_want_stream = false;                  // a takeover waits for the boot animation or a screen
 
@@ -207,12 +208,7 @@ std::shared_ptr<T> psram_shared(Args &&...args) {
 // source is kept aside instead (the state keeps running invisibly, spec 8.3) and goes up
 // when the stream ends.
 void present(std::shared_ptr<playback::FrameSource> src) {
-  if (g_stream_up) {
-    g_behind = std::move(src);
-    return;
-  }
-  g_on_panel = src;
-  g_player->play(std::move(src));
+  if (g_stage.present(src)) g_player->play(std::move(src));
 }
 
 void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
@@ -247,32 +243,29 @@ std::string display_name(const content::ChannelSpec &spec) {
 
 // Why a channel cannot supply artworks right now ("" when it can).
 std::string channel_status(const ChannelRuntime &ch) {
-  const content::ChannelSpec &spec = ch.spec;
-  if (!spec.supported()) return "not supported yet";
-  if (spec.kind == content::ChannelKind::Local) return storage::mounted() ? "" : "no card";
-  const makapix::Status ms = makapix::status();
-  if (spec.needs_pairing() && ms.state != makapix::State::Paired) return "needs pairing";
-  if (ch.mk_cached.empty()) {
-    if (!ch.mk_entries.empty()) return "downloading";
-    if (!ms.online) return "offline";
-    return "no listing yet";
+  rules::ChannelFacts f;
+  f.supported = ch.spec.supported();
+  f.local = ch.spec.kind == content::ChannelKind::Local;
+  if (f.local) {
+    f.card_mounted = storage::mounted();
+  } else {
+    const makapix::Status ms = makapix::status();
+    f.needs_pairing = ch.spec.needs_pairing();
+    f.paired = ms.state == makapix::State::Paired;
+    f.online = ms.online;
+    f.index_entries = ch.mk_entries.size();
+    f.cached = ch.mk_cached.size();
   }
-  return "";
+  return rules::channel_status(f);
 }
 
 // Why nothing can be shown: the first reason among the channels, "empty" when a usable
 // channel simply has no files.
 std::string no_artwork_reason() {
-  std::string reason;
-  for (const ChannelRuntime &ch : g_channels) {
-    if (ch.status.empty()) {
-      if (ch.available > 0) return "";
-      if (reason.empty()) reason = "empty";
-    } else if (reason.empty()) {
-      reason = ch.status;
-    }
-  }
-  return reason.empty() ? "empty" : reason;
+  std::vector<rules::ChannelSummary> summary;
+  summary.reserve(g_channels.size());
+  for (const ChannelRuntime &ch : g_channels) summary.push_back({ch.status, ch.available});
+  return rules::no_artwork_reason(summary);
 }
 
 bool can_swap_now() { return now_us() >= g_boot_until_us && g_screen == Screen::None; }
@@ -350,7 +343,8 @@ bool pick_fresh(Pick &out) {
     const int c = g_scheduler.select_channel();
     if (c < 0 || static_cast<size_t>(c) >= g_channels.size()) return false;
     ChannelRuntime &ch = g_channels[c];
-    const int avoid = (cur && cur->channel_index == c && cur->playset == g_playset.name) ? cur->entry_index : -1;
+    const int avoid = rules::avoid_entry(cur != nullptr, cur ? cur->channel_index : -1, cur ? cur->playset : std::string(),
+                                         cur ? cur->entry_index : -1, c, g_playset.name);
     const size_t pool = ch.makapix ? ch.mk_cached.size() : ch.entries.size();
     const size_t tries = std::min<size_t>(pool, 16);
     for (size_t t = 0; t < tries; ++t) {
@@ -547,20 +541,13 @@ void play_widget(system::WidgetKind kind, bool interlude) {
 // the first that wins takes the slot (spec 6.1).
 bool roll_interlude() {
   const system::Settings s = system::settings();
-  const struct {
-    system::WidgetKind kind;
-    uint8_t percent;
-  } rolls[] = {{system::WidgetKind::Clock, s.interlude_clock},
-               {system::WidgetKind::Weather, s.interlude_weather},
-               {system::WidgetKind::Temperature, s.interlude_temperature}};
-  for (const auto &r : rolls) {
-    if (r.percent == 0) continue;
-    if (esp_random() % 100 < r.percent) {
-      play_widget(r.kind, true);
-      return true;
-    }
-  }
-  return false;
+  const uint8_t percent[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
+  const system::WidgetKind kinds[3] = {system::WidgetKind::Clock, system::WidgetKind::Weather,
+                                       system::WidgetKind::Temperature};
+  const int winner = rules::roll_interlude(percent, [] { return esp_random(); });
+  if (winner < 0) return false;
+  play_widget(kinds[winner], true);
+  return true;
 }
 
 void swap_fresh();
@@ -574,27 +561,28 @@ void show_stream_waiting() {
 }
 
 bool stream_allowed() {
-  return g_main_state == system::MainState::Stream || system::settings().stream_takeover;
+  return rules::stream_allowed(g_main_state == system::MainState::Stream, system::settings().stream_takeover);
 }
 
 // The first complete frame of a stream takes the panel (spec 8.3). The boot animation
 // and a screen that needs the user (pairing) finish first; informational screens are
 // simply covered and their timers run on.
 void take_stream() {
-  if (!g_stream_active || g_stream_up || !stream_allowed()) return;
-  if (now_us() < g_boot_until_us || g_screen == Screen::Pairing) {
+  const rules::StreamGate gate = rules::stream_gate(g_stream_active, g_stage.stream_up(), stream_allowed(),
+                                                     now_us() < g_boot_until_us, g_screen == Screen::Pairing);
+  if (gate == rules::StreamGate::No) return;
+  if (gate == rules::StreamGate::Wait) {
     g_want_stream = true;
     return;
   }
   g_want_stream = false;
-  g_behind = g_on_panel;
+  g_stage.take(stream::source());
   g_stream_up = true;
-  g_on_panel = stream::source();
-  g_player->play(g_on_panel);
+  g_player->play(g_stage.on_panel());
   makapix::note_hidden();
   const stream::Status st = stream::status();
   ESP_LOGI(TAG, "stream takes the panel: %s %dx%d from %s (behind: %s)", st.protocol.c_str(), st.width, st.height,
-           st.sender.c_str(), g_behind ? g_behind->name().c_str() : "nothing");
+           st.sender.c_str(), g_stage.behind() ? g_stage.behind()->name().c_str() : "nothing");
   system::publish(system::Event::PlaybackSwapped, -1);
 }
 
@@ -602,10 +590,9 @@ void take_stream() {
 // has up, which kept running meanwhile.
 void release_stream() {
   g_want_stream = false;
-  if (!g_stream_up) return;
+  if (!g_stage.stream_up()) return;
+  std::shared_ptr<playback::FrameSource> back = g_stage.release();
   g_stream_up = false;
-  std::shared_ptr<playback::FrameSource> back = std::move(g_behind);
-  g_behind.reset();
   stream::wake();
   if (back) {
     present(back);
@@ -617,7 +604,7 @@ void release_stream() {
   if (g_current) {
     if (const content::HistoryItem *cur = g_history.current()) report_shown(*cur);
   }
-  ESP_LOGI(TAG, "stream released the panel: back to %s", g_on_panel ? g_on_panel->name().c_str() : "?");
+  ESP_LOGI(TAG, "stream released the panel: back to %s", g_stage.on_panel() ? g_stage.on_panel()->name().c_str() : "?");
   system::publish(system::Event::PlaybackSwapped, g_current ? static_cast<int32_t>(g_history.position()) : -1);
 }
 
@@ -893,8 +880,8 @@ void on_makapix_changed() {
       static_cast<size_t>(g_prepared_pick.channel) < g_channels.size()) {
     const uint32_t pool = static_cast<uint32_t>(g_channels[g_prepared_pick.channel].mk_cached.size());
     const content::HistoryItem *cur = g_history.current();
-    const bool repeat = cur && g_current && cur->post_id == g_prepared_pick.mk_entry.post_id;
-    if (repeat || (g_prepared_pick.pool < 8 && pool > g_prepared_pick.pool)) {
+    if (rules::replace_prepared_pick(g_prepared_pick.mk_entry.post_id, g_prepared_pick.pool, pool,
+                                     cur && g_current, cur ? cur->post_id : -1)) {
       g_prepared.reset();
       g_prepared_pick = Pick{};
     }
@@ -1087,8 +1074,7 @@ void handle(Command &c) {
 // on the panel must never freeze), and while a widget is up inside the show (an
 // interlude). The Widget state's own widget stays indefinitely (spec 6.2).
 bool swap_timer_runs() {
-  if (g_paused) return false;
-  return static_cast<bool>(g_current) || (g_widget_up && show_active());
+  return rules::swap_timer_runs(g_paused, static_cast<bool>(g_current), g_widget_up, show_active());
 }
 
 // Periodic work: the auto-swap timer, the boot hold, rescans, retries.
@@ -1099,8 +1085,7 @@ void tick() {
   if (g_want_stream) take_stream();
   if (g_want_widget && now >= g_boot_until_us) play_widget(s.widget, false);
   if (g_want_prepared_now && g_prepared && can_swap_now() && show_active()) play_prepared();
-  if (swap_timer_runs() && s.auto_swap_seconds > 0 &&
-      now - g_swap_at_us >= static_cast<int64_t>(s.auto_swap_seconds) * kSecond) {
+  if (rules::auto_swap_due(swap_timer_runs(), s.auto_swap_seconds, now, g_swap_at_us)) {
     if (!roll_interlude()) swap_fresh();
   }
   if (g_rescan_due_us && now >= g_rescan_due_us) {
