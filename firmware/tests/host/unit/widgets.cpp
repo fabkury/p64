@@ -1,5 +1,6 @@
 // Host unit tests: the clock text, the weather model and the analogue face.
 #include "common.hpp"
+#include "faces.hpp"
 
 namespace {
 
@@ -136,6 +137,128 @@ TEST_CASE("analogue") {
   CHECK(lit_in(k, 31, 34, 32, 54) >= 18);    // minute hand down
   hand_end(6 * 30.0f + 15.0f, kHourHand, x, y);
   CHECK((x < 32 && y > 40));
+}
+
+// --- the faces: clock, weather, temperature (faces.cpp) ----------------------------
+
+namespace faces = p64::widgets::faces;
+
+int lit_rect(const Frame &f, int x0, int y0, int x1, int y1) {
+  int n = 0;
+  for (int y = y0; y <= y1; ++y)
+    for (int x = x0; x <= x1; ++x) {
+      const Rgb c = f.get(x, y);
+      if (c.r || c.g || c.b) ++n;
+    }
+  return n;
+}
+
+tm at(int h, int m, int sec) {
+  tm t{};
+  t.tm_year = 126;
+  t.tm_mon = 8;
+  t.tm_mday = 22;
+  t.tm_wday = 2;
+  t.tm_hour = h;
+  t.tm_min = m;
+  t.tm_sec = sec;
+  return t;
+}
+
+TEST_CASE("faces: the digital clock holds until the next minute, or second when seconds show") {
+  p64::system::Settings s;
+  Frame f;
+  const tm t = at(13, 7, 20);
+  CHECK_EQ(faces::draw_clock(f, s, &t), 40000u);
+  CHECK(lit_rect(f, 0, 0, 63, 63) > 40);
+  s.clock.seconds = true;
+  CHECK_EQ(faces::draw_clock(f, s, &t), 1000u);
+  s.clock.seconds = false;
+  s.clock.blink_colon = true;
+  CHECK_EQ(faces::draw_clock(f, s, &t), 1000u);
+}
+
+TEST_CASE("faces: the clock without a synced time says so") {
+  p64::system::Settings s;
+  Frame f;
+  CHECK_EQ(faces::draw_clock(f, s, nullptr), 1000u);
+  CHECK(lit_rect(f, 0, 0, 63, 63) > 20);
+}
+
+TEST_CASE("faces: the widest clock (seconds, 12 h, scale 3) shrinks to fit the panel") {
+  p64::system::Settings s;
+  s.clock.scale = 3;
+  s.clock.seconds = true;
+  s.clock.h24 = false;
+  Frame f;
+  const tm t = at(23, 58, 59);
+  faces::draw_clock(f, s, &t);
+  CHECK_EQ(lit_rect(f, 0, 0, 0, 63), 0);    // a free column at each edge
+  CHECK_EQ(lit_rect(f, 63, 0, 63, 63), 0);
+  s.clock.analogue = true;
+  CHECK_EQ(faces::draw_clock(f, s, &t), 1000u);  // the analogue face with its second hand
+}
+
+p64::widgets::weather_model::Forecast forecast(float low) {
+  p64::widgets::weather_model::Forecast f;
+  f.valid = true;
+  f.fetched_us = 1000;
+  f.temperature = 21.4f;
+  f.code = 3;
+  f.today = {2, 3, 24.0f, 15.0f};
+  f.day_count = 3;
+  for (int i = 0; i < 3; ++i) f.days[i] = {3 + i, 61, 18.0f, low};
+  return f;
+}
+
+TEST_CASE("faces: the weather asks for a location, then shows the forecast, then no data after 6 h") {
+  p64::system::Settings s;
+  Frame f;
+  faces::draw_weather(f, s, forecast(9), "", 2000);
+  const int unset = lit_rect(f, 0, 0, 63, 63);
+  CHECK(unset > 20);  // "WEATHER / SET A / LOCATION"
+  s.weather.location_set = true;
+  faces::draw_weather(f, s, forecast(9), "", 2000);
+  CHECK(lit_rect(f, 2, 3, 25, 26) > 20);  // the icon
+  CHECK(lit_rect(f, 0, 50, 63, 63) > 20); // the three-day strip
+  faces::draw_weather(f, s, forecast(9), "HTTP 500", 1000 + faces::kWeatherStaleUs + 1);
+  CHECK_EQ(lit_rect(f, 0, 53, 63, 63), 0);  // "NO DATA" and the error (rows 44-51), no strip
+}
+
+TEST_CASE("faces: the weather strip's low temperatures fit above the bottom edge (M7)") {
+  // The low temperatures clipped at the panel's bottom row once; they start at row 57.
+  CHECK(57 + p64::gfx::fonts::cap_height(p64::gfx::fonts::default_font(), 1) <= 64);
+  p64::system::Settings s;
+  s.weather.location_set = true;
+  Frame f;
+  faces::draw_weather(f, s, forecast(-12), "", 2000);  // the widest low
+  CHECK(lit_rect(f, 0, 57, 63, 63) > 10);
+  for (int col = 0; col < 3; ++col) CHECK(lit_rect(f, col * 21, 57, col * 21 + 20, 63) > 0);
+}
+
+TEST_CASE("faces: the temperature reading, in Fahrenheit when asked, with the trend arrow") {
+  p64::system::Settings s;
+  Frame c, fh, down;
+  p64::widgets::Reading r;
+  faces::draw_temperature(c, s, r);
+  CHECK(lit_rect(c, 0, 0, 63, 63) > 10);  // "NO SENSOR"
+  r.valid = true;
+  r.temperature_c = 20.0f;
+  r.humidity = 45.0f;
+  r.trend_c_per_hour = 1.0f;
+  faces::draw_temperature(c, s, r);
+  s.weather.imperial = true;
+  faces::draw_temperature(fh, s, r);
+  CHECK(lit_rect(c, 0, 10, 63, 28) != lit_rect(fh, 0, 10, 63, 28));  // 20.0 C against 68.0 F
+  r.trend_c_per_hour = -1.0f;
+  faces::draw_temperature(down, s, r);
+  bool differ = false;
+  for (int y = 46; y < 51 && !differ; ++y)
+    for (int x = 29; x < 34; ++x) differ |= !(fh.get(x, y) == down.get(x, y));
+  CHECK(differ);  // the arrow turns
+  s.temperature.trend = false;
+  faces::draw_temperature(down, s, r);
+  CHECK_EQ(lit_rect(down, 29, 46, 33, 50), 0);
 }
 
 }  // namespace

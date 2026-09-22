@@ -65,6 +65,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts_data.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "clock_format.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "analogue.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "faces.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
@@ -99,6 +100,7 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(COMPONENTS, "p64_widgets", "include"),
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
@@ -127,6 +129,7 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(COMPONENTS, "p64_widgets", "include"),
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
