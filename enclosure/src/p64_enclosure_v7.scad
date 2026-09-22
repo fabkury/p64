@@ -65,6 +65,14 @@
 //  sits on the real adapters, so it aligns itself to wherever they are.
 //  Two rails on the cavity back bracket the sole and key the glue joint.
 //  Everything else is v6, edges included.
+//
+//  v7, 2026-09-22 (later, both variants): the walls wrap 1.5 mm further
+//  forward, over the edge of the LED board, so the mask stands 1.0 mm
+//  proud of the rim instead of 2.5 (`proud`; the lip is derived). The
+//  board's outline is not in any drawing and is assumed 128.0 mm
+//  (`board`); a stepped pocket appears automatically if board + clearance
+//  exceeds the frame pocket. The shell is 1.5 mm deeper at the front,
+//  nothing inside moves.
 // ---------------------------------------------------------------------
 //  Coordinates (design orientation, part = "shell"):
 //    origin = centre of the panel frame back face
@@ -98,7 +106,12 @@ section_edge_x = 33;       // where "section_edge" cuts: between two vent column
 panel      = 127.8;        // frame outer size, measured in RGB-Matrix-P2-64x64-2D.dwg (Waveshare quotes 128)
 panel_clr  = 0.3;          // clearance per side between panel and pocket
 frame_d    = 12;           // depth of the plastic frame behind the LED PCB
-lip        = 12;           // how far the walls wrap forward over the frame (12 = frame only)
+panel_stack = 2.5;         // LED board + mask in front of the frame's front face (measured on the v1 print: the mask
+                           // stood 2.5 mm proud of a rim that ended at the frame)
+proud      = 1.0;          // how far the mask stands proud of the rim (user choice 2026-09-22; was 2.5 = frame only)
+lip        = frame_d + panel_stack - proud;   // how far the walls wrap forward over the frame: 13.5
+board      = 128.0;        // LED board / mask outline (assumed: Waveshare quotes 128; not in any drawing, measure it)
+board_clr  = 0.2;          // clearance per side beside the board; the pocket steps out if board + 2*board_clr exceeds it
 panel_rot  = 90;           // panel rotation inside the shell, CCW seen from the back
 // M3 inserts in the panel's own orientation (arrows up), from RGB-Matrix-P2-64x64-2D.dwg
 holes_native    = [[0,56.85],[0,-56.85],[56.85,44],[-56.85,44],[56.85,-44],[-56.85,-44]];
@@ -249,6 +262,8 @@ $fn = 48;
 // ---------------- derived ----------------
 half_in  = panel/2 + panel_clr;
 half_out = half_in + wall;
+board_half = max(half_in, board/2 + board_clr);                // pocket half-width beside the board (z in -lip..-frame_d)
+board_wall = half_out - board_half;                            // wall left beside the board
 r_out    = r_in + wall;
 back_ang = atan((depth_bottom - depth_top) / (2*half_out));   // slope of the back face
 z_mid    = (depth_bottom + depth_top) / 2;                     // back face height at y = 0
@@ -338,6 +353,9 @@ function enc_blocks(x, y0, l) =
 
 echo(str("outer size X x Y (front) = ", 2*half_out, " x ", 2*half_out + wedge,
          "  depth bottom/top = ", depth_bottom + lip, "/", depth_top + lip, "  back slope = ", back_ang, " deg"));
+echo(str("front: lip ", lip, " = frame ", frame_d, " + stack ", panel_stack, " - proud ", proud, "  board ", board, " + ", board_clr,
+         " per side -> pocket beside the board ", 2*board_half, " (frame pocket ", 2*half_in, ")  wall there ", board_wall, " (rule: >= 2)"));
+if (board_wall < 2) echo("WARNING: the wall beside the LED board is under 2 mm");
 echo(str("clear depth: bottom edge ", z_cav(-half_in), "  chip top edge (y=", chip_top_y, ") ", z_cav(chip_top_y),
          "  y=0 ", z_cav(0), "  top edge ", z_cav(half_in), "  wedge = ", wedge));
 echo(str("holes = ", holes, "  top boss back face z = ", z_back(max([for (h = holes) h[1]]))));
@@ -440,6 +458,8 @@ module cavity() {
         translate([0, 0, -lip - 1]) linear_extrude(lip + 1 + depth_bottom) rrect(2*half_in, 2*half_in, r_in);
         below_cavity_back();
     }
+    if (board_half > half_in)           // stepped pocket beside the LED board (only when the board is wider than the frame pocket)
+        translate([0, 0, -lip - 1]) linear_extrude(lip + 1 - frame_d) rrect(2*board_half, 2*board_half, r_in);
 }
 
 module ledge() {
@@ -621,7 +641,7 @@ module ghost_panel(notch = adapters && ghost_notch) {
         translate([0, 0, -frame_plate_t - 0.01]) linear_extrude(frame_plate_t + 1) rotate(panel_rot) frame_opening2d();   // the back plate's opening
         if (notch) notch_block();
     }
-    color("darkgreen", 0.35) translate([0, 0, -frame_d - 2.5]) linear_extrude(2.5) square(127.8, center = true);
+    color("darkgreen", 0.35) translate([0, 0, -frame_d - panel_stack]) linear_extrude(panel_stack - 1.0) square(board, center = true);   // LED board; the mask (1.0) is ghost_face()
     color("black", 0.6) translate([hin[0], hin[1], -frame_d]) linear_extrude(8.9) rotate(panel_rot) square([8.9, 20.3], center = true);
     pwr = rot2([12.3, 5.3], panel_rot);
     color("white", 0.6) translate([pwr[0], pwr[1], -frame_d]) linear_extrude(13) rotate(panel_rot) square([8, 16], center = true);
@@ -679,8 +699,8 @@ module ghosts() { ghost_panel(); ghost_chip(); if (adapters) { ghost_adapters();
 
 // ---------------- product view: the assembled display standing on a table ----------------
 module ghost_face() {   // the LED mask: matt black front with a faint 2 mm pixel grid
-    z0 = -frame_d - 2.5 - 1.0;
-    color("black") translate([0, 0, z0]) linear_extrude(1.0) square(2*half_in, center = true);   // covers the fit gap in the mock-up
+    z0 = -frame_d - panel_stack;
+    color("black") translate([0, 0, z0]) linear_extrude(1.0) square(board, center = true);
     color([0.2, 0.2, 0.2]) for (i = [1 : 63]) {
         translate([-panel/2 + 2*i - 0.1, -panel/2, z0 - 0.05]) cube([0.2, panel, 0.1]);
         translate([-panel/2, -panel/2 + 2*i - 0.1, z0 - 0.05]) cube([panel, 0.2, 0.1]);

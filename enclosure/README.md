@@ -45,12 +45,17 @@ versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/READ
 
 - **Fit:** pocket 128.4 x 128.4 mm (0.3 mm clearance per side around the 127.8 mm frame
   measured in Waveshare's drawing), 2 mm walls, 2.4 mm back wall.
-  The walls wrap 12 mm forward over the panel's plastic frame only, so the LED/mask edge
-  stands ~2.5 mm proud and the front is nearly bezel-less.
-- **Size:** 132.4 mm wide, 132.4 mm tall at the back edge and 139.6 mm at the front (the
-  base wedge). The side profile is a wedge: 34 mm deep at the bottom (12 mm lip + 22 mm
-  shell) thinning to 20 mm at the top (12 + 8). The back face is one flat plane sloping
-  6 degrees, so the print still lies flat on it.
+  The walls wrap 13.5 mm forward: over the panel's 12 mm plastic frame and 1.5 mm of the
+  2.5 mm LED board and mask stack in front of it, so the mask stands 1.0 mm proud of the
+  rim (`proud`; 2.5 mm until 2026-09-22, when the rim ended at the frame) and the front
+  is nearly bezel-less. Beside the board the pocket keeps 0.2 mm per side around the
+  assumed 128.0 mm board outline (`board`, `board_clr`, not in any drawing); if the real
+  board is wider the pocket steps out there automatically and the `front:` echo line
+  reports the wall left.
+- **Size:** 132.4 mm wide, 132.4 mm tall at the back edge and 139.9 mm at the front (the
+  base wedge). The side profile is a wedge: 35.5 mm deep at the bottom (13.5 mm lip +
+  22 mm shell) thinning to 21.5 mm at the top (13.5 + 8). The back face is one flat plane
+  sloping 6 degrees, so the print still lies flat on it.
 - **Interior:** 19.4 mm clear at the bottom edge, 12.9 mm at the top edge of the controller,
   5.8 mm at the top edge of the panel. The mounted controller needs roughly 9 mm and the
   VH4 power plug with its wires about 8 mm, both in the deep half.
@@ -63,8 +68,8 @@ versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/READ
   A 1.6 mm seating ledge with a 45-degree underside supports the frame's 1.6 mm outer wall
   all around, except over 30 mm below the USB-C ports where it is relieved (see the window).
 - **Tilt / stand:** the bottom wall thickens into a wedge so the whole base is one flat plane
-  at 12 degrees. With the edge fillets the contact patch is 29.6 mm deep; the centre of
-  gravity lands about 7.6 mm in front of the rear contact line, so it takes roughly a
+  at 12 degrees. With the edge fillets the contact patch is 31.2 mm deep; the centre of
+  gravity lands about 8 mm in front of the rear contact line, so it takes roughly a
   7-degree backward push to tip.
 - **Panel orientation:** the panel is installed rotated 90 degrees counter-clockwise (seen
   from the back) so the controller sits at the bottom with its USB-C ports facing down.
@@ -260,8 +265,8 @@ an accurate fit. With `edge_back_c`, `edge_rim_r`, `edge_base_r` and `cb_chamfer
 - **Base front edge:** a 3 mm fillet (`edge_base_r`) on the acute 78-degree edge under the
   LED face, the sharpest edge of the shell and the front line of the base. It is backed by
   the solid wedge. The base's front contact line moves back 3.7 mm and the back chamfer
-  moves the rear one forward 1.4 mm, so the contact patch is 29.6 mm deep instead of 34.7;
-  the centre of gravity stays about 7.6 mm in front of the rear contact line, so a backward
+  moves the rear one forward 1.4 mm, so the contact patch is 31.2 mm deep instead of 36.3;
+  the centre of gravity stays about 8 mm in front of the rear contact line, so a backward
   push of about 7 degrees tips it. Along the two front-bottom corners the 3 mm rounding
   blends into the rim's 1.5 mm and the vertical corners' 2.6 mm (the most a uniform 2 mm
   wall allows against the frame's sharp corners).
@@ -327,7 +332,7 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
   screw counterbores, the 1.4 mm edge chamfer rises from the bed (first layer
   129.6 x 130.3 mm), the two rails and (p64b) the encoder posts stand up from the cavity
   back, and the window's chamfer is a 45-degree overhang that starts at the bed. Print
-  height 34.2 mm; about 80 g of PLA with 20 percent infill.
+  height 35.7 mm; about 82 g of PLA with 20 percent infill.
 - Print `p64_cradle_insert.stl` too: sole down, no support, under 2 g; its walls lean
   6 degrees (they follow the adapter bodies, the sole follows the sloping cavity back). If
   the opening comes out tight, a file pass fixes it; loose is fine.
@@ -366,6 +371,8 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 | 90-degree adapter: boot gap between its body and the receptacle face | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; +-0.5 mm is budgeted (`tol_gap`). Measure the seated adapter after notching the frame. |
 | 90-degree adapter: corner radius of the body cross-section | 3.0 mm | `ad_r` | From the photos, looks like 3.5 to 4. A smaller value in the model only makes the insert's and the window's corners tighter than needed. |
 | FDM print allowance | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the v7 window against the model when it arrives. |
+| LED board / mask outline | 128.0 mm | `board` | Waveshare's quoted panel size; the drawing has the frame (127.8) and not the board. The rim runs 1.5 mm beside the board with 0.2 mm clearance per side (`board_clr`). Measure the board and the mask at their widest; if over 128.0, set `board` and the pocket steps out (the wall there drops below 2 mm past 128.0, the echo warns). |
+| LED board + mask thickness in front of the frame | 2.5 mm | `panel_stack` | From the v1 print, where the mask stood 2.5 mm proud of a rim that ended at the frame. Sets the lip together with `proud`. |
 
 ## Verified with the v1 print
 
@@ -380,7 +387,7 @@ photos `input/PXL_20260918_*.jpg`.
 | Overall size | 133.0 mm wide (model 132.4, +0.6 mm), 34.6 mm deep at the bottom edge (model 34.6). |
 | Screw bosses | All six line up with the panel's inserts. The 3.4 mm holes and 6.5 mm counterbores printed clean; a screw drops in without cleaning. |
 | Panel in the pocket | Drops in by hand with slight side play, under 1 mm, at 0.45 mm clearance. Next FDM print: use the 0.3 mm `p64_enclosure_print.stl`. |
-| Seating | The frame rests on the ledge all round and the LED mask stands about 2.5 mm proud, as designed. |
+| Seating | The frame rests on the ledge all round and the LED mask stands about 2.5 mm proud of v1's rim, which ended at the frame (v7's rim runs 1.5 mm further, so the mask stands 1.0 mm proud). |
 | USB-C ports | v1's 30 mm base pocket landed exactly on the two ports (v7 has a window in the back instead). |
 | Controller clearance | Visible gap between the controller and the back wall with the panel seated. |
 | Back face | Groove marks legible, vent slots, pin holes and mic holes clean; the 2 mm minimum-feature rule held. |
@@ -390,8 +397,9 @@ photos `input/PXL_20260918_*.jpg`.
 
 ## Main parameters (`src/p64_enclosure_v7.scad`)
 
-- Shell: `depth_bottom` 22, `depth_top` 8 (set equal for a flat back), `tilt` 12, `lip` 12,
-  `wall` 2, `back_t` 2.4, `panel_clr` 0.3; screws `screw_len` 10, `engage` 5, `cb_d` 6.5,
+- Shell: `depth_bottom` 22, `depth_top` 8 (set equal for a flat back), `tilt` 12, `proud`
+  1.0 with `panel_stack` 2.5 and `frame_d` 12 (the lip, 13.5, is derived), `board` 128.0,
+  `board_clr` 0.2, `wall` 2, `back_t` 2.4, `panel_clr` 0.3; screws `screw_len` 10, `engage` 5, `cb_d` 6.5,
   `boss_od` 10.5; `panel_rot` 90; back wall `vents`, `pin_d` 3, `mic_d` 3.5, `mic1_off`
   [0.5, 1.6]
 - Edges: `edge_back_c` 1.4, `edge_rim_r` 1.5, `edge_base_r` 3, `cb_chamfer` 0.5 (all 0 =
