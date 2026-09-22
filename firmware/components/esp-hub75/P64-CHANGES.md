@@ -96,3 +96,20 @@ short exp series: for x = 0 it returned 1 (black mapped to full white) and the t
 not monotonic, so the library's own static checks rejected `HUB75_GAMMA_2_2` at any bit
 depth. The table now uses x^2 times the fifth root of x by Newton's method, exact at the
 endpoints and monotonic.
+
+## The plane arithmetic in p64_bcm.h; the LUT fit skips blanked planes (2026-09-22)
+
+The output-enable windows of a refresh profile (the halving below the transition bit, the
+one-clock fallback, the blanking of a plane that would break the superincreasing
+weights) and the LUT fit moved unchanged into `src/platforms/gdma/p64_bcm.h`, a
+header without ESP-IDF includes that `GdmaDma` calls and the firmware's host tests
+compile (`firmware/tests/host/unit/bcm.cpp`: every profile from 6 to 10 planes, every
+transition bit, every brightness).
+
+Those tests showed the blanking of 2026-09-20 was not enough on its own: with a plane
+blanked (weight 0) the fit still walked every code in order and stopped at the first
+code made of the blanked plane alone, which weighs less than the code before it; ten
+planes at transition bit 6 still fitted 3 codes. The fit now walks only the codes built
+from lit planes. Quality (10 planes, bit 4) and Photo (8 planes, bit 4) never blank a
+plane, so their tables are unchanged (229 and 179 distinct codes at full brightness, in
+the driver's log on the device and in the test).
