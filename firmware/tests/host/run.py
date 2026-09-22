@@ -76,6 +76,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_content", "src", "local_index.cpp"),
     os.path.join(COMPONENTS, "p64_playback", "src", "artwork.cpp"),
     os.path.join(COMPONENTS, "p64_net", "src", "tz.cpp"),
+    os.path.join(COMPONENTS, "p64_makapix", "src", "contract.cpp"),
     os.path.join(FIRMWARE, "main", "status_screens.cpp"),
     os.path.join(FIRMWARE, "main", "boot_animation.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "tap.cpp"),
@@ -93,6 +94,7 @@ LIBWEBP_SOURCES = sorted(
     + glob.glob(os.path.join(LIBWEBP, "src", "demux", "*.c")))
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
+    os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp (only that one)
     os.path.join(COMPONENTS, "p64_net", "include"),
     os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
     os.path.join(FIRMWARE, "main"),                    # status_screens.hpp, boot_animation.hpp (only those)
@@ -116,6 +118,7 @@ INCLUDES = [
     LIBWEBP,
 ]
 HEADER_DIRS = [
+    os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp (only that one)
     os.path.join(COMPONENTS, "p64_net", "include"),
     os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
     os.path.join(FIRMWARE, "main"),                    # status_screens.hpp, boot_animation.hpp (only those)

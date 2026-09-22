@@ -6,6 +6,7 @@ idf_component_register(
         "src/makapix.cpp"
         "src/fetcher.cpp"
         "src/api.cpp"
+        "src/contract.cpp"
         "src/cache.cpp"
         "src/credentials.cpp"
         "src/mqtt.cpp"
