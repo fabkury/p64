@@ -314,4 +314,20 @@ TEST_CASE("makapix payloads: status, state, capabilities, view and ack") {
   CHECK(contract::ack_json("cmd-1", "error", "no") == R"({"command_id":"cmd-1","status":"error","error":"no"})");
 }
 
+TEST_CASE("makapix policy: the nightly sweep deletes what was not played, and what a wrong clock wrote") {
+  const uint32_t now = 1790000000;  // 2026-09-21
+  const uint32_t day = 86400, thirty = 30 * day;
+  CHECK(!policy::sweep_due(now - thirty, now, thirty));       // exactly the retention: kept
+  CHECK(policy::sweep_due(now - thirty - 1, now, thirty));    // one second older: goes
+  CHECK(!policy::sweep_due(now - 60, now, thirty));           // played a minute ago
+  CHECK(policy::sweep_due(1700000000, now, thirty));          // 2023: written before the clock was set
+  CHECK(policy::sweep_due(now + day + 1, now, thirty));       // more than a day ahead: a wrong clock
+  // A few seconds or hours ahead is recent (a clock stepped back, FAT's two-second
+  // rounding right after a touch). Before 2026-09-22 the unsigned difference wrapped and
+  // these were deleted as ancient.
+  CHECK(!policy::sweep_due(now + 2, now, thirty));
+  CHECK(!policy::sweep_due(now + 3600, now, thirty));
+  CHECK(!policy::sweep_due(now + day, now, thirty));
+}
+
 }  // namespace

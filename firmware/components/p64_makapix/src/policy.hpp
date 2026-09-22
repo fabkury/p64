@@ -100,4 +100,13 @@ Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, si
 enum class JobDisposition : uint8_t { Run, Park, Fail };
 JobDisposition job_disposition(bool online, bool is_like, bool is_followed, bool someone_waits);
 
+// The nightly cache sweep (spec 5.4, ADR 0010): a file goes when it was not played (its
+// mtime touched) for longer than `older_than_s`, or when its mtime is implausible: before
+// 2026, or more than a day in the future (written under a wrong clock). A file up to a day
+// in the future is recent, not old: before the review of 2026-09-22 the unsigned
+// difference wrapped and such a file (a clock stepped back by NTP, FAT's two-second
+// rounding right after a touch) was deleted as ancient.
+constexpr uint32_t kPlausibleEpoch = 1767225600;  // 2026-01-01
+bool sweep_due(uint32_t mtime, uint32_t now, uint32_t older_than_s);
+
 }  // namespace p64::makapix::policy

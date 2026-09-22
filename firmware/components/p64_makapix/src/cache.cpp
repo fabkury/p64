@@ -1,4 +1,5 @@
 #include "cache.hpp"
+#include "policy.hpp"
 
 #include <sys/stat.h>
 
@@ -162,8 +163,6 @@ void remove_artwork(const content::MakapixEntry &e) {
 
 namespace {
 
-constexpr uint32_t kPlausibleEpoch = 1767225600;  // 2026-01-01: anything earlier was written under a wrong clock
-
 enum class Folder : uint8_t { Cache, Downloads, Channels };
 
 void sweep_folder(const std::string &dir, Folder kind, uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &st,
@@ -176,8 +175,7 @@ void sweep_folder(const std::string &dir, Folder kind, uint32_t now, uint32_t ol
     ++st.examined;
     st.bytes += f.size;
     const uint32_t mtime = sb.st_mtime > 0 ? static_cast<uint32_t>(sb.st_mtime) : 0;
-    const bool implausible = mtime < kPlausibleEpoch || mtime > now + 86400;
-    if (!implausible && now - mtime <= older_than_s) continue;
+    if (!policy::sweep_due(mtime, now, older_than_s)) continue;  // the rule: policy.cpp, host-tested
     if (!dry_run) {
       std::string error;
       if (!storage::remove_path(path, error)) {  // e.g. open by the loader this instant: next night

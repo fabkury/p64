@@ -41,4 +41,10 @@ JobDisposition job_disposition(bool online, bool is_like, bool is_followed, bool
   return JobDisposition::Fail;
 }
 
+bool sweep_due(uint32_t mtime, uint32_t now, uint32_t older_than_s) {
+  if (mtime < kPlausibleEpoch || mtime > now + 86400u) return true;  // written under a wrong clock
+  if (mtime >= now) return false;                                    // up to a day ahead: recent
+  return now - mtime > older_than_s;
+}
+
 }  // namespace p64::makapix::policy
