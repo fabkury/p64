@@ -37,6 +37,7 @@ versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/READ
 | `input/RGB-Matrix-P2-64x64-2D.dwg`, `.pdf` | Waveshare's drawing of the panel frame (DWG and a PDF rendering of it). |
 | `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
 | `input/*details*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
+| `input/adafruit-5880/` | Adafruit's EagleCAD board file of the encoder breakout (CC BY-SA), with a README of what the shell reads from it (p64b). |
 | `archive/pre-v7/` | Versions v1 to v6 (sources, outputs, the speaker photos of v5) and their documentation, moved on 2026-09-22. v1 is the only printed one. |
 | `archive/2026-08-stand-concept/` | Earlier, abandoned concept (detachable stand, wall keyholes). Kept for reference only. |
 | `archive/2026-09-dhruv-solidworks/` | Dhruv's separate SolidWorks take on the enclosure (`p64.SLDPRT` and its STEP export). Kept as-is, never edited here. |
@@ -209,9 +210,18 @@ every margin.
 - **Hardware assumed:** two Adafruit 5880 boards (I2C "seesaw" rotary encoder breakout:
   25.4 x 25.4 mm PCB with four 2.5 mm plated holes on a 20.32 mm square, a Bourns
   PEC11-style 24-detent encoder with push switch soldered at the centre, 15 mm D-shaft,
-  M7 x 0.75 bushing 5 mm long, 6.5 mm body height) and 20 mm set-screw knobs. Board
-  geometry comes from Adafruit's EagleCAD file, the encoder from the Bourns PEC11 datasheet
-  (links under Sources). The 20 mm-shaft PEC11R has a 7 mm bushing: set `enc_bush_l = 7`.
+  M7 x 0.75 bushing 5 mm long, 6.5 mm body height) and 20 mm set-screw knobs. Checked on
+  2026-09-22 against the sources: the board outline, corner radius, hole size and hole
+  square come from Adafruit's EagleCAD board file, stored in `input/adafruit-5880/` with
+  the numbers read from it; the encoder's body height (6.5 mm from the mounting surface),
+  the 12.5 x 13.2 mm body, the M7 x 0.75 bushing, the 6.0 mm shaft with its 4.5 mm flat
+  and the bushing length per shaft length (5.0 mm for the 15 mm shaft, 7.0 for 20 mm and
+  longer) come from the Bourns PEC11 datasheet (rev. 05/11, cited under Sources). All of
+  them match the model. Not in any source and still assumed: the PCB thickness (1.6 mm),
+  the washer plus nut height (2.5 mm), and which shaft length Adafruit solders (the
+  product page only says "standard PEC11-pinout"; a 20 mm shaft would need
+  `enc_bush_l = 7`). `input/measurements.md` has the caliper list for the two boards on
+  hand.
 - **Where:** the shafts leave the back face at (+-47, -25) mm in the shell's coordinates,
   i.e. 19 mm in from each side edge and 41 mm up from the bottom edge, one knob per side.
   That spot is clear of the (+-56.85, 0) and (+-44, -56.85) bosses and the controller
@@ -373,6 +383,8 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 | FDM print allowance | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the v7 window against the model when it arrives. |
 | LED board / mask outline | 128.0 mm | `board` | Waveshare's quoted panel size; the drawing has the frame (127.8) and not the board. The rim runs 1.5 mm beside the board with 0.2 mm clearance per side (`board_clr`). Measure the board and the mask at their widest; if over 128.0, set `board` and the pocket steps out (the wall there drops below 2 mm past 128.0, the echo warns). |
 | LED board + mask thickness in front of the frame | 2.5 mm | `panel_stack` | From the v1 print, where the mask stood 2.5 mm proud of a rim that ended at the frame. Sets the lip together with `proud`. |
+| Encoder shaft length on the 5880 (p64b) | 15 mm, so a 5.0 mm bushing | `enc_shaft_l`, `enc_bush_l` | Adafruit does not state which PEC11 it solders. The datasheet ties the bushing length to the shaft length (5.0 for 15 mm, 7.0 from 20 mm up); the bushing sets the post height and the thread left for the nut. Measure on the boards on hand (`input/measurements.md`). |
+| Encoder PCB thickness and washer + nut height (p64b) | 1.6 mm, 2.5 mm | `enc_board_t`, `enc_nut_h` | Neither is in the board file or the datasheet (the datasheet only says one washer and one nut are supplied). Measure on the boards on hand. |
 
 ## Verified with the v1 print
 
@@ -458,8 +470,10 @@ margins named in this README.
 - Controller drawing: https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/dimensions (`ESP32-S3-RGB-Matrix-2D.pdf`)
 - Wikis: https://docs.waveshare.com/ESP32-S3-RGB-Matrix and https://docs.waveshare.com/RGB-Matrix-Px-64x64
 - Encoder board (p64b): https://www.adafruit.com/product/5880 and its EagleCAD files
-  https://github.com/adafruit/Adafruit-I2C-QT-Rotary-Encoder-PCB
-- Encoder (p64b): Bourns PEC11 datasheet https://cdn-shop.adafruit.com/datasheets/pec11.pdf
+  https://github.com/adafruit/Adafruit-I2C-QT-Rotary-Encoder-PCB (the board file is
+  stored in `input/adafruit-5880/`, CC BY-SA)
+- Encoder (p64b): Bourns PEC11 datasheet, rev. 05/11, https://cdn-shop.adafruit.com/datasheets/pec11.pdf
+  (not stored: Bourns' copyright)
 - Controller GPIO socket pinout (p64b): the schematic in
   https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/schematics
 - 90-degree USB-C adapter: a generic aluminium-shelled male-to-female right-angle adapter,
