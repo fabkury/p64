@@ -277,10 +277,14 @@ Style: `hardware-tests/.clang-format` (Google, 2 spaces, 120 columns), same as t
 ## Enclosure
 
 OpenSCAD, one file per version (`src/p64_enclosure.scad` = v1 as printed and ordered;
-`_v2` .. `_v6` add features). **v6 is the version to print**: v4's panel-mount USB-C
+`_v2` .. `_v7` add features). **v7 is the version to print**: v4's panel-mount USB-C
 sockets did not fit inside the v1 print, so v6 leaves two small 90-degree adapters on the
 controller's ports behind one window in the back face and needs a hand-cut notch in the
-panel frame's back plate (README, v6). v3, v4 and v5 are kept alternatives. Each version
+panel frame's back plate (README, v6); v7 (2026-09-22) is v6 with a named tolerance
+budget around that window (the port position is only known to +-1 mm, from a photo), the
+seating ledge relieved below the ports and the cradle as a separate small print glued in
+on the real adapters (README, v7; a second STL, `p64_cradle_insert.stl`). v3, v4, v5 and
+v6 are kept alternatives. Each version
 writes the same file names into its own `output/vN/`
 (`p64_enclosure_print.stl`/`.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for
 bureaus, `render_*.png`). The exact `openscad` commands per version and per render are in

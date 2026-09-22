@@ -25,8 +25,10 @@ leaning back 12 degrees.
 | `output/v4/` | v4 outputs, same file names as v2, plus `render_section_usb.png` through the POWER socket. |
 | `src/p64_enclosure_v5.scad` | **v5** (kept alternative, v4 remains the version to print): v4 plus the speaker shipped with the controller, sunk into the upper back and firing backwards, see [v5](#v5-speaker-in-the-back). |
 | `output/v5/` | v5 outputs, same file names as v4, plus `render_section_spk.png` through the speaker's lugs. |
-| `src/p64_enclosure_v6.scad` | **v6** (the version to print): v4 with the panel-mount sockets replaced by two small 90-degree USB-C adapters that stay on the controller's ports, reached through one window in the back face, see [v6](#v6-90-degree-adapters-on-the-ports). Needs a hand-cut notch in the panel frame. Edited in place on 2026-09-19: the outer edges are chamfered and filleted for the hand, see [Edges](#edges-2026-09-19-edited-in-place). |
+| `src/p64_enclosure_v6.scad` | **v6** (kept as designed; v7 is the version to print): v4 with the panel-mount sockets replaced by two small 90-degree USB-C adapters that stay on the controller's ports, reached through one window in the back face, see [v6](#v6-90-degree-adapters-on-the-ports). Needs a hand-cut notch in the panel frame. Edited in place on 2026-09-19: the outer edges are chamfered and filleted for the hand, see [Edges](#edges-2026-09-19-edited-in-place). Its window and cradle have 0.3 to 0.6 mm of clearance around parts whose position is known to about 1 mm, see [v7](#v7-tolerance-budget-around-the-adapters-cradle-as-a-glued-insert). |
 | `output/v6/` | v6 outputs, same file names as v4, plus `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line), `render_frame_notch.png` (where to notch the panel frame, in red) and `render_section_edge.png` (the wall profile through x = 33: the edge chamfer and fillets). |
+| `src/p64_enclosure_v7.scad` | **v7** (the version to print): v6 with a named tolerance budget for everything around the USB-C adapters. The window absorbs the whole budget, the seating ledge is relieved below the ports, and the cradle becomes a separate small print glued in place on the real adapters, see [v7](#v7-tolerance-budget-around-the-adapters-cradle-as-a-glued-insert). Still needs the hand-cut frame notch. |
+| `output/v7/` | v7 outputs, same file names as v6, plus `p64_cradle_insert.stl` (the second print), `render_insert.png` (the insert alone) and `render_window.png` (straight at the back face: the two socket faces in the window with the insert's sole around them). |
 | `input/measurements.md` | Hand measurements of parts that have no drawing (the speaker, the v1 print, the 90-degree USB-C adapter). |
 | `input/PXL_20260911_*.jpg` | Photos of the speaker box: front, front with lead, corner lug. |
 | `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter used from v6 on; one has the hand measurements drawn on it. |
@@ -289,6 +291,122 @@ move, only its edges did. With `edge_back_c`, `edge_rim_r`, `edge_base_r` and
   but keep it for the holes. `render_section_edge.png` shows the profile through x = 33
   (`part = "section_edge"`, a cut clear of every feature).
 
+## v7: tolerance budget around the adapters, cradle as a glued insert
+
+`src/p64_enclosure_v7.scad` is v6 (edges included) made tolerant of the inputs the model
+cannot verify. It answers the question asked on 2026-09-22: if the port position or the
+adapter's size and shape are slightly off, how much can the design take? For v6 the answer
+is "less than the inputs' own uncertainty", so v7 was made rather than v6 edited (v6 stays
+as designed; nothing has been printed yet). The decisions of 2026-09-22: fit at the first
+try comes before looks; the position budget is +-1 mm as rated; the cradle is a separate
+insert fitted at assembly; the print is JLC3DP FDM again; the real positions will be
+measured later, after which the budget can shrink (see "Shrinking the budget").
+
+### The budget
+
+| Input | Rated error | Where it comes from | Moves the adapter pair |
+|---|---|---|---|
+| Port position (`hub75_in_native`) | +-1.0 mm in x and y | read off a product photo; the v1 print only showed the ports inside a 30 mm pocket | x and y |
+| Boot gap (`ad_gap`, 1.2) | +-0.5 mm | an estimate (7.7 mm plug minus a 6.5 mm shell), not measured | y (how far the bodies hang below the ports) |
+| Body size (`ad_len`, `ad_w`, `ad_t`) | +-0.2 mm per side of the pair | hand measurements on a photo | x and y edges, z (socket face) |
+| Socket face depth (`z_chip` 0..1, `ad_plug_c`, `ad_len`) | +-1.1 mm | `z_chip` is a range, the other two are photo measurements | z only: the well is 1.8 to 4.0 mm deep instead of 2.9, the plugs stay 6.5 mm in the receptacles |
+| FDM print allowance (`print_clr`) | 0.25 mm per side of an opening | a guess from the v1 print, whose outside came out 0.3 mm per side larger than the model | shrinks every opening |
+| Body corner radius (`ad_r`, 3.0) | real 3.5 to 4 | photos | only ever adds clearance |
+
+Against that, v6 had 0.4 mm (x) and 0.6 mm (y) per side at the window and 0.3/0.5 at the
+cradle, 0.15/0.35 and 0.05/0.25 once the print allowance is taken off: a 1 mm error in
+the port position puts an adapter body into the wall. The bodies also passed 0.71 mm above
+the seating ledge and 0.41 mm above the frame's own wall.
+
+One bound is physical, and v7 uses it: the bodies cannot hang lower than the frame's outer
+wall (inner face at y = -62.3, from the drawing), because then the adapters would not seat
+on the ports at all. So downwards the shell needs only the print allowance beyond those
+0.41 mm, and "do both adapters seat fully after the notch is cut" is the check that
+verifies the whole downward side for free. Every other direction gets the full budget.
+
+### What v7 changes
+
+- **Window:** 28.3 x 10.7 mm (v6: 26.2 x 9.2), i.e. 1.45 mm of clearance per side in x
+  (1.0 position + 0.2 body + 0.25 print), 1.95 above the bodies (1.0 + 0.5 boot + 0.2 +
+  0.25) and 0.76 below (0.41 physical + 0.25 + 0.1 slack), so its centre sits 0.6 mm above
+  the pair's. Corner radius 3.0, the body's own, so a body pushed into a corner by the
+  whole budget still clears it. The outer chamfer is 0.5 mm (v6: 1.0).
+- **Mic1 hole:** moved 0.5 mm right and 1.6 mm up (`mic1_off`) so the webs around it keep
+  the 2 mm rule against the wider window: 2.18 mm to the window at the inner face (the
+  0.5 mm chamfer outline comes 1.68 mm close on the surface) and 2.05 mm to the nearest
+  vent slot end. The microphone sits about 10 mm behind the wall, so the hole is a sound
+  vent and 1.7 mm of offset changes nothing audible.
+- **Ledge relief:** the seating ledge is cut away over 30.3 mm centred below the ports
+  (`ledge_relief`); the frame rests on it everywhere else and on the six bosses.
+- **Cradle insert** (`part = "insert"`, `output/v7/p64_cradle_insert.stl`): the v6 cradle
+  leaves the shell and becomes a 34 x 7 x 6 mm part: a U (1.0 mm bottom wall, 2 mm side
+  walls up to the bodies' top face, open towards the controller) around the last 6 mm of
+  the bodies, standing on a 1.0 mm sole that lies on the cavity back and reaches 3 mm
+  beyond the window on each side and 1 mm below it. Its opening keeps v6's tight
+  clearances plus the print allowance (0.55 mm in x, 0.75 in y), because it is glued to
+  the cavity back while sitting on the real adapters and so aligns itself to wherever
+  they are. The bodies pass through the sole's opening into the wall's window, so from
+  outside the sole frames the two socket faces at 2.4 mm depth and hides the shell's
+  wider opening on the sides and below; above the bodies the 1.95 mm strip stays open
+  into the cavity (a bar there would sit in front of the mic1 hole at the worst case).
+  Two 1.5 x 1.2 mm rails on the cavity back bracket the sole with the whole x budget of
+  play: a guide for placing it and a shear key for the glue. The 1.0 mm sole and bottom
+  wall are deliberate exceptions to the 2 mm rule: the sole is a glued lamination on the
+  2.4 mm wall, the bottom wall is backed by the shell's bottom wall within 0.56 mm (0.15 mm
+  when the bodies sit as low as they physically can; that is why it is 1.0 and not 2).
+- **Frame notch:** as v6, but cut it 27.4 mm wide centred on the **real** ports (1 mm each
+  side of the pair); measured from the frame instead, the whole budget needs 29.4 mm,
+  y = -15.0..+14.4 in the panel's own orientation, which is what `render_frame_notch.png`
+  now shows in red.
+- **Unchanged:** everything else in v6, the edges included; the USB mark groove follows
+  the window's right end.
+- **Numbers** (the `budget:`, `adapters:`, `insert:`, `webs:` and `ledge relief:` echo
+  lines): window 28.34 x 10.71, centre y -57.3, bottom edge y -62.65; insert opening
+  26.54 x 9.5, outer width 30.54, sole 34.34 x 7.25, rails at x -20.1..-18.6 and
+  19.2..20.7; at the worst case (bodies 1.7 mm higher) the side walls end at y -52.2, 1.6 mm
+  below the mic1 hole's edge; the window's chamfer stops 1.95 mm from the back face's
+  bottom edge chamfer (v6: 1.6).
+- **Not absorbed:** a port lower than the frame's wall allows (a hardware collision, found
+  at the seating check); a socket depth beyond +-1.1 mm (only the well's depth changes,
+  the cable still plugs in); the microphone position itself (+-1 mm from the same photo,
+  irrelevant for a vent hole).
+
+### Assembly change (the insert)
+
+Before the first assembly:
+
+1. Cut the frame notch (v6 section), push an adapter onto each port and check that both
+   seat fully with their bodies clear of the frame's wall.
+2. Dry-fit once: panel with adapters into the shell, the bodies through the insert's U
+   and the insert between the two rails, no glue. Check that the insert lies flat on the
+   cavity back with the sole's arms overlapping the wall beside the window.
+3. Put a thin bead of cyanoacrylate on the sole's back face along its outer edge only (or
+   a strip of double-sided tape), well away from the opening, seat the panel with the
+   adapters carrying the insert, fit two screws, and let it cure. The adapters position the
+   insert; the shell only receives it.
+4. Take the panel out again if needed: the insert stays, and from now on the bodies slide
+   into the U as the panel seats, as in v6.
+
+Then the six screws as in v1, and the cables plug in from the back as in v6.
+
+### Shrinking the budget (measure later)
+
+Once the notch is cut and both adapters are seated on the real panel, three caliper
+measurements pin the inputs down; after them `tol_pos` can drop to the residual (0.3 mm
+is realistic for calipers) and the window shrinks accordingly, the insert unchanged:
+
+| Measure | Nominal | Pins down |
+|---|---|---|
+| Frame's outer side face to the pair's outer side face, on each side (design orientation, ports down) | 50.9 right, 51.5 left | port x (`hub75_in_native[1]` before the 90 degree rotation) |
+| Frame's outer bottom face to the bodies' underside | 2.0 | port y plus the boot gap (`hub75_in_native[0]` and `ad_gap`) |
+| Frame's back face to the socket faces (depth gauge) | 18.2 | `z_chip` + `ad_plug_c` + `ad_len` |
+
+Enter what differs, regenerate, and read the echo lines: the model prints every margin.
+
+- **Printing:** the shell as v6. The insert prints sole down, no support, under 2 g; its
+  walls lean 6 degrees (they follow the bodies, the sole follows the sloping cavity back).
+  If the opening comes out tight, a file pass fixes it; loose is fine.
+
 ## v5: speaker in the back
 
 `src/p64_enclosure_v5.scad` is v4 plus the 8 ohm speaker box that ships with the
@@ -336,18 +454,22 @@ kept as an alternative: on 2026-09-11 the user chose to keep v4 as the version t
    hex driver.
 4. From underneath, push the right-angle USB-C plug up into the POWER port (power only) or
    the USB port (power + programming). Lay the cable in the groove toward the back notch.
+   (v6, v7: the adapters go on before step 2 and the cables plug in from the back; v7
+   glues the cradle insert at the first assembly, see the v7 section.)
 5. Rotate the image 90 degrees in firmware.
 
 ## Printing
 
-- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` to `output/v6/`) as delivered: it already lies on its inclined back face,
+- Print `output/v1/p64_enclosure_print.stl` (or the same file in `output/v2/` to `output/v7/`) as delivered: it already lies on its inclined back face,
   no supports needed. The walls lean 6 degrees, the base face overhangs 6 degrees, the
   ledge underside is 45 degrees, and there are 6.5 mm bridges over the screw counterbores.
   Print height is 34.6 mm; about 80 g of PLA with 20 percent infill.
   v6 adds the cradle ribs on the bed side and the chamfered window, and since 2026-09-19
   a 1.4 mm chamfer around the bed-side edge (first layer 129.6 x 130.3 mm) with the rim
   and base fillets at the top of the print (print height 34.2 mm, the front-bottom edge
-  being rounded); nothing else changes.
+  being rounded); nothing else changes. v7 replaces the cradle ribs with two low rails
+  and adds a second, separate print, `output/v7/p64_cradle_insert.stl` (sole down, no
+  support, under 2 g).
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
 - For FDM use the 0.3 mm `p64_enclosure_print.stl`: the 0.45 mm `_service.stl` printed in
   PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
@@ -378,8 +500,9 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 | Centre of the panel's HUB75 IN header | (-35.0, +5.4) mm from the panel centre, panel arrows up, seen from the back | `hub75_in_native` | From the product photo, +-1 mm. Pin holes (3.5 mm), mic holes (3.5 mm) and the plug pocket (30 mm) are sized to absorb that error. With this value the chip's edge overhangs the frame rim by 0.8 mm, which fits the photo. v1 print: the base pocket lands exactly on the two USB-C ports; whether the pin and mic holes land over the buttons and mics is not checked yet. |
 | Height of the controller PCB's back face above the frame's back face | 0.5 mm | `z_chip` | Must be 0 or more because the chip edge overhangs the rim. Only the plug pocket (`pocket_z`) depends on it. v1 print: with the panel seated there is a visible gap between the controller and the back wall, so the value is safe. |
 | Right-angle plug body | up to 12 wide x 7 thick x 14 long | `pocket_w`, `pocket_z` | Enlarge the pocket if yours is bigger. v1 print: not tried yet. v6 has no pocket. |
-| 90-degree adapter: boot gap between its body and the receptacle face (v6) | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; the cradle has 0.5 mm of clearance in that direction. Measure the seated adapter after notching the frame. |
-| 90-degree adapter: corner radius of the body cross-section (v6) | 3.0 mm | `ad_r` | From the photos, looks like 3.5 to 4. A smaller value in the model only makes the cradle and window corners tighter than needed. |
+| 90-degree adapter: boot gap between its body and the receptacle face (v6, v7) | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; v6's cradle has 0.5 mm of clearance in that direction, v7 budgets +-0.5 mm (`tol_gap`). Measure the seated adapter after notching the frame. |
+| 90-degree adapter: corner radius of the body cross-section (v6, v7) | 3.0 mm | `ad_r` | From the photos, looks like 3.5 to 4. A smaller value in the model only makes the cradle and window corners tighter than needed. |
+| FDM print allowance (v7) | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the v7 window against the model when it arrives. |
 
 ## Verified with the v1 print
 
@@ -405,8 +528,9 @@ the desk, panel with controller and the right-angle cable, lit at night).
 
 Screws: none shipped with the panel or the controller. Buy six M3 x 10 (socket head cap or
 pan head, head 6 mm or less for the 6.5 mm counterbore; not countersunk). The next shell
-(v6) adds no screws: the encoder boards bring their own bushing nut and washer, and the
-90-degree adapters simply stay plugged into the controller.
+(v6, v7) adds no screws: the encoder boards bring their own bushing nut and washer, and the
+90-degree adapters simply stay plugged into the controller. v7 needs a drop of
+cyanoacrylate (or double-sided tape) for the cradle insert.
 
 ## Main parameters (`src/p64_enclosure.scad`)
 
@@ -422,6 +546,11 @@ pan head, head 6 mm or less for the 6.5 mm counterbore; not countersunk). The ne
   treatments `edge_back_c` 1.4, `edge_rim_r` 1.5, `edge_base_r` 3, `cb_chamfer` 0.5 (all 0
   = the sharp-edged body); `part` also accepts `section_ad`, `section_win`, `frame` and
   `section_edge` (cut at `section_edge_x`)
+- v7 only: the budget `tol_pos` [1, 1], `tol_gap` 0.5, `tol_body` 0.2, `tol_z` 1.1,
+  `print_clr` 0.25, `win_slack` 0.1; `ad_win_chamfer` 0.5; the insert `ins_clr` [0.3, 0.5],
+  `ins_depth` 6, `ins_sole_t` 1, `ins_wall_t` 2, `ins_bot_t` 1, `ins_lap` 3, `ins_top_cut`
+  2.5, `ins_rails`, `ins_rail_h` 1.2, `ins_rail_t` 1.5; `ledge_relief`; `mic1_off`
+  [0.5, 1.6]; `part` also accepts `insert`
 
 Regenerate the STL with:
 
@@ -437,6 +566,10 @@ openscad -o output/v5/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclos
 openscad -o output/v5/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v5.scad
 openscad -o output/v6/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v6.scad
 openscad -o output/v6/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v6.scad
+openscad -o output/v7/p64_enclosure_print.stl -D "part=\"print\"" src/p64_enclosure_v7.scad
+openscad -o output/v7/p64_enclosure_print.3mf -D "part=\"print\"" src/p64_enclosure_v7.scad
+openscad -o output/v7/p64_enclosure_service.stl -D "part=\"print\"" -D panel_clr=0.45 src/p64_enclosure_v7.scad
+openscad -o output/v7/p64_cradle_insert.stl -D "part=\"insert\"" src/p64_enclosure_v7.scad
 ```
 
 The v2 renders are previews (no `--render`) with these cameras, 1600 x 1200, Metallic scheme.
@@ -448,7 +581,11 @@ v6 has no `section_usb`; instead `render_section_ad.png` uses `part="section_ad"
 `--camera=15,-180,45,0,-55,10`, `render_frame_notch.png` uses `part="frame"` with
 `--projection=o --camera=0,-48,170,0,-48,0` (orthographic, straight at the back of the panel),
 and `render_section_edge.png` uses `part="section_edge"` with `--projection=o --camera=333,-4,5,33,-4,5`
-(orthographic, looking at the cut face from +X: the base is on the left, the back face on top):
+(orthographic, looking at the cut face from +X: the base is on the left, the back face on top).
+v7 uses the v6 commands with `v7` in both paths and adds `render_insert.png` with `part="insert"`
+and `--camera=40,-60,50,0,0,2`, and `render_window.png` with `part="assembly"` and
+`--projection=o --camera=0.3,-57,21,-6,0,0,60` (the gimbal form: straight at the back face
+around the window, the mic1 hole at the top right):
 
 ```
 openscad -o output/v2/render_back.png        -D "part=\"shell\""       --imgsize=1600,1200 --projection=p --colorscheme=Metallic --camera=-235,-327,307,0,-12,-8 src/p64_enclosure_v2.scad
