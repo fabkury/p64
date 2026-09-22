@@ -42,16 +42,19 @@ console and the API.
 |---|---|---|---|---|
 | `render` | 1 | 20 | `Display` | The only caller of `present()`. Loop: take the frame due next, `wait_for_back_buffer()`, apply rotation and gains, `present()`. Never blocks on anything but the DMA boundary. |
 | `player` | 1 | 15 | decoders, scaler, the ready-frame ring | Decodes the next frame of the current artwork into a ready slot ahead of its due time; prepares the next artwork's first frame in a second slot; composes overlays. Slow decode delays frames (no-drop rule), never the render task. |
-| `main` (app) | 0 | 5 | the state machine, timers, event dispatch | Auto-swap timer, interlude rolls, history, commands from the API and Makapix. |
+| `main` (app) | 0 | 5 (set in `app_main`; ESP-IDF starts it at 1, and it ran at 1 until 2026-09-22) | the state machine, timers, event dispatch | Auto-swap timer, interlude rolls, history, commands from the API and Makapix. |
 | `net` tasks | 0 | 3 to 8 | Wi-Fi, lwIP, mDNS, SNTP, HTTP server, MQTT, downloads, channel refresh | IDF's own tasks plus the fetcher, refresh and download workers. Every network and storage task is pinned to core 0 (p3a jitter lesson 7). |
 | `storage` | 0 | 4 | card I/O for the file manager, index and cache writes | Playback never reads the card: the player works from file bytes already in PSRAM. |
 | `stream` | 0 | 9 | UDP sockets | Assembles frames into the stream sink; the player picks them up. |
 | `inputs` | 0 | 6 | IMU polling, BOOT | 50 Hz poll. |
 
 Rules: the two core-1 tasks never take a lock that a core-0 task can hold for long
-(frame handoff is a lock-free ring of ready slots); all cross-task requests go through
-the event bus or a command queue drained by the main task; no task blocks the render
-task except the DMA boundary wait.
+(frame handoff is a lock-free ring of ready slots; the per-frame readers of the settings,
+the overlay hook, the widget sources and the stream sink, take `system::settings_view()`,
+a shared immutable document replaced on every update, and `settings_update()` writes NVS
+outside its mutex); all cross-task requests go through the event bus or a command queue
+drained by the main task; no task blocks the render task except the DMA boundary wait.
+The esp-mqtt task is pinned to core 0 by `CONFIG_MQTT_TASK_CORE_SELECTION_ENABLED`.
 
 ## 3. Frame flow
 
@@ -140,7 +143,7 @@ the device and on the host; results go to `firmware/README.md`.
 |---|---|---|
 | Panel bit-plane buffers, 10 planes, double | internal (DMA) | about 82 KB |
 | Ready frames (4 x 64x64x3) + physical buffer | internal | 60 KB |
-| Wi-Fi + lwIP | internal/PSRAM (`SPIRAM_TRY_ALLOCATE_WIFI_LWIP`) | 40-60 KB internal |
+| Wi-Fi + lwIP | internal/PSRAM (`SPIRAM_TRY_ALLOCATE_WIFI_LWIP`) | 40-60 KB internal; the driver's hot code in flash since 2026-09-22 (`ESP_WIFI_IRAM_OPT=n`, `ESP_WIFI_RX_IRAM_OPT=n`) |
 | TLS: MQTT session + one download | PSRAM buffers, dynamic | 2 x ~40 KB |
 | HTTP server, mDNS, MQTT client | internal | ~30 KB |
 | Artwork bytes, current + next | PSRAM | 2 x ≤ 5 MB |
@@ -149,7 +152,15 @@ the device and on the host; results go to `firmware/README.md`.
 | Memory cache without a card | PSRAM | ≤ 8 MB |
 
 The internal-RAM floor is checked at boot and logged; diagnostics expose the largest
-free block. Anything larger than 4 KB that is not DMA-bound is allocated from PSRAM.
+free block. Anything larger than 1 KB that is not DMA-bound is allocated from PSRAM
+(`SPIRAM_MALLOC_ALWAYSINTERNAL=1024`; 4096 until the review of 2026-09-22), and the
+FreeRTOS kernel and the ring buffer live in flash (`FREERTOS_PLACE_FUNCTIONS_INTO_FLASH`,
+`RINGBUF_PLACE_FUNCTIONS_INTO_FLASH`) so the SRAM they used goes to the heap. Measured on
+2026-09-22 with MQTT connected and an artwork playing: 13 KB free and an 11.7 KB largest
+block before those settings, 54 to 58 KB and 32.7 KB after, with a minimum since boot of
+42 KB; `firmware/budgets.json` holds the floors, `tests/device/api_smoke.py` checks them
+against the running device and `tools/check_size.py` checks the image and the static
+internal RAM of a build. `docs/review-2026-09/memory.md` has the inventory.
 
 ## 7. Settings
 

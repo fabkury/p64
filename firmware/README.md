@@ -34,7 +34,11 @@ unattended acceptance run. The resource floors (internal RAM free and largest bl
 steady state and over a soak, core 0 busy share, image size, static internal RAM) live
 in `budgets.json`: `api_smoke` and `soak` check the runtime ones against the device,
 `tools/check_size.py` the static ones against a build; a change that breaks a floor
-raises it there deliberately (rule of 2026-09-22, `docs/review-2026-09/`).
+raises it there deliberately (rule of 2026-09-22, `docs/review-2026-09/`). Give the
+timing-sensitive tests (`stream_smoke`, `soak`) the device's IP rather than `p64.local`:
+on this laptop the first mDNS resolution of a process takes up to 3 s, which lands the
+stream test's status read after the stream has gone silent (seen 2026-09-22; against the
+IP the same run measures 29.7 fps with 0 incomplete frames).
 Tools: `stream_send.py` (send pixels), `release_assets.py` (the GitHub release assets),
 `cpu_sample.py` (per-task CPU shares and heap figures from `diag/memory`; heap owners
 too when the build has `CONFIG_HEAP_TASK_TRACKING`), `check_size.py`, `gen_fonts.py`,

@@ -26,6 +26,7 @@ candidate for demotion to a compile-time option.
 | `cpu.md` | measured per-task CPU shares at idle and under a 128x128 WebP, the findings, and the drop-a-feature table |
 | `testing.md` | what is protected and what is not, the fifteen untested fixed bugs, and the practice changes |
 | `proposals.md` | the ranked roadmap: every proposal with its measured or estimated gain, its cost, its risk, and whether it breaks anything |
+| `tier1-results.md` | what tier 1 of the roadmap did on 2026-09-22 (prompt p022): the commits, the measurements before and after, the verification of the configuration change |
 | `evidence-memory.md` | the code inventory behind `memory.md`: every task, allocation and config item, with file and line |
 | `evidence-cpu.md` | the code inventory behind `cpu.md`: every periodic activity, per-frame path, event handler and blocking hazard |
 | `evidence-testing.md` | the code inventory behind `testing.md`: coverage by file, seams graded, the device scripts, the regression table |
@@ -46,8 +47,8 @@ Asked with the tool at the start of the session and answered by the user:
 - The internal-RAM target is 64 KB free with a 32 KB largest block at steady state.
 - Of the non-sacred features the user uses the weather and temperature widgets, the IMU
   and the clock; not the streams.
-- This session proposes only; nothing in the firmware changed except the
-  instrumentation branch.
+- The review session proposed only; tier 1 of the roadmap was executed the same
+  afternoon under prompt p022 (`tier1-results.md`).
 
 ## Method
 
@@ -62,14 +63,11 @@ Asked with the tool at the start of the session and answered by the user:
    cheapest candidate levers and estimates for them are unreliable.
 4. Synthesis into findings and a ranked roadmap.
 
-## Instrumentation to keep
+## Instrumentation
 
-The branch `review/cpu-instrumentation` (not merged) adds two things worth merging as
-they are: `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y` with a per-task `run_time` and
-`core` in `diag/memory`, and `CONFIG_HEAP_TASK_TRACKING=y` with a `heap_by_task` array
-(internal and PSRAM bytes and block counts per allocating task). The first costs nothing
-measurable; the second costs one pointer per heap block (about 4 KB of internal RAM on
-this firmware), so it should be a menuconfig option that release builds leave off. The
-sampling script that takes two readings and prints CPU shares and heap owners is in the
-session's scratchpad and belongs in `firmware/tools/` as `cpu_sample.py` (proposal
-P-T6).
+The measurements used a branch, `review/cpu-instrumentation`, whose one commit was
+cherry-picked into main the same day (tier 1, `tier1-results.md`): per-task `run_time`
+and `core` in `diag/memory` are always on (`CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS`,
+no measurable cost), and the `heap_by_task` array appears when a build sets
+`CONFIG_HEAP_TASK_TRACKING` (about 4 KB of internal RAM, so off by default). The
+sampling script is `firmware/tools/cpu_sample.py`.
