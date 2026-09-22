@@ -77,8 +77,9 @@ flash the firmware the first time; after that the device updates itself over Wi-
 
 [docs/build-your-own.md](docs/build-your-own.md) is the step-by-step guide. In short:
 
-1. Order the parts above and print `enclosure/output/v6/p64_enclosure_print.stl` (or
-   `v1/`, the version that has been printed and verified; see the status below).
+1. Order the parts above and print `enclosure/output/v7/p64_enclosure_print.stl` plus
+   the small `p64_cradle_insert.stl` next to it (or `v1/`, the version that has been
+   printed and verified; see the status below).
 2. Install ESP-IDF v5.5, build the firmware from `firmware/` and flash it over the
    board's USB port.
 3. Plug the board onto the panel, connect the power lead, slide the panel into the shell
@@ -95,9 +96,10 @@ there yet, as of 2026-09-21:
 - **No firmware release yet.** Building one today means compiling from source with
   ESP-IDF. A first GitHub release with a ready-to-flash image is planned; the updater is
   already in the firmware and waits for it.
-- **The shell in the photos is v1.** The current design, v6, adds a window for the USB-C
-  cables and mounts for two rotary knobs, and is not printed yet. v1 is proven and
-  needs a right-angle USB-C cable instead.
+- **The shell in the photos is v1.** The current design, v7, adds a window for the USB-C
+  cables and mounts for two rotary knobs, and is not printed yet (v7 is v6 with room for
+  the measurement errors around the USB-C window, settled on 2026-09-22). v1 is proven
+  and needs a right-angle USB-C cable instead.
 - **The two knobs are designed, not wired.** Their wiring projects are in
   `docs/hardware/`; the firmware has the input hooks ready.
 - **Some acceptance measurements** in the specification still need instruments.

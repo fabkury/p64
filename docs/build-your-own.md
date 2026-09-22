@@ -7,7 +7,7 @@ power lead goes into screw terminals.
 
 The state of things on 2026-09-21: the firmware is complete for version 1 and runs
 daily on one device, but there is no ready-made firmware image yet, so step 3 compiles it
-from source. The shell in the photos is version 1; the current design (v6) is not printed
+from source. The shell in the photos is version 1; the current design (v7) is not printed
 yet. Both are covered below.
 
 ## 1. Order the parts
@@ -17,7 +17,7 @@ yet. Both are covered below.
 | Waveshare ESP32-S3-RGB-Matrix | The driver board. Ships with the panel power lead (VH4 plug to bare wires), a 4-pin SH1.0 cable, screws and a small speaker that p64 does not use. |
 | Waveshare RGB-Matrix-P2-64x64-B (or the standard RGB-Matrix-P2-64x64) | The 128 x 128 mm panel. The "-B" GOB version has a protective layer over the LEDs; both fit the shell. |
 | A 5 V USB-C power supply, 3 A or more | Waveshare's PSU-27W-USB-C-B or any good phone charger. A laptop's USB port also powers it, but not at full brightness on bright content: full white at brightness 255 draws close to the panel's 15 W. |
-| A USB-C cable | To power the device and, the first time, to flash it from a computer. For the v1 shell it must be a right-angle ("up/down angled") plug; for v6 any cable, plus two small 90-degree USB-C adapters (19.3 x 12.7 x 8 mm aluminium body, hand-measured in `enclosure/input/measurements.md`). |
+| A USB-C cable | To power the device and, the first time, to flash it from a computer. For the v1 shell it must be a right-angle ("up/down angled") plug; for v7 any cable, plus two small 90-degree USB-C adapters (19.3 x 12.7 x 8 mm aluminium body, hand-measured in `enclosure/input/measurements.md`). |
 | Six M3 x 10 screws | Into the panel's brass inserts. The heads sit 17 mm deep, so a long PH1 or hex driver is needed. |
 | microSD card (optional) | FAT32. For your own files and for the Makapix cache; the device also runs without one. |
 
@@ -26,11 +26,14 @@ yet. Both are covered below.
 Everything is in `enclosure/`; its [README](../enclosure/README.md) explains the design.
 Two versions matter:
 
-- **v6, the current design:** `enclosure/output/v6/p64_enclosure_print.stl` (or `.3mf`).
-  Cables plug into two 90-degree USB-C adapters that stay on the board's ports, reached
-  through one window in the back face, and the back has mounts for two rotary knobs. It
-  needs a small notch cut by hand in the panel's plastic frame (marked in red in
-  `enclosure/output/v6/render_frame_notch.png`). v6 has not been printed yet.
+- **v7, the current design:** `enclosure/output/v7/p64_enclosure_print.stl` (or `.3mf`)
+  plus the small `enclosure/output/v7/p64_cradle_insert.stl`, a second print that is
+  glued inside at the first assembly. Cables plug into two 90-degree USB-C adapters that
+  stay on the board's ports, reached through one window in the back face, and the back
+  has mounts for two rotary knobs. It needs a small notch cut by hand in the panel's
+  plastic frame (marked in red in `enclosure/output/v7/render_frame_notch.png`). v7 has
+  not been printed yet; its window has room for the measurement errors the design
+  carries, see the enclosure README's v7 section.
 - **v1, the proven one:** `enclosure/output/v1/p64_enclosure_print.stl`. Printed by
   JLC3DP in black PLA for $18.83 including shipping, and verified to fit. The cable is a right-angle USB-C plug pushed up into the port from
   underneath, laid in a groove to a notch at the back. No knob mounts.
@@ -79,13 +82,15 @@ reachable in the shell.
    IN and OUT; Waveshare's product photos show which).
 2. Connect the power lead: the VH4 plug into the panel's power socket, the bare wires into
    the board's 5 V and GND screw terminals, red to 5V.
-3. v6 only: push a 90-degree adapter onto each of the board's USB-C ports, body towards
-   the frame's edge, after cutting the frame notch.
+3. v7 only: push a 90-degree adapter onto each of the board's USB-C ports, body towards
+   the frame's edge, after cutting the frame notch. At the first assembly, glue the
+   cradle insert to the inside of the back wall while the adapters carry it (the
+   enclosure README, v7, has the steps).
 4. Slide the panel into the shell from the front with the board at the **bottom**, so the
    USB-C ports point at the wedge. It seats on the ledge and the six bosses.
 5. Fit the six M3 x 10 screws from the back.
 6. v1: push the right-angle USB-C plug up into the port from underneath and lay the cable in
-   the groove towards the back notch. v6: plug the cable into the adapter through the back
+   the groove towards the back notch. v7: plug the cable into the adapter through the back
    window.
 
 The firmware rotates the picture 90 degrees by default to match the shell. If you stand
