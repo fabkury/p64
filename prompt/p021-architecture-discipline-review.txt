@@ -1,0 +1,10 @@
+p64 has received good development in the past few weeks. While this is great, perhaps now it is time to revise a few key architectural items.
+ - Memory discipline: is the firmware being mindful of the device's limited memory? Is PSRAM being used appropriately? Is there any feature that, if dropped, would reduce memory consumption significantly?
+ - CPU discipline: is the firmware being mindful of the device's limited CPU capabilities? Is there any feature that, if dropped, would reduce CPU consumption significantly?
+ - Testing discipline: is the firmware being "protected" by a comprehensive set of tests and general behaviors around testing? Is there any practice or behavior that could/needs to change to greatly improve testing disciline?
+
+This is a very large work of revision indeed. I leave it up to you to decide how to tackle it. In summary, I am trying to figure out: are there major breaking changes (including dropping features) that, if made now, would improve any of the firmware's disciplines?
+
+The outcome of this session that I am expecting is:
+ - A summary report back to me here in the conversation.
+ - Documented thoughts/findings/proposals in a new folder inside the docs/ folder.
