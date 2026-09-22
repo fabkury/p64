@@ -299,6 +299,15 @@ drawings in `enclosure/input/` and record hand measurements in `input/measuremen
   wrote it, nothing added; committed on its own as `prompt: pNNN (what it asked)`. A
   main prompt is one that starts or redirects the session's work; follow-up remarks,
   answers to questions and small corrections are not written down.
+- Tests travel with the code (rule set by the user on 2026-09-22, from the review in
+  `docs/review-2026-09/`): before a commit that touches `firmware/`, run
+  `python tests\host\run.py` from `firmware/`; a fix for a bug found on the device ships
+  in the same commit with the test that would have caught it (a host test when the code
+  is pure, a device test otherwise); a new component or file is host-testable unless it
+  talks to hardware, and the "host-testable" column of the architecture table stays
+  true. The resource floors live in `firmware/budgets.json` (checked by `api_smoke.py`,
+  `soak.py` and `tools\check_size.py`); a change that breaks a floor raises it there
+  deliberately, in the same commit, with the reason in the message.
 - Each area's README is the living record: when the hardware teaches something (pin map,
   orientation, driver quirk, measured numbers), write it there, not only in code comments.
 - Numbers that come from Waveshare drawings or from measurement are stated with their
