@@ -262,3 +262,95 @@ TEST_CASE("faces: the temperature reading, in Fahrenheit when asked, with the tr
 }
 
 }  // namespace
+
+// --- the clock overlay (spec 6.1) -------------------------------------------------------
+
+TEST_CASE("faces: the overlay key changes with every setting that shapes the drawing") {
+  // The key once ignored the font: a font chosen in the web UI showed only at the next
+  // minute (2026-09-23).
+  p64::system::Settings s;
+  const tm t = at(13, 7, 20);
+  const uint32_t base = faces::overlay_key(s, t);
+  CHECK(base != 0);
+  CHECK_EQ(faces::overlay_key(s, at(13, 7, 59)), base);  // the seconds do not show
+  CHECK(faces::overlay_key(s, at(13, 8, 0)) != base);
+  auto differs = [&](auto change) {
+    p64::system::Settings c = s;
+    change(c);
+    return faces::overlay_key(c, t) != base;
+  };
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.font = "everyday-standard"; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.corner = p64::system::Corner::BottomRight; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.h24 = false; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.colour = Rgb{255, 0, 0}; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.outline = false; }));
+  // An unknown font and a font not offered for the overlay both draw the default one.
+  CHECK(!differs([](p64::system::Settings &c) { c.clock_overlay.font = "nope"; }));
+  CHECK(!differs([](p64::system::Settings &c) { c.clock_overlay.font = "high-birth"; }));
+}
+
+TEST_CASE("faces: the overlay draws in its corner, with the outline only when asked") {
+  p64::system::Settings s;
+  s.clock_overlay.colour = Rgb{200, 100, 50};
+  const tm t = at(23, 59, 0);
+  const Rgb grey{90, 90, 90};
+  auto count = [](const Frame &f, Rgb c) {
+    int n = 0;
+    for (int y = 0; y < 64; ++y)
+      for (int x = 0; x < 64; ++x) n += f.get(x, y) == c ? 1 : 0;
+    return n;
+  };
+  for (const char *font : {"capital-hill", "everyday-slight", "everyday-standard", "everyday-typical"}) {
+    CAPTURE(font);
+    s.clock_overlay.font = font;
+    s.clock_overlay.outline = true;
+    s.clock_overlay.corner = p64::system::Corner::TopLeft;
+    Frame f;
+    f.clear(grey);
+    faces::draw_overlay(f, s, t);
+    CHECK(count(f, s.clock_overlay.colour) > 10);
+    CHECK(count(f, Rgb{0, 0, 0}) > 10);
+    int bottom_half = 0;
+    for (int y = 32; y < 64; ++y)
+      for (int x = 0; x < 64; ++x) bottom_half += f.get(x, y) == grey ? 0 : 1;
+    CHECK_EQ(bottom_half, 0);
+    s.clock_overlay.outline = false;
+    f.clear(grey);
+    faces::draw_overlay(f, s, t);
+    CHECK_EQ(count(f, Rgb{0, 0, 0}), 0);
+    // Bottom right: the text stays inside the panel with its margin, none in the top half.
+    s.clock_overlay.outline = true;
+    s.clock_overlay.corner = p64::system::Corner::BottomRight;
+    f.clear(grey);
+    faces::draw_overlay(f, s, t);
+    int top_half = 0, edge = 0;
+    for (int y = 0; y < 64; ++y)
+      for (int x = 0; x < 64; ++x) {
+        if (f.get(x, y) == grey) continue;
+        if (y < 32) ++top_half;
+        if (x == 63 || y == 63) ++edge;
+      }
+    CHECK_EQ(top_half, 0);
+    CHECK_EQ(edge, 0);
+  }
+}
+
+TEST_CASE("faces: every font fits the digital clock; a date too wide falls back to the default font") {
+  // High Birth's date line ("WED 23 SEP") is 79 px at 1x; it is drawn in Capital Hill.
+  p64::system::Settings s;
+  s.clock.h24 = false;
+  const tm t = at(23, 58, 59);
+  for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
+    s.clock.font = p64::gfx::fonts::kFonts[i]->name;
+    CAPTURE(s.clock.font);
+    for (int scale = 1; scale <= 3; ++scale) {
+      s.clock.scale = static_cast<uint8_t>(scale);
+      Frame f;
+      faces::draw_clock(f, s, &t);
+      CHECK(lit_rect(f, 0, 0, 63, 63) > 40);
+      CHECK_EQ(lit_rect(f, 0, 0, 0, 63), 0);
+      CHECK_EQ(lit_rect(f, 63, 0, 63, 63), 0);
+      CHECK_EQ(lit_rect(f, 0, 63, 63, 63), 0);
+    }
+  }
+}

@@ -16,7 +16,6 @@
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "p64/content/psram.hpp"
-#include "p64/gfx/fonts.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/fetch.hpp"
 #include "p64/net/wifi.hpp"
@@ -37,7 +36,6 @@ constexpr size_t kWeatherMaxBytes = 24 * 1024;
 
 using gfx::Frame;
 using gfx::Rgb;
-using faces::font_named;
 
 std::mutex g_mutex;
 
@@ -247,12 +245,7 @@ uint32_t overlay_key() {
   if (!s.clock_overlay.enabled || !net::clock::synced()) return 0;
   tm t;
   if (!local_time_at(0, t)) return 0;
-  // The minute plus the settings that shape the drawing.
-  uint32_t key = static_cast<uint32_t>(t.tm_hour * 60 + t.tm_min + 1);
-  key ^= static_cast<uint32_t>(s.clock_overlay.corner) << 12;
-  key ^= (s.clock_overlay.h24 ? 1u : 0u) << 14;
-  key ^= static_cast<uint32_t>(s.clock_overlay.colour.r ^ (s.clock_overlay.colour.g << 8) ^ (s.clock_overlay.colour.b << 16)) << 15;
-  return key ? key : 1;
+  return faces::overlay_key(s, t);
 }
 
 void draw_overlay(Frame &frame) {
@@ -260,16 +253,7 @@ void draw_overlay(Frame &frame) {
   const system::Settings &s = *view;
   tm t;
   if (!s.clock_overlay.enabled || !local_time_at(0, t)) return;
-  const gfx::fonts::Font &font = font_named(s.clock_overlay.font);
-  const std::string text = clock_format::time_text(t, s.clock_overlay.h24, false);
-  const int w = gfx::fonts::width(font, text, 1);
-  const int h = gfx::fonts::cap_height(font, 1);
-  const int margin = 2;  // one pixel plus the outline
-  int x = margin, y = margin;
-  if (s.clock_overlay.corner == system::Corner::TopRight || s.clock_overlay.corner == system::Corner::BottomRight) x = Frame::width() - w - margin;
-  if (s.clock_overlay.corner == system::Corner::BottomLeft || s.clock_overlay.corner == system::Corner::BottomRight) y = Frame::height() - h - margin;
-  const Rgb outline = gfx::kBlack;
-  gfx::fonts::draw(frame, font, x, y, text, s.clock_overlay.colour, 1, &outline);
+  faces::draw_overlay(frame, s, t);
 }
 
 Reading sensor() {

@@ -111,9 +111,13 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="toggle-row"><label class="toggle-label" for="ov-enabled">Show the time over artworks</label><label class="toggle-switch"><input type="checkbox" id="ov-enabled" onchange="save({show:{clock_overlay:{enabled:this.checked}}})"><span class="toggle-slider"></span></label></div>
         <div class="grid3" style="margin-top:8px">
             <div><label>Corner</label><select class="sel" style="min-width:0" id="ov-corner" onchange="save({show:{clock_overlay:{corner:this.value}}})"><option value="top_left">Top left</option><option value="top_right">Top right</option><option value="bottom_left">Bottom left</option><option value="bottom_right">Bottom right</option></select></div>
-            <div><label>Font</label><select class="sel" style="min-width:0" id="ov-font" onchange="save({show:{clock_overlay:{font:this.value}}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div>
+            <div><label>Font</label><select class="sel" style="min-width:0" id="ov-font" onchange="save({show:{clock_overlay:{font:this.value}}})"></select></div>
             <div><label>Hours</label><select class="sel" style="min-width:0" id="ov-h24" onchange="save({show:{clock_overlay:{h24:this.value==='24'}}})"><option value="24">24 h</option><option value="12">12 h</option></select></div>
         </div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="ov-outline">Black outline</label><label class="toggle-switch"><input type="checkbox" id="ov-outline" onchange="save({show:{clock_overlay:{outline:this.checked}}})"><span class="toggle-slider"></span></label></div>
+        <label style="display:block;margin-top:8px">Colour</label>
+        <div class="bg-row"><div class="bg-preview" id="ov-preview"></div><input class="bg-input" id="ov-r" type="number" min="0" max="255" placeholder="R" oninput="ovPreview()"><input class="bg-input" id="ov-g" type="number" min="0" max="255" placeholder="G" oninput="ovPreview()"><input class="bg-input" id="ov-b" type="number" min="0" max="255" placeholder="B" oninput="ovPreview()"><button class="upload-btn" onclick="saveOv()">Save</button></div>
+        <div class="setting-hint">The outline keeps the time readable over any artwork. The larger fonts are offered for the Clock widget only.</div>
     </div>
     <div class="section">
         <h3>Boot animation</h3>
@@ -139,7 +143,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <h3>Clock</h3>
         <div class="grid3" style="margin-bottom:8px"><div><label>Face</label><select class="sel" style="min-width:0" id="clock-face" onchange="save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option></select></div></div>
         <div class="grid3">
-            <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"><option value="capital-hill">Capital Hill</option><option value="everyday">Everyday Typical</option></select></div>
+            <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"></select></div>
             <div><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
             <div><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h</option></select></div>
         </div>
@@ -341,7 +345,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Author</span><span class="info-value">Fabr&iacute;cio Kury</span></div>
         <div class="info-row"><span class="info-label">Source</span><span class="info-value"><a href="https://github.com/fabkury/p64" target="_blank" rel="noopener" style="color:var(--c-primary)">github.com/fabkury/p64</a></span></div>
         <div class="info-row"><span class="info-label">Hardware</span><span class="info-value">Waveshare ESP32-S3-RGB-Matrix + RGB-Matrix-P2-64x64</span></div>
-        <p class="setting-hint" style="margin-top:8px">Built on ESP-IDF (Apache-2.0), esphome/esp-hub75 (with the p64 patch), bitbank2/AnimatedGIF (Apache-2.0), libpng, libwebp (BSD), zlib, cJSON (MIT), Open-Meteo weather data; the web UI shares its stylesheet and themes with p3a. Pixel fonts: Capital Hill and Everyday Typical (bundled with their authors' licences in assets/fonts).</p>
+        <p class="setting-hint" style="margin-top:8px">Built on ESP-IDF (Apache-2.0), esphome/esp-hub75 (with the p64 patch), bitbank2/AnimatedGIF (Apache-2.0), libpng, libwebp (BSD), zlib, cJSON (MIT), Open-Meteo weather data; the web UI shares its stylesheet and themes with p3a. Pixel fonts by VEXED (CC BY 4.0): Capital Hill, Everyday Slight, Everyday Standard, Everyday Typical and High Birth (bundled with their authors' licences in assets/fonts).</p>
     </div>
 </div>
 <script src="/static/app.js"></script>
@@ -387,11 +391,12 @@ function fill(s) {
     sv('bg-r', d.background.r); sv('bg-g', d.background.g); sv('bg-b', d.background.b); bgPreview();
     sv('gain-r', d.gains.r); sv('gain-g', d.gains.g); sv('gain-b', d.gains.b);
     sv('boot-ms', d.boot_animation_ms);
-    sc('ov-enabled', s.show.clock_overlay.enabled); sv('ov-corner', s.show.clock_overlay.corner); sv('ov-font', s.show.clock_overlay.font); sv('ov-h24', s.show.clock_overlay.h24 ? '24' : '12');
+    sc('ov-enabled', s.show.clock_overlay.enabled); sv('ov-corner', s.show.clock_overlay.corner); setFont('ov-font', s.show.clock_overlay.font); sv('ov-h24', s.show.clock_overlay.h24 ? '24' : '12');
+    sc('ov-outline', s.show.clock_overlay.outline); var oc = s.show.clock_overlay.colour; sv('ov-r', oc.r); sv('ov-g', oc.g); sv('ov-b', oc.b); ovPreview();
     sv('auto-swap', s.show.auto_swap_seconds); sv('pick-mode', s.show.pick_mode); sv('channel-select', s.show.channel_select);
     ['animation_show', 'widget', 'stream'].forEach(function (m) { document.getElementById('ms-' + m).classList.toggle('active', s.show.main_state === m); });
     sv('widget', s.widgets.widget);
-    sv('clock-face', s.clock.face); sv('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
+    sv('clock-face', s.clock.face); setFont('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
@@ -405,6 +410,11 @@ function fill(s) {
 }
 function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }
 function bgPreview() { document.getElementById('bg-preview').style.background = 'rgb(' + (+gv('bg-r') || 0) + ',' + (+gv('bg-g') || 0) + ',' + (+gv('bg-b') || 0) + ')'; }
+function ovPreview() { document.getElementById('ov-preview').style.background = 'rgb(' + (+gv('ov-r') || 0) + ',' + (+gv('ov-g') || 0) + ',' + (+gv('ov-b') || 0) + ')'; }
+function saveOv() { save({ show: { clock_overlay: { colour: { r: +gv('ov-r') || 0, g: +gv('ov-g') || 0, b: +gv('ov-b') || 0 } } } }); }
+// The font menus come from the firmware's table (/api/v1/fonts); until they arrive, the wanted value waits.
+// A name the menu lacks (a renamed font) draws the default one, the first entry.
+function setFont(id, v) { var e = document.getElementById(id); if (!e.options.length) { e.setAttribute('data-want', v); return; } sv(id, v); if (e.selectedIndex < 0) e.selectedIndex = 0; }
 function saveBg() { save({ display: { background: { r: +gv('bg-r') || 0, g: +gv('bg-g') || 0, b: +gv('bg-b') || 0 } } }); }
 function saveLocation() { var la = parseFloat(gv('lat')), lo = parseFloat(gv('lon')); if (isNaN(la) || isNaN(lo)) { p64.toast('Latitude and longitude needed', true); return; } save({ weather: { latitude: la, longitude: lo } }); }
 // City search from the browser (Open-Meteo geocoding, no key); a pick fills and saves the coordinates.
@@ -534,6 +544,13 @@ p64.onStatus(function (d) {
     var we = d.weather || {};
     document.getElementById('weather-status').textContent = we.valid ? 'Now ' + we.temperature + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
 });
+p64.get('/api/v1/fonts').then(function (fonts) {
+    [['ov-font', true], ['clock-font', false]].forEach(function (m) {
+        var sel = document.getElementById(m[0]);
+        fonts.forEach(function (f) { if (m[1] && !f.overlay) return; var o = document.createElement('option'); o.value = f.name; o.textContent = f.label + ' (' + f.size + ' px)'; sel.appendChild(o); });
+        if (sel.getAttribute('data-want')) setFont(m[0], sel.getAttribute('data-want'));
+    });
+}).catch(function () {});
 fetch('/api/v1/timezones').then(function (r) { return r.json(); }).then(function (z) {  // a bare array, streamed
     var sel = document.getElementById('timezone');
     (z || []).forEach(function (name) { var o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });

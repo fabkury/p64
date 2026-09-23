@@ -16,12 +16,21 @@ namespace p64::widgets::faces {
 constexpr int64_t kSecond = 1000000;
 constexpr int64_t kWeatherStaleUs = 6LL * 3600 * kSecond;  // spec 7.2: "no data" after 6 h without a refresh
 
+// The font of that name, or the default one when unknown.
 const gfx::fonts::Font &font_named(const std::string &name);
+// The same for the clock overlay: a font not offered there (too tall for a corner) also
+// falls back to the default.
+const gfx::fonts::Font &overlay_font(const std::string &name);
 std::string temperature_text(float value, bool decimals);
 
 // The clock (digital or analogue) for `time`, or "--:--" / "NO TIME" when there is none.
 // Returns how long the frame holds: to the next second or the next minute.
 uint32_t draw_clock(gfx::Frame &out, const system::Settings &s, const tm *time);
+// The clock overlay (spec 6.1) at `t`: a key that changes whenever the drawing would (the
+// minute and every setting that shapes it: font, corner, 12/24 h, colour, outline), never
+// 0; and the drawing, HH:MM in the chosen corner with an optional black outline.
+uint32_t overlay_key(const system::Settings &s, const tm &t);
+void draw_overlay(gfx::Frame &frame, const system::Settings &s, const tm &t);
 // The weather: the forecast `f` as of `now` (monotonic, like f.fetched_us), or why not.
 void draw_weather(gfx::Frame &out, const system::Settings &s, const weather_model::Forecast &f,
                   const std::string &error, int64_t now);

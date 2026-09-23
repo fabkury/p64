@@ -21,6 +21,47 @@ const gfx::fonts::Font &font_named(const std::string &name) {
   return f ? *f : gfx::fonts::default_font();
 }
 
+const gfx::fonts::Font &overlay_font(const std::string &name) {
+  const gfx::fonts::Font *f = gfx::fonts::by_name(name);
+  return f && f->overlay ? *f : gfx::fonts::default_font();
+}
+
+namespace {
+
+// FNV-1a, for the overlay key.
+uint32_t mix(uint32_t h, uint32_t v) {
+  for (int i = 0; i < 4; ++i) {
+    h ^= (v >> (8 * i)) & 0xff;
+    h *= 16777619u;
+  }
+  return h;
+}
+
+}  // namespace
+
+uint32_t overlay_key(const system::Settings &s, const tm &t) {
+  uint32_t h = 2166136261u;
+  h = mix(h, static_cast<uint32_t>(t.tm_hour * 60 + t.tm_min));
+  h = mix(h, static_cast<uint32_t>(s.clock_overlay.corner));
+  h = mix(h, (s.clock_overlay.h24 ? 1u : 0u) | (s.clock_overlay.outline ? 2u : 0u));
+  h = mix(h, static_cast<uint32_t>(s.clock_overlay.colour.r | (s.clock_overlay.colour.g << 8) | (s.clock_overlay.colour.b << 16)));
+  for (const char *c = overlay_font(s.clock_overlay.font).name; *c; ++c) h = mix(h, static_cast<unsigned char>(*c));
+  return h ? h : 1;
+}
+
+void draw_overlay(Frame &frame, const system::Settings &s, const tm &t) {
+  const gfx::fonts::Font &font = overlay_font(s.clock_overlay.font);
+  const std::string text = clock_format::time_text(t, s.clock_overlay.h24, false);
+  const int w = gfx::fonts::width(font, text, 1);
+  const int h = gfx::fonts::cap_height(font, 1);
+  const int margin = 2;  // one pixel plus the outline
+  int x = margin, y = margin;
+  if (s.clock_overlay.corner == system::Corner::TopRight || s.clock_overlay.corner == system::Corner::BottomRight) x = Frame::width() - w - margin;
+  if (s.clock_overlay.corner == system::Corner::BottomLeft || s.clock_overlay.corner == system::Corner::BottomRight) y = Frame::height() - h - margin;
+  const Rgb outline = gfx::kBlack;
+  gfx::fonts::draw(frame, font, x, y, text, s.clock_overlay.colour, 1, s.clock_overlay.outline ? &outline : nullptr);
+}
+
 std::string temperature_text(float value, bool decimals) {
   char buf[16];
   if (decimals) {
@@ -60,7 +101,8 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const tm *time) {
     st.background = s.clock.background;
     st.seconds = s.clock.seconds;
     st.month_first = s.clock.month_first;
-    st.font = &font;
+    // The numerals sit inside the rim ticks: a font taller than 7 px would cover them.
+    st.font = font.size <= 7 ? &font : &gfx::fonts::default_font();
     analogue::draw(out, st, t);
     const uint32_t delay_ms = s.clock.seconds ? 1000 : static_cast<uint32_t>((60 - t.tm_sec) * 1000);
     return delay_ms > 60000 ? 60000 : delay_ms;
@@ -76,7 +118,10 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const tm *time) {
   const int y = 14;
   gfx::fonts::draw(out, font, x, y, text, s.clock.colour, scale);
   if (!mer.empty()) gfx::fonts::draw(out, font, x + gfx::fonts::width(font, text, scale) + 2, y + th - gfx::fonts::cap_height(font, 1), mer, s.clock.colour, 1);
-  gfx::fonts::draw_centred(out, font, y + th + 8, clock_format::date_text(t, s.clock.month_first), s.clock.colour, 1);
+  // The date in the same font when it fits the panel, else in the default one.
+  const std::string date = clock_format::date_text(t, s.clock.month_first);
+  const gfx::fonts::Font &date_font = gfx::fonts::width(font, date, 1) <= Frame::width() - 2 ? font : gfx::fonts::default_font();
+  gfx::fonts::draw_centred(out, date_font, y + th + 8, date, s.clock.colour, 1);
   // Until the next second when seconds or the blink show, else until the next minute.
   const uint32_t delay_ms = (s.clock.seconds || s.clock.blink_colon) ? 1000 : static_cast<uint32_t>((60 - t.tm_sec) * 1000);
   return delay_ms > 60000 ? 60000 : delay_ms;

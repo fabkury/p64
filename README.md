@@ -135,7 +135,7 @@ The firmware, the shell and the documentation were developed with Claude Code, s
 session; the prompts are committed under `prompt/`, and every hardware finding was
 verified on the device.
 
-Licensed under the [Apache License 2.0](LICENSE). Bundled fonts are VEXED's Capital Hill
-and Everyday Typical (CC BY 4.0); the LED driver is
+Licensed under the [Apache License 2.0](LICENSE). Bundled fonts are VEXED's Capital Hill,
+Everyday Slight, Standard and Typical, and High Birth (CC BY 4.0); the LED driver is
 [esp-hub75](https://github.com/esphome/esp-hub75) with a local patch, the GIF decoder is
 bitbank2's AnimatedGIF, and libpng and libwebp decode the rest.

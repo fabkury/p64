@@ -206,14 +206,34 @@ TEST_CASE("text_font") {
 
 TEST_CASE("fonts") {
   using namespace p64::gfx::fonts;
-  CHECK_EQ(kFontCount, 2u);
+  CHECK_EQ(kFontCount, 5u);
   const Font *ch = by_name("capital-hill");
-  const Font *ev = by_name("everyday");
+  const Font *ev = by_name("everyday-typical");
   CHECK((ch != nullptr && ev != nullptr));
   CHECK(by_name("nope") == nullptr);
+  CHECK(by_name("everyday") == nullptr);  // renamed to everyday-typical on 2026-09-23
   CHECK(&default_font() == ch);
   CHECK_EQ(ch->size, 6);
   CHECK_EQ(ev->size, 7);
+  // Every font: a label, unique names, and "12:34" in cap height (digits never descend).
+  for (size_t i = 0; i < kFontCount; ++i) {
+    const Font &f = *kFonts[i];
+    CAPTURE(f.name);
+    CHECK(f.label[0] != 0);
+    CHECK(by_name(f.name) == &f);
+    Frame g;
+    g.clear(Rgb{0, 0, 0});
+    draw(g, f, 1, 1, "12:34", Rgb{255, 255, 255}, 1);
+    int lit_below = 0;
+    for (int y = 1 + cap_height(f, 1); y < 64; ++y)
+      for (int x = 0; x < 64; ++x) lit_below += g.get(x, y).r ? 1 : 0;
+    CHECK_EQ(lit_below, 0);
+    // The overlay's fonts keep HH:MM small enough for a corner.
+    if (f.overlay) CHECK(width(f, "23:59", 1) <= 32);
+  }
+  CHECK_EQ(by_name("everyday-slight")->size, 5);
+  CHECK_EQ(by_name("everyday-standard")->size, 6);
+  CHECK(!by_name("high-birth")->overlay);
   CHECK(width(*ch, "", 1) == 0);
   CHECK((width(*ch, "12:34", 1) > 20 && width(*ch, "12:34", 1) < 40));
   CHECK_EQ(width(*ch, "12:34", 2), 2 * width(*ch, "12:34", 1));

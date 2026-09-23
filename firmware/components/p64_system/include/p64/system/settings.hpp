@@ -50,6 +50,7 @@ struct Settings {
     Corner corner = Corner::TopLeft;
     bool h24 = true;
     gfx::Rgb colour{255, 255, 255};
+    bool outline = true;  // the 1 px black outline that reads over any artwork
   } clock_overlay;
 
   // Widgets

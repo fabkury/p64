@@ -177,6 +177,7 @@ std::string Settings::to_json() const {
   cJSON_AddStringToObject(co, "corner", kCorners[static_cast<int>(clock_overlay.corner)]);
   cJSON_AddBoolToObject(co, "h24", clock_overlay.h24);
   put_rgb(co, "colour", clock_overlay.colour);
+  cJSON_AddBoolToObject(co, "outline", clock_overlay.outline);
 
   cJSON *w = obj(root, "widgets");
   cJSON_AddStringToObject(w, "widget", kWidgets[static_cast<int>(widget)]);
@@ -285,6 +286,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   get_enum(co, "corner", clock_overlay.corner, kCorners, 4);
   get_bool(co, "h24", clock_overlay.h24);
   get_rgb(co, "colour", clock_overlay.colour);
+  get_bool(co, "outline", clock_overlay.outline);
 
   const cJSON *w = sub(root, "widgets");
   get_enum(w, "widget", widget, kWidgets, 3);

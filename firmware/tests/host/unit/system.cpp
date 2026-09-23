@@ -69,7 +69,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "rotation_auto":true,"background":{"r":1,"g":2,"b":3},"gains":{"r":60,"g":70,"b":80},"boot_animation_ms":0},
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
-    "colour":{"r":9,"g":8,"b":7}}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
+    "colour":{"r":9,"g":8,"b":7},"outline":false}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
     "weather":20,"temperature":30}},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
@@ -82,6 +82,7 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK(a.main_state == p64::system::MainState::Widget);
   CHECK_EQ(a.auto_swap_seconds, 0u);  // 0 = no auto-swap
   CHECK(a.clock_overlay.corner == p64::system::Corner::BottomRight);
+  CHECK(!a.clock_overlay.outline);
   CHECK(a.widget == p64::system::WidgetKind::Temperature);
   CHECK_EQ(a.makapix_max_side, 64);
   CHECK(a.hostname() == "p64-desk-1");

@@ -4,7 +4,8 @@ r"""Device smoke test of the widgets (M7) over the HTTP API.
     python tests\device\widgets_smoke.py [http://p64.local]
 
 Checks the sensor reading in the status, the Widget state with each widget (the panel
-frame changes and is not black), the clock overlay on an artwork, the weather fetch
+frame changes and is not black), the clock overlay on an artwork (a new font shows at
+once, not at the next minute), the font list, the weather fetch
 after setting a location (needs internet), an interlude at auto-swap, and puts the
 settings back. Exit code 1 on any failure.
 """
@@ -68,6 +69,32 @@ def main():
     # The corner, not a pixel count: on a fully lit artwork the outline removes lit pixels.
     check(with_overlay[: 64 * 3 * 8] != without[: 64 * 3 * 8], "the overlay changes the top rows")
     settings(base, {"show": {"clock_overlay": {"enabled": True}}})
+
+    # The font list, and a font change that shows at once: the overlay's redraw key once
+    # left the font out, so on a still artwork the new font waited for the next minute
+    # (2026-09-23). The overlay is drawn in a colour no artwork is likely to hold exactly,
+    # and its pixels are counted.
+    st, j = request(base, "GET", "/api/v1/fonts")
+    fonts = j["data"] if st == 200 else []
+    names = [f["name"] for f in fonts]
+    check(names[:1] == ["capital-hill"] and "everyday-standard" in names, "the font list: %s" % ", ".join(names))
+    check(all(f["label"] and f["size"] > 0 for f in fonts), "every font has a label and a size")
+    check([f["name"] for f in fonts if not f["overlay"]] == ["high-birth"], "only High Birth is kept out of the overlay")
+    ink = (1, 254, 3)
+    def ink_count():
+        px = frame(base)
+        return sum(1 for i in range(0, 64 * 3 * 16, 3) if tuple(px[i:i + 3]) == ink)
+    counts = {}
+    for name in ("everyday-slight", "everyday-typical"):
+        settings(base, {"show": {"clock_overlay": {"font": name, "colour": dict(zip("rgb", ink))}}})
+        time.sleep(1.5)
+        counts[name] = ink_count()
+    check(counts["everyday-slight"] > 0 and counts["everyday-slight"] != counts["everyday-typical"],
+          "a font change shows at once (%d vs %d overlay pixels)" % (counts["everyday-slight"], counts["everyday-typical"]))
+    s = settings(base, {"show": {"clock_overlay": {"outline": False}}})
+    check(s["show"]["clock_overlay"]["outline"] is False, "the outline can be turned off")
+    ov = original["show"]["clock_overlay"]
+    settings(base, {"show": {"clock_overlay": {"font": ov["font"], "colour": ov["colour"], "outline": ov.get("outline", True)}}})
 
     # The Widget state, each widget in turn.
     frames = {}

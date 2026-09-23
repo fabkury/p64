@@ -114,7 +114,11 @@ panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`
 Widget or Stream state back sets it again afterwards. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
-`show.clock_overlay` and `widgets` (widget, interlude_percent). History items of kind
+`show.clock_overlay` (enabled, font, corner, h24, colour, outline) and `widgets` (widget,
+interlude_percent). `GET /api/v1/fonts` lists the bundled fonts in table order, the
+first being the default: `[{name, label, size, overlay}]`; `name` is the value of the
+`font` settings, and the clock overlay draws only the fonts with `overlay` true (any
+other name, or an unknown one, draws the default). History items of kind
 `interlude` carry `widget`.
 
 ## Updates (M9, spec 15.2)

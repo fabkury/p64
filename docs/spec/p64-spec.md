@@ -337,9 +337,10 @@ persists that, so an artwork never plays inside the Widget or Stream state (sett
 Plays the active playset as in section 4, with:
 
 - Clock overlay: optional (default on), HH:MM, 24-hour by default with a 12-hour option,
-  in one of the bundled pixel fonts (default Capital Hill 6 px) at 1x, text colour
-  configurable (default white) with a 1 px black outline so it reads over any artwork,
-  in one of the four corners (default top-left) with a 1 px margin, no seconds. Not shown
+  in one of the small bundled pixel fonts (Capital Hill, Everyday Slight, Standard or
+  Typical; default Capital Hill 6 px) at 1x, text colour configurable (default white)
+  with a 1 px black outline so it reads over any artwork (the outline can be turned off,
+  since 2026-09-23), in one of the four corners (default top-left) with a 1 px margin, no seconds. Not shown
   in the other states.
 - Interludes: at every auto-swap, each widget that has an interlude probability above 0
   is rolled (independently, in a fixed order: Clock, Weather, Temperature); the first that
@@ -378,8 +379,9 @@ up. Status screens are drawn seamlessly like any content.
 ## 7. Widgets
 
 Common to all widgets: fonts are bitmap glyphs rasterised at build time from the bundled
-pixel fonts (Capital Hill 6 px and Everyday Typical 7 px now, two more to be added, all
-CC-BY 4.0 with attribution shown in the web UI's About section); text and background
+pixel fonts (Capital Hill 6 px; Everyday Slight 5 px, Everyday Standard 6 px and
+Everyday Typical 7 px; High Birth 9 px, for the Clock widget only; all by VEXED, CC-BY
+4.0, with attribution shown in the web UI's About section; settled 2026-09-23); text and background
 colours are per-widget settings; every widget renders its first frame within one panel
 refresh of being asked so it can be shown seamlessly.
 
@@ -689,7 +691,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |
 | Show | channel selection | stochastic, swrr | stochastic |
-| Show | clock overlay | enabled; font; corner; 12/24 h; colour | on; Capital Hill; top-left; 24 h; white |
+| Show | clock overlay | enabled; font (the four small ones); corner; 12/24 h; colour; outline | on; Capital Hill; top-left; 24 h; white; on |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude probability, per widget | 0 to 100 % | 0 |
 | Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
@@ -728,7 +730,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | Device name | 16 characters |
 | PIN | 4 to 8 digits |
 | Downloads folder | capped by setting, default 64 MB |
-| Fonts bundled | 2 now, 4 planned |
+| Fonts bundled | 5 (4 offered for the clock overlay) |
 
 ## 18. Acceptance criteria
 
@@ -771,7 +773,7 @@ Art-Net/E1.31; Giphy, Klipy and museum sources; multi-device synchronisation;
 per-artwork dwell from Makapix metadata; audio, microphones, Bluetooth; multiple saved
 networks; static IP; HTTPS on the device; multi-panel geometry; exFAT.
 
-Planned for v1.x: URL list channels; pinned lists; the two extra fonts; encoder roles;
+Planned for v1.x: URL list channels; pinned lists; encoder roles;
 a temperature line on the clock face; screen-saver style blanking when idle beyond the
 night schedule.
 

@@ -579,6 +579,24 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `esp_timer` 1456 bytes (from 1696), `events` 3152 (from 4592). Not exercised on the
   device: a refused answer, a network without DHCP NTP, a DHCP lease renewal (all pure,
   host-tested).
+- 2026-09-23, clock overlay fonts (prompt p033): five bundled fonts, the regular cut of
+  each (`tools/gen_fonts.py`): Capital Hill 6 px, Everyday Slight 5 px, Everyday Standard
+  6 px, Everyday Typical 7 px (the former `everyday`, renamed `everyday-typical` with its
+  folder, no mapping of the old name: it draws the default) and High Birth 9 px, which is
+  offered for the Clock widget only (`Font::overlay`). Extra Thick is in `assets/fonts` but
+  not bundled: HH:MM is 66 to 69 px wide at its 17 px. `GET /api/v1/fonts` lists them and
+  both font menus of the web UI are built from it. Bug fixed: the overlay's redraw key
+  left out the font, so on a still artwork a font chosen in the UI showed only at the
+  next minute; the overlay's key and drawing moved into the pure `faces.cpp` with host
+  tests (every setting that shapes it changes the key). New setting
+  `show.clock_overlay.outline` (default on) and a colour picker for the overlay on the
+  Settings page. The Clock widget draws the date in the default font when the chosen
+  font's date does not fit (High Birth's is 79 px) and the analogue numerals in it when
+  the font is taller than 7 px. 107 host cases. Verified on the device: the font list, the
+  four overlay fonts over an artwork, the outline off, a coloured bottom-right overlay,
+  High Birth on the digital and analogue faces (frames read back through
+  `/api/v1/frame`), the menus filled on the Settings page; `widgets_smoke` (with the new
+  font-change check: 30 vs 58 overlay pixels within 1.5 s) and `ui_smoke` pass.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

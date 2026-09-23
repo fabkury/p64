@@ -16,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "p64/decode/decoder.hpp"
+#include "p64/gfx/fonts.hpp"
 #include "p64/gfx/png_encode.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/http_server.hpp"
@@ -508,6 +509,22 @@ esp_err_t timezones(httpd_req_t *req) {
   return httpd_resp_send_chunk(req, nullptr, 0);
 }
 
+esp_err_t fonts(httpd_req_t *req) {
+  // The bundled fonts, in table order (the first is the default); the web UI builds both
+  // font menus from it, the overlay's from those marked `overlay`.
+  cJSON *list = cJSON_CreateArray();
+  for (size_t i = 0; i < gfx::fonts::kFontCount; ++i) {
+    const gfx::fonts::Font &f = *gfx::fonts::kFonts[i];
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "name", f.name);
+    cJSON_AddStringToObject(o, "label", f.label);
+    cJSON_AddNumberToObject(o, "size", f.size);
+    cJSON_AddBoolToObject(o, "overlay", f.overlay);
+    cJSON_AddItemToArray(list, o);
+  }
+  return reply_ok(req, list);
+}
+
 esp_err_t diag_log(httpd_req_t *req) {
   std::string bytes_s;
   size_t bytes = 16 * 1024;
@@ -684,6 +701,7 @@ void init(const Hooks &hooks) {
       {"/api/v1/wifi", HTTP_POST, wifi_set, nullptr, false, false, nullptr},
       {"/api/v1/wifi/erase", HTTP_POST, wifi_erase, nullptr, false, false, nullptr},
       {"/api/v1/timezones", HTTP_GET, timezones, nullptr, false, false, nullptr},
+      {"/api/v1/fonts", HTTP_GET, fonts, nullptr, false, false, nullptr},
       {"/api/v1/diag/log", HTTP_GET, diag_log, nullptr, false, false, nullptr},
       {"/api/v1/diag/dma", HTTP_POST, diag_dma, nullptr, false, false, nullptr},
       {"/api/v1/diag/memory", HTTP_GET, diag_memory, nullptr, false, false, nullptr},

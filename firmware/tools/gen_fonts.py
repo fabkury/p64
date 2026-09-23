@@ -5,9 +5,12 @@ r"""Rasterises the bundled pixel fonts (assets/fonts) into bitmap glyph tables.
 
 Writes components/p64_gfx/src/fonts_data.cpp: one table per font with every printable
 ASCII glyph as rows of bits, its advance, and the font's ascent. The TTFs are drawn at
-their native pixel size (Capital Hill 6 px, Everyday Typical 7 px), the sizes at which
-Pillow renders them without anti-aliasing; anything else would blur a pixel font. The
-output is committed, so the firmware build needs neither Pillow nor the TTFs (ADR 0008).
+their native pixel size (Everyday Slight 5 px, Capital Hill and Everyday Standard 6 px,
+Everyday Typical 7 px, High Birth 9 px), the sizes at which Pillow renders them without
+anti-aliasing; anything else would blur a pixel font. Only the regular cut of each is
+bundled. Fonts marked "overlay" are offered for the clock overlay; the others only for
+the Clock widget. The output is committed, so the firmware build needs neither Pillow nor
+the TTFs (ADR 0008). The first font is the default.
 """
 
 import os
@@ -18,10 +21,14 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE = os.path.abspath(os.path.join(HERE, ".."))
 FONTS = [
-    # (name, file, pixel size, licence line)
-    ("capital-hill", "assets/fonts/capital-hill/Capital_Hill.ttf", 6, "Capital Hill by VEXED (v3x3d.itch.io), CC BY 4.0"),
-    ("everyday", "assets/fonts/everyday/Everyday_Typical.ttf", 7, "Everyday Typical by VEXED (v3x3d.itch.io), CC BY 4.0"),
+    # (name, label, file, pixel size, offered for the clock overlay)
+    ("capital-hill", "Capital Hill", "assets/fonts/capital-hill/Capital_Hill.ttf", 6, True),
+    ("everyday-slight", "Everyday Slight", "assets/fonts/everyday-slight/Everyday_Slight.ttf", 5, True),
+    ("everyday-standard", "Everyday Standard", "assets/fonts/everyday-standard/Everyday_Standard.ttf", 6, True),
+    ("everyday-typical", "Everyday Typical", "assets/fonts/everyday-typical/Everyday_Typical.ttf", 7, True),
+    ("high-birth", "High Birth", "assets/fonts/high-birth/High_Birth.ttf", 9, False),
 ]
+LICENCE = "by VEXED (v3x3d.itch.io), CC BY 4.0"
 OUT = os.path.join(FIRMWARE, "components", "p64_gfx", "src", "fonts_data.cpp")
 FIRST, LAST = 32, 126
 
@@ -54,7 +61,7 @@ def main():
     out.append("")
     out.append("namespace p64::gfx::fonts {")
     out.append("namespace {")
-    for name, path, size, licence in FONTS:
+    for name, label, path, size, overlay in FONTS:
         font = ImageFont.truetype(os.path.join(FIRMWARE, path), size)
         ascent, descent = font.getmetrics()
         glyphs = []
@@ -85,7 +92,7 @@ def main():
         bottom = max(b for _t, b in inked)
         # The baseline sits `ascent` below Pillow's line top; the digits' cap height is the
         # font's nominal size.
-        out.append(f"// {licence}: {size} px, line top {top}, bottom {bottom}, baseline {ascent}")
+        out.append(f"// {label} {LICENCE}: {size} px, line top {top}, bottom {bottom}, baseline {ascent}")
         out.append(f"const uint8_t k_{ident}_bits[] = {{")
         for i in range(0, len(bitmap_bytes), 24):
             out.append("    " + ", ".join(f"0x{b:02x}" for b in bitmap_bytes[i:i + 24]) + ",")
@@ -94,11 +101,11 @@ def main():
         for code, advance, width, height, x_off, y_off, offset in glyphs:
             out.append(f"    {{{code}, {advance}, {width}, {height}, {x_off}, {y_off}, {offset}}},  // '{chr(code) if code != 92 else 'backslash'}'")
         out.append("};")
-        out.append(f"const Font k_{ident} = {{\"{name}\", {size}, {top}, {bottom}, {ascent}, {FIRST}, {LAST}, k_{ident}_glyphs, k_{ident}_bits}};")
+        out.append(f"const Font k_{ident} = {{\"{name}\", \"{label}\", {size}, {'true' if overlay else 'false'}, {top}, {bottom}, {ascent}, {FIRST}, {LAST}, k_{ident}_glyphs, k_{ident}_bits}};")
         out.append("")
     out.append("}  // namespace")
     out.append("")
-    out.append("const Font *const kFonts[] = {" + ", ".join(f"&k_{n.replace('-', '_')}" for n, _, _, _ in FONTS) + "};")
+    out.append("const Font *const kFonts[] = {" + ", ".join(f"&k_{n.replace('-', '_')}" for n, _l, _p, _s, _o in FONTS) + "};")
     out.append(f"const size_t kFontCount = {len(FONTS)};")
     out.append("")
     out.append("}  // namespace p64::gfx::fonts")
