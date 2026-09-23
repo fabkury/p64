@@ -1,0 +1,5 @@
+Let's polish the clock overlay that can be displayed over the animation show:
+ - Its font should be configurable in the web UI.
+ - Notice that I've added new fonts to C:\Users\fab\F\Estudo\Tecnologia\p64\firmware\assets\fonts. Please incorporate the new Everyday-family fonts.
+
+Once done, flash the new firmware to the p64 device on COM13 (USB-C).
