@@ -68,8 +68,10 @@ OverlayLayout overlay_layout(const system::Settings &s, const tm &t) {
   const int h = gfx::fonts::cap_height(*l.font, 1);
   const int margin = 2;  // one pixel plus the outline
   l.x = l.y = margin;
-  if (s.clock_overlay.corner == system::Corner::TopRight || s.clock_overlay.corner == system::Corner::BottomRight) l.x = Frame::width() - w - margin;
-  if (s.clock_overlay.corner == system::Corner::BottomLeft || s.clock_overlay.corner == system::Corner::BottomRight) l.y = Frame::height() - h - margin;
+  const system::Corner c = s.clock_overlay.corner;
+  if (c == system::Corner::TopRight || c == system::Corner::BottomRight) l.x = Frame::width() - w - margin;
+  if (c == system::Corner::TopCenter || c == system::Corner::BottomCenter) l.x = (Frame::width() - w) / 2;
+  if (c == system::Corner::BottomLeft || c == system::Corner::BottomRight || c == system::Corner::BottomCenter) l.y = Frame::height() - h - margin;
   return l;
 }
 

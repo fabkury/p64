@@ -292,6 +292,7 @@ TEST_CASE("faces: the overlay key changes with every setting that shapes the dra
   };
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.font = "everyday-standard"; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.corner = p64::system::Corner::BottomRight; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.corner = p64::system::Corner::TopCenter; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.h24 = false; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.colour = Rgb{255, 0, 0}; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.border = false; }));
@@ -360,8 +361,9 @@ TEST_CASE("faces: the cached overlay stamps the same pixels as the font drawing,
   // (2026-09-23: redrawing it per frame cost about 380 us on the device).
   auto sprite = std::make_unique<faces::OverlaySprite>();
   const tm t = at(23, 58, 0);
-  const p64::system::Corner corners[] = {p64::system::Corner::TopLeft, p64::system::Corner::TopRight,
-                                         p64::system::Corner::BottomLeft, p64::system::Corner::BottomRight};
+  const p64::system::Corner corners[] = {p64::system::Corner::TopLeft,     p64::system::Corner::TopCenter,
+                                         p64::system::Corner::TopRight,    p64::system::Corner::BottomLeft,
+                                         p64::system::Corner::BottomCenter, p64::system::Corner::BottomRight};
   for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
     const p64::gfx::fonts::Font &font = *p64::gfx::fonts::kFonts[i];
     if (!font.overlay) continue;
@@ -391,10 +393,14 @@ TEST_CASE("faces: the cached overlay stamps the same pixels as the font drawing,
           const std::string text = p64::widgets::clock_format::time_text(t, h24, false);
           const int w = p64::gfx::fonts::width(font, text, 1), h = p64::gfx::fonts::cap_height(font, 1);
           const bool right = corner == p64::system::Corner::TopRight || corner == p64::system::Corner::BottomRight;
-          const bool bottom = corner == p64::system::Corner::BottomLeft || corner == p64::system::Corner::BottomRight;
+          const bool centre = corner == p64::system::Corner::TopCenter || corner == p64::system::Corner::BottomCenter;
+          const bool bottom = corner == p64::system::Corner::BottomLeft || corner == p64::system::Corner::BottomRight ||
+                              corner == p64::system::Corner::BottomCenter;
           const Rgb halo = s.clock_overlay.border_colour;
-          p64::gfx::fonts::draw(direct, font, right ? 64 - w - 2 : 2, bottom ? 64 - h - 2 : 2, text, s.clock_overlay.colour, 1,
+          const int x = right ? 64 - w - 2 : centre ? (64 - w) / 2 : 2;
+          p64::gfx::fonts::draw(direct, font, x, bottom ? 64 - h - 2 : 2, text, s.clock_overlay.colour, 1,
                                 border ? &halo : nullptr);
+          if (centre) CHECK(std::abs((sprite->x0 + sprite->x1) - 63) <= 2);  // balanced about the middle
           CHECK(std::memcmp(direct.data(), stamped.data(), Frame::bytes()) == 0);
         }
       }

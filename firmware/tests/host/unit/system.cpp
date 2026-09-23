@@ -83,6 +83,11 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK_EQ(a.auto_swap_seconds, 0u);  // 0 = no auto-swap
   CHECK(a.clock_overlay.corner == p64::system::Corner::BottomRight);
   CHECK(!a.clock_overlay.border);
+  for (const char *position : {"top_left", "top_center", "top_right", "bottom_left", "bottom_center", "bottom_right"}) {
+    const std::string json = std::string(R"({"show":{"clock_overlay":{"corner":")") + position + R"("}}})";
+    const Settings p = applied(json.c_str());
+    CHECK(p.to_json().find(std::string("\"corner\":\"") + position + "\"") != std::string::npos);
+  }
   CHECK_EQ(a.clock_overlay.border_opacity, 40);
   CHECK(a.widget == p64::system::WidgetKind::Temperature);
   CHECK_EQ(a.makapix_max_side, 64);

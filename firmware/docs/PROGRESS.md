@@ -636,6 +636,11 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   captured from `/api/v1/frame` during a local install (15, 35, 89 %, verifying). Not
   seen on the device: the Setup screen (needs Wi-Fi erased), the pairing and no-artwork
   screens in their new fonts (host-rendered and checked by eye only).
+- 2026-09-23, clock overlay positions: `corner` also takes `top_center` and
+  `bottom_center` (text centred horizontally, same 2 px from the top or bottom edge);
+  the Settings page's "Position" menu lists all six. Host tests: the sprite against the
+  font drawing at all six, the settings round trip; `widgets_smoke` checks top center
+  on the device (columns 20..42); bottom center seen on the panel over an artwork.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

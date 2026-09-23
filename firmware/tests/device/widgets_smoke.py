@@ -91,6 +91,14 @@ def main():
         counts[name] = ink_count()
     check(counts["everyday-slight"] > 0 and counts["everyday-slight"] != counts["everyday-typical"],
           "a font change shows at once (%d vs %d overlay pixels)" % (counts["everyday-slight"], counts["everyday-typical"]))
+    # The centred positions: at top center the time sits in the middle columns.
+    settings(base, {"show": {"clock_overlay": {"corner": "top_center"}}})
+    time.sleep(1.5)
+    px = frame(base)
+    cols = [(i // 3) % 64 for i in range(0, 64 * 3 * 16, 3) if tuple(px[i:i + 3]) == ink]
+    check(cols and min(cols) > 10 and max(cols) < 53 and abs((min(cols) + max(cols)) - 63) <= 3,
+          "top center: the time is centred (columns %s..%s)" % (min(cols) if cols else "-", max(cols) if cols else "-"))
+    settings(base, {"show": {"clock_overlay": {"corner": original["show"]["clock_overlay"]["corner"]}}})
     s = settings(base, {"show": {"clock_overlay": {"border": False}}})
     check(s["show"]["clock_overlay"]["border"] is False, "the border can be turned off")
     # The border's colour and opacity (the blending itself is host-tested): 0 clamps to 1,

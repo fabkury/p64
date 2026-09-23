@@ -115,7 +115,8 @@ panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`
 Widget or Stream state back sets it again afterwards. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
-`show.clock_overlay` (enabled, font, corner, h24, colour, border, border_colour,
+`show.clock_overlay` (enabled, font, corner: `top_left`, `top_center`, `top_right`,
+`bottom_left`, `bottom_center` or `bottom_right`, h24, colour, border, border_colour,
 border_opacity 1..255) and `widgets` (widget,
 interlude_percent). `GET /api/v1/fonts` lists the bundled fonts in table order, the
 first being the default: `[{name, label, size, overlay}]`; `name` is the value of the

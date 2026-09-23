@@ -101,7 +101,7 @@ const char *const kPanelModes[] = {"quality", "photo"};
 const char *const kMainStates[] = {"animation_show", "widget", "stream"};
 const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
-const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right"};
+const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right", "top_center", "bottom_center"};
 const char *const kWidgets[] = {"clock", "weather", "temperature"};
 
 }  // namespace
@@ -286,7 +286,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   const cJSON *co = sub(s, "clock_overlay");
   get_bool(co, "enabled", clock_overlay.enabled);
   get_str(co, "font", clock_overlay.font, 32);
-  get_enum(co, "corner", clock_overlay.corner, kCorners, 4);
+  get_enum(co, "corner", clock_overlay.corner, kCorners, sizeof(kCorners) / sizeof(kCorners[0]));
   get_bool(co, "h24", clock_overlay.h24);
   get_rgb(co, "colour", clock_overlay.colour);
   get_bool(co, "border", clock_overlay.border);

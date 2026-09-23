@@ -19,7 +19,8 @@ enum class PanelMode : uint8_t { Quality = 0, Photo = 1 };
 enum class MainState : uint8_t { AnimationShow = 0, Widget = 1, Stream = 2 };
 enum class PickMode : uint8_t { Random = 0, Recency = 1 };
 enum class ChannelSelect : uint8_t { Stochastic = 0, Swrr = 1 };
-enum class Corner : uint8_t { TopLeft = 0, TopRight = 1, BottomLeft = 2, BottomRight = 3 };
+// The clock overlay's position: the four corners, or centred at the top or the bottom.
+enum class Corner : uint8_t { TopLeft = 0, TopRight = 1, BottomLeft = 2, BottomRight = 3, TopCenter = 4, BottomCenter = 5 };
 enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2 };
 
 struct Settings {

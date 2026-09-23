@@ -342,7 +342,8 @@ Plays the active playset as in section 4, with:
   (default white) with a 1 px border so it reads over any artwork: on or off, its colour
   (default black) and its opacity (1 to 255, default 255; the text itself stays opaque)
   are settings (2026-09-23: the overlay stays on top of everything, so it must look
-  exactly as the user wants), in one of the four corners (default top-left) with a 1 px margin, no seconds. Not shown
+  exactly as the user wants), in one of six positions (the four corners, or centred at
+  the top or the bottom; default top-left) with a 1 px margin, no seconds. Not shown
   in the other states.
 - Interludes: at every auto-swap, each widget that has an interlude probability above 0
   is rolled (independently, in a fixed order: Clock, Weather, Temperature); the first that
@@ -697,7 +698,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |
 | Show | channel selection | stochastic, swrr | stochastic |
-| Show | clock overlay | enabled; font (all but High Birth); corner; 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
+| Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude probability, per widget | 0 to 100 % | 0 |
 | Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |

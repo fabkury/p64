@@ -110,7 +110,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <h3>Clock overlay</h3>
         <div class="toggle-row"><label class="toggle-label" for="ov-enabled">Show the time over artworks</label><label class="toggle-switch"><input type="checkbox" id="ov-enabled" onchange="save({show:{clock_overlay:{enabled:this.checked}}})"><span class="toggle-slider"></span></label></div>
         <div class="grid3" style="margin-top:8px">
-            <div><label>Corner</label><select class="sel" style="min-width:0" id="ov-corner" onchange="save({show:{clock_overlay:{corner:this.value}}})"><option value="top_left">Top left</option><option value="top_right">Top right</option><option value="bottom_left">Bottom left</option><option value="bottom_right">Bottom right</option></select></div>
+            <div><label>Position</label><select class="sel" style="min-width:0" id="ov-corner" onchange="save({show:{clock_overlay:{corner:this.value}}})"><option value="top_left">Top left</option><option value="top_center">Top center</option><option value="top_right">Top right</option><option value="bottom_left">Bottom left</option><option value="bottom_center">Bottom center</option><option value="bottom_right">Bottom right</option></select></div>
             <div><label>Font</label><select class="sel" style="min-width:0" id="ov-font" onchange="save({show:{clock_overlay:{font:this.value}}})"></select></div>
             <div><label>Hours</label><select class="sel" style="min-width:0" id="ov-h24" onchange="save({show:{clock_overlay:{h24:this.value==='24'}}})"><option value="24">24 h</option><option value="12">12 h</option></select></div>
         </div>
