@@ -74,6 +74,16 @@ const Font *by_name(const std::string &name) {
 
 const Font &default_font() { return *kFonts[0]; }
 
+const Font &system_font() {
+  static const Font *f = by_name("everyday-standard");
+  return f ? *f : default_font();
+}
+
+const Font &system_large_font() {
+  static const Font *f = by_name("everyday-ample");
+  return f ? *f : default_font();
+}
+
 int line_height(const Font &font, int scale) { return (font.bottom - font.top) * (scale < 1 ? 1 : scale); }
 
 int cap_height(const Font &font, int scale) { return font.size * (scale < 1 ? 1 : scale); }

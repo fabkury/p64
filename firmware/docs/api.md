@@ -31,8 +31,9 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 
 `playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning, version}`, `artwork
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
-channel_index, source}` (absent on a status screen or pause), `no_artwork` (reason or
-""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
+channel_index, source}` (absent on a status screen or pause), `screen` (the status
+screen holding the panel: `pairing`, `paired`, `connected`, `setup`, `update`, or ""),
+`no_artwork` (reason or ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
 {interval_s, remaining_s}`, `prepared`, `swaps`, `load_failures`, `frames`, `late`,
 `skipped`. Two change counters let a page refetch only when something moved: `playback.playset.version`
 grows whenever the channel list or its counts change (a scan installed, a Makapix index
@@ -114,7 +115,8 @@ panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`
 Widget or Stream state back sets it again afterwards. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
-`show.clock_overlay` (enabled, font, corner, h24, colour, outline) and `widgets` (widget,
+`show.clock_overlay` (enabled, font, corner, h24, colour, border, border_colour,
+border_opacity 1..255) and `widgets` (widget,
 interlude_percent). `GET /api/v1/fonts` lists the bundled fonts in table order, the
 first being the default: `[{name, label, size, overlay}]`; `name` is the value of the
 `font` settings, and the clock overlay draws only the fonts with `overlay` true (any

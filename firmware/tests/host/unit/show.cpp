@@ -228,7 +228,15 @@ class FakeEnv : public p64::show::ShowEnv {
     error = "not paired";
     return false;
   }
-  p64::net::wifi::Status wifi_status() override { return {}; }
+  p64::net::wifi::Status wifi = [] {
+    p64::net::wifi::Status w;
+    w.connected = true;
+    w.network_saved = true;
+    return w;
+  }();
+  UpdateState update;
+  p64::net::wifi::Status wifi_status() override { return wifi; }
+  UpdateState update_state() override { return update; }
   void playback_swapped(int32_t) override { ++swapped_events; }
   void notify_web() override {}
   void vlog(char, const char *, va_list) override {}
@@ -428,6 +436,139 @@ TEST_CASE("show core: history navigation goes back and forward through what was 
   show.env.complete_loads();
   CHECK(show.current() == b);
   CHECK_EQ(core::state().history.size(), 2u);
+}
+
+
+// --- the Setup and Update screens (spec 6.4; settled 2026-09-23) ---------------------
+
+TEST_CASE("show rules: the setup screen holds without a saved network, else replaces only 'no artwork'") {
+  CHECK(rules::setup_screen(false, false) == rules::SetupScreen::None);
+  CHECK(rules::setup_screen(false, true) == rules::SetupScreen::None);
+  CHECK(rules::setup_screen(true, false) == rules::SetupScreen::Holds);
+  CHECK(rules::setup_screen(true, true) == rules::SetupScreen::InsteadOfNoArtwork);
+}
+
+TEST_CASE("show core: with no network saved, the Setup screen holds the panel and turns its pages") {
+  Show show;
+  const std::string a = show.current();
+  show.env.wifi.connected = false;
+  show.env.wifi.network_saved = false;
+  show.env.wifi.setup_mode = true;
+  show.env.wifi.ap_ssid = "p64-setup";
+  show.env.wifi.ap_ip = "192.168.4.1";
+  show.advance_s(0);
+  CHECK(core::state().screen == core::Screen::Setup);
+  CHECK(show.env.last_played() == "setup");
+  CHECK(!core::overlay_allowed());
+  const size_t presents = show.env.played.size();
+  show.advance_s(1);
+  CHECK_EQ(show.env.played.size(), presents);  // a page stays 3 s
+  show.advance_s(2);
+  CHECK_EQ(show.env.played.size(), presents + 1);  // the next page
+  CHECK_EQ(core::state().setup_page, 1);
+  show.env.cfg->auto_swap_seconds = 5;
+  show.advance_s(3);
+  CHECK(core::state().screen == core::Screen::Setup);  // the auto-swap does not take the panel back
+  // A network is saved and joined: setup mode ends, the artwork comes back.
+  show.env.wifi.setup_mode = false;
+  show.env.wifi.network_saved = true;
+  show.env.wifi.connected = true;
+  show.advance_s(0);
+  CHECK(core::state().screen == core::Screen::None);
+  show.env.complete_loads();
+  CHECK(show.current() == a);
+}
+
+TEST_CASE("show core: with a saved network down, artworks keep playing; the setup pages replace only 'no artwork'") {
+  Show show;
+  show.env.wifi.connected = false;
+  show.env.wifi.setup_mode = true;  // network_saved stays true
+  const std::string a = show.current();
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::None);
+  CHECK(show.current() == a);
+  // Nothing to play: the setup pages instead of "no artwork".
+  FakeEnv env;
+  Frame scratch;
+  env.wifi.connected = false;
+  env.wifi.setup_mode = true;
+  core::init(env, scratch);
+  core::restore("Local");
+  env.complete_scan({});
+  CHECK(!core::state().current);
+  CHECK(env.last_played() == "setup");
+  CHECK(core::state().setup_pages_up);
+  env.now += 3 * 1000000;
+  core::tick();
+  CHECK_EQ(core::state().setup_page, 1);
+  // Setup mode ends without anything to play: the reason comes back.
+  env.wifi.setup_mode = false;
+  env.now += 1000000;
+  core::tick();
+  CHECK(env.last_played() == "no artwork");
+  CHECK(!core::state().setup_pages_up);
+}
+
+TEST_CASE("show core: the Update screen follows the install and the artwork returns after a failure") {
+  using P = p64::show::ShowEnv::UpdateState::Phase;
+  Show show;
+  const std::string a = show.current();
+  // A failed release check never had the screen up: nothing shows.
+  show.env.update.phase = P::Failed;
+  show.env.update.error = "no release published";
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::None);
+  CHECK(show.current() == a);
+  // An install: progress while it downloads, redrawn when the percentage moves.
+  show.env.update = {};
+  show.env.update.phase = P::Downloading;
+  show.env.update.version = "0.2.0";
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::Update);
+  CHECK(show.env.last_played() == "update");
+  const size_t presents = show.env.played.size();
+  show.advance_s(1);
+  CHECK_EQ(show.env.played.size(), presents);  // nothing moved
+  show.env.update.percent = 40;
+  show.advance_s(1);
+  CHECK_EQ(show.env.played.size(), presents + 1);
+  // Nothing else takes the panel meanwhile: pairing, the auto-swap, a stream.
+  core::makapix_state(p64::makapix::State::Pairing);
+  CHECK(core::state().screen == core::Screen::Update);
+  show.env.cfg->auto_swap_seconds = 5;
+  show.advance_s(6);
+  CHECK(core::state().screen == core::Screen::Update);
+  core::stream_started();
+  CHECK(!core::state().stage.stream_up());
+  core::stream_ended();
+  // The install fails: "failed" for 10 s, then the artwork again.
+  show.env.update.phase = P::Failed;
+  show.env.update.error = "SHA256 mismatch";
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::Update);
+  CHECK(core::state().update_drawn.phase == P::Failed);
+  show.advance_s(10);
+  CHECK(core::state().screen == core::Screen::None);
+  show.env.complete_loads();
+  CHECK(show.current() == a);
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::None);  // the error that stays does not bring it back
+}
+
+TEST_CASE("show core: a written update stays on the panel until the reboot") {
+  using P = p64::show::ShowEnv::UpdateState::Phase;
+  Show show;
+  show.env.update.phase = P::Verifying;
+  show.advance_s(1);
+  show.env.update.phase = P::Ready;
+  show.advance_s(1);
+  CHECK(core::state().update_drawn.phase == P::Ready);
+  show.env.cfg->auto_swap_seconds = 5;
+  show.advance_s(120);
+  CHECK(core::state().screen == core::Screen::Update);
+  core::next();  // Next ends the screen for a moment; the update puts it back
+  show.advance_s(1);
+  CHECK(core::state().screen == core::Screen::Update);
 }
 
 }  // namespace

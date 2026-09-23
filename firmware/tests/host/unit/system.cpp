@@ -69,7 +69,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "rotation_auto":true,"background":{"r":1,"g":2,"b":3},"gains":{"r":60,"g":70,"b":80},"boot_animation_ms":0},
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
-    "colour":{"r":9,"g":8,"b":7},"outline":false}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
+    "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
     "weather":20,"temperature":30}},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
@@ -82,7 +82,8 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK(a.main_state == p64::system::MainState::Widget);
   CHECK_EQ(a.auto_swap_seconds, 0u);  // 0 = no auto-swap
   CHECK(a.clock_overlay.corner == p64::system::Corner::BottomRight);
-  CHECK(!a.clock_overlay.outline);
+  CHECK(!a.clock_overlay.border);
+  CHECK_EQ(a.clock_overlay.border_opacity, 40);
   CHECK(a.widget == p64::system::WidgetKind::Temperature);
   CHECK_EQ(a.makapix_max_side, 64);
   CHECK(a.hostname() == "p64-desk-1");
@@ -95,7 +96,7 @@ TEST_CASE("settings: every field survives a round trip") {
 
 TEST_CASE("settings: out-of-range numbers clamp, never wrap (the M4 bug)") {
   const Settings a = applied(R"({"display":{"brightness":999,"brightness_ceiling":-5,"gains":{"r":10,"g":300,"b":75},
-    "boot_animation_ms":70000,"night":{"start_minutes":5000}},"show":{"auto_swap_seconds":2},
+    "boot_animation_ms":70000,"night":{"start_minutes":5000}},"show":{"auto_swap_seconds":2,"clock_overlay":{"border_opacity":0}},
     "clock":{"scale":9},"weather":{"refresh_minutes":1},"temperature":{"offset_temperature":-99},
     "stream":{"silence_ms":100},"inputs":{"tap_sensitivity":0},"storage":{"downloads_cap_mb":1},
     "makapix":{"refresh_seconds":1,"channel_cache_size":99999,"cache_retention_days":0}})");
@@ -108,6 +109,7 @@ TEST_CASE("settings: out-of-range numbers clamp, never wrap (the M4 bug)") {
   CHECK_EQ(a.night.start_minutes, 24 * 60 - 1);
   CHECK_EQ(a.auto_swap_seconds, 5u);
   CHECK_EQ(a.clock.scale, 3);
+  CHECK_EQ(a.clock_overlay.border_opacity, 1);  // 1..255: a border is never fully transparent
   CHECK_EQ(a.weather.refresh_minutes, 10);
   CHECK_EQ(a.temperature.offset_temperature, -10);
   CHECK_EQ(a.stream_silence_ms, 500u);

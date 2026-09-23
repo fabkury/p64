@@ -72,9 +72,15 @@ int avoid_entry(bool have_current, int current_channel, const std::string &curre
 bool stream_allowed(bool stream_state, bool takeover_setting);
 
 enum class StreamGate : uint8_t { No, Wait, Take };
-// Whether an arriving stream takes the panel now, waits (the boot animation, or the
-// pairing screen, finish first), or does not take it at all.
-StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool pairing_screen);
+// Whether an arriving stream takes the panel now, waits (the boot animation, or a screen
+// that needs the user: pairing, setup, update, finish first), or does not take it at all.
+StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool user_screen);
+
+// Setup mode on the panel (spec 6.4, 10.1; settled 2026-09-23): with no network saved the
+// Setup screen holds the panel whatever plays; when a saved network is only down, artworks
+// keep playing from the cache and the setup pages replace the "no artwork" screen only.
+enum class SetupScreen : uint8_t { None, Holds, InsteadOfNoArtwork };
+SetupScreen setup_screen(bool setup_mode, bool network_saved);
 
 // What is on the panel, and what the state put up while a stream holds it. Every source
 // the show presents goes through present(); while a stream is up it is parked instead,

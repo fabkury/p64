@@ -13,6 +13,7 @@ namespace p64::net::wifi {
 struct Status {
   bool connected = false;
   bool setup_mode = false;
+  bool network_saved = false;  // credentials are stored (a RAM copy: reading it never touches flash)
   std::string ssid;      // the saved network
   std::string ip, gateway, netmask;
   int rssi = 0;

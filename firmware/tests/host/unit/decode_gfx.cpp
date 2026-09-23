@@ -164,49 +164,11 @@ TEST_CASE("frame_blend") {
 }
 
 
-// --- M6: the 5x7 font and the Makapix index ----------------------------------------
-
-TEST_CASE("text_font") {
-  using namespace p64::gfx::text;
-  CHECK(has_glyph('A'));
-  CHECK(has_glyph('z'));
-  CHECK(has_glyph('7'));
-  CHECK(has_glyph('.'));
-  CHECK(!has_glyph('~'));
-  CHECK_EQ(text_width("", 1, 1), 0);
-  CHECK_EQ(text_width("AB", 1, 1), 11);
-  CHECK_EQ(text_width("AB", 2, 1), 22);
-  CHECK_EQ(text_width("ABC", 1, 0), 15);
-  Frame f;
-  f.clear(Rgb{0, 0, 0});
-  const int w = draw_text(f, 1, 1, "I", Rgb{255, 255, 255}, 1, 1);
-  CHECK_EQ(w, 5);
-  // 'I': top row all but the corners, middle column, bottom row.
-  CHECK(f.get(1, 1) == (Rgb{0, 0, 0}));
-  CHECK(f.get(2, 1) == (Rgb{255, 255, 255}));
-  CHECK(f.get(3, 4) == (Rgb{255, 255, 255}));
-  CHECK(f.get(1, 4) == (Rgb{0, 0, 0}));
-  CHECK(f.get(3, 7) == (Rgb{255, 255, 255}));
-  CHECK(f.get(3, 8) == (Rgb{0, 0, 0}));
-  // Scale 2 doubles every pixel.
-  f.clear(Rgb{0, 0, 0});
-  draw_char(f, 0, 0, '1', Rgb{9, 9, 9}, 2);
-  CHECK(f.get(4, 0) == (Rgb{9, 9, 9}));
-  CHECK(f.get(5, 1) == (Rgb{9, 9, 9}));
-  CHECK(f.get(0, 0) == (Rgb{0, 0, 0}));
-  // Centred text lands in the middle.
-  f.clear(Rgb{0, 0, 0});
-  draw_centred(f, 20, "0", Rgb{1, 2, 3}, 1, 1);
-  CHECK(f.get(29, 20) == (Rgb{0, 0, 0}));
-  CHECK(f.get(30, 20) == (Rgb{1, 2, 3}));
-}
-
-
 // --- M7: the bundled fonts, the clock text, the weather model -------------------------
 
 TEST_CASE("fonts") {
   using namespace p64::gfx::fonts;
-  CHECK_EQ(kFontCount, 5u);
+  CHECK_EQ(kFontCount, 6u);
   const Font *ch = by_name("capital-hill");
   const Font *ev = by_name("everyday-typical");
   CHECK((ch != nullptr && ev != nullptr));
@@ -252,6 +214,10 @@ TEST_CASE("fonts") {
     }
   }
   CHECK_EQ(by_name("everyday-slight")->size, 5);
+  CHECK_EQ(by_name("everyday-ample")->size, 9);
+  CHECK(by_name("everyday-ample")->overlay);
+  CHECK(&system_font() == by_name("everyday-standard"));
+  CHECK(&system_large_font() == by_name("everyday-ample"));
   CHECK_EQ(by_name("everyday-standard")->size, 6);
   CHECK(!by_name("high-birth")->overlay);
   CHECK(width(*ch, "", 1) == 0);

@@ -1,7 +1,7 @@
 // p64 -- the bundled pixel fonts as bitmap glyph tables (ADR 0008): Capital Hill 6 px,
-// Everyday Slight 5 px, Everyday Standard 6 px, Everyday Typical 7 px and High Birth 9 px,
-// all by VEXED (CC BY 4.0), rasterised from the TTFs by tools/gen_fonts.py into
-// fonts_data.cpp. Integer scaling and an optional one-pixel
+// Everyday Slight 5 px, Everyday Standard 6 px, Everyday Typical 7 px, Everyday Ample 9 px
+// and High Birth 9 px, all by VEXED (CC BY 4.0), rasterised from the TTFs by
+// tools/gen_fonts.py into fonts_data.cpp. Integer scaling and an optional one-pixel
 // outline; no kerning. Host-tested.
 #pragma once
 
@@ -41,7 +41,12 @@ extern const size_t kFontCount;
 
 // The font of that name ("capital-hill", "everyday-typical"); nullptr when unknown.
 const Font *by_name(const std::string &name);
-const Font &default_font();  // Capital Hill, the first of kFonts
+const Font &default_font();  // Capital Hill, the first of kFonts: the widgets' and the overlay's default
+// The firmware's own fonts, for the text it shows outside the overlay and the widgets (the
+// status screens, spec 6.4): Everyday Standard for regular text, Everyday Ample for short
+// texts that deserve a bigger letter.
+const Font &system_font();
+const Font &system_large_font();
 // The ink height (tallest glyph to deepest descender) at a scale.
 int line_height(const Font &font, int scale = 1);
 // The height of digits and capitals at a scale (the ink box without descenders).

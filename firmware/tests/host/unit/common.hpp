@@ -21,7 +21,6 @@
 #include "p64/content/playset_json.hpp"
 #include "p64/content/scheduler.hpp"
 #include "p64/content/makapix_index.hpp"
-#include "p64/gfx/text.hpp"
 #include "p64/gfx/fonts.hpp"
 #include "analogue.hpp"
 #include "clock_format.hpp"

@@ -611,6 +611,31 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   12/24 h setting, and the mask equals the frame drawing at scales 1 to 3 (108 cases).
   `widgets_smoke` and `api_smoke` pass (internal heap 81 KB free). Left: converting the
   time once a minute instead of once a frame (most of the 140 us that remain).
+- 2026-09-23, system fonts, Setup and Update screens, overlay border (prompt p034): Everyday
+  Ample 9 px bundled (six fonts; offered for the overlay too). The firmware's own text
+  moves to the system fonts, `gfx::fonts::system_font()` (Everyday Standard) and
+  `system_large_font()` (Everyday Ample), in sentence case: `status_screens.cpp` is
+  rewritten over a small stack layout (lines centred as a block inside the screen's
+  border, text wrapped by pixel width, hostnames broken after '-' or '.', the hostname
+  dropped from "stream waiting" when the IP needs two lines) and the built-in 5x7 font
+  (`gfx::text`) is gone. Two screens the spec listed but the panel never drew: Setup
+  (pages every 3 s: "Wi-Fi setup", "Join p64-setup", "Open 192.168.4.1"; it holds the panel
+  when no network is saved, and with a saved network only replaces "no artwork", so
+  artworks keep playing from the cache; `rules::setup_screen`, `wifi::Status::network_saved`
+  from the RAM copy) and Update (version and progress bar while downloading and
+  verifying, "Update ready / Restart to run it" until the reboot, "Update failed" and the
+  reason for 10 s after a failed install, nothing after a failed check; the show follows
+  `ShowEnv::update_state()` in `tick()`; nothing else takes the panel meanwhile, and
+  streams wait). Clock overlay: `outline` becomes `border` with `border_colour` (default
+  black) and `border_opacity` (1..255, default 255, blended by the sprite; the text stays
+  opaque); the Settings page has the toggle, a colour picker and an opacity slider. Host
+  tests: every screen inside its border with long names and addresses, the stack of
+  setup and update scenarios through the fake env, the border blending and the sprite
+  against the font drawing (114 cases). Verified on the device: `widgets_smoke` (border
+  colour and clamp), `api_smoke`, `ui_smoke`, and `ota_smoke` with the Update screen
+  captured from `/api/v1/frame` during a local install (15, 35, 89 %, verifying). Not
+  seen on the device: the Setup screen (needs Wi-Fi erased), the pairing and no-artwork
+  screens in their new fonts (host-rendered and checked by eye only).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

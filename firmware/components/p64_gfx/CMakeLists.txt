@@ -1,4 +1,4 @@
-# p64_gfx: panel-sized RGB888 frames, rotation, scaling, drawing, the built-in 5x7 font,
+# p64_gfx: panel-sized RGB888 frames, rotation, scaling, drawing, the bundled pixel fonts,
 # PNG encoding. No ESP-IDF includes in the sources (host-testable); sdkconfig.h is only
 # read for the panel geometry.
 idf_component_register(
@@ -6,7 +6,6 @@ idf_component_register(
         "src/frame.cpp"
         "src/scaler.cpp"
         "src/png_encode.cpp"
-        "src/text.cpp"
         "src/fonts.cpp"
         "src/fonts_data.cpp"
     INCLUDE_DIRS

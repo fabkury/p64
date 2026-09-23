@@ -45,8 +45,10 @@ uint32_t overlay_key(const system::Settings &s, const tm &t) {
   uint32_t h = 2166136261u;
   h = mix(h, static_cast<uint32_t>(t.tm_hour * 60 + t.tm_min));
   h = mix(h, static_cast<uint32_t>(s.clock_overlay.corner));
-  h = mix(h, (s.clock_overlay.h24 ? 1u : 0u) | (s.clock_overlay.outline ? 2u : 0u));
-  h = mix(h, static_cast<uint32_t>(s.clock_overlay.colour.r | (s.clock_overlay.colour.g << 8) | (s.clock_overlay.colour.b << 16)));
+  const system::Settings::ClockOverlay &o = s.clock_overlay;
+  h = mix(h, (o.h24 ? 1u : 0u) | (o.border ? 2u : 0u) | (static_cast<uint32_t>(o.border_opacity) << 8));
+  h = mix(h, static_cast<uint32_t>(o.colour.r | (o.colour.g << 8) | (o.colour.b << 16)));
+  h = mix(h, static_cast<uint32_t>(o.border_colour.r | (o.border_colour.g << 8) | (o.border_colour.b << 16)));
   for (const char *c = overlay_font(s.clock_overlay.font).name; *c; ++c) h = mix(h, static_cast<unsigned char>(*c));
   return h ? h : 1;
 }
@@ -73,18 +75,13 @@ OverlayLayout overlay_layout(const system::Settings &s, const tm &t) {
 
 }  // namespace
 
-void draw_overlay(Frame &frame, const system::Settings &s, const tm &t) {
-  const OverlayLayout l = overlay_layout(s, t);
-  const Rgb outline = gfx::kBlack;
-  gfx::fonts::draw(frame, *l.font, l.x, l.y, l.text, s.clock_overlay.colour, 1, s.clock_overlay.outline ? &outline : nullptr);
-}
-
 void build_overlay(OverlaySprite &out, const system::Settings &s, const tm &t) {
   const OverlayLayout l = overlay_layout(s, t);
   std::memset(out.mask, 0, sizeof(out.mask));
-  gfx::fonts::draw_mask(out.mask, *l.font, l.x, l.y, l.text, 1, s.clock_overlay.outline);
+  gfx::fonts::draw_mask(out.mask, *l.font, l.x, l.y, l.text, 1, s.clock_overlay.border);
   out.text = s.clock_overlay.colour;
-  out.outline = gfx::kBlack;
+  out.border = s.clock_overlay.border_colour;
+  out.border_opacity = s.clock_overlay.border_opacity;
   out.x0 = Frame::width();
   out.y0 = Frame::height();
   out.x1 = out.y1 = -1;
@@ -101,15 +98,23 @@ void build_overlay(OverlaySprite &out, const system::Settings &s, const tm &t) {
 
 void stamp_overlay(Frame &frame, const OverlaySprite &sprite) {
   uint8_t *px = frame.pixels();
+  const unsigned a = sprite.border_opacity, ia = 255u - a;
+  const Rgb b = sprite.border;
   for (int y = sprite.y0; y <= sprite.y1; ++y) {
     const uint8_t *m = &sprite.mask[y * Frame::width()];
     for (int x = sprite.x0; x <= sprite.x1; ++x) {
       if (!m[x]) continue;
-      const Rgb c = m[x] == gfx::fonts::kMaskText ? sprite.text : sprite.outline;
       uint8_t *p = &px[(y * Frame::width() + x) * 3];
-      p[0] = c.r;
-      p[1] = c.g;
-      p[2] = c.b;
+      if (m[x] == gfx::fonts::kMaskText || a == 255) {
+        const Rgb c = m[x] == gfx::fonts::kMaskText ? sprite.text : b;
+        p[0] = c.r;
+        p[1] = c.g;
+        p[2] = c.b;
+      } else {  // the same rounding as Frame::blend()
+        p[0] = static_cast<uint8_t>((p[0] * ia + b.r * a + 127u) / 255u);
+        p[1] = static_cast<uint8_t>((p[1] * ia + b.g * a + 127u) / 255u);
+        p[2] = static_cast<uint8_t>((p[2] * ia + b.b * a + 127u) / 255u);
+      }
     }
   }
 }

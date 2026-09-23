@@ -23,6 +23,7 @@ constexpr int64_t kRescanDebounceUs = 2 * kSecond;   // after file manager chang
 constexpr int64_t kRetryUs = 5 * kSecond;            // while nothing can be shown
 constexpr int64_t kIdleRescanUs = 30 * kSecond;      // rescan period while nothing can be shown
 constexpr int64_t kPairedScreenUs = 10 * kSecond;    // spec 6.4
+constexpr int64_t kUpdateFailedScreenUs = 10 * kSecond;  // "Update failed", then the artwork
 constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
 
 ShowEnv *g_env = nullptr;
@@ -307,6 +308,7 @@ void play_prepared() {
 
 void show_frame(const char *name) {
   present(g_env->static_frame(name, *g_scratch));
+  st.setup_pages_up = false;
   st.current.reset();
   st.widget.reset();
   st.widget_up = false;
@@ -316,18 +318,50 @@ void show_frame(const char *name) {
   g_env->playback_swapped(-1);
 }
 
+// The setup pages (spec 6.4): the AP to join and the address to open, a page every 3 s.
+void draw_setup_page() {
+  const net::wifi::Status w = g_env->wifi_status();
+  status_screens::setup_page(*g_scratch, st.setup_page, w.ap_ssid.empty() ? "p64-setup" : w.ap_ssid,
+                             w.ap_ip.empty() ? "192.168.4.1" : w.ap_ip);
+  st.setup_page_at_us = now_us() + status_screens::kSetupPageUs;
+}
+
+bool setup_instead_of_no_artwork() {
+  const net::wifi::Status w = g_env->wifi_status();
+  return rules::setup_screen(w.setup_mode, w.network_saved) == rules::SetupScreen::InsteadOfNoArtwork;
+}
+
 void show_status(const std::string &reason) {
   if (st.screen != Screen::None) return;  // a screen with a purpose holds the panel
   if (!st.current && !st.paused && st.status_reason == reason) return;
-  status_screens::no_artwork(*g_scratch, reason);
   st.status_reason = reason;
   st.retry_at_us = now_us() + kRetryUs;
   if (!st.rescan_due_us && has_local_channels()) st.rescan_due_us = now_us() + kIdleRescanUs;
   LOGW("no artwork: %s", reason.c_str());
+  if (setup_instead_of_no_artwork()) {  // nothing to play and no network: say how to set it up
+    st.setup_page = 0;
+    draw_setup_page();
+    show_frame("setup");
+    st.setup_pages_up = true;
+    return;
+  }
+  status_screens::no_artwork(*g_scratch, reason);
   show_frame("no artwork");
 }
 
+status_screens::UpdateView update_view(const ShowEnv::UpdateState &u) {
+  using P = ShowEnv::UpdateState::Phase;
+  using V = status_screens::UpdateView::Phase;
+  status_screens::UpdateView v;
+  v.phase = u.phase == P::Verifying ? V::Verifying : u.phase == P::Ready ? V::Ready : u.phase == P::Failed ? V::Failed : V::Downloading;
+  v.version = u.version;
+  v.percent = u.percent;
+  v.error = u.error;
+  return v;
+}
+
 void show_screen(Screen screen, int64_t for_us) {
+  if (st.screen == Screen::Update && screen != Screen::Update) return;  // the update holds the panel to the end
   switch (screen) {
     case Screen::Pairing: status_screens::pairing_code(*g_scratch, g_env->makapix_status().code); break;
     case Screen::Paired: status_screens::paired(*g_scratch); break;
@@ -336,12 +370,15 @@ void show_screen(Screen screen, int64_t for_us) {
       status_screens::connected(*g_scratch, w.hostname, w.ip);
       break;
     }
+    case Screen::Setup: draw_setup_page(); break;
+    case Screen::Update: status_screens::update(*g_scratch, update_view(st.update_drawn)); break;
     case Screen::None: return;
   }
   st.screen = screen;
   st.screen_until_us = for_us ? now_us() + for_us : 0;
   st.status_reason.clear();
-  show_frame("status");
+  show_frame(screen == Screen::Setup ? "setup" : screen == Screen::Update ? "update" : "status");
+  st.setup_pages_up = screen == Screen::Setup;
 }
 
 void load_current_history_item(Pending::Purpose purpose, int direction);
@@ -407,7 +444,9 @@ bool stream_allowed() {
 // simply covered and their timers run on.
 void take_stream() {
   const rules::StreamGate gate = rules::stream_gate(st.stream_active, st.stage.stream_up(), stream_allowed(),
-                                                     now_us() < st.boot_until_us, st.screen == Screen::Pairing);
+                                                     now_us() < st.boot_until_us,
+                                                     st.screen == Screen::Pairing || st.screen == Screen::Setup ||
+                                                         st.screen == Screen::Update);
   if (gate == rules::StreamGate::No) return;
   if (gate == rules::StreamGate::Wait) {
     st.want_stream = true;
@@ -824,11 +863,73 @@ bool swap_timer_runs() {
   return rules::swap_timer_runs(st.paused, static_cast<bool>(st.current), st.widget_up, show_active());
 }
 
+// The Update screen follows the firmware update: progress while it downloads and verifies,
+// "ready" until the reboot; an install that fails shows "failed" for a while. A failed
+// release check never had the screen up, so it shows nothing.
+void follow_update() {
+  using P = ShowEnv::UpdateState::Phase;
+  const ShowEnv::UpdateState u = g_env->update_state();
+  if (u.phase == P::Downloading || u.phase == P::Verifying || u.phase == P::Ready) {
+    const bool changed = u.phase != st.update_drawn.phase || u.percent != st.update_drawn.percent ||
+                         u.version != st.update_drawn.version;
+    if (st.screen != Screen::Update || changed) {
+      if (st.screen != Screen::Update) LOGI("update screen: %s", u.version.c_str());
+      st.update_drawn = u;
+      show_screen(Screen::Update, 0);
+    }
+  } else if (st.screen == Screen::Update && st.screen_until_us == 0) {
+    if (u.phase == P::Failed) {
+      st.update_drawn = u;
+      show_screen(Screen::Update, kUpdateFailedScreenUs);
+    } else {
+      end_screen();
+    }
+  }
+}
+
+// The setup pages follow setup mode (rules::setup_screen) and turn every 3 s.
+void follow_setup() {
+  const net::wifi::Status w = g_env->wifi_status();
+  const rules::SetupScreen want = rules::setup_screen(w.setup_mode, w.network_saved);
+  const int64_t now = now_us();
+  if (want == rules::SetupScreen::Holds) {
+    if (now < st.boot_until_us) return;  // the boot animation finishes first
+    if (st.screen == Screen::None || st.screen == Screen::Connected) {
+      st.setup_page = 0;
+      show_screen(Screen::Setup, 0);
+    } else if (st.screen == Screen::Setup && now >= st.setup_page_at_us) {
+      ++st.setup_page;
+      show_screen(Screen::Setup, 0);
+    }
+    return;
+  }
+  if (st.screen == Screen::Setup) {  // setup mode ended, or a network is saved now
+    end_screen();
+    return;
+  }
+  const bool no_artwork_up = !st.current && !st.widget_up && !st.paused && st.screen == Screen::None &&
+                             !st.status_reason.empty() && !g_stream_up;
+  if (!no_artwork_up) return;
+  if (want == rules::SetupScreen::InsteadOfNoArtwork) {
+    if (!st.setup_pages_up || now >= st.setup_page_at_us) {
+      st.setup_page = st.setup_pages_up ? st.setup_page + 1 : 0;
+      draw_setup_page();
+      show_frame("setup");
+      st.setup_pages_up = true;
+    }
+  } else if (st.setup_pages_up) {  // setup mode ended with nothing to play: the reason again
+    status_screens::no_artwork(*g_scratch, st.status_reason);
+    show_frame("no artwork");
+  }
+}
+
 // Periodic work: the auto-swap timer, the boot hold, rescans, retries.
 void tick_impl() {
   const int64_t now = now_us();
   const system::Settings s = settings();
   if (st.screen != Screen::None && st.screen_until_us && now >= st.screen_until_us) end_screen();
+  follow_update();
+  follow_setup();
   if (st.want_stream) take_stream();
   if (st.want_widget && now >= st.boot_until_us) play_widget(s.widget, false);
   if (st.want_prepared_now && st.prepared && can_swap_now() && show_active()) play_prepared();
@@ -867,6 +968,7 @@ int64_t wait_us_impl() {
   if (st.want_prepared_now && st.prepared) consider(st.boot_until_us);
   consider(st.rescan_due_us);
   consider(st.screen_until_us);
+  if (st.setup_pages_up) consider(st.setup_page_at_us);
   if (!st.current && !st.paused && !st.status_reason.empty()) consider(st.retry_at_us);
   return wait;
 }
@@ -1062,8 +1164,13 @@ cJSON *status_json() {
       if (!cur->sqid.empty()) cJSON_AddStringToObject(a, "sqid", cur->sqid.c_str());
     }
   }
-  const char *screen = st.screen == Screen::Pairing ? "pairing" : st.screen == Screen::Paired ? "paired"
-                       : st.screen == Screen::Connected ? "connected" : "";
+  const bool setup_up = st.screen == Screen::Setup || (st.setup_pages_up && !st.current && !st.widget_up);
+  const char *screen = st.screen == Screen::Pairing     ? "pairing"
+                       : st.screen == Screen::Paired    ? "paired"
+                       : st.screen == Screen::Connected ? "connected"
+                       : st.screen == Screen::Update    ? "update"
+                       : setup_up                       ? "setup"
+                                                        : "";
   cJSON_AddStringToObject(p, "screen", screen);
   cJSON_AddStringToObject(p, "no_artwork", st.current || st.paused || st.widget_up || st.screen != Screen::None ? "" : st.status_reason.c_str());
   cJSON_AddStringToObject(p, "last_error", st.last_error.c_str());

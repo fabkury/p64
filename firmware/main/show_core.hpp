@@ -79,6 +79,16 @@ class ShowEnv {
 
   // Network, notifications, log.
   virtual net::wifi::Status wifi_status() = 0;
+  // A firmware update as the show sees it (from the OTA status); the Update screen follows
+  // it (spec 6.4).
+  struct UpdateState {
+    enum class Phase : uint8_t { None, Downloading, Verifying, Ready, Failed };
+    Phase phase = Phase::None;
+    std::string version;
+    int percent = -1;  // -1 while the size is unknown
+    std::string error;
+  };
+  virtual UpdateState update_state() = 0;
   virtual void playback_swapped(int32_t history_position) = 0;  // the PlaybackSwapped event
   virtual void notify_web() = 0;
   virtual void vlog(char level, const char *format, va_list args) = 0;  // 'E', 'W', 'I', 'D'
@@ -118,7 +128,7 @@ struct Pending {
   content::HistoryItem item;
 };
 
-enum class Screen : uint8_t { None, Pairing, Paired, Connected };
+enum class Screen : uint8_t { None, Pairing, Paired, Connected, Setup, Update };
 
 // Everything the show knows. One value, so a test resets it by assignment and reads it.
 struct State {
@@ -139,6 +149,11 @@ struct State {
   std::string last_error;      // the last load or activation failure, for the UI
   Screen screen = Screen::None;  // a status screen that holds the panel
   int64_t screen_until_us = 0;   // when a timed screen ends (0 = until its cause ends)
+  // The setup pages: on the Setup screen, or in place of the "no artwork" screen.
+  bool setup_pages_up = false;
+  int setup_page = 0;
+  int64_t setup_page_at_us = 0;  // when the next page is due
+  ShowEnv::UpdateState update_drawn;  // what the Update screen shows
   std::shared_ptr<playback::FrameSource> widget;  // the widget on the panel (Widget state or an interlude)
   bool widget_up = false;
   system::WidgetKind widget_kind = system::WidgetKind::Clock;

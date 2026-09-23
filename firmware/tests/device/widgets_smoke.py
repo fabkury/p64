@@ -91,10 +91,22 @@ def main():
         counts[name] = ink_count()
     check(counts["everyday-slight"] > 0 and counts["everyday-slight"] != counts["everyday-typical"],
           "a font change shows at once (%d vs %d overlay pixels)" % (counts["everyday-slight"], counts["everyday-typical"]))
-    s = settings(base, {"show": {"clock_overlay": {"outline": False}}})
-    check(s["show"]["clock_overlay"]["outline"] is False, "the outline can be turned off")
+    s = settings(base, {"show": {"clock_overlay": {"border": False}}})
+    check(s["show"]["clock_overlay"]["border"] is False, "the border can be turned off")
+    # The border's colour and opacity (the blending itself is host-tested): 0 clamps to 1,
+    # and an opaque pure blue border shows as blue pixels around the time.
+    blue = {"r": 0, "g": 0, "b": 255}
+    s = settings(base, {"show": {"clock_overlay": {"border": True, "border_colour": blue, "border_opacity": 0}}})
+    check(s["show"]["clock_overlay"]["border_opacity"] == 1, "border opacity clamps to 1..255")
+    settings(base, {"show": {"clock_overlay": {"border_opacity": 255}}})
+    time.sleep(1.5)
+    px = frame(base)
+    solid = sum(1 for i in range(0, 64 * 3 * 16, 3) if tuple(px[i:i + 3]) == (0, 0, 255))
+    check(solid > 30, "an opaque blue border draws blue pixels (%d)" % solid)
     ov = original["show"]["clock_overlay"]
-    settings(base, {"show": {"clock_overlay": {"font": ov["font"], "colour": ov["colour"], "outline": ov.get("outline", True)}}})
+    settings(base, {"show": {"clock_overlay": {"font": ov["font"], "colour": ov["colour"], "border": ov.get("border", True),
+                                               "border_colour": ov.get("border_colour", {"r": 0, "g": 0, "b": 0}),
+                                               "border_opacity": ov.get("border_opacity", 255)}}})
 
     # The Widget state, each widget in turn.
     frames = {}

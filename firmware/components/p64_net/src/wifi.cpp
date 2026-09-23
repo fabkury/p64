@@ -366,6 +366,7 @@ Status status() {
     std::lock_guard<std::mutex> lock(g_mutex);
     s.connected = g_connected;
     s.setup_mode = g_setup_mode;
+    s.network_saved = g_have_credentials;
     s.ssid = g_ssid;
     s.ip = g_ip;
     s.gateway = g_gateway;

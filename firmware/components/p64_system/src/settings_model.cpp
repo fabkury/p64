@@ -118,6 +118,7 @@ void Settings::clamp() {
   boot_animation_ms = clamp_to<uint16_t>(boot_animation_ms, 0, 5000);
   if (auto_swap_seconds != 0) auto_swap_seconds = clamp_to<uint32_t>(auto_swap_seconds, 5, 86400);
   clock.scale = clamp_to<uint8_t>(clock.scale, 1, 3);
+  clock_overlay.border_opacity = clamp_to<uint8_t>(clock_overlay.border_opacity, 1, 255);
   weather.refresh_minutes = clamp_to<uint16_t>(weather.refresh_minutes, 10, 180);
   if (weather.latitude < -90 || weather.latitude > 90 || weather.longitude < -180 || weather.longitude > 180) {
     weather.location_set = false;
@@ -177,7 +178,9 @@ std::string Settings::to_json() const {
   cJSON_AddStringToObject(co, "corner", kCorners[static_cast<int>(clock_overlay.corner)]);
   cJSON_AddBoolToObject(co, "h24", clock_overlay.h24);
   put_rgb(co, "colour", clock_overlay.colour);
-  cJSON_AddBoolToObject(co, "outline", clock_overlay.outline);
+  cJSON_AddBoolToObject(co, "border", clock_overlay.border);
+  put_rgb(co, "border_colour", clock_overlay.border_colour);
+  cJSON_AddNumberToObject(co, "border_opacity", clock_overlay.border_opacity);
 
   cJSON *w = obj(root, "widgets");
   cJSON_AddStringToObject(w, "widget", kWidgets[static_cast<int>(widget)]);
@@ -286,7 +289,9 @@ bool Settings::apply_json(const char *json, std::string &error) {
   get_enum(co, "corner", clock_overlay.corner, kCorners, 4);
   get_bool(co, "h24", clock_overlay.h24);
   get_rgb(co, "colour", clock_overlay.colour);
-  get_bool(co, "outline", clock_overlay.outline);
+  get_bool(co, "border", clock_overlay.border);
+  get_rgb(co, "border_colour", clock_overlay.border_colour);
+  get_num(co, "border_opacity", clock_overlay.border_opacity);
 
   const cJSON *w = sub(root, "widgets");
   get_enum(w, "widget", widget, kWidgets, 3);

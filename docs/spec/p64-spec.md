@@ -337,10 +337,12 @@ persists that, so an artwork never plays inside the Widget or Stream state (sett
 Plays the active playset as in section 4, with:
 
 - Clock overlay: optional (default on), HH:MM, 24-hour by default with a 12-hour option,
-  in one of the small bundled pixel fonts (Capital Hill, Everyday Slight, Standard or
-  Typical; default Capital Hill 6 px) at 1x, text colour configurable (default white)
-  with a 1 px black outline so it reads over any artwork (the outline can be turned off,
-  since 2026-09-23), in one of the four corners (default top-left) with a 1 px margin, no seconds. Not shown
+  in one of the bundled pixel fonts offered for it (Capital Hill, Everyday Slight,
+  Standard, Typical or Ample; default Capital Hill 6 px) at 1x, text colour configurable
+  (default white) with a 1 px border so it reads over any artwork: on or off, its colour
+  (default black) and its opacity (1 to 255, default 255; the text itself stays opaque)
+  are settings (2026-09-23: the overlay stays on top of everything, so it must look
+  exactly as the user wants), in one of the four corners (default top-left) with a 1 px margin, no seconds. Not shown
   in the other states.
 - Interludes: at every auto-swap, each widget that has an interlude probability above 0
   is rolled (independently, in a fixed order: Clock, Weather, Temperature); the first that
@@ -361,17 +363,20 @@ timeout) it returns to the waiting screen. Leaving the state is a user action.
 
 ### 6.4 Status screens
 
-Text on the panel, in a bundled pixel font, only when the user must act or wait:
+Text on the panel, only when the user must act or wait, in the firmware's own fonts
+(settled 2026-09-23): Everyday Standard 6 px for regular text, Everyday Ample 9 px for
+short lines that deserve a bigger letter, in sentence case. The clock overlay and the
+widgets have their own font settings.
 
 | Screen | When | Content |
 |---|---|---|
 | Boot | power-on until the first artwork | boot animation (default 2 s; 0 to 5 s; 0 = off) |
-| Setup | setup mode | pages cycling every 3 s: "Wi-Fi setup", the AP name `p64-setup`, `192.168.4.1` |
+| Setup | setup mode with no network saved (holds the panel); with a saved network only in place of "no artwork" (artworks keep playing from the cache) | pages cycling every 3 s: "Wi-Fi setup", "Join" the AP name `p64-setup`, "Open" `192.168.4.1` |
 | Connected | for 15 s after joining a network | hostname and IP address |
 | Pairing | while a pairing code is valid | the 6-character code, then "paired" for 10 s |
 | No artwork | active playset has nothing available | "no artwork" plus the reason (no card, offline, empty) |
 | Stream waiting | Stream state, no frames | hostname, IP, ports |
-| Update | during a firmware update | progress bar and version |
+| Update | from the download of a firmware update until the reboot | version and progress bar while downloading and verifying, then "Update ready, restart to run it" until the reboot; a failed install shows "Update failed" and the reason for 10 s |
 
 Routine work (downloads, refreshes, decoding) never shows text; the current artwork stays
 up. Status screens are drawn seamlessly like any content.
@@ -379,9 +384,10 @@ up. Status screens are drawn seamlessly like any content.
 ## 7. Widgets
 
 Common to all widgets: fonts are bitmap glyphs rasterised at build time from the bundled
-pixel fonts (Capital Hill 6 px; Everyday Slight 5 px, Everyday Standard 6 px and
-Everyday Typical 7 px; High Birth 9 px, for the Clock widget only; all by VEXED, CC-BY
-4.0, with attribution shown in the web UI's About section; settled 2026-09-23); text and background
+pixel fonts (Capital Hill 6 px; Everyday Slight 5 px, Everyday Standard 6 px, Everyday
+Typical 7 px and Everyday Ample 9 px; High Birth 9 px, for the Clock widget only; all by
+VEXED, CC-BY 4.0, with attribution shown in the web UI's About section; settled
+2026-09-23); text and background
 colours are per-widget settings; every widget renders its first frame within one panel
 refresh of being asked so it can be shown seamlessly.
 
@@ -691,7 +697,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |
 | Show | channel selection | stochastic, swrr | stochastic |
-| Show | clock overlay | enabled; font (the four small ones); corner; 12/24 h; colour; outline | on; Capital Hill; top-left; 24 h; white; on |
+| Show | clock overlay | enabled; font (all but High Birth); corner; 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude probability, per widget | 0 to 100 % | 0 |
 | Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
@@ -730,7 +736,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | Device name | 16 characters |
 | PIN | 4 to 8 digits |
 | Downloads folder | capped by setting, default 64 MB |
-| Fonts bundled | 5 (4 offered for the clock overlay) |
+| Fonts bundled | 6 (5 offered for the clock overlay) |
 
 ## 18. Acceptance criteria
 

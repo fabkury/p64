@@ -113,6 +113,82 @@ TEST_CASE("artwork: a GIF plays through decoder and scaler; garbage is refused")
   CHECK(!error.empty());
 }
 
+// Every status screen keeps its text inside the 1 px frame border with a 1 px gap: the
+// outer ring and the ring just inside the border stay black (spec 6.4; the screens moved
+// to Everyday Standard and Ample on 2026-09-23, where a long line ran into the border).
+int lit_outside_inner(const Frame &f) {
+  int n = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) {
+      const bool outer = x == 0 || x == 63 || y == 0 || y == 63;
+      const bool inside_border = x >= 2 && x <= 61 && y >= 2 && y <= 61;
+      const bool gap = inside_border && (x == 2 || x == 61 || y == 2 || y == 61);
+      if ((outer || gap) && !(f.get(x, y) == Rgb{0, 0, 0})) ++n;
+    }
+  return n;
+}
+
+TEST_CASE("status screens stay inside their border, long names and addresses included") {
+  namespace ss = p64::status_screens;
+  Frame f;
+  auto check_screen = [&](const char *what) {
+    CAPTURE(what);
+    CHECK(lit(f) > 20);
+    CHECK_EQ(lit_outside_inner(f), 0);
+  };
+  for (const char *r : {"no card", "offline", "needs pairing", "empty", "Makapix: no artworks yet", "downloading"}) {
+    ss::no_artwork(f, r);
+    check_screen(r);
+  }
+  ss::countdown(f, 3);
+  check_screen("countdown 3");
+  ss::countdown(f, 0);
+  check_screen("erasing");
+  ss::pairing_code(f, "TDPCHB");
+  check_screen("pairing");
+  ss::paired(f);
+  check_screen("paired");
+  for (const char *host : {"p64", "p64-living-room"}) {
+    for (const char *ip : {"192.168.4.92", "192.168.100.200"}) {
+      ss::connected(f, host, ip);
+      check_screen("connected");
+      ss::stream_waiting(f, host, ip, 4048, 4064);
+      check_screen("stream waiting");
+    }
+  }
+  for (int page = 0; page < ss::kSetupPages; ++page) {
+    ss::setup_page(f, page, "p64-setup", "192.168.4.1");
+    check_screen("setup");
+  }
+  Frame other;
+  ss::setup_page(other, 1, "p64-setup", "192.168.4.1");
+  ss::setup_page(f, 2, "p64-setup", "192.168.4.1");
+  CHECK(std::memcmp(f.data(), other.data(), Frame::bytes()) != 0);  // the pages differ
+  ss::UpdateView v;
+  v.version = "0.2.0";
+  for (const int pct : {-1, 0, 42, 100}) {
+    v.percent = pct;
+    ss::update(f, v);
+    check_screen("updating");
+  }
+  // The bar fills with the percentage.
+  v.percent = 10;
+  ss::update(other, v);
+  v.percent = 90;
+  ss::update(f, v);
+  CHECK(lit(f) > lit(other));
+  v.phase = ss::UpdateView::Phase::Verifying;
+  ss::update(f, v);
+  check_screen("verifying");
+  v.phase = ss::UpdateView::Phase::Ready;
+  ss::update(f, v);
+  check_screen("ready");
+  v.phase = ss::UpdateView::Phase::Failed;
+  v.error = "download failed: HTTP 404 from the release server";
+  ss::update(f, v);
+  check_screen("failed");
+}
+
 TEST_CASE("status screens and the boot animation draw something") {
   Frame f;
   p64::status_screens::no_artwork(f, "no card");

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 r"""Device test of the updater (M9, spec 15.2): a GitHub release check, then a full
-install of this PC's build over HTTP into the other slot (SHA256 verified), a reboot
-into it, its confirmation, and a rollback to the original slot.
+install of this PC's build over HTTP into the other slot (SHA256 verified) with the
+Update screen on the panel, a reboot into it, its confirmation, and a rollback to the
+original slot.
 
     python tests\device\ota_smoke.py [http://p64.local] [--no-install]
 
@@ -102,11 +103,21 @@ def main():
     st, j = request(base, "POST", "/api/v1/update/install", {"url": url, "sha256": digest})
     check(st == 200, "install queued from the local URL")
     t0 = time.time()
-    u = wait_state(base, ("ready_to_reboot", "error"), 240)
+    # The Update screen (spec 6.4) holds the panel from the download to the reboot.
+    screens = set()
+    u = update(base)
+    while time.time() - t0 < 240 and u["state"] not in ("ready_to_reboot", "error"):
+        if u["state"] in ("downloading", "verifying"):
+            screens.add(status(base)["playback"].get("screen", ""))
+        time.sleep(1)
+        u = update(base)
     check(u["state"] == "ready_to_reboot", "install finished in %.0f s: %s%s" % (time.time() - t0, u["state"], (" (" + u["error"] + ")") if u["error"] else ""))
     server.shutdown()
     if u["state"] != "ready_to_reboot":
         return 1
+    check(screens == {"update"}, "the Update screen showed during the download: %s" % sorted(screens))
+    time.sleep(2)
+    check(status(base)["playback"].get("screen") == "update", "the Update screen stays until the reboot")
     request(base, "POST", "/api/v1/action/reboot")
     time.sleep(12)
     d = wait_up(base, 90)

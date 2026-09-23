@@ -50,7 +50,11 @@ struct Settings {
     Corner corner = Corner::TopLeft;
     bool h24 = true;
     gfx::Rgb colour{255, 255, 255};
-    bool outline = true;  // the 1 px black outline that reads over any artwork
+    // The 1 px border around the text that makes it read over any artwork, blended over
+    // the artwork at `border_opacity` (1..255; the text itself is always opaque).
+    bool border = true;
+    gfx::Rgb border_colour{0, 0, 0};
+    uint8_t border_opacity = 255;
   } clock_overlay;
 
   // Widgets

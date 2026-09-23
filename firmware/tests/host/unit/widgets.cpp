@@ -2,6 +2,7 @@
 #include "common.hpp"
 #include "faces.hpp"
 
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 
@@ -268,6 +269,13 @@ TEST_CASE("faces: the temperature reading, in Fahrenheit when asked, with the tr
 
 // --- the clock overlay (spec 6.1) -------------------------------------------------------
 
+// The overlay as the player gets it: built once, stamped on the frame.
+void overlay_on(Frame &f, const p64::system::Settings &s, const tm &t) {
+  auto sprite = std::make_unique<faces::OverlaySprite>();
+  faces::build_overlay(*sprite, s, t);
+  faces::stamp_overlay(f, *sprite);
+}
+
 TEST_CASE("faces: the overlay key changes with every setting that shapes the drawing") {
   // The key once ignored the font: a font chosen in the web UI showed only at the next
   // minute (2026-09-23).
@@ -286,13 +294,15 @@ TEST_CASE("faces: the overlay key changes with every setting that shapes the dra
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.corner = p64::system::Corner::BottomRight; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.h24 = false; }));
   CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.colour = Rgb{255, 0, 0}; }));
-  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.outline = false; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.border = false; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.border_colour = Rgb{0, 0, 1}; }));
+  CHECK(differs([](p64::system::Settings &c) { c.clock_overlay.border_opacity = 254; }));
   // An unknown font and a font not offered for the overlay both draw the default one.
   CHECK(!differs([](p64::system::Settings &c) { c.clock_overlay.font = "nope"; }));
   CHECK(!differs([](p64::system::Settings &c) { c.clock_overlay.font = "high-birth"; }));
 }
 
-TEST_CASE("faces: the overlay draws in its corner, with the outline only when asked") {
+TEST_CASE("faces: the overlay draws in its corner, with the border only when asked") {
   p64::system::Settings s;
   s.clock_overlay.colour = Rgb{200, 100, 50};
   const tm t = at(23, 59, 0);
@@ -303,29 +313,29 @@ TEST_CASE("faces: the overlay draws in its corner, with the outline only when as
       for (int x = 0; x < 64; ++x) n += f.get(x, y) == c ? 1 : 0;
     return n;
   };
-  for (const char *font : {"capital-hill", "everyday-slight", "everyday-standard", "everyday-typical"}) {
+  for (const char *font : {"capital-hill", "everyday-slight", "everyday-standard", "everyday-typical", "everyday-ample"}) {
     CAPTURE(font);
     s.clock_overlay.font = font;
-    s.clock_overlay.outline = true;
+    s.clock_overlay.border = true;
     s.clock_overlay.corner = p64::system::Corner::TopLeft;
     Frame f;
     f.clear(grey);
-    faces::draw_overlay(f, s, t);
+    overlay_on(f, s, t);
     CHECK(count(f, s.clock_overlay.colour) > 10);
     CHECK(count(f, Rgb{0, 0, 0}) > 10);
     int bottom_half = 0;
     for (int y = 32; y < 64; ++y)
       for (int x = 0; x < 64; ++x) bottom_half += f.get(x, y) == grey ? 0 : 1;
     CHECK_EQ(bottom_half, 0);
-    s.clock_overlay.outline = false;
+    s.clock_overlay.border = false;
     f.clear(grey);
-    faces::draw_overlay(f, s, t);
+    overlay_on(f, s, t);
     CHECK_EQ(count(f, Rgb{0, 0, 0}), 0);
     // Bottom right: the text stays inside the panel with its margin, none in the top half.
-    s.clock_overlay.outline = true;
+    s.clock_overlay.border = true;
     s.clock_overlay.corner = p64::system::Corner::BottomRight;
     f.clear(grey);
-    faces::draw_overlay(f, s, t);
+    overlay_on(f, s, t);
     int top_half = 0, edge = 0;
     for (int y = 0; y < 64; ++y)
       for (int x = 0; x < 64; ++x) {
@@ -336,6 +346,101 @@ TEST_CASE("faces: the overlay draws in its corner, with the outline only when as
     CHECK_EQ(top_half, 0);
     CHECK_EQ(edge, 0);
   }
+}
+
+// An artwork-like background with black and bright pixels in it.
+void artwork(Frame &f) {
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x)
+      f.set(x, y, Rgb{static_cast<uint8_t>(x * 4), static_cast<uint8_t>(y * 4), static_cast<uint8_t>((x ^ y) & 1 ? 0 : 99)});
+}
+
+TEST_CASE("faces: the cached overlay stamps the same pixels as the font drawing, border colour included") {
+  // The overlay is drawn once per minute into an OverlaySprite and stamped on every frame
+  // (2026-09-23: redrawing it per frame cost about 380 us on the device).
+  auto sprite = std::make_unique<faces::OverlaySprite>();
+  const tm t = at(23, 58, 0);
+  const p64::system::Corner corners[] = {p64::system::Corner::TopLeft, p64::system::Corner::TopRight,
+                                         p64::system::Corner::BottomLeft, p64::system::Corner::BottomRight};
+  for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
+    const p64::gfx::fonts::Font &font = *p64::gfx::fonts::kFonts[i];
+    if (!font.overlay) continue;
+    for (const p64::system::Corner corner : corners) {
+      for (const bool border : {true, false}) {
+        for (const bool h24 : {true, false}) {
+          p64::system::Settings s;
+          s.clock_overlay.font = font.name;
+          s.clock_overlay.corner = corner;
+          s.clock_overlay.border = border;
+          s.clock_overlay.border_colour = Rgb{10, 20, 200};
+          s.clock_overlay.h24 = h24;
+          s.clock_overlay.colour = Rgb{200, 100, 50};
+          CAPTURE(font.name);
+          CAPTURE(static_cast<int>(corner));
+          CAPTURE(border);
+          Frame direct, stamped;
+          artwork(direct);
+          stamped.copy_from(direct);
+          faces::build_overlay(*sprite, s, t);
+          faces::stamp_overlay(stamped, *sprite);
+          CHECK(sprite->x0 <= sprite->x1);
+          CHECK(sprite->x0 >= 1);  // inside the margin
+          CHECK(sprite->x1 <= 62);
+          // The reference: the same text drawn straight with the font renderer, 2 px from
+          // the corner's edges.
+          const std::string text = p64::widgets::clock_format::time_text(t, h24, false);
+          const int w = p64::gfx::fonts::width(font, text, 1), h = p64::gfx::fonts::cap_height(font, 1);
+          const bool right = corner == p64::system::Corner::TopRight || corner == p64::system::Corner::BottomRight;
+          const bool bottom = corner == p64::system::Corner::BottomLeft || corner == p64::system::Corner::BottomRight;
+          const Rgb halo = s.clock_overlay.border_colour;
+          p64::gfx::fonts::draw(direct, font, right ? 64 - w - 2 : 2, bottom ? 64 - h - 2 : 2, text, s.clock_overlay.colour, 1,
+                                border ? &halo : nullptr);
+          CHECK(std::memcmp(direct.data(), stamped.data(), Frame::bytes()) == 0);
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE("faces: the border blends at its opacity; the text stays opaque") {
+  p64::system::Settings s;
+  s.clock_overlay.font = "everyday-standard";
+  s.clock_overlay.colour = Rgb{255, 255, 255};
+  s.clock_overlay.border_colour = Rgb{0, 0, 255};
+  const tm t = at(12, 34, 0);
+  auto sprite = std::make_unique<faces::OverlaySprite>();
+  Frame opaque, half, faint, art;
+  artwork(art);
+  const std::pair<Frame *, int> runs[] = {{&opaque, 255}, {&half, 128}, {&faint, 1}};
+  for (const auto &run : runs) {
+    run.first->copy_from(art);
+    s.clock_overlay.border_opacity = static_cast<uint8_t>(run.second);
+    faces::build_overlay(*sprite, s, t);
+    faces::stamp_overlay(*run.first, *sprite);
+  }
+  int border_px = 0, text_px = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) {
+      const uint8_t m = sprite->mask[y * 64 + x];
+      if (m == p64::gfx::fonts::kMaskText) {
+        ++text_px;
+        CHECK(half.get(x, y) == (Rgb{255, 255, 255}));
+        CHECK(faint.get(x, y) == (Rgb{255, 255, 255}));
+      } else if (m == p64::gfx::fonts::kMaskOutline) {
+        ++border_px;
+        CHECK(opaque.get(x, y) == (Rgb{0, 0, 255}));
+        Frame want;
+        want.copy_from(art);
+        want.blend(x, y, Rgb{0, 0, 255}, 128);
+        CHECK(half.get(x, y) == want.get(x, y));
+        const Rgb a = art.get(x, y), f = faint.get(x, y);
+        CHECK((std::abs(f.r - a.r) <= 1 && std::abs(f.g - a.g) <= 1 && std::abs(f.b - a.b) <= 1));
+      } else {
+        CHECK(half.get(x, y) == art.get(x, y));
+      }
+    }
+  CHECK(text_px > 20);
+  CHECK(border_px > text_px);
 }
 
 TEST_CASE("faces: every font fits the digital clock; a date too wide falls back to the default font") {
@@ -354,43 +459,6 @@ TEST_CASE("faces: every font fits the digital clock; a date too wide falls back 
       CHECK_EQ(lit_rect(f, 0, 0, 0, 63), 0);
       CHECK_EQ(lit_rect(f, 63, 0, 63, 63), 0);
       CHECK_EQ(lit_rect(f, 0, 63, 63, 63), 0);
-    }
-  }
-}
-
-TEST_CASE("faces: the cached overlay stamps the same pixels as drawing it directly") {
-  // The overlay is drawn once per minute into an OverlaySprite and stamped on every frame
-  // (2026-09-23: redrawing it per frame cost about 380 us on the device).
-  auto sprite = std::make_unique<faces::OverlaySprite>();
-  const tm t = at(23, 58, 0);
-  const p64::system::Corner corners[] = {p64::system::Corner::TopLeft, p64::system::Corner::TopRight,
-                                         p64::system::Corner::BottomLeft, p64::system::Corner::BottomRight};
-  for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
-    for (const p64::system::Corner corner : corners) {
-      for (const bool outline : {true, false}) {
-        for (const bool h24 : {true, false}) {
-          p64::system::Settings s;
-          s.clock_overlay.font = p64::gfx::fonts::kFonts[i]->name;
-          s.clock_overlay.corner = corner;
-          s.clock_overlay.outline = outline;
-          s.clock_overlay.h24 = h24;
-          s.clock_overlay.colour = Rgb{200, 100, 50};
-          CAPTURE(s.clock_overlay.font);
-          CAPTURE(static_cast<int>(corner));
-          CAPTURE(outline);
-          Frame direct, stamped;
-          for (int y = 0; y < 64; ++y)  // an artwork-like background with black in it
-            for (int x = 0; x < 64; ++x) direct.set(x, y, Rgb{static_cast<uint8_t>(x * 4), static_cast<uint8_t>(y * 4), static_cast<uint8_t>((x ^ y) & 1 ? 0 : 99)});
-          stamped.copy_from(direct);
-          faces::draw_overlay(direct, s, t);
-          faces::build_overlay(*sprite, s, t);
-          faces::stamp_overlay(stamped, *sprite);
-          CHECK(std::memcmp(direct.data(), stamped.data(), Frame::bytes()) == 0);
-          CHECK(sprite->x0 <= sprite->x1);
-          CHECK(sprite->x0 >= 1);  // inside the margin
-          CHECK(sprite->x1 <= 62);
-        }
-      }
     }
   }
 }

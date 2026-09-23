@@ -49,7 +49,7 @@ too when the build has `CONFIG_HEAP_TASK_TRACKING`), `check_size.py`, `gen_fonts
 ## Fonts and icons
 
 `tools/gen_fonts.py` rasterises the bundled TTFs (`assets/fonts`, VEXED's Capital Hill,
-Everyday Slight, Standard and Typical, and High Birth, CC BY 4.0) into `components/p64_gfx/src/fonts_data.cpp`;
+Everyday Slight, Standard, Typical and Ample, and High Birth, CC BY 4.0) into `components/p64_gfx/src/fonts_data.cpp`;
 `tools/gen_weather_icons.py` draws the weather icons into `assets/weather/*.png` (edit
 the PNGs by hand and rerun to compile them in). Both need Pillow (the system Python)
 and both outputs are committed, so the firmware build needs neither.

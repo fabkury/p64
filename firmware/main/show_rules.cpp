@@ -62,10 +62,15 @@ int avoid_entry(bool have_current, int current_channel, const std::string &curre
 
 bool stream_allowed(bool stream_state, bool takeover_setting) { return stream_state || takeover_setting; }
 
-StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool pairing_screen) {
+StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool user_screen) {
   if (!frames_arriving || already_up || !allowed) return StreamGate::No;
-  if (boot_running || pairing_screen) return StreamGate::Wait;
+  if (boot_running || user_screen) return StreamGate::Wait;
   return StreamGate::Take;
+}
+
+SetupScreen setup_screen(bool setup_mode, bool network_saved) {
+  if (!setup_mode) return SetupScreen::None;
+  return network_saved ? SetupScreen::InsteadOfNoArtwork : SetupScreen::Holds;
 }
 
 }  // namespace p64::show::rules

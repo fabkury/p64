@@ -6,7 +6,7 @@ r"""Rasterises the bundled pixel fonts (assets/fonts) into bitmap glyph tables.
 Writes components/p64_gfx/src/fonts_data.cpp: one table per font with every printable
 ASCII glyph as rows of bits, its advance, and the font's ascent. The TTFs are drawn at
 their native pixel size (Everyday Slight 5 px, Capital Hill and Everyday Standard 6 px,
-Everyday Typical 7 px, High Birth 9 px), the sizes at which Pillow renders them without
+Everyday Typical 7 px, Everyday Ample and High Birth 9 px), the sizes at which Pillow renders them without
 anti-aliasing; anything else would blur a pixel font. Only the regular cut of each is
 bundled. Fonts marked "overlay" are offered for the clock overlay; the others only for
 the Clock widget. The output is committed, so the firmware build needs neither Pillow nor
@@ -26,6 +26,7 @@ FONTS = [
     ("everyday-slight", "Everyday Slight", "assets/fonts/everyday-slight/Everyday_Slight.ttf", 5, True),
     ("everyday-standard", "Everyday Standard", "assets/fonts/everyday-standard/Everyday_Standard.ttf", 6, True),
     ("everyday-typical", "Everyday Typical", "assets/fonts/everyday-typical/Everyday_Typical.ttf", 7, True),
+    ("everyday-ample", "Everyday Ample", "assets/fonts/everyday-ample/Everyday_Ample.ttf", 9, True),
     ("high-birth", "High Birth", "assets/fonts/high-birth/High_Birth.ttf", 9, False),
 ]
 LICENCE = "by VEXED (v3x3d.itch.io), CC BY 4.0"

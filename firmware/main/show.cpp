@@ -25,6 +25,7 @@
 #include "p64/content/psram.hpp"
 #include "p64/makapix/makapix.hpp"
 #include "p64/net/wifi.hpp"
+#include "p64/ota/ota.hpp"
 #include "p64/playback/frame_source.hpp"
 #include "p64/storage/card.hpp"
 #include "p64/system/event_bus.hpp"
@@ -172,6 +173,22 @@ class DeviceEnv : public ShowEnv {
   }
   bool makapix_play_followed(std::string &error) override { return makapix::play_followed(error); }
   net::wifi::Status wifi_status() override { return net::wifi::status(); }
+  UpdateState update_state() override {
+    const ota::Status o = ota::status();
+    UpdateState u;
+    using P = UpdateState::Phase;
+    switch (o.state) {
+      case ota::State::Downloading: u.phase = P::Downloading; break;
+      case ota::State::Verifying: u.phase = P::Verifying; break;
+      case ota::State::ReadyToReboot: u.phase = P::Ready; break;
+      case ota::State::Error: u.phase = P::Failed; break;
+      default: u.phase = P::None; break;
+    }
+    u.version = o.available_version;
+    if (o.image_size > 0) u.percent = static_cast<int>(static_cast<uint64_t>(o.bytes_read) * 100 / o.image_size);
+    u.error = o.error;
+    return u;
+  }
   void playback_swapped(int32_t history_position) override {
     system::publish(system::Event::PlaybackSwapped, history_position);
   }

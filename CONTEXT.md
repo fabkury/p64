@@ -247,7 +247,12 @@ An optional 4 to 8 digit code that gates the web UI and the HTTP API. Off by def
 
 **Status screen**:
 Text the panel shows when the user must act or wait: setup, IP address, pairing code, no
-artwork, stream waiting, update progress.
+artwork, stream waiting, update progress. Drawn in the system fonts.
+
+**System fonts**:
+The firmware's own fonts for the text it shows outside the clock overlay and the widgets:
+Everyday Standard for regular text, Everyday Ample for short lines that deserve a bigger
+letter.
 
 **Boot animation**:
 The short procedural animation shown from power-on until the first artwork.
