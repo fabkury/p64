@@ -1,0 +1,1 @@
+I have a p64 connected via USB-C (halt if you can't find it). Please monitor it (with reboot) for 12 minutes, and give me a summary of what happened in those 12 minutes, and add a final conclusion about the state of the system's health.
