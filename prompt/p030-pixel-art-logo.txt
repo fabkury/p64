@@ -1,0 +1,5 @@
+Let's create a logo for the p64 project.
+
+I have the creative direction laid out in "C:\Users\fab\Downloads\ChatGPT Image Sep 23, 2026, 11_25_49 AM.png". Please move that file to docs/logo/.
+
+After the file has been moved, please produce a pixel art version of the creative direction. In other words, please translate "C:\Users\fab\Downloads\ChatGPT Image Sep 23, 2026, 11_25_49 AM.png" into a 64x64 pixels artwork with pixel-art style.
