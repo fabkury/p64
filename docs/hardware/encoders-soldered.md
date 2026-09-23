@@ -220,31 +220,56 @@ time; the colours cross, so label the 4209 side first.
 
 The 200 mm 4401 (or a 100 mm 4210, tight) from board 1's free socket to board 2. The
 sockets face up and down in the shell, so the cable runs down from the right board, along
-the bottom of the cavity above the USB adapters' ribbons, and up into the left board.
+the bottom of the cavity, above the two USB-C adapters and the cradle insert, and up into
+the left board.
 
 ## 7. In-shell assembly
 
-The v6 shell already has both encoder positions, from v2: shafts at (±47, -25) mm on the
-back face, four locating pegs per board, a 7.4 mm hole with a spot-face for the washer
-and nut, boards turned so the STEMMA QT sockets face up and down (`enclosure/README.md`,
-v2 section, and `enclosure/src/p64_enclosure_v6.scad`).
+The p64b shell (enclosure v7b, `enclosure/output/p64b/v7b/`) has both encoder positions:
+shafts at (±47, -25) mm on the back face, i.e. 19 mm in from each side edge and 41 mm up
+from the bottom edge. Each position has four posts from the inside of the back wall, each
+ending in a 2.2 mm peg for one of the board's 2.5 mm holes, a 7.4 mm hole for the bushing
+and, outside, a 14 mm spot-face 0.4 mm deep that gives the washer and nut a flat seat on
+the sloping wall (`enclosure/README.md`, "Encoders (p64b only)", and
+`enclosure/src/p64_enclosure_v7.scad`). The pegs only key the board so it cannot turn; the
+washer and nut clamp it and take the knob's push. The boards go in before the panel, which
+closes the shell's open front.
 
 1. Firmware accepted on the bench, tier 2 done, power off.
-2. Plug the 4397 (or the spliced harness) into board 1 and the 4401 between the boards
-   before mounting; the sockets are hard to reach afterwards.
-3. Board 1 (0x36, with the resistors) goes to the right-hand position (seen from the
-   back), nearest the controller's GPIO socket; board 2 to the left. If the shell shows
-   the roles should be the other way round, `encoders.swap` fixes it without rewiring.
-4. From inside, push each board onto its pegs with the shaft through the wall; from
-   outside, washer and nut on the bushing, hand-tight, at most 10 kgf·cm.
-5. Knobs on, black mark up, set screw onto the flat of the D-shaft with the 2 mm hex
+2. First time only, on the fresh print: lay the washer and nut in a spot-face. Their outer
+   diameter and the nut across its corners have not been measured
+   (`enclosure/input/measurements.md`); an M7 set is about 11 to 12 mm, the seat is 14.
+3. Plug the 4397 (or the spliced harness) into board 1 and the 4401 between the boards
+   before mounting: once mounted the STEMMA QT sockets face up and down, 4.5 mm from the
+   side wall, and are hard to reach.
+4. Board 1 (0x36, with the resistors) goes to the right-hand position (seen from the
+   back), nearest the controller's GPIO socket; board 2 to the left. Turn each board with
+   its two sockets up and down and the header pads towards the centre of the shell; that
+   is the only orientation the shell leaves room for. If the shell shows the roles should
+   be the other way round, `encoders.swap` fixes it without rewiring.
+5. From inside, push each board onto its four pegs with the shaft through the 7.4 mm
+   hole, until the bushing base sits flat on the inner wall. A tight peg (elephant foot)
+   gets a light trim, not force.
+6. From outside, washer and nut on the bushing, hand-tight, at most 10 kgf·cm. With the
+   shell on its side, a finger inside holds the board while the nut starts. The 6.0 mm
+   bushing leaves 4.0 mm of thread for the 2.5 mm washer and nut.
+7. Knobs on, black mark up, set screw onto the flat of the D-shaft with the 2 mm hex
    key.
-6. Route the harness from the controller's GPIO socket (on the controller's right edge
+8. Route the harness from the controller's GPIO socket (on the controller's right edge
    at about the encoders' height) to board 1; coil the slack flat against the back wall,
-   away from the panel ribbon and the USB adapters; the board-to-board cable along the
-   bottom.
-7. Connect the chain before sliding the panel in; close the shell; run
-   `encoders_smoke.py` again with the shell closed, both knobs.
+   away from the controller's power leads and the two USB-C adapters; the board-to-board
+   cable along the bottom (section 6.3).
+9. Connect the chain to the GPIO socket while the panel is still outside the shell, then
+   slide the panel in (controller at the bottom) and fit the six M3 x 10 screws, as in
+   `enclosure/README.md`, "Assembly". The pin stubs under each board reach 3.0 mm into
+   the 4.1 mm left to the panel frame, so the panel seats clear of them.
+10. Run `encoders_smoke.py` again with the shell closed, both knobs.
+
+To take a board out: panel out, knob off, nut and washer off, then the board lifts off
+its pegs.
+
+The knobs are the deepest point of the shell, 13 mm past its bottom edge: the display
+stands as p64a does, but laid on its back it rests on the knobs.
 
 ## 8. What can go wrong
 
@@ -268,4 +293,5 @@ v2 section, and `enclosure/src/p64_enclosure_v6.scad`).
 - Adafruit seesaw register map: https://github.com/adafruit/Adafruit_Seesaw
 - Adafruit 5528 knob (6 mm bore, 2 mm hex set screw): https://www.adafruit.com/product/5528
 - ESP32-S3 datasheet, VIH min 0.75 VDD; strapping pins IO45/IO46.
-- Shell: `enclosure/README.md` (v2 encoder section, v6) and `enclosure/src/p64_enclosure_v6.scad`.
+- Shell: `enclosure/README.md` ("Encoders (p64b only)" and "Assembly") and
+  `enclosure/src/p64_enclosure_v7.scad`, rendered as `src/p64_enclosure_v7b.scad`.
