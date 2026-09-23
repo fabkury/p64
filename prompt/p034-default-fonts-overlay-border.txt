@@ -1,0 +1,17 @@
+Thanks.
+
+Yes, I have added Everyday Ample to the fonts folder.
+
+Now I want you to do two things:
+ 1. Incorporate Everyday Ample as a font choice, including for the clock overlay.
+ 2. Define "Everyday Standard" and "Everyday Ample" as "the firmware's default fonts". By that I mean all text that gets displayed on the screen, outside of the clock overlay or any widget. I mean system messages such as "Wifi ok" or related information. The default firmware font for regular text should be Everyday Standard, while Everyday Ample can be used for shorter texts deserving a bigger font.
+ 3. Incorporate new settings for the clock overlay:
+  3.a. border opacity (integer from 1 to 255, default 255)
+  3.b. border color (configurable similarly to how the clock overlay color is configurable)
+ 
+ 
+In other words, we are:
+ - Improving the aesthetics of the firmware as a whole, by incorporating the Everyday Standard and Everyday Ample fonts as the "default firmware fonts".
+ - Elevating the clock overlay to a first-class feature, given its importance as something that, when turned on, is displayed continuously and on top of everything (hence it needs to be exactly the way the user wants).
+
+Once done, please flash the new firmware onto the device.
