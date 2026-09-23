@@ -26,8 +26,8 @@ unassigned; a settings switch swaps A and B once the shell shows which knob is l
 
 On hand (2026-09-21): the two 5880 boards, the two 5528 knobs, the 4209 and 4397 cables
 (150 mm), the 4399 cable (50 mm), the 2.2 k resistors, the ELEGOO breadboards, a
-multimeter, a soldering iron with solder, jumper wires or header pins (the 5880 bags
-include a short header strip each).
+multimeter, fine tweezers, jumper wires or header pins (the 5880 bags include a short
+header strip each). No soldering iron yet (2026-09-23).
 
 Still needed:
 
@@ -37,8 +37,26 @@ Still needed:
 | SH-SH cable, 200 mm (Adafruit 4401) | board to board inside the shell | the two knob positions are 94 mm apart and the sockets face up/down; the 50 mm 4399 is for the bench only |
 | Electrical tape or 3 mm heat-shrink | wrapping the cable joints | tape is fine |
 | Tier 2 only: 1/4 W 2.2 k resistors (optional) | neater on the board than 1/2 W | the 1/2 W parts work, they are just bulky |
-| Tier 2 splice only: wire cutters/strippers, 2 mm heat-shrink, a lighter or heat gun | joining the cables | only if the pin-to-socket joints are not wanted |
-| Soldering consumables | flux (a pen), a damp sponge or brass wool, isopropyl alcohol | flux makes the jumper bridge easy |
+| Tier 2 splice only: wire strippers, 2 mm heat-shrink, a lighter or heat gun | joining the cables | only if the pin-to-socket joints are not wanted |
+
+The soldering kit, also still needed. The picks are examples chosen on 2026-09-23 for this
+project's three small jobs (a surface-mount bridge, two through-hole resistors, perhaps a
+rework); any part meeting the spec does:
+
+| Part | Spec | Example | Note |
+|---|---|---|---|
+| Soldering iron | temperature-controlled, fine conical or small chisel tip | Pinecil V2 (ships with the TS-B2 short tip, fine enough for A0) | runs on any USB-C PD charger of 65 W or more (12 to 20 V) with a C-to-C cable rated 3 A or more; the Miniware TS101 is the equal, dearer alternative |
+| Iron stand | holds the hot iron between joints | any "TS100 / Pinecil" stand | the Pinecil comes without one |
+| Solder | leaded 63/37, rosin flux core, 0.8 mm (0.031") | Kester 44, 1 oz dispense pak (24-6337-0027) | eutectic: no pasty range, the most forgiving on 0.3 mm pads; 1 oz is a lifetime of this project; avoid unbranded "60/40" spools |
+| Flux pen | rosin or no-clean | Kester 951 or MG Chemicals 8341 | makes the A0 bridge a one-touch job, and pulls an A0/A1 bridge apart |
+| Tip cleaner | brass wool in a holder | Hakko 599B-02 | does not cool the tip as a wet sponge does |
+| Solder wick | desoldering braid, 2 mm | Chemtronics Soder-Wick #2 or MG Chemicals | removes surplus solder (section 8) |
+| Flush side cutters | small, flush-cutting | Hakko CHP-170 | trims the resistor leads (section 6.1) |
+| Isopropyl alcohol | 91 to 99 %, with cotton swabs | any | cleans the flux off |
+| Safety glasses | any | | clipped leads fly |
+
+Not needed: a fume extractor (a window or a fan is enough for five joints), a
+helping-hands clip (tape holds the board), spare tips, a silicone mat.
 
 ## 2. Electrical summary
 
@@ -69,13 +87,12 @@ one blob of solder. Do it before the bench build, on the board that will be knob
 
 ### 3.1 Setup
 
-- Iron at 320 to 350 °C (leaded 63/37 solder) or 350 to 380 °C (lead-free). A fine
-  conical or small chisel tip. Ventilate; do not breathe the smoke; wash hands after
-  leaded solder.
-- Tin the tip: melt a little solder onto it, wipe on the damp sponge or brass wool; the
-  tip should be shiny.
-- Board on the bench, back side up, held down with a bit of tape or in a helping-hands
-  clip. Find the three jumpers labelled A0, A1, A2 (Adafruit's pinout page); each is a
+- Iron at 330 °C for leaded 63/37 solder (the range is 320 to 350 °C; lead-free would
+  need 350 to 380 °C). A fine conical or small chisel tip (the Pinecil's TS-B2). Ventilate;
+  do not breathe the smoke; wash hands after leaded solder.
+- Tin the tip: melt a little solder onto it, wipe it in the brass wool; the tip should be
+  shiny.
+- Board on the bench, back side up, held down with a bit of tape. Find the three jumpers labelled A0, A1, A2 (Adafruit's pinout page); each is a
   pair of small pads with a narrow gap. Only A0 is touched.
 
 ### 3.2 The bridge
@@ -88,14 +105,16 @@ one blob of solder. Do it before the bench build, on the board that will be knob
    sitting on one pad, and nothing touching the neighbouring A1 pads or any trace.
 5. If it bridged only one pad, add flux and touch again. If it bridged A0 and A1
    together, drag the iron tip across the excess to pull it away, or add flux and wipe
-   the tip along the gap; the surplus follows the tip.
+   the tip along the gap; the surplus follows the tip. If that fails, lay solder wick on
+   the bridge and press the iron on the wick for two seconds: it soaks the solder up;
+   then start again from step 1.
 6. Clean the flux with isopropyl alcohol on a cotton swab.
 
 ### 3.3 Checks
 
 - Multimeter in continuity mode across the two A0 pads: beep.
 - Continuity between the A0 pads and the neighbouring A1 pads: no beep.
-- The real test is the probe firmware (section 6): the board must answer at 0x37, and
+- The real test is the probe firmware (section 5): the board must answer at 0x37, and
   the NeoPixel colour tells which board is which.
 - Mark the board (a dot of paint or tape on the edge) as "B / 0x37".
 
@@ -280,7 +299,7 @@ stands as p64a does, but laid on its back it rests on the knobs.
 | Rows read 2.2 V with both boards | a pull-up missing or in the wrong row | resistor legs in rows 5 / 10 and the + rail |
 | Knob B works, knob A does not, or vice versa | the 4399 / 4401 not seated | reseat; the probe re-polls a missing board every 5 s |
 | `flash.ps1` cannot enter download mode | IO46 high at reset | pull the four 4209 pins (or open the joints), flash, replace |
-| Solder bridge across A0 and A1 | too much solder | flux and drag the tip to pull the excess |
+| Solder bridge across A0 and A1 | too much solder | flux and drag the tip to pull the excess; if it stays, solder wick, then redo the bridge |
 | Device reboots when a knob is turned | the poll task touched flash (NVS) | brightness through the settings path from the show loop only |
 | Count runs backwards | sign convention | `encoders.invert` |
 
