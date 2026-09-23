@@ -31,6 +31,18 @@ uint32_t draw_clock(gfx::Frame &out, const system::Settings &s, const tm *time);
 // 0; and the drawing, HH:MM in the chosen corner with an optional black outline.
 uint32_t overlay_key(const system::Settings &s, const tm &t);
 void draw_overlay(gfx::Frame &frame, const system::Settings &s, const tm &t);
+
+// The overlay drawn once and stamped on every frame: the player draws it on each frame of
+// an animation, and redrawing the glyphs (with the outline) and converting the time again
+// each time cost about 380 us a frame on the device (2026-09-23). Built when the key
+// changes; stamping gives the same pixels as draw_overlay(). About 4 KB: keep it in PSRAM.
+struct OverlaySprite {
+  int x0 = 0, y0 = 0, x1 = -1, y1 = -1;  // the mask's inked box, inclusive (empty when x1 < x0)
+  gfx::Rgb text, outline;
+  uint8_t mask[gfx::Frame::width() * gfx::Frame::height()] = {};  // gfx::fonts::kMaskText / kMaskOutline / 0
+};
+void build_overlay(OverlaySprite &out, const system::Settings &s, const tm &t);
+void stamp_overlay(gfx::Frame &frame, const OverlaySprite &sprite);
 // The weather: the forecast `f` as of `now` (monotonic, like f.fetched_us), or why not.
 void draw_weather(gfx::Frame &out, const system::Settings &s, const weather_model::Forecast &f,
                   const std::string &error, int64_t now);

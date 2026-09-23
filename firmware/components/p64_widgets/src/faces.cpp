@@ -3,8 +3,10 @@
 // fetches the data and the time and asks these for the pixels.
 #include "faces.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "analogue.hpp"
 #include "clock_format.hpp"
@@ -49,17 +51,67 @@ uint32_t overlay_key(const system::Settings &s, const tm &t) {
   return h ? h : 1;
 }
 
-void draw_overlay(Frame &frame, const system::Settings &s, const tm &t) {
-  const gfx::fonts::Font &font = overlay_font(s.clock_overlay.font);
-  const std::string text = clock_format::time_text(t, s.clock_overlay.h24, false);
-  const int w = gfx::fonts::width(font, text, 1);
-  const int h = gfx::fonts::cap_height(font, 1);
+namespace {
+
+// Where the overlay's text goes: its font, text and top-left corner.
+struct OverlayLayout {
+  const gfx::fonts::Font *font;
+  std::string text;
+  int x, y;
+};
+
+OverlayLayout overlay_layout(const system::Settings &s, const tm &t) {
+  OverlayLayout l{&overlay_font(s.clock_overlay.font), clock_format::time_text(t, s.clock_overlay.h24, false), 0, 0};
+  const int w = gfx::fonts::width(*l.font, l.text, 1);
+  const int h = gfx::fonts::cap_height(*l.font, 1);
   const int margin = 2;  // one pixel plus the outline
-  int x = margin, y = margin;
-  if (s.clock_overlay.corner == system::Corner::TopRight || s.clock_overlay.corner == system::Corner::BottomRight) x = Frame::width() - w - margin;
-  if (s.clock_overlay.corner == system::Corner::BottomLeft || s.clock_overlay.corner == system::Corner::BottomRight) y = Frame::height() - h - margin;
+  l.x = l.y = margin;
+  if (s.clock_overlay.corner == system::Corner::TopRight || s.clock_overlay.corner == system::Corner::BottomRight) l.x = Frame::width() - w - margin;
+  if (s.clock_overlay.corner == system::Corner::BottomLeft || s.clock_overlay.corner == system::Corner::BottomRight) l.y = Frame::height() - h - margin;
+  return l;
+}
+
+}  // namespace
+
+void draw_overlay(Frame &frame, const system::Settings &s, const tm &t) {
+  const OverlayLayout l = overlay_layout(s, t);
   const Rgb outline = gfx::kBlack;
-  gfx::fonts::draw(frame, font, x, y, text, s.clock_overlay.colour, 1, s.clock_overlay.outline ? &outline : nullptr);
+  gfx::fonts::draw(frame, *l.font, l.x, l.y, l.text, s.clock_overlay.colour, 1, s.clock_overlay.outline ? &outline : nullptr);
+}
+
+void build_overlay(OverlaySprite &out, const system::Settings &s, const tm &t) {
+  const OverlayLayout l = overlay_layout(s, t);
+  std::memset(out.mask, 0, sizeof(out.mask));
+  gfx::fonts::draw_mask(out.mask, *l.font, l.x, l.y, l.text, 1, s.clock_overlay.outline);
+  out.text = s.clock_overlay.colour;
+  out.outline = gfx::kBlack;
+  out.x0 = Frame::width();
+  out.y0 = Frame::height();
+  out.x1 = out.y1 = -1;
+  for (int y = 0; y < Frame::height(); ++y) {
+    for (int x = 0; x < Frame::width(); ++x) {
+      if (!out.mask[y * Frame::width() + x]) continue;
+      out.x0 = std::min(out.x0, x);
+      out.x1 = std::max(out.x1, x);
+      out.y0 = std::min(out.y0, y);
+      out.y1 = std::max(out.y1, y);
+    }
+  }
+}
+
+void stamp_overlay(Frame &frame, const OverlaySprite &sprite) {
+  uint8_t *px = frame.pixels();
+  for (int y = sprite.y0; y <= sprite.y1; ++y) {
+    const uint8_t *m = &sprite.mask[y * Frame::width()];
+    for (int x = sprite.x0; x <= sprite.x1; ++x) {
+      if (!m[x]) continue;
+      const Rgb c = m[x] == gfx::fonts::kMaskText ? sprite.text : sprite.outline;
+      uint8_t *p = &px[(y * Frame::width() + x) * 3];
+      p[0] = c.r;
+      p[1] = c.g;
+      p[2] = c.b;
+    }
+  }
 }
 
 std::string temperature_text(float value, bool decimals) {

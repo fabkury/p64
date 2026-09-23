@@ -5,6 +5,7 @@
 #include <ctime>
 #include <deque>
 #include <mutex>
+#include <new>
 
 #include "analogue.hpp"
 #include "clock_format.hpp"
@@ -239,21 +240,34 @@ const char *widget_name(system::WidgetKind kind) {
   }
 }
 
+// The overlay as last built, touched only by the player task (which calls overlay_key()
+// and then draw_overlay() for each frame); allocated once in PSRAM.
+namespace {
+faces::OverlaySprite *g_sprite = nullptr;
+uint32_t g_sprite_key = 0;
+}  // namespace
+
 uint32_t overlay_key() {
   const std::shared_ptr<const system::Settings> view = system::settings_view();
   const system::Settings &s = *view;
   if (!s.clock_overlay.enabled || !net::clock::synced()) return 0;
   tm t;
   if (!local_time_at(0, t)) return 0;
-  return faces::overlay_key(s, t);
+  const uint32_t key = faces::overlay_key(s, t);
+  if (key != g_sprite_key) {
+    if (!g_sprite) {
+      void *p = heap_caps_malloc(sizeof(faces::OverlaySprite), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+      if (!p) return 0;  // no overlay rather than a failed frame
+      g_sprite = new (p) faces::OverlaySprite();
+    }
+    faces::build_overlay(*g_sprite, s, t);
+    g_sprite_key = key;
+  }
+  return key;
 }
 
 void draw_overlay(Frame &frame) {
-  const std::shared_ptr<const system::Settings> view = system::settings_view();
-  const system::Settings &s = *view;
-  tm t;
-  if (!s.clock_overlay.enabled || !local_time_at(0, t)) return;
-  faces::draw_overlay(frame, s, t);
+  if (g_sprite && g_sprite_key) faces::stamp_overlay(frame, *g_sprite);
 }
 
 Reading sensor() {

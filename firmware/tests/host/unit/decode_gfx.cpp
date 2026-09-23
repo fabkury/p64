@@ -231,6 +231,26 @@ TEST_CASE("fonts") {
     // The overlay's fonts keep HH:MM small enough for a corner.
     if (f.overlay) CHECK(width(f, "23:59", 1) <= 32);
   }
+  // The mask gets the same pixels as the frame, at any scale, a missing glyph included.
+  for (int scale = 1; scale <= 3; ++scale) {
+    for (const bool outlined : {false, true}) {
+      Frame g;
+      g.clear(Rgb{7, 7, 7});
+      const Rgb halo{0, 0, 0}, ink{255, 255, 255};
+      draw(g, *ev, 3, 3, "4:", ink, scale, outlined ? &halo : nullptr);
+      static uint8_t mask[64 * 64];
+      std::memset(mask, 0, sizeof(mask));
+      draw_mask(mask, *ev, 3, 3, "4:", scale, outlined);
+      int mismatches = 0;
+      for (int y = 0; y < 64; ++y)
+        for (int x = 0; x < 64; ++x) {
+          const uint8_t m = mask[y * 64 + x];
+          const Rgb want = m == kMaskText ? ink : m == kMaskOutline ? halo : Rgb{7, 7, 7};
+          mismatches += g.get(x, y) == want ? 0 : 1;
+        }
+      CHECK_EQ(mismatches, 0);
+    }
+  }
   CHECK_EQ(by_name("everyday-slight")->size, 5);
   CHECK_EQ(by_name("everyday-standard")->size, 6);
   CHECK(!by_name("high-birth")->overlay);

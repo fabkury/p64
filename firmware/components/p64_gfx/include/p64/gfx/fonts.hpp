@@ -52,6 +52,13 @@ int width(const Font &font, const std::string &text, int scale = 1);
 // clock overlay uses it to read over any artwork). Returns the width drawn.
 int draw(Frame &frame, const Font &font, int x, int y, const std::string &text, Rgb colour, int scale = 1,
          const Rgb *outline = nullptr);
+// The same drawing into a panel-sized mask (row-major, Frame::width() * Frame::height()
+// bytes): kMaskText where the text lands, kMaskOutline where only its outline does,
+// other bytes untouched. draw() with colours applied over it gives the same pixels.
+constexpr uint8_t kMaskOutline = 1;
+constexpr uint8_t kMaskText = 2;
+int draw_mask(uint8_t *mask, const Font &font, int x, int y, const std::string &text, int scale = 1,
+              bool outline = false);
 int draw_centred(Frame &frame, const Font &font, int y, const std::string &text, Rgb colour, int scale = 1,
                  const Rgb *outline = nullptr);
 

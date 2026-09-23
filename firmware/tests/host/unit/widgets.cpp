@@ -2,6 +2,9 @@
 #include "common.hpp"
 #include "faces.hpp"
 
+#include <cstring>
+#include <memory>
+
 namespace {
 
 using p64::gfx::Frame;
@@ -351,6 +354,43 @@ TEST_CASE("faces: every font fits the digital clock; a date too wide falls back 
       CHECK_EQ(lit_rect(f, 0, 0, 0, 63), 0);
       CHECK_EQ(lit_rect(f, 63, 0, 63, 63), 0);
       CHECK_EQ(lit_rect(f, 0, 63, 63, 63), 0);
+    }
+  }
+}
+
+TEST_CASE("faces: the cached overlay stamps the same pixels as drawing it directly") {
+  // The overlay is drawn once per minute into an OverlaySprite and stamped on every frame
+  // (2026-09-23: redrawing it per frame cost about 380 us on the device).
+  auto sprite = std::make_unique<faces::OverlaySprite>();
+  const tm t = at(23, 58, 0);
+  const p64::system::Corner corners[] = {p64::system::Corner::TopLeft, p64::system::Corner::TopRight,
+                                         p64::system::Corner::BottomLeft, p64::system::Corner::BottomRight};
+  for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
+    for (const p64::system::Corner corner : corners) {
+      for (const bool outline : {true, false}) {
+        for (const bool h24 : {true, false}) {
+          p64::system::Settings s;
+          s.clock_overlay.font = p64::gfx::fonts::kFonts[i]->name;
+          s.clock_overlay.corner = corner;
+          s.clock_overlay.outline = outline;
+          s.clock_overlay.h24 = h24;
+          s.clock_overlay.colour = Rgb{200, 100, 50};
+          CAPTURE(s.clock_overlay.font);
+          CAPTURE(static_cast<int>(corner));
+          CAPTURE(outline);
+          Frame direct, stamped;
+          for (int y = 0; y < 64; ++y)  // an artwork-like background with black in it
+            for (int x = 0; x < 64; ++x) direct.set(x, y, Rgb{static_cast<uint8_t>(x * 4), static_cast<uint8_t>(y * 4), static_cast<uint8_t>((x ^ y) & 1 ? 0 : 99)});
+          stamped.copy_from(direct);
+          faces::draw_overlay(direct, s, t);
+          faces::build_overlay(*sprite, s, t);
+          faces::stamp_overlay(stamped, *sprite);
+          CHECK(std::memcmp(direct.data(), stamped.data(), Frame::bytes()) == 0);
+          CHECK(sprite->x0 <= sprite->x1);
+          CHECK(sprite->x0 >= 1);  // inside the margin
+          CHECK(sprite->x1 <= 62);
+        }
+      }
     }
   }
 }

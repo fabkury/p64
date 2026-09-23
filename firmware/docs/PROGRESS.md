@@ -597,6 +597,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   High Birth on the digital and analogue faces (frames read back through
   `/api/v1/frame`), the menus filled on the Settings page; `widgets_smoke` (with the new
   font-change check: 30 vs 58 overlay pixels within 1.5 s) and `ui_smoke` pass.
+- 2026-09-23, the clock overlay's per-frame cost: measured on the device with temporary
+  logging in the player (US/Eastern, animated WebP): the overlay cost about 380 us per
+  frame, 145 us in the key (the settings and `local_time_at`, 87 to 94 us once the decode
+  has evicted the cache, 31 us warm) and 230 to 250 us in the drawing, which converted
+  the time again and redrew the glyphs and the outline (outline 46 us warm); decoding the
+  same frames took 2.7 to 24 ms. Now the key converts the time once and, when it changes,
+  draws the overlay into a cached `faces::OverlaySprite` (a mask over the panel, 4 KB in
+  PSRAM, built by the new `gfx::fonts::draw_mask`); `draw_overlay()` only stamps it.
+  Re-measured the same way: drawing 44 to 58 us, key unchanged at 134 to 150 us, so about
+  190 us per frame; the rebuild at each minute takes the key to 620 to 690 us once. Host
+  tests: the stamped overlay equals the direct drawing for every font, corner, outline and
+  12/24 h setting, and the mask equals the frame drawing at scales 1 to 3 (108 cases).
+  `widgets_smoke` and `api_smoke` pass (internal heap 81 KB free). Left: converting the
+  time once a minute instead of once a frame (most of the 140 us that remain).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
