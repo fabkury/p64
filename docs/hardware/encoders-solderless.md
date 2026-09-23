@@ -21,8 +21,8 @@ Yes, with one encoder the project is solderless, in two steps:
   1. the controller's IO45/IO46 pull-downs turn out not to be fitted: then no resistors
      are needed and the harness is just the two cables mated pin-to-socket;
   2. the resistors are needed, and a tiny breadboard (46 x 36 x 10 mm) rides inside the
-     shell: this needs a shell revision (v7) with a pocket for it, because v6 has no free
-     10 mm-deep flat of that size (section 7.2);
+     shell: this needs a shell revision with a pocket for it, because the v7b shell (like
+     v6 before it) has no free 10 mm-deep flat of that size (section 7.2);
   3. the resistors are needed, and the Adafruit 5880 is swapped for a SparkFun Qwiic
      Twist, which carries its own 2.2 k pull-ups: no resistors, no breadboard, no solder,
      but a different board than the one on the table (section 7.3 and the appendix).
@@ -298,44 +298,63 @@ step 5:
   box, and the solderless junction box is a tiny breadboard, 46 x 36 x 10 mm (Adafruit
   65 or the same SYB-170 from any supplier), stuck to the inside of the shell's back
   wall with foam tape, with the same layout as section 4 (rows 5 and 10, the two rails,
-  two resistors, the 4209 pins and header pins for the 4397). Where it goes: the v6
-  cavity has no free flat 10 mm deep and 46 x 36 mm in size. Measured against the v6
-  source: the controller occupies x = -16..26, y = -53..-3 mm (shell coordinates, seen
-  from the back) and stands 7.7 mm behind the frame face; the encoder board takes
+  two resistors, the 4209 pins and header pins for the 4397). Where it goes: the v7b
+  cavity has no free flat 10 mm deep and 46 x 36 mm in size. Measured against the v7
+  source (`enclosure/src/p64_enclosure_v7.scad`, echo lines, 2026-09-23; v7 did not
+  change the cavity there, v6 gave the same numbers): the controller occupies
+  x = -16..26, y = -53..-3 mm (shell coordinates, seen from the back) and stands 7.7 mm behind the frame face; the encoder board takes
   x = 34..60, y = -38..-12 (the right-hand position; the left mirror is free with one
   knob); above the controller the cavity is 12.9 mm deep at y = -3 and drops below 10 mm
-  around y = +25. So the breadboard needs a v7 shell with a local pocket about 5 mm
-  deeper over roughly x = -25..25, y = 0..40, on the back face above the controller. That
-  revision also drops the unused second encoder hole. Until v7 exists, path 2 runs on the
-  bench only.
+  around y = +25. So the breadboard needs a shell revision after v7 with a local pocket
+  about 5 mm deeper over roughly x = -25..25, y = 0..40, on the back face above the
+  controller. v7 went to the USB-C window and has no such pocket; until a revision has
+  one, path 2 runs on the bench only.
 
 ### 7.3 Path 3: the Qwiic Twist instead
 
 If the pull-downs are present and a shell pocket is not wanted, the SparkFun Qwiic Twist
 (DEV-15083) replaces the 5880: it has 2.2 k pull-ups of its own (SparkFun's hookup
 guide), which puts the idle level at 2.70 V, above the 2.475 V threshold with a small
-margin. Then the harness is the mated cables alone, in the v6 shell as it is, except that
-the Twist board is 25.4 x 30.5 mm with a different hole pattern, so the encoder posts of
-v6 (made for the 5880) need redoing in v7 anyway. The knob fits: the Twist's encoder has a
+margin. Then the harness is the mated cables alone, with no junction box, but the Twist
+board is 25.4 x 30.5 mm with a different hole pattern, so the v7b encoder posts (made for
+the 5880) do not fit it: the Twist needs a shell revision with its own posts. The knob fits: the Twist's encoder has a
 6 mm shaft and the 5528 knob grips any 6 mm shaft with its set screw. The Twist's RGB LED
 sits under the knob and is simply left off. The appendix has its wiring and firmware.
 
 ### 7.4 Mounting the knob
 
 1. Firmware first: finish stages B and C on the bench, then power off.
-2. From inside the shell push the board onto its four pegs with the shaft through the
-   7.4 mm hole (the v6 right-hand position; the board is turned so its two STEMMA QT
-   sockets face up and down, `enc_rot`).
-3. From outside fit the washer and the nut on the 5880's bushing, hand-tight, at most
-   10 kgf·cm. The nut takes the knob's push force; the pegs only stop the board turning.
-4. Slide the knob on, black mark up, and tighten the set screw with the 2 mm hex key
+2. First time only, on the fresh v7b print: lay the washer and nut in the spot-face. Their
+   outer diameter and the nut across its corners have not been measured
+   (`enclosure/input/measurements.md`); an M7 set is about 11 to 12 mm, the seat is 14.
+3. Plug the harness's 4397 into the 5880 before mounting: once mounted the STEMMA QT
+   sockets face up and down, 4.5 mm from the side wall, and are hard to reach.
+4. From inside the shell push the board onto its four pegs with the shaft through the
+   7.4 mm hole, until the bushing base sits flat on the inner wall. Use the v7b right-hand
+   position seen from the back (19 mm in from the side edge, 41 mm up from the bottom
+   edge), nearest the controller's GPIO socket; turn the board with its two sockets up and
+   down and the header pads towards the centre (`enc_rot`), the only orientation the shell
+   leaves room for. A tight peg (elephant foot) gets a light trim, not force. The
+   left-hand position's hole stays open; a second board can go there later
+   ([the soldered option](encoders-soldered.md)).
+5. From outside fit the washer and the nut on the 5880's bushing, hand-tight, at most
+   10 kgf·cm; with the shell on its side, a finger inside holds the board while the nut
+   starts. The nut takes the knob's push force; the pegs only stop the board turning.
+6. Slide the knob on, black mark up, and tighten the set screw with the 2 mm hex key
    onto the flat of the D-shaft.
-5. Route the harness: the GPIO socket is on the controller's right edge at about the
+7. Route the harness: the GPIO socket is on the controller's right edge at about the
    encoder's height, so the 300 mm of cable is far more than the 20 mm gap; coil the
-   slack flat against the back wall, away from the panel's ribbon and the USB adapters,
-   and keep it off the encoder board's solder side.
-6. Connect the chain before sliding the panel in, then run `encoders_smoke.py` once
-   more with the shell closed.
+   slack flat against the back wall, away from the controller's power leads and the two
+   USB-C adapters, and keep it off the encoder board's solder side.
+8. Connect the harness to the GPIO socket while the panel is still outside the shell,
+   then slide the panel in (controller at the bottom) and fit the six M3 x 10 screws, as
+   in `enclosure/README.md`, "Assembly". The pin stubs under the board reach 3.0 mm into
+   the 4.1 mm left to the panel frame, so the panel seats clear of them.
+9. Run `encoders_smoke.py` once more with the shell closed.
+
+To take the board out: panel out, knob off, nut and washer off, then the board lifts off
+its pegs. The knob is the deepest point of the shell, 13 mm past its bottom edge: the
+display stands as p64a does, but laid on its back it rests on the knob.
 
 ## 8. What can go wrong
 
@@ -379,7 +398,7 @@ breadboard, and the harness of section 7.1 is the whole wiring.
   brightness, press = pause / resume), the Twist is knob B (turn = next / previous,
   press = Makapix like), with a settings switch to swap them once the shell shows which
   is left.
-- **Shell:** v7 must give the Twist its own posts (25.4 x 30.5 mm board, its hole pattern
+- **Shell:** a revision after v7 must give the Twist its own posts (25.4 x 30.5 mm board, its hole pattern
   from SparkFun's Eagle files) at the left position; the right position keeps the 5880's.
 
 ## Sources
@@ -393,4 +412,6 @@ breadboard, and the harness of section 7.1 is the whole wiring.
   https://learn.sparkfun.com/tutorials/qwiic-twist-hookup-guide
 - Adafruit 5528 knob (6 mm bore, 2 mm hex set screw): https://www.adafruit.com/product/5528
 - ESP32-S3 datasheet, VIH min 0.75 VDD; strapping pins IO45/IO46.
-- Shell numbers: `enclosure/src/p64_enclosure_v6.scad` and `enclosure/README.md`.
+- Shell numbers: `enclosure/src/p64_enclosure_v7.scad` (rendered as
+  `src/p64_enclosure_v7b.scad`) and `enclosure/README.md` ("Encoders (p64b only)" and
+  "Assembly").
