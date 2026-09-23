@@ -1,7 +1,7 @@
 # p64_system: the settings document (NVS, JSON, typed), the event bus, the log ring
 # buffer, small persisted state, reboot counters and the crash summary, the internal I2C
-# bus and the RTC, the night schedule rule. docs/architecture.md section 7.
-# night.cpp, rtc_codec.cpp and settings_model.cpp have no ESP-IDF includes (host-tested).
+# bus, the night schedule rule. docs/architecture.md section 7.
+# night.cpp and settings_model.cpp have no ESP-IDF includes (host-tested).
 idf_component_register(
     SRCS
         "src/settings.cpp"
@@ -11,8 +11,6 @@ idf_component_register(
         "src/state_store.cpp"
         "src/reliability.cpp"
         "src/i2c_bus.cpp"
-        "src/rtc.cpp"
-        "src/rtc_codec.cpp"
         "src/night.cpp"
         "src/flash_guard.cpp"
     INCLUDE_DIRS

@@ -41,10 +41,11 @@ JobDisposition job_disposition(bool online, bool is_like, bool is_followed, bool
   return JobDisposition::Fail;
 }
 
-bool sweep_due(uint32_t mtime, uint32_t now, uint32_t older_than_s) {
-  if (mtime < kPlausibleEpoch || mtime > now + 86400u) return true;  // written under a wrong clock
-  if (mtime >= now) return false;                                    // up to a day ahead: recent
-  return now - mtime > older_than_s;
+SweepVerdict sweep_verdict(int64_t mtime, int64_t now, uint32_t older_than_s, int64_t floor) {
+  if (mtime > now + 86400) return SweepVerdict::Suspect;
+  if (mtime < floor) return SweepVerdict::Delete;  // written under an untrusted clock
+  if (mtime >= now) return SweepVerdict::Keep;     // up to a day ahead: recent
+  return now - mtime > older_than_s ? SweepVerdict::Delete : SweepVerdict::Keep;
 }
 
 }  // namespace p64::makapix::policy

@@ -38,7 +38,7 @@ Principles, in priority order:
 
 | Part | Facts | Used by v1 |
 |---|---|---|
-| Driver board | Waveshare ESP32-S3-RGB-Matrix: ESP32-S3-WROOM-2-N32R16V, 32 MB octal flash, 16 MB octal PSRAM, HUB75 header, two USB-C (POWER, USB), BOOT button, IMU (6-axis), RTC, temperature/humidity sensor, audio codec with two microphones, speaker output, TF slot. Native USB Serial/JTAG on the USB port. | Panel, BOOT, IMU, RTC, temperature/humidity sensor, TF slot, USB console |
+| Driver board | Waveshare ESP32-S3-RGB-Matrix: ESP32-S3-WROOM-2-N32R16V, 32 MB octal flash, 16 MB octal PSRAM, HUB75 header, two USB-C (POWER, USB), BOOT button, IMU (6-axis), RTC, temperature/humidity sensor, audio codec with two microphones, speaker output, TF slot. Native USB Serial/JTAG on the USB port. | Panel, BOOT, IMU, temperature/humidity sensor, TF slot, USB console (the RTC has no battery and is not used, ADR 0011) |
 | Panel | Waveshare RGB-Matrix-P2-64x64: 4096 RGB LEDs, 2 mm pitch, 1/32 scan, HUB75E, 5 V, 15 W max, 128x128 mm. | Yes |
 | Power | Waveshare PSU-27W-USB-C-B on the POWER port; the USB port takes a computer for console and flashing. Full white at brightness 255 draws close to the panel's 15 W; a USB-only rig cannot supply that (see brightness ceiling). | Yes |
 | Shell | `enclosure/` v4: panel turned 90 degrees clockwise, two rotary encoders on the back planned, panel-mount USB-C sockets. | Rotation default 90; encoders reserved |
@@ -486,12 +486,18 @@ diagnostics.
 
 ### 10.2 Time
 
-NTP (default `pool.ntp.org`, configurable) corrects the on-board RTC, which keeps time
-across reboots and power cuts without network. Time zone: chosen from the IANA list in the
-web UI and mapped by an embedded table to the POSIX rule, so daylight saving is automatic;
-default UTC. A "set time from this browser" action exists for installs with no internet.
-Until the time is known, clock features show `--:--` and Makapix TLS waits (certificates
-need a clock).
+The time is trusted only once an NTP server has answered in the current boot (ADR 0011).
+The on-board RTC has no battery and is not used; there is no way to set the time by hand.
+SNTP asks, in order, the server the router offers over DHCP (option 42), the configured
+server (default `pool.ntp.org`), then `time.google.com` and `time.cloudflare.com`: at boot,
+on every Wi-Fi connection, and every 6 hours. An answer earlier than the firmware's build
+date is refused. Once trusted, the time stays trusted until the next reboot, even if NTP
+stops answering (the status shows the age of the last answer). Until the first answer,
+clock features show `--:--`, and Makapix, the night schedule and the cache sweep wait; the
+log and the web UI say the device is waiting for NTP. Accepted deviation: a file written
+to the card before the first answer (an upload in the first seconds after boot) carries
+FAT's 1980 date. Time zone: chosen from the IANA list in the web UI and mapped by an
+embedded table to the POSIX rule, so daylight saving is automatic; default UTC.
 
 ### 10.3 PIN
 
@@ -529,7 +535,7 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
     each widget's interlude probability.
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
   - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
-    server, set time from browser, PIN, erase Wi-Fi and restart in setup mode.
+    server with the NTP status, PIN, erase Wi-Fi and restart in setup mode.
   - Storage: card status and space, the Makapix cache size and last sweep, root folder,
     the file manager (browse folders, upload,
     create folder, rename, delete, play now), explicit format with confirmation.

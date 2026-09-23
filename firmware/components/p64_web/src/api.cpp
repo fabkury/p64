@@ -177,14 +177,29 @@ cJSON *build_status() {
   cJSON *tm = cJSON_AddObjectToObject(d, "time");
   struct tm t;
   const bool synced = net::clock::local_time(t);
+  const net::clock::Status cs = net::clock::status();
   cJSON_AddBoolToObject(tm, "synced", synced);
   cJSON_AddStringToObject(tm, "source", net::clock::source());
   if (synced) {
     char buf[32];
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &t);
     cJSON_AddStringToObject(tm, "local", buf);
+    cJSON_AddNumberToObject(tm, "last_sync_s", static_cast<double>(cs.last_sync_s));
   }
+  if (cs.waiting_s >= 0) cJSON_AddNumberToObject(tm, "waiting_s", static_cast<double>(cs.waiting_s));
   cJSON_AddStringToObject(tm, "rule", net::clock::posix_rule().c_str());
+  cJSON_AddNumberToObject(tm, "syncs", cs.syncs);
+  cJSON_AddNumberToObject(tm, "rejected", cs.rejected);
+  cJSON_AddNumberToObject(tm, "interval_s", cs.interval_s);
+  cJSON *servers = cJSON_AddArrayToObject(tm, "servers");
+  for (const net::clock::Server &sv : cs.servers) {
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "host", sv.host.c_str());
+    cJSON_AddBoolToObject(o, "dhcp", sv.dhcp);
+    cJSON_AddBoolToObject(o, "answered", (sv.reach & 1) != 0);
+    cJSON_AddNumberToObject(o, "reach", sv.reach);
+    cJSON_AddItemToArray(servers, o);
+  }
 
   const storage::CardInfo c = storage::info();
   cJSON *card = cJSON_AddObjectToObject(d, "card");
@@ -341,21 +356,6 @@ esp_err_t action_factory_reset(httpd_req_t *req) {
   const esp_err_t r = reply_ok(req, d);
   xTaskCreate(factory_reset_task, "factory", 4096, nullptr, 5, nullptr);
   return r;
-}
-
-// "Set time from this browser" (spec 10.2): {"utc": <seconds since 1970>}.
-esp_err_t action_set_time(httpd_req_t *req) {
-  cJSON *body = parse_body(req);
-  if (!body) return ESP_OK;
-  const cJSON *u = cJSON_GetObjectItemCaseSensitive(body, "utc");
-  const double utc = (u && cJSON_IsNumber(u)) ? u->valuedouble : 0;
-  cJSON_Delete(body);
-  if (utc < 1700000000.0 || utc > 4102444800.0) return reply_error(req, "400 Bad Request", "INVALID_ARG", "utc: seconds since 1970, 2023..2100");
-  net::clock::set_manual(static_cast<time_t>(utc));
-  cJSON *d = cJSON_CreateObject();
-  cJSON_AddBoolToObject(d, "synced", net::clock::synced());
-  cJSON_AddStringToObject(d, "source", net::clock::source());
-  return reply_ok(req, d);
 }
 
 esp_err_t diag_imu(httpd_req_t *req) { return reply_ok(req, inputs::imu_json()); }
@@ -671,7 +671,6 @@ void init(const Hooks &hooks) {
       {"/api/v1/action/play", HTTP_POST, action_play, nullptr, false, false, nullptr},
       {"/api/v1/action/reboot", HTTP_POST, action_reboot, nullptr, false, false, nullptr},
       {"/api/v1/action/factory_reset", HTTP_POST, action_factory_reset, nullptr, false, false, nullptr},
-      {"/api/v1/action/set_time", HTTP_POST, action_set_time, nullptr, false, false, nullptr},
       {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
       {"/api/v1/diag/imu", HTTP_GET, diag_imu, nullptr, false, false, nullptr},
       {"/api/v1/update", HTTP_GET, update_get, nullptr, false, false, nullptr},

@@ -228,8 +228,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Now</span><span class="info-value" id="time-now">-</span></div>
         <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Time zone</label><select class="sel" id="timezone" onchange="save({network:{timezone:this.value}})"></select></div>
         <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">NTP server</label><input type="text" class="text-input" style="max-width:220px" id="ntp" onchange="save({network:{ntp_server:this.value.trim()}})"></div>
-        <div class="toggle-row" style="margin-top:8px"><button class="btn" onclick="p64.post('/api/v1/action/set_time',{utc:Math.floor(Date.now()/1000)}).then(function(d){p64.toast('Time set ('+d.source+')')}).catch(function(e){p64.toast(e.message,true)})">Set time from this browser</button></div>
-        <div class="setting-hint">For installs without internet; the on-board clock keeps it across power cuts.</div>
+        <div class="info-row"><span class="info-label">NTP</span><span class="info-value" id="time-ntp">-</span></div>
+        <div class="setting-hint">The time comes only from NTP (UDP port 123): the router's server when it offers one, then this server, then time.google.com and time.cloudflare.com, at boot and every 6 hours. Until the first answer, clocks show --:--, and Makapix, the night schedule and the cache sweep wait.</div>
     </div>
     <div class="section">
         <h3>PIN</h3>
@@ -483,7 +483,10 @@ p64.onStatus(function (d) {
     document.getElementById('net-rssi').textContent = n.connected ? n.rssi + ' dBm' : '-';
     document.getElementById('net-host').textContent = 'http://' + (n.hostname || 'p64') + '.local/';
     var t = d.time || {};
-    document.getElementById('time-now').textContent = t.synced ? (t.local || '').replace('T', ' ') + ' (' + t.source + ')' : 'unknown';
+    document.getElementById('time-now').textContent = t.synced ? (t.local || '').replace('T', ' ') : (t.waiting_s != null ? 'waiting for NTP (' + t.waiting_s + ' s)' : 'waiting for Wi-Fi');
+    document.getElementById('time-ntp').textContent = (t.synced ? 'answered ' + p64.relative(t.last_sync_s || 0) : 'no answer yet') +
+      ((t.servers || []).length ? '; ' + t.servers.map(function (sv) { return sv.host + (sv.dhcp ? ' (router)' : '') + (sv.answered ? ' ✓' : ''); }).join(', ') : '') +
+      (t.rejected ? '; ' + t.rejected + ' refused' : '');
     var c = d.card || {};
     document.getElementById('card-status').textContent = c.mounted ? 'mounted' : ('no card' + (c.error ? ': ' + c.error : ''));
     document.getElementById('card-space').textContent = c.mounted ? p64.fmtBytes(c.free_bytes) + ' free of ' + p64.fmtBytes(c.total_bytes) : '-';

@@ -131,8 +131,8 @@ void weather_task(void *) {
 
 // The local time at a moment on the monotonic clock (frames are rendered ahead).
 bool local_time_at(int64_t due_us, tm &out) {
-  if (!net::clock::synced()) return false;
-  time_t t = time(nullptr);
+  time_t t;
+  if (!net::clock::now_utc(t)) return false;
   if (due_us > 0) {
     const int64_t delta = due_us - esp_timer_get_time();
     t += static_cast<time_t>(delta / kSecond);

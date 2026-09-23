@@ -165,45 +165,69 @@ namespace {
 
 enum class Folder : uint8_t { Cache, Downloads, Channels };
 
-void sweep_folder(const std::string &dir, Folder kind, uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &st,
-                  const std::function<void(const std::string &name)> &on_artwork_deleted) {
-  for (const storage::FileInfo &f : storage::list(dir)) {
-    if (f.directory) continue;
-    const std::string path = dir + "/" + f.name;
-    struct stat sb = {};
-    if (stat(path.c_str(), &sb) != 0) continue;
-    ++st.examined;
-    st.bytes += f.size;
-    const uint32_t mtime = sb.st_mtime > 0 ? static_cast<uint32_t>(sb.st_mtime) : 0;
-    if (!policy::sweep_due(mtime, now, older_than_s)) continue;  // the rule: policy.cpp, host-tested
-    if (!dry_run) {
-      std::string error;
-      if (!storage::remove_path(path, error)) {  // e.g. open by the loader this instant: next night
-        ESP_LOGW(TAG, "sweep: %s not removed: %s", path.c_str(), error.c_str());
-        continue;
-      }
+struct SweptFile {
+  const std::string &path;
+  const storage::FileInfo &info;
+  Folder kind;
+  int64_t mtime;
+};
+
+// Calls `visit` for every file of cache/ (its shards), downloads/ and channels/ until it
+// returns false; yields between shards so downloads and refreshes get their turn.
+bool for_each_swept_file(const std::function<bool(const SweptFile &)> &visit) {
+  const auto folder = [&](const std::string &dir, Folder kind) {
+    for (const storage::FileInfo &f : storage::list(dir)) {
+      if (f.directory) continue;
+      const std::string path = dir + "/" + f.name;
+      struct stat sb = {};
+      if (stat(path.c_str(), &sb) != 0) continue;
+      if (!visit(SweptFile{path, f, kind, static_cast<int64_t>(sb.st_mtime)})) return false;
     }
-    ++st.deleted;
-    st.freed += f.size;
-    if (kind == Folder::Channels) ++st.indexes_deleted;
-    if (kind == Folder::Downloads) ++st.downloads_deleted;
-    if (kind == Folder::Cache) on_artwork_deleted(f.name);
+    return true;
+  };
+  const std::string cache = storage::cache_dir();
+  for (const storage::FileInfo &shard : storage::list(cache)) {
+    if (!shard.directory) continue;
+    if (!folder(cache + "/" + shard.name, Folder::Cache)) return false;
+    vTaskDelay(pdMS_TO_TICKS(2));
   }
+  return folder(storage::downloads_dir(), Folder::Downloads) && folder(storage::channels_dir(), Folder::Channels);
 }
 
 }  // namespace
 
-void sweep(uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &stats,
-           const std::function<void(const std::string &name)> &on_artwork_deleted) {
-  if (!has_card()) return;
-  const std::string cache = storage::cache_dir();
-  for (const storage::FileInfo &shard : storage::list(cache)) {
-    if (!shard.directory) continue;
-    sweep_folder(cache + "/" + shard.name, Folder::Cache, now, older_than_s, dry_run, stats, on_artwork_deleted);
-    vTaskDelay(pdMS_TO_TICKS(2));  // downloads and refreshes get their turn
-  }
-  sweep_folder(storage::downloads_dir(), Folder::Downloads, now, older_than_s, dry_run, stats, on_artwork_deleted);
-  sweep_folder(storage::channels_dir(), Folder::Channels, now, older_than_s, dry_run, stats, on_artwork_deleted);
+bool sweep(int64_t now, uint32_t older_than_s, int64_t floor, bool dry_run, SweepStats &stats,
+           const std::function<void(const std::string &name)> &on_artwork_deleted, std::string &error) {
+  if (!has_card()) return false;
+  // Pass 1: a file from the future means the clock or the card is not what it seems;
+  // then nothing is deleted at all.
+  const bool plausible = for_each_swept_file([&](const SweptFile &f) {
+    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Suspect) return true;
+    error = f.path + " is dated " + std::to_string(f.mtime - now) + " s in the future; nothing deleted";
+    return false;
+  });
+  if (!plausible) return false;
+  // Pass 2: count and delete.
+  for_each_swept_file([&](const SweptFile &f) {
+    ++stats.examined;
+    stats.bytes += f.info.size;
+    // Suspect here too (a file touched between the passes): kept.
+    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Delete) return true;
+    if (!dry_run) {
+      std::string e;
+      if (!storage::remove_path(f.path, e)) {  // e.g. open by the loader this instant: next night
+        ESP_LOGW(TAG, "sweep: %s not removed: %s", f.path.c_str(), e.c_str());
+        return true;
+      }
+    }
+    ++stats.deleted;
+    stats.freed += f.info.size;
+    if (f.kind == Folder::Channels) ++stats.indexes_deleted;
+    if (f.kind == Folder::Downloads) ++stats.downloads_deleted;
+    if (f.kind == Folder::Cache) on_artwork_deleted(f.info.name);
+    return true;
+  });
+  return true;
 }
 
 }  // namespace p64::makapix::cache

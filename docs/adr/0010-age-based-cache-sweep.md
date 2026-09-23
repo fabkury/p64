@@ -11,8 +11,11 @@ cache retention setting (default 30 days). The loader touches a file's mtime whe
 reads it for the show, so mtime means "last played" (a fresh download counts as played).
 A file goes even when a channel of the active playset still lists it: the sweep clears
 the entry's cached flag and the download loop fetches the artwork again when the channel
-needs it. The sweep does not run while the night schedule is off or the clock is not
-synced, and a missed night is simply skipped; nothing is persisted about it.
+needs it. The sweep does not run while the night schedule is off or the time is not
+trusted, and a missed night is simply skipped; nothing is persisted about it. (Amended
+2026-09-23 by ADR 0011: the time is trusted only from NTP, a file date below the file
+floor counts as written under an untrusted clock, and a file dated more than a day in the
+future stops the whole sweep instead of being deleted.)
 
 Why: the spec's original policy (least-recently-played eviction only below a free-space
 watermark) needs an ordering across every cached file and behaves differently on every

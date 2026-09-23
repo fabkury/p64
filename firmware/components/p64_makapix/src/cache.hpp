@@ -33,14 +33,17 @@ uint64_t free_bytes();
 void remove_artwork(const content::MakapixEntry &e);
 
 // Walks cache/ (its shards), downloads/ and channels/ and deletes (or, dry, only counts)
-// every file whose mtime is older than `older_than_s` before `now` or implausible
-// (before 2026, or more than a day in the future). `on_artwork_deleted` gets the file
-// name of each cache/ file that went. Yields between shards.
+// every file whose mtime is older than `older_than_s` before `now` or before `floor`.
+// `on_artwork_deleted` gets the file name of each cache/ file that went. Yields between
+// shards.
 struct SweepStats {
   uint32_t examined = 0, deleted = 0, indexes_deleted = 0, downloads_deleted = 0;
   uint64_t bytes = 0, freed = 0;
 };
-void sweep(uint32_t now, uint32_t older_than_s, bool dry_run, SweepStats &stats,
-           const std::function<void(const std::string &name)> &on_artwork_deleted);
+// Two passes (policy::sweep_verdict decides each file): the first only reads dates and
+// stops at the first file more than a day in the future, deleting nothing (false, `error`
+// names it); the second deletes. `floor` is net::clock::file_date_floor().
+bool sweep(int64_t now, uint32_t older_than_s, int64_t floor, bool dry_run, SweepStats &stats,
+           const std::function<void(const std::string &name)> &on_artwork_deleted, std::string &error);
 
 }  // namespace p64::makapix::cache

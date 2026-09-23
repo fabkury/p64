@@ -66,7 +66,7 @@ fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 `tools/gen_weather_icons.py`, SHTC3 temperature, interludes, main states) and the
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
 `tools/stream_send.py` sends). M9 is in progress: reliability (reset counters, core dump
-summary, deferred image confirmation), RTC, night schedule, factory reset (API and BOOT
+summary, deferred image confirmation), night schedule, factory reset (API and BOOT
 hold), the IMU (taps, auto-rotation with an upright calibration), the PIN (route
 gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, rollback)
 are done, and M10 delivered the web UI in p3a's layout and five themes
@@ -127,12 +127,15 @@ them and get host tests: the show is `main/show_core.cpp` behind the `ShowEnv` i
 (`show.cpp` is only the shell; scenario tests drive the core with a fake env), and the
 pure halves elsewhere are `p64/playback/timing.hpp`, `settings_model.cpp`,
 `p64_makapix/src/contract.cpp` and `policy.cpp`, `p64_web/src/auth_rules.cpp`,
-`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp`, and the driver's
+`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp`, `p64_net/src/time_rules.cpp`, and the driver's
 `src/platforms/gdma/p64_bcm.h`. New logic goes into those, not into the shells. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
 OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is
 wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap any new
-one, and build status documents from RAM copies only. After an OTA install the device boots from
+one, and build status documents from RAM copies only. Time is trusted only once NTP has answered in this boot (ADR 0011, since 2026-09-23): the
+RTC has no battery and no driver, there is no manual set; read the time only through
+`net::clock::now_utc()`/`local_time()` or behind `clock::synced()`, never `time()` directly,
+and never store or compare a date before that. After an OTA install the device boots from
 `ota_1` while `flash.ps1` writes `ota_0`: roll back from the Update card (or run
 `tests\device\ota_smoke.py`, which ends with a rollback) before trusting a flash.
 The panel modes are refresh profiles of the vendored driver (Quality 10 planes at

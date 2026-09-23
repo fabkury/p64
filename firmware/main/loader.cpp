@@ -14,6 +14,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "p64/makapix/makapix.hpp"
+#include "p64/net/clock.hpp"
 #include "p64/storage/card.hpp"
 
 namespace p64::loader {
@@ -66,9 +67,10 @@ void do_load(Request &r) {
     res->error = error;
     g_on_load(res);
     return;
-  } else if (is_cache_file(r.path)) {
+  } else if (is_cache_file(r.path) && net::clock::synced()) {
     // Last played (spec 5.4): the cache sweep keeps a file for the retention period
-    // after this. The user's own files under animations/ keep their dates.
+    // after this. Only with the time trusted (ADR 0011): an untrusted date would make
+    // the sweep misjudge the file. The user's own files under animations/ keep their dates.
     utime(r.path.c_str(), nullptr);
   }
   const int64_t t1 = esp_timer_get_time();

@@ -314,20 +314,34 @@ TEST_CASE("makapix payloads: status, state, capabilities, view and ack") {
   CHECK(contract::ack_json("cmd-1", "error", "no") == R"({"command_id":"cmd-1","status":"error","error":"no"})");
 }
 
-TEST_CASE("makapix policy: the nightly sweep deletes what was not played, and what a wrong clock wrote") {
-  const uint32_t now = 1790000000;  // 2026-09-21
-  const uint32_t day = 86400, thirty = 30 * day;
-  CHECK(!policy::sweep_due(now - thirty, now, thirty));       // exactly the retention: kept
-  CHECK(policy::sweep_due(now - thirty - 1, now, thirty));    // one second older: goes
-  CHECK(!policy::sweep_due(now - 60, now, thirty));           // played a minute ago
-  CHECK(policy::sweep_due(1700000000, now, thirty));          // 2023: written before the clock was set
-  CHECK(policy::sweep_due(now + day + 1, now, thirty));       // more than a day ahead: a wrong clock
+TEST_CASE("makapix policy: the nightly sweep deletes what was not played, and what an untrusted clock wrote") {
+  using V = policy::SweepVerdict;
+  const int64_t now = 1790000000;  // 2026-09-21
+  const int64_t day = 86400;
+  const uint32_t thirty = 30 * 86400;
+  // The file floor of a firmware built 2026-09-22 (ADR 0011): build date - 1 day - 366 days.
+  int64_t build = 0;
+  REQUIRE(p64::net::time_rules::parse_build_date("Sep 22 2026", build));
+  const int64_t floor = p64::net::time_rules::file_floor(build);
+  CHECK(policy::sweep_verdict(now - thirty, now, thirty, floor) == V::Keep);        // exactly the retention: kept
+  CHECK(policy::sweep_verdict(now - thirty - 1, now, thirty, floor) == V::Delete);  // one second older: goes
+  CHECK(policy::sweep_verdict(now - 60, now, thirty, floor) == V::Keep);            // played a minute ago
+  // FAT stamped 1980 while the clock read 1970 (a cold boot before NTP): below the floor.
+  CHECK(policy::sweep_verdict(315532800, now, 365u * 86400u, floor) == V::Delete);
+  // Played ten days before the build of the firmware now running: inside a 30-day
+  // retention, so kept (a build-date floor would have deleted it after every update).
+  CHECK(policy::sweep_verdict(build - 10 * day, now, thirty, floor) == V::Keep);
   // A few seconds or hours ahead is recent (a clock stepped back, FAT's two-second
   // rounding right after a touch). Before 2026-09-22 the unsigned difference wrapped and
   // these were deleted as ancient.
-  CHECK(!policy::sweep_due(now + 2, now, thirty));
-  CHECK(!policy::sweep_due(now + 3600, now, thirty));
-  CHECK(!policy::sweep_due(now + day, now, thirty));
+  CHECK(policy::sweep_verdict(now + 2, now, thirty, floor) == V::Keep);
+  CHECK(policy::sweep_verdict(now + 3600, now, thirty, floor) == V::Keep);
+  CHECK(policy::sweep_verdict(now + day, now, thirty, floor) == V::Keep);
+  // More than a day ahead: the card or the clock is suspect; the sweep deletes nothing
+  // (before ADR 0011 such a file was deleted, and a clock set a year back by hand wiped
+  // the whole cache).
+  CHECK(policy::sweep_verdict(now + day + 1, now, thirty, floor) == V::Suspect);
+  CHECK(policy::sweep_verdict(now + 400 * day, now, thirty, floor) == V::Suspect);
 }
 
 }  // namespace

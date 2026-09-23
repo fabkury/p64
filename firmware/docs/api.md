@@ -24,7 +24,6 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 | `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and at once on events (Wi-Fi, a swap, a settings write, a channel list or count change, a playset saved or deleted, pairing, the card, the files) |
 | `/api/v1/frame` | GET | the panel's current logical frame as PNG (live preview) |
 | `/api/v1/frame.raw` | GET | the same as 64x64x3 RGB888 bytes |
-| `/api/v1/action/set_time` | POST | `{"utc": <seconds since 1970>}`: sets the clock by hand (and the RTC); source becomes `manual` |
 | `/api/v1/action/factory_reset` | POST | `{"confirm": "ERASE"}` required; answers, then erases settings, state, Wi-Fi, Makapix credentials and the PIN and reboots into setup mode (the card is untouched) |
 | `/api/v1/diag/coredump/erase` | POST | erases the stored core dump |
 | `/api/v1/diag/imu` | GET | live accelerometer reading (g), gravity angle and in-plane magnitude, calibration and resolution state, the tap threshold, the peak impulse of the last 2 s, tap counters, samples and read errors |
@@ -155,7 +154,13 @@ stored as a salted SHA-256 in NVS and erased by the factory reset.
 
 ## Operations (M9)
 
-The status document carries `time.source` (`none`, `rtc`, `ntp`, `manual`),
+The status document carries `time {synced, source ("ntp" once an NTP server answered in
+this boot, else "none"), local (while synced), last_sync_s (seconds since the last
+accepted answer), waiting_s (while not synced and Wi-Fi is up: seconds since the
+connection), rule, syncs, rejected (answers earlier than the build date, refused),
+interval_s (21600), servers [{host, dhcp (offered by the router), answered (the last poll
+of that server was answered), reach (lwIP's 8-poll reachability register)}]}` (ADR 0011:
+there is no way to set the time by hand),
 `panel.night_active` and `panel.brightness` (the effective brightness: the user's value,
 or the night schedule's target inside its window, capped by the ceiling; 0 = panel off),
 and `reliability {reset_reason, counters {power, software, panic, watchdog, brownout,

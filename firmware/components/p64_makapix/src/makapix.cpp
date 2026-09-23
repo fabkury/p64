@@ -112,12 +112,13 @@ void on_settings_changed() {
 bool online() { return net::wifi::status().connected && net::clock::synced(); }
 
 uint32_t epoch_now() {
-  const time_t t = time(nullptr);
-  return t > 0 ? static_cast<uint32_t>(t) : 0;
+  time_t t;
+  return net::clock::now_utc(t) && t > 0 ? static_cast<uint32_t>(t) : 0;
 }
 
 std::string iso_now() {
-  const time_t t = time(nullptr);
+  time_t t;
+  if (!net::clock::now_utc(t)) return "";
   struct tm utc;
   gmtime_r(&t, &utc);
   char buf[32];
@@ -548,7 +549,7 @@ bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::str
     return false;
   }
   if (!net::clock::synced()) {
-    error = "the clock is not synced";
+    error = "the time is not trusted yet (no NTP answer since boot)";
     return false;
   }
   if (busy.exchange(true)) {
@@ -562,10 +563,21 @@ bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::str
   using Key = std::array<uint8_t, 16>;
   std::vector<Key, content::PsramAllocator<Key>> gone;
   cache::SweepStats st;
-  cache::sweep(now, older_than_s, dry_run, st, [&](const std::string &name) {
-    Key k;
-    if (name.size() >= 36 && content::parse_uuid(name.substr(0, 36).c_str(), k.data())) gone.push_back(k);
-  });
+  std::string suspect;
+  const bool swept = cache::sweep(now, older_than_s, net::clock::file_date_floor(), dry_run, st,
+                                  [&](const std::string &name) {
+                                    Key k;
+                                    if (name.size() >= 36 && content::parse_uuid(name.substr(0, 36).c_str(), k.data())) {
+                                      gone.push_back(k);
+                                    }
+                                  },
+                                  suspect);
+  if (!swept) {
+    busy = false;
+    error = suspect.empty() ? "no card" : "the clock or the card is suspect: " + suspect;
+    ESP_LOGW(TAG, "cache sweep refused: %s", error.c_str());
+    return false;
+  }
   uint32_t unflagged = 0;
   if (!dry_run && !gone.empty()) {
     std::sort(gone.begin(), gone.end());

@@ -561,6 +561,24 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   status texts`); verified on the device (the row reads "0/0 no artworks 1 h ago");
   ui, content and api smoke tests pass. The "nothing fits" text is host-tested only.
   Note: `content_smoke.py` leaves the Local playset active.
+- 2026-09-23, the time is trusted only from NTP (prompt p032, ADR 0011): the RTC driver
+  and codec are gone (no battery on the board), so is `POST /api/v1/action/set_time` and
+  its button. SNTP runs four slots through the thread-safe `esp_sntp_*` API: the router's
+  server from DHCP option 42, the setting, `time.google.com`, `time.cloudflare.com`; a
+  re-sync every 6 h; the slots are repaired on connect, disconnect and a 30 s tick (lwIP
+  clears slots 1..3 on every DHCP ACK). ESP-IDF's weak `sntp_sync_time()` is replaced so
+  an answer before the build date never reaches the clock (the link map shows p64's
+  definition, lwIP's weak one discarded). The sweep reads every date first and deletes
+  nothing when a file is more than a day in the future; the implausible-date floor is the
+  build date minus 367 days. New pure `time_rules.cpp` with host tests (104 cases).
+  Verified on the device: the router (192.168.4.1) offers NTP and took slot 0, the time was
+  trusted 3.4 s after the IP (6.6 s after boot) and Makapix started only then; status
+  shows the servers and their reachability; `ops_smoke.py` (rewritten for NTP-only time,
+  including a setting round trip) and `api_smoke`, `widgets_smoke`, `cache_sweep_smoke`
+  pass; a dry-run sweep walked 440 files in 9.1 s (two passes). Stack headroom after:
+  `esp_timer` 1456 bytes (from 1696), `events` 3152 (from 4592). Not exercised on the
+  device: a refused answer, a network without DHCP NTP, a DHCP lease renewal (all pure,
+  host-tested).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

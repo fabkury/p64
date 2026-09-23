@@ -106,7 +106,13 @@ them; the channel downloads them again. Default 30, range 1 to 365, a user setti
 **Cache sweep**:
 The deletion, once a night at the night schedule's start, of every cached artwork, URL
 download and channel index older than the cache retention. Never touches the user's own
-files. Runs only while the night schedule is enabled and the clock is synced.
+files. Runs only while the night schedule is enabled and the time is trusted.
+
+**Trusted time**:
+The wall clock once an NTP server has answered in the current boot; nothing else (no
+RTC, no manual set) makes the time trusted (ADR 0011). Before it, clock features show
+`--:--` and nothing that stores or compares dates runs.
+_Avoid_: synced clock (for a time that came from anywhere but NTP)
 
 ### Playback
 

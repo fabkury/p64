@@ -29,7 +29,7 @@
 #include "weather_icons.hpp"
 #include "protocol.hpp"
 #include "p64/system/night.hpp"
-#include "p64/system/rtc_codec.hpp"
+#include "p64/net/time_rules.hpp"
 #include "p64/system/settings.hpp"
 #include "tap.hpp"
 #include "orientation.hpp"

@@ -18,11 +18,11 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_gfx` | `Frame` (RGB888, panel-sized, logical orientation), `Rgb`, blending, rotation, `Scaler`, bitmap fonts and text | none | yes |
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
 | `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | no |
-| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `rtc_codec`, `settings_model`: the settings document's clamps, enums and JSON) |
+| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON) |
 | `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
 | `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the local folder index) |
-| `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP, time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table) |
+| `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP (the only source of trusted time), time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table; `time_rules`: the build-date floors, the SNTP slot plan) |
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`: everything drawn) |
@@ -259,9 +259,12 @@ one artwork download, then a short sleep.
   until the entry changes. Without a card a PSRAM memory cache (48 files, 6 MB) takes
   their place and the loader reads `mem:` paths from it.
 - The cache sweep (spec 5.4, ADR 0010): `cache_sweep()` walks the 256 shards of `cache/`,
-  then `downloads/` and `channels/`, and deletes every file whose mtime is older than the
-  cache retention or implausible (before 2026 or a day in the future: written under a
-  wrong clock), collecting the storage keys of the artworks that went in a PSRAM vector
+  then `downloads/` and `channels/` twice (ADR 0011): the first pass only reads dates and
+  refuses the whole sweep if any file is dated more than a day in the future (the card or
+  the clock is suspect); the second deletes every file whose mtime is older than the cache
+  retention or before the file date floor (`net::clock::file_date_floor()`: the build date
+  minus a day minus 366 days; FAT stamps 1980 under an untrusted clock), collecting the
+  storage keys of the artworks that went in a PSRAM vector
   and clearing their cached flag in every loaded index with a binary search per entry, so
   the download loop fetches them again. The loader sets a cache file's mtime with
   `utime()` after every successful read for the show ("last played"). The fetcher loop
@@ -399,10 +402,20 @@ ceiling, 0 = panel off), and performs the factory reset (Makapix unpair, Wi-Fi
 credentials, state, settings, PIN; the card stays) either from the API or when BOOT is
 held for 10 s at power-on, the panel counting down the last three seconds.
 
-The on-board PCF85063A (`system::rtc`, on the shared I2C bus `system::i2c_bus`) seeds the
-system clock at boot when its oscillator has run since the last set and the date is
-plausible; every NTP sync and every manual set writes it back. `net::clock::source()`
-says where the time came from.
+Time (ADR 0011): only NTP makes the time trusted. `net::clock` drives lwIP's SNTP client
+through the thread-safe `esp_sntp_*` API with four slots: the server the router offers
+over DHCP (slot 0), the setting, `time.google.com`, `time.cloudflare.com`. lwIP writes the
+DHCP server into slot 0 and clears the others on every DHCP ACK, including lease renewals
+that keep the address and post no event, so the clock repairs the slots
+(`time_rules::repairs`, pure) on every connection, after a disconnect (forgetting the
+router's server) and on a 30 s `esp_timer` tick. ESP-IDF's weak `sntp_sync_time()` hook
+is replaced: an answer earlier than the build date (`esp_app_desc_t::date` minus a day)
+never reaches the system clock, is counted, and is retried after 5 minutes. The re-sync
+interval (6 h), the four slots and the DHCP option are sdkconfig values that `clock.cpp`
+checks with `static_assert`. `now_utc()` and `local_time()` fail until the first answer;
+every consumer reads the time through them or gates on `synced()` (Makapix, widgets, the
+night schedule, the sweep, the loader's "last played" touch). The on-board PCF85063A RTC
+has no battery (a cold boot finds its oscillator-stop flag set) and has no driver.
 
 The task watchdog watches the show loop, the loader and the stream listener (each waits
 at most a second between resets); the player and the render task are excluded on

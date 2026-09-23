@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-r"""Device smoke test of the operations layer (M9): reliability status, time sources,
-the night schedule and the brightness ceiling.
+r"""Device smoke test of the operations layer (M9): reliability status, trusted time (NTP
+only, ADR 0011), the night schedule and the brightness ceiling.
 
     python tests\device\ops_smoke.py [http://p64.local]
 
@@ -39,15 +39,28 @@ def main():
     check(r.get("image", {}).get("partition", "").startswith("ota_"), "running partition named: %s" % r.get("image", {}).get("partition"))
     check(r.get("image", {}).get("pending_verify") is False, "image confirmed (not pending)")
     tm = d.get("time", {})
-    check(tm.get("synced") and tm.get("source") in ("ntp", "rtc", "manual"), "time synced from %s" % tm.get("source"))
-
-    # Set time by hand: the clock follows, the source says manual, then NTP corrects it again later.
-    now = int(time.time())
-    st, j = request(base, "POST", "/api/v1/action/set_time", {"utc": now - 120})
-    check(st == 200 and j["data"]["source"] == "manual", "set_time accepted (source manual)")
-    st, j = request(base, "POST", "/api/v1/action/set_time", {"utc": 12345})
-    check(st == 400, "set_time rejects an implausible time")
-    request(base, "POST", "/api/v1/action/set_time", {"utc": now})
+    check(tm.get("synced") and tm.get("source") == "ntp", "time trusted from NTP (source %s)" % tm.get("source"))
+    check(0 <= tm.get("last_sync_s", -1) <= tm.get("interval_s", 0) + 300,
+          "last NTP answer %s s ago, within the %s s interval" % (tm.get("last_sync_s"), tm.get("interval_s")))
+    check(tm.get("interval_s") == 6 * 3600, "re-sync every 6 h (%s s)" % tm.get("interval_s"))
+    check(tm.get("rejected") == 0, "no NTP answer refused (%s)" % tm.get("rejected"))
+    hosts = [sv["host"] for sv in tm.get("servers", [])]
+    check("time.google.com" in hosts and "time.cloudflare.com" in hosts, "fallback servers present: %s" % hosts)
+    check(any(sv["answered"] for sv in tm.get("servers", [])), "a server answered the last poll: %s" % tm.get("servers"))
+    # No way to set the time by hand any more (ADR 0011).
+    st, _ = request(base, "POST", "/api/v1/action/set_time", {"utc": int(time.time())})
+    check(st == 404, "set_time is gone (%s)" % st)
+    # A new NTP server setting takes its slot and is asked at once; the time stays trusted.
+    ntp = original["network"]["ntp_server"]
+    settings(base, {"network": {"ntp_server": "time.google.com"}})
+    time.sleep(2)
+    tm = status(base)["time"]
+    hosts = [sv["host"] for sv in tm.get("servers", [])]
+    check(hosts.count("time.google.com") == 1 and tm.get("synced"), "a setting equal to a fallback is asked once: %s" % hosts)
+    settings(base, {"network": {"ntp_server": ntp}})
+    time.sleep(2)
+    hosts = [sv["host"] for sv in status(base)["time"].get("servers", [])]
+    check(ntp in hosts and "time.google.com" in hosts, "setting restored: %s" % hosts)
 
     # Night schedule: a window that covers now with brightness 40 -> effective 40 and night_active.
     lt = status(base)["time"]["local"]  # "YYYY-MM-DDTHH:MM:SS"
