@@ -188,6 +188,14 @@ TEST_CASE("playset_json") {
   cJSON_free(s);
   CHECK(round.find("\"kind\":\"promoted\"") != std::string::npos);
   CHECK(round.find("\"display_name\":\"Promoted\"") != std::string::npos);
+  // The default name written into the document does not come back as a chosen name.
+  Playset again;
+  cJSON *rj = cJSON_Parse(round.c_str());
+  std::string err2;
+  REQUIRE(playset_from_json(rj, again, err2));
+  cJSON_Delete(rj);
+  CHECK(again.channels[0].display_name.empty());
+  CHECK(again.channels[2].display_name == "Q");
   cJSON *j2 = cJSON_Parse(round.c_str());
   Playset p2;
   CHECK(playset_from_json(j2, p2, e));

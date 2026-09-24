@@ -665,6 +665,11 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   External channel select gains "Other" for identifiers a provider does not offer by
   name; `run.py` accepts globs and `system_includes` in the private manifest. Host tests
   for both hooks.
+- 2026-09-24, playset documents: a channel's default display name written into the
+  document no longer comes back as a chosen name on parse, so a provider's own label for
+  an external channel applies after a round trip through the store (seen on the device:
+  the channel view named an external channel by its identifier). Host test in
+  `content.cpp`.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

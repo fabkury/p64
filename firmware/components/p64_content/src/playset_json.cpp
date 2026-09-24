@@ -76,6 +76,9 @@ bool playset_from_json(const cJSON *json, Playset &out, std::string &error) {
     }
     spec.identifier = string_of(item, "identifier");
     spec.display_name = string_of(item, "display_name");
+    // The document carries the default name for readers; it is not a name the user chose,
+    // so it stays implicit (a provider's own label for an external channel applies then).
+    if (spec.display_name == spec.default_display_name()) spec.display_name.clear();
     if (!number_of(item, "weight", spec.weight) || !number_of(item, "offset", spec.offset)) {
       error = "channel " + std::to_string(out.channels.size() + 1) + ": weight and offset must be numbers";
       return false;
