@@ -286,10 +286,14 @@ def camera_pose(t):
     return beats[-1][2:]
 
 
-def explode_k(t, order):
-    s = order * sb.EXPLODE_STAGGER
+def explode_k(t, order, n):
+    """0 assembled .. 1 exploded. Outer groups lead on the way out and inner groups lead on the
+    way back, so a part that sits on another (a knob on its shaft, a screw in its boss) is
+    always further out than what it sits on: the stagger can never push a shaft through a knob."""
     if t < sb.COLLAPSE_T0:
+        s = (n - 1 - order) * sb.EXPLODE_STAGGER
         return smooth((t - sb.EXPLODE_T0 - s) / (sb.EXPLODE_T1 - sb.EXPLODE_T0))
+    s = order * sb.EXPLODE_STAGGER
     return 1.0 - smooth((t - sb.COLLAPSE_T0 - s) / (sb.COLLAPSE_T1 - sb.COLLAPSE_T0))
 
 
@@ -309,8 +313,11 @@ def animate(device, objs, shell):
     con.track_axis = "TRACK_NEGATIVE_Z"
     con.up_axis = "UP_Y"
 
-    axis = device.matrix_world.to_3x3() @ Vector((0, 0, 1))      # design +Z (into the shell) in world space
-    axis.normalize()
+    # the parts fly straight back, horizontally: the device's own axis leans 12 degrees down
+    # into the table and sent the far parts under it. World -Y is behind the device; the same
+    # direction expressed in the device's local frame moves the children.
+    axis = Vector((0, -1, 0))
+    axis_local = device.matrix_world.to_3x3().inverted() @ axis
     centre = sum((shell.matrix_world @ Vector(c) for c in shell.bound_box), Vector()) / 8
     groups = list(sb.EXPLODE_MM.keys())
 
@@ -329,8 +336,8 @@ def animate(device, objs, shell):
                 mm = sb.EXPLODE_MM[g]
                 if mm == 0.0:
                     continue
-                k = explode_k(t, groups.index(g))
-                ob.location = (0, 0, mm * MM * k)
+                k = explode_k(t, groups.index(g), len(groups))
+                ob.location = axis_local * (mm * MM * k)
                 ob.keyframe_insert("location", frame=f)
 
 
