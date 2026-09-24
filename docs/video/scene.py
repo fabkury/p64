@@ -345,11 +345,12 @@ def render_settings(samples):
         except Exception as e:
             print("cycles:", kind, "unavailable:", e)
             continue
-        if devs:
+        gpus = [d for d in devs if d.type != "CPU"]
+        if gpus:
             prefs.compute_device_type = kind
             for d in devs:
-                d.use = True
-            print("cycles: rendering on", kind, [d.name for d in devs])
+                d.use = d.type != "CPU"        # the CPU listed next to the GPU only slows the frame down
+            print("cycles: rendering on", kind, [d.name for d in gpus])
             break
     else:
         print("cycles: no GPU found, rendering on the CPU")
@@ -359,6 +360,7 @@ def render_settings(samples):
     scene.cycles.adaptive_threshold = 0.03
     scene.cycles.use_denoising = True
     scene.cycles.denoiser = "OPENIMAGEDENOISE"
+    scene.cycles.denoising_use_gpu = True
     scene.cycles.max_bounces = 6
     scene.cycles.caustics_reflective = False
     scene.cycles.caustics_refractive = False
