@@ -1,0 +1,1 @@
+Let's do some housekeeping. Folder hardware-tests belongs to firmare/reference. Please move it there.
