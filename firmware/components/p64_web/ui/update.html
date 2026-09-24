@@ -58,6 +58,7 @@ h1 { text-align: center; color: var(--c-on-bg); font-size: 1.5rem; font-weight: 
         <div class="progress-text" id="progress-text">0%</div>
     </div>
     <div class="release-notes" id="release-notes"></div>
+    <p class="setting-hint" id="private-warning" style="display:none;color:var(--c-warning, #c80)">This device runs a private build (the firmware version ends in +private). A public release does not contain the private parts: installing one removes them until a private build is flashed again.</p>
     <div class="card-actions">
         <button class="btn-primary" id="install-btn" onclick="installUpdate()" disabled>Install update</button>
         <button class="btn-primary" id="reboot-btn" onclick="rebootNow()" style="display:none">Reboot into the new firmware</button>
@@ -98,6 +99,7 @@ function render(u) {
     var notes = document.getElementById('release-notes');
     notes.style.display = u.notes && u.state === 'available' ? 'block' : 'none';
     notes.textContent = u.notes || '';
+    document.getElementById('private-warning').style.display = u.private_build ? 'block' : 'none';
     var install = document.getElementById('install-btn');
     install.disabled = u.state !== 'available';
     install.textContent = u.state === 'available' ? 'Install ' + u.available_version + (u.available_size ? ' (' + p64.fmtBytes(u.available_size) + ')' : '') : 'Install update';

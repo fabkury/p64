@@ -417,6 +417,13 @@ cJSON *status_json() {
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "state", state_name(s.state));
   cJSON_AddStringToObject(d, "current_version", s.current_version.c_str());
+  // A private build (firmware/private present at build time): a public release would
+  // drop the private parts, and the Update page says so before the install.
+#ifdef CONFIG_P64_PRIVATE
+  cJSON_AddBoolToObject(d, "private_build", true);
+#else
+  cJSON_AddBoolToObject(d, "private_build", false);
+#endif
   cJSON_AddStringToObject(d, "available_version", s.available_version.c_str());
   cJSON_AddStringToObject(d, "notes", s.notes.c_str());
   cJSON_AddNumberToObject(d, "available_size", s.available_size);

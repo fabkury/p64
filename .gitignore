@@ -1,6 +1,7 @@
 # The product firmware (firmware/): ESP-IDF build products; credentials must never be
 # committed from either ESP-IDF folder.
 firmware/build/
+firmware/build_public/
 firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/sdkconfig.secrets
@@ -20,6 +21,11 @@ firmware/reference/hardware-tests/sdkconfig.secrets
 firmware/reference/hardware-tests/managed_components/
 firmware/reference/hardware-tests/dependencies.lock.old
 firmware/reference/hardware-tests/tools/gifcheck/build/
+
+# The private area: a separate repository (github.com/fabkury/p64-private) mounted at
+# firmware/private/. The public firmware builds with or without it (firmware/CMakeLists.txt);
+# its contents are never committed to p64 (a local pre-commit hook refuses them too).
+firmware/private/
 
 # Editors and OS
 .vscode/

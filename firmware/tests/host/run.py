@@ -26,6 +26,7 @@ code errors (vendored code keeps its warnings); CI uses both.
 
 import argparse
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -149,6 +150,27 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),
 ]
+
+# The private area (firmware/private, a separate repository; README.md "Private area"):
+# its tests/host/manifest.json names pure sources, include directories and unit-test
+# files that join the host build when the folder exists. Absent on CI, so private
+# tests never gate the public build; present, they run with the public ones.
+PRIVATE = os.path.join(FIRMWARE, "private")
+PRIVATE_MANIFEST = os.path.join(PRIVATE, "tests", "host", "manifest.json")
+if os.path.exists(PRIVATE_MANIFEST):
+    with open(PRIVATE_MANIFEST, encoding="utf-8") as _f:
+        _m = json.load(_f)
+    _units = sorted(glob.glob(os.path.join(PRIVATE, "tests", "host", "unit", "*.cpp")))
+    for _u in _m.get("unit", []):
+        _units.append(os.path.join(PRIVATE, _u))
+    _priv_sources = [os.path.join(PRIVATE, p) for p in _m.get("sources", [])] + _units
+    _priv_includes = [os.path.join(PRIVATE, p) for p in _m.get("includes", [])]
+    CXX_SOURCES += _priv_sources
+    INCLUDES += _priv_includes
+    HEADER_DIRS += _priv_includes
+    if _priv_sources:
+        print("private area: %d source(s) from %s" % (len(_priv_sources), os.path.relpath(PRIVATE_MANIFEST, FIRMWARE)))
+
 
 def newest_mtime(paths):
     latest = 0.0

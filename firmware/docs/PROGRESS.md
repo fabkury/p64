@@ -641,6 +641,24 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   the Settings page's "Position" menu lists all six. Host tests: the sprite against the
   font drawing at all six, the settings round trip; `widgets_smoke` checks top center
   on the device (columns 20..42); bottom center seen on the panel over an artwork.
+- 2026-09-24, content providers and the private area (ADR 0012, p036): every channel
+  that is not a local folder now belongs to a `content::Provider`
+  (`p64/content/provider.hpp`, registry in `p64_content`); Makapix Club is the first
+  (`p64_makapix/src/provider.cpp`, items are post ids resolved to the cached file at pick
+  time) and the show's eight "Makapix or local" branches became one provider path
+  (runtime, pick, load failure, shown and hidden reports, install, change handler,
+  channel JSON, history's `provider` and `item_id`). New kind `external`
+  (`<provider>:<channel>`), `providers` in the status document, the Playsets page offers
+  a provider's channels from it, `ProviderChannelChanged` replaces
+  `MakapixChannelChanged`, `ShowEnv` lost the Makapix content methods (the pairing
+  screens and Followed stay). The private area: `firmware/private/` is the separate
+  `p64-private` repository, git-ignored, discovered by CMake (components,
+  `sdkconfig.private`, `+private` version, strict warnings), `main.cpp` calls
+  `p64::priv::start()` under `CONFIG_P64_PRIVATE`, `run.py` reads its manifest, the OTA
+  status carries `private_build` and the Update page warns. Host tests: the show core
+  with a fake provider (items, a failed item reported and dropped, labels, the size
+  limit, an unserved provider, missing credentials), the registry, the `external` kind
+  and its JSON (118 cases).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

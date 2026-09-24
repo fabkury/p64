@@ -38,6 +38,9 @@
 #include "p64/web/web.hpp"
 #include "p64/inputs/inputs.hpp"
 #include "p64/ota/ota.hpp"
+#ifdef CONFIG_P64_PRIVATE
+#include "p64/private/private.hpp"
+#endif
 #include "p64/stream/stream.hpp"
 #include "p64/system/reliability.hpp"
 #include "ops.hpp"
@@ -202,6 +205,11 @@ extern "C" void app_main() {
     p64::system::publish(p64::system::Event::CardFailed);
   }
   p64::makapix::start(mk);
+#ifdef CONFIG_P64_PRIVATE
+  // The private area (../private, a separate repository): its content providers and
+  // routes register now, before the saved playset is activated.
+  p64::priv::start();
+#endif
   p64::widgets::start();
   if (!p64::stream::start()) ESP_LOGE(TAG, "stream listener failed to start");
   p64::inputs::Hooks in;

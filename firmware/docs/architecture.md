@@ -21,10 +21,11 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON) |
 | `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
-| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store; Makapix indexes, cache and downloads come with M6 | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the local folder index) |
+| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store, the Makapix index format, the content provider interface and registry (ADR 0012) | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the provider registry, the local folder index) |
 | `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP (the only source of trusted time), time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table; `time_rules`: the build-date floors, the SNTP slot plan) |
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
-| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
+| `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
+| `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
 | `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
@@ -225,6 +226,24 @@ show holds its first swap until the animation has run its course.
 Makapix channels exist in playsets from M5 on but supply nothing until M6; the
 channel status says so and the scheduler gives them no share.
 
+Content providers (ADR 0012, 2026-09-24): every channel that is not a local folder
+belongs to a `content::Provider` (`p64/content/provider.hpp`), found through the registry
+(`content::providers::for_spec`): Makapix kinds go to the Makapix provider, `external`
+kinds (`<provider>:<channel>`) to the provider of that id. A `ChannelRuntime` holds the
+provider pointer, the channel's snapshot filtered by the size limit (`ProviderItems`: item
+id, width, height; 8 bytes each, PSRAM) and the listed, refreshed and oversized counts; a
+pick asks the provider to `resolve()` the item to its file and name; a failed load goes
+back as `note_load_failed`; the provider of the item on the panel gets `note_shown` (its
+channel reference, or null for play-this) and every other provider `note_hidden`. The
+show's `install()` tells every provider which of its channels are active; the event
+`ProviderChannelChanged` (any provider) makes it re-read the snapshots. History items
+carry `provider` and `item_id` (serialised as `post_id` for compatibility). The loader
+resolves `mem:` paths through `providers::memory_bytes`. `ShowEnv` keeps only what is
+Makapix-specific beyond the interface: the status for the pairing screens and the
+Followed playset. Tests: `tests/host/unit/show.cpp` drives the core with a fake provider
+(items, failures, labels, credentials, the size limit), `content.cpp` the registry and the
+`external` kind.
+
 ## 12. Makapix Club (M6)
 
 `p64_makapix` holds the pairing state and credentials (NVS namespace `makapix`: player
@@ -274,9 +293,10 @@ one artwork download, then a short sleep.
   synced; booting or enabling the schedule inside the window only arms the detector.
   `POST /api/v1/diag/cache_sweep` runs it on the HTTP task with any age, dry by default.
 - The show treats a Makapix channel like a local one whose pickable entries are the
-  cached ones; `MakapixChannelChanged` events make it re-read the index snapshot and
-  update the scheduler's counts, and a pick prepared from a tiny cache is replaced as
-  the cache grows.
+  cached ones, through the provider interface (`src/provider.cpp`, ADR 0012: items are
+  post ids, resolved to the cached file at pick time); `ProviderChannelChanged` events
+  make it re-read the snapshot and update the scheduler's counts, and a pick prepared
+  from a tiny cache is replaced as the cache grows.
 - MQTT: esp-mqtt over mutual TLS (`mqtts://makapix.club:8883`, client id and username =
   player key, last will `offline`, keep-alive 60 s, 6 KB task stack). On connect it
   publishes status, the retained capabilities (pause, brightness 1 to 255, rotation
@@ -494,7 +514,24 @@ refreshed once a second while the tab is visible. The Makapix artist and hashtag
 in the playset editor call makapix.club from the browser, as p3a does. Every route of the
 UI is open (the pages show the PIN prompt); the data behind them is what the PIN gates.
 
-## 20. Flash access and PSRAM stacks (a rule)
+## 20. The private area (ADR 0012)
+
+`firmware/private/` is a separate repository (`github.com/fabkury/p64-private`, never
+published) mounted inside the checkout and git-ignored by p64 (a local pre-commit hook
+refuses its paths too). The root `CMakeLists.txt` looks for `private/components`: when it
+exists, it joins `EXTRA_COMPONENT_DIRS`, `private/sdkconfig.private` is applied after
+`sdkconfig.defaults`, `PROJECT_VER` gets `+private`, and every private component is held
+to the strict warnings. `main/CMakeLists.txt` requires `p64_private` only when its folder
+exists, and `main.cpp` calls `p64::priv::start()` under `CONFIG_P64_PRIVATE` (a hidden
+Kconfig symbol the private component defines) after Makapix has started and before the
+show restores its playset, so private providers are registered when the saved playset is
+activated. `tests/host/run.py` compiles the pure sources and unit tests named in
+`private/tests/host/manifest.json`. The OTA status carries `private_build` and the Update
+page warns that a public release drops the private parts. Absent the folder (CI, any other
+clone), nothing of this runs and the build is the public firmware; `budgets.json` and CI
+describe that firmware only.
+
+## 21. Flash access and PSRAM stacks (a rule)
 
 Reading or writing the SPI flash (NVS, the partition table, an OTA slot, the core
 dump) disables the instruction cache for the duration, and a task whose stack is in

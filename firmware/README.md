@@ -121,6 +121,24 @@ on its files). Unlike the clones beside it, it is tracked in git. It is the tech
 
 Its README, `reference/hardware-tests/README.md`, holds the details and the measured numbers.
 
+## Private area
+
+`private/` is a separate repository, `github.com/fabkury/p64-private`, never published:
+the user's own components (a private source of channels, ADR 0012). It is git-ignored
+here and the pre-commit hook refuses its paths. The build finds it on its own
+(`CMakeLists.txt`): its `components/` join the build, `sdkconfig.private` applies on top of
+`sdkconfig.defaults`, the version ends in `+private`, `main.cpp` calls `p64::priv::start()`
+under `CONFIG_P64_PRIVATE`, and `tests/host/run.py` compiles what
+`private/tests/host/manifest.json` names. Without the folder the build is the public
+firmware, which is what CI builds. To mount it on a fresh checkout, from `firmware/`:
+
+```
+git clone https://github.com/fabkury/p64-private private
+```
+
+A private build must not install a public release without knowing it drops the private
+parts; the Update page says so (`private_build` in `/api/v1/update`).
+
 ## Reference clones
 
 `reference/` holds local clones of upstream repositories, git-ignored (the tracked

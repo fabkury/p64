@@ -47,8 +47,21 @@ Also: `firmware/reference/` is git-ignored upstream clones (the one tracked exce
 `p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the
 reference for module boundaries, web UI and Makapix client) and `makapix/` (the Makapix
 Club server, github.com/fabkury/makapix, the device contract in its `docs/player/` and
-`docs/mqtt-api/`); re-clone commands are in `firmware/README.md`. `prompt/pNNN-*.txt` are the user's task
-prompts, one per session, committed. `enclosure/archive/2026-09-dhruv-solidworks/` is a
+`docs/mqtt-api/`); re-clone commands are in `firmware/README.md`. `firmware/private/` is
+the **private area** (ADR 0012, since 2026-09-24): a separate, unpublished repository,
+github.com/fabkury/p64-private, mounted there and git-ignored here (a local pre-commit
+hook refuses its paths); the user's own components, first a private source of channels.
+The public build discovers it when present (`firmware/CMakeLists.txt`: components,
+`sdkconfig.private`, version `+private`; `main.cpp` calls `p64::priv::start()` under
+`CONFIG_P64_PRIVATE`; `tests/host/run.py` reads its manifest) and is the public firmware
+without it, which is what CI builds; `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON
+build` checks that parity locally. Nothing public may depend on it (no public symbol
+whose only user is private), and its RAM costs are measured by hand. Channel sources
+other than the card reach the show only through `content::Provider`
+(`p64/content/provider.hpp`, the registry, kind `external` = `<provider>:<channel>`);
+Makapix Club is the first provider and the private source is written as the second.
+`prompt/pNNN-*.txt` are the user's task
+prompts, one per session, committed (public work only, see below). `enclosure/archive/2026-09-dhruv-solidworks/` is a
 friend's separate SolidWorks work: never edit it. `enclosure/inbox/` is an untracked
 staging area for incoming material; do not commit it unless asked.
 
@@ -338,7 +351,9 @@ measurements in `input/measurements.md`.
   `prompt/pNNN-short-slug.txt` with the next free number; the text exactly as the user
   wrote it, nothing added; committed on its own as `prompt: pNNN (what it asked)`. A
   main prompt is one that starts or redirects the session's work; follow-up remarks,
-  answers to questions and small corrections are not written down.
+  answers to questions and small corrections are not written down. **Prompts about
+  private work (anything in `firmware/private/`, the p64-private repository) are never
+  recorded, anywhere** (user rule, 2026-09-24); only public work goes into `prompt/`.
 - Tests travel with the code (rule set by the user on 2026-09-22, from the review in
   `docs/review-2026-09/`): before a commit that touches `firmware/`, run
   `python tests\host\run.py` from `firmware/`; a fix for a bug found on the device ships

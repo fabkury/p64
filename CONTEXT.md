@@ -41,8 +41,24 @@ what a playset mixes.
 _Avoid_: feed, folder (when meaning the channel), source (when meaning a specific channel)
 
 **Channel kind**:
-Where a channel's artworks come from: a local folder on the card, or a Makapix channel
-(Promoted, All, Own, Artist, Hashtag, Reactions). Reserved kinds: URL list, pinned list.
+Where a channel's artworks come from: a local folder on the card, a Makapix channel
+(Promoted, All, Own, Artist, Hashtag, Reactions), or an external channel of a content
+provider. Reserved kinds: URL list, pinned list.
+
+**Content provider**:
+A source of channel artworks other than the card, known to the show only through one
+interface: which channels it serves, what is playable now, where an item's file is.
+Makapix Club is one; the private area adds its own.
+_Avoid_: source (when meaning the component), backend, plugin
+
+**External channel**:
+A channel of a content provider, named `<provider>:<channel>`; the provider offers its
+channels to the web UI by label.
+
+**Private area**:
+The user's own components, kept in a separate, unpublished repository mounted at
+`firmware/private/`; the public firmware builds with or without it.
+_Avoid_: private fork, secret branch
 
 **Local channel**:
 A channel whose artworks are the files in one folder of the card's `animations/` tree.

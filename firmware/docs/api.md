@@ -18,7 +18,7 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/status` | GET | firmware, uptime, heap, network, time, card, panel health, `playback` (below) |
+| `/api/v1/status` | GET | firmware, uptime, heap, network, time, card, panel health, `playback` (below), `makapix`, `providers` (below) |
 | `/api/v1/settings` | GET | the settings document (spec section 16 groups) |
 | `/api/v1/settings` | PUT | merge the keys present, clamped to their ranges; returns the document |
 | `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and at once on events (Wi-Fi, a swap, a settings write, a channel list or count change, a playset saved or deleted, pairing, the card, the files) |
@@ -57,7 +57,7 @@ second.
 | `/api/v1/action/play` | POST | `{"path":"animations/x.gif"}` | play-this from the card (422 when missing) |
 | `/api/v1/action/play_playset` | POST | `{"name":"..."}` | activate a playset (built-in or stored; 404 otherwise) |
 | `/api/v1/history` | GET | | `{count, position, items:[{index, kind, source, name, path, channel, channel_index, playset, shown_s_ago, current}]}` |
-| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (Makapix channels add `cached`, `last_refresh`, `oversized`, `refreshing`, `error`) |
+| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (provider channels, Makapix and external, add `provider`, `cached`, `last_refresh`, `oversized`, `refreshing`, `error`) |
 | `/api/v1/folders` | GET | | folders that can be local channels: `[{folder, name, files}]` |
 
 ## Playsets (M5)
@@ -72,8 +72,17 @@ second.
 Names: 1 to 32 of `[A-Za-z0-9_]`; `Promoted`, `All`, `Followed`, `Local` are reserved.
 Channel kinds: `local` (identifier = folder under `animations/`, "" = the root),
 `promoted`, `all`, `own`, `artist` (sqid), `hashtag` (tag without `#`), `reactions`
-(sqid); `url_list` and `pinned` are reserved. p3a's shape (`type`/`name`, `sdcard`,
-`user`, `named`) is accepted on input.
+(sqid), `external` (identifier = `<provider>:<channel>`, a channel of a registered content
+provider, ADR 0012; a provider the build lacks leaves the channel with the status "not
+supported yet"); `url_list` and `pinned` are reserved. p3a's shape (`type`/`name`,
+`sdcard`, `user`, `named`) is accepted on input.
+
+`providers` (in `/api/v1/status`): the registered content providers,
+`[{id, label, online, authorized, channels:[{identifier, label}], status?}]`; `channels`
+are the external channels the provider offers (their identifiers without the
+`<provider>:` prefix), `status` the provider's own document when it has one. Makapix Club
+is listed as `makapix` with no offered channels (its channels are kinds of their own);
+the public firmware lists nothing else.
 
 ## Makapix Club (M6)
 
@@ -94,8 +103,9 @@ the size limit; kept in RAM only, 0 after a reboot until the next refresh), `ref
 and `error`. A Makapix channel with nothing cached has the `status` "downloading" (its
 index has entries), "offline", "no listing yet" (no refresh has landed), "no artworks"
 (the refresh landed empty) or "nothing fits N px (M too large)" (everything listed was
-over the size limit). History items and the status artwork carry
-`post_id` and `sqid` for Makapix artworks.
+over the size limit); the same texts apply to external channels. History items and the
+status artwork carry `provider` and `post_id` (the provider's item id) for provider
+artworks, and `sqid` for Makapix ones.
 
 `settings.makapix.max_size` (32, 64, 128 or 256; default 128; other numbers snap up to the
 next step) is the maximum artwork size of the Makapix channels: the paired listings carry
@@ -128,7 +138,7 @@ other name, or an unknown one, draws the default). History items of kind
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/update` | GET | `{state, current_version, available_version, notes, available_size, download_url, sha256_published, bytes_read, image_size, progress_percent, error, last_check_age_s, can_rollback, rollback_version, rollback_partition, repository, asset}`; `state` is `idle`, `checking`, `up_to_date`, `available`, `downloading`, `verifying`, `ready_to_reboot` or `error` |
+| `/api/v1/update` | GET | `{state, current_version, private_build, available_version, notes, available_size, download_url, sha256_published, bytes_read, image_size, progress_percent, error, last_check_age_s, can_rollback, rollback_version, rollback_partition, repository, asset}`; `state` is `idle`, `checking`, `up_to_date`, `available`, `downloading`, `verifying`, `ready_to_reboot` or `error` |
 | `/api/v1/update/check` | POST | asks GitHub for the latest release now (409 `BUSY` while a job runs) |
 | `/api/v1/update/install` | POST | empty body: installs the available release (its `.sha256` asset is verified); `{"url": "...", "sha256": "<64 hex>"}`: installs any image, plain HTTP allowed on the LAN, the checksum required |
 | `/api/v1/update/rollback` | POST | makes the other slot bootable (409 `NO_ROLLBACK` when it holds no valid image) and reboots |

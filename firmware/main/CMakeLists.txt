@@ -1,3 +1,7 @@
+# The private area (../private, see ../README.md "Private area") is not listed here:
+# main.cpp calls p64::priv::start() under CONFIG_P64_PRIVATE, which the private
+# component's Kconfig defines, and that component adds its include directory to main
+# itself, so the dependency points from private to public and this file never changes.
 idf_component_register(
     SRCS
         "main.cpp"
