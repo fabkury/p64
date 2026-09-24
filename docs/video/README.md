@@ -68,8 +68,12 @@ explosion) or 4 (captions only: a captions change needs no re-render).
   64 x 64 WebP; `f12030f3...` is the hero piece and leads; the sunset, the Van Gogh and the
   living room follow), read with their own frame durations from the ANMF chunks. v1 and
   v2 used corpus GIFs from `firmware/tests/host/corpus/gifs/`; `storyboard.PANEL` takes
-  either (`art:` or `gif:`). The LED face's emission is `P64_LED_STRENGTH` (default 2.5;
-  9 in v1 and v2 clipped pale artworks to white).
+  either (`art:` or `gif:`). The LED face's emission is `P64_LED_STRENGTH` (default 4.5 under
+  the Khronos PBR Neutral view transform, `P64_VIEW`, whose highlights roll off; v1 and v2
+  used Standard at 9, which clipped pale artworks to white; AgX was tried and desaturated
+  the LEDs). A thin scattering volume around the device (`P64_HAZE`, default 0.03 per
+  metre, 0 removes it) lets the LEDs light the air and the floor in front of them (the
+  user's request of 2026-09-24: brighter LEDs with a little volumetric light).
 - The analogue clock ticks once per second of video time since v3 (v1 and v2 ran it six
   times too fast).
 - Nothing here is measured. The video is a concept render of the v7b model as designed.

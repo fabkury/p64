@@ -27,7 +27,11 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 BUILD = os.path.join(HERE, "build")
 SHELL_STL = os.path.join(ROOT, "enclosure", "output", "p64b", "v7b", "p64_enclosure_print.stl")
 MM = 0.001
-LED_STRENGTH = float(os.environ.get("P64_LED_STRENGTH", "2.5"))   # emission of a full-white LED; 9 clipped pale artworks to white (v1, v2)
+LED_STRENGTH = float(os.environ.get("P64_LED_STRENGTH", "4.5"))   # emission of a full-white LED (2.5 under the Standard view; 4.5 under PBR Neutral, whose
+                                                                  # highlights roll off instead of clipping: 9 under Standard clipped pale artworks)
+VIEW = os.environ.get("P64_VIEW", "Khronos PBR Neutral")           # "Standard" clipped; "AgX" desaturates the LEDs; PBR Neutral keeps their hue
+LOOK = os.environ.get("P64_LOOK", "None")
+HAZE = float(os.environ.get("P64_HAZE", "0.03"))                  # scattering density of the studio air, per metre; 0 removes the volume
 
 
 def args():
@@ -256,6 +260,22 @@ def studio():
     area("back_key", (0.6, -0.8, 0.8), c, 24, 1.0, (1.0, 0.96, 0.9))
     area("top", (0, -0.1, 1.4), c, 6, 1.5, (1, 1, 1))
 
+    if HAZE > 0:                                       # a thin haze around the device: the LEDs light the air in front of them
+        bpy.ops.mesh.primitive_cube_add(size=2.0, location=(0, 0, 0.6))
+        haze = bpy.context.object
+        haze.name = "haze"
+        haze.display_type = "WIRE"
+        hm = bpy.data.materials.new("haze")
+        hm.use_nodes = True
+        nt = hm.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        sc = nt.nodes.new("ShaderNodeVolumeScatter")
+        sc.inputs["Density"].default_value = HAZE
+        sc.inputs["Anisotropy"].default_value = float(os.environ.get("P64_HAZE_ANISO", "0.6"))
+        nt.links.new(sc.outputs["Volume"], out.inputs["Volume"])
+        haze.data.materials.append(hm)
+        haze.visible_shadow = False
     world = bpy.data.worlds.new("studio")
     scene.world = world
     world.use_nodes = True
@@ -381,8 +401,10 @@ def render_settings(samples):
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGB"
     scene.render.filepath = os.path.join(BUILD, "frames", "f_")
-    scene.view_settings.view_transform = "Standard"
-    scene.view_settings.look = "None"
+    scene.view_settings.view_transform = VIEW           # highlights roll off; the LEDs can run bright without clipping to white
+    scene.view_settings.look = LOOK
+    scene.cycles.volume_step_rate = 1.0
+    scene.cycles.volume_max_steps = 256
     scene.render.film_transparent = False
     scene.render.use_persistent_data = True
 
