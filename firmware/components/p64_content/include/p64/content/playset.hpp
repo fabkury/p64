@@ -20,6 +20,7 @@ enum class ChannelKind : uint8_t {
   MakapixReactions,  // identifier = user sqid; pairing
   UrlList,           // reserved for v1.x
   Pinned,            // reserved for v1.x
+  External,          // a channel of a registered content provider; identifier = "<provider>:<channel>" (ADR 0012)
 };
 
 constexpr size_t kMaxPlaysets = 32;
@@ -39,8 +40,12 @@ struct ChannelSpec {
 
   std::string default_display_name() const;
   bool is_makapix() const { return kind >= ChannelKind::MakapixPromoted && kind <= ChannelKind::MakapixReactions; }
+  bool is_external() const { return kind == ChannelKind::External; }
+  // External channels: the provider id before the ':' and the channel after it ("" otherwise).
+  std::string provider_id() const;
+  std::string provider_channel() const;
   bool needs_card() const { return kind == ChannelKind::Local || kind == ChannelKind::Pinned; }
-  bool needs_network() const { return is_makapix() || kind == ChannelKind::UrlList; }
+  bool needs_network() const { return is_makapix() || is_external() || kind == ChannelKind::UrlList; }
   bool needs_pairing() const { return is_makapix() && kind != ChannelKind::MakapixPromoted; }
   bool supported() const { return kind != ChannelKind::UrlList && kind != ChannelKind::Pinned; }
   // Kinds whose entries have a stable order (offset applies; recency starts there).
@@ -60,13 +65,15 @@ struct Playset {
   bool equal_weights() const;
 };
 
-const char *kind_name(ChannelKind kind);  // "local", "promoted", "all", "own", "artist", "hashtag", "reactions", ...
+const char *kind_name(ChannelKind kind);  // "local", "promoted", "all", "own", "artist", "hashtag", "reactions", ..., "external"
 // Accepts p64's names and p3a's ("sdcard", "user", "named" with a sub-name).
 bool kind_from_name(const std::string &name, const std::string &sub_name, ChannelKind &out);
 bool valid_playset_name(const std::string &name);
 bool valid_sqid(const std::string &s);
 bool valid_hashtag(const std::string &s);
 bool valid_folder_name(const std::string &s);  // one path segment, no dots-only, no control characters
+bool valid_provider_id(const std::string &s);          // 1..16 of [a-z0-9_-]
+bool valid_external_identifier(const std::string &s);  // "<provider>:<channel>", channel 1..47 of [A-Za-z0-9_.:/-]
 
 // Built-in playsets (spec 5.2). Their names are reserved (case-insensitively) for users.
 enum class Builtin : uint8_t { Promoted = 0, All, Followed, Local };

@@ -21,7 +21,7 @@ enum class Event : uint16_t {
   MakapixStateChanged,  // arg: the new makapix::State (pairing, paired, ...) or MQTT connection changes
   LocalFilesChanged,    // the file manager changed the card's animations tree
   PlaysetsChanged,      // a user playset was created, changed or deleted
-  MakapixChannelChanged,  // a Makapix channel index or its cache changed
+  ProviderChannelChanged,  // a content provider's channel index or cache changed (Makapix, the private area)
   StreamStarted,        // the first complete stream frame of a run landed (stream::status())
   StreamEnded,          // no stream frame for the silence timeout
 };

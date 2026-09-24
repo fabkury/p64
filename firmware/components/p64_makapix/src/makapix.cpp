@@ -79,7 +79,7 @@ void set_activity(const std::string &activity) {
   g_status.activity = activity;
 }
 
-void publish_channel_changed() { system::publish(system::Event::MakapixChannelChanged); }
+void publish_channel_changed() { system::publish(system::Event::ProviderChannelChanged); }
 
 uint16_t g_max_side = 0;  // the size limit the channel indexes were walked with
 
@@ -302,6 +302,7 @@ void view_timer_fired() {
 // --- public API ----------------------------------------------------------------------
 
 bool start(const Hooks &hooks) {
+  content::providers::add(&provider());
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_hooks = hooks;

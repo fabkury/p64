@@ -1,5 +1,6 @@
 // Host unit tests: playsets, their JSON, the scheduler, history and the Makapix index.
 #include "common.hpp"
+#include "p64/content/provider.hpp"
 
 namespace {
 
@@ -45,6 +46,106 @@ TEST_CASE("playset_model") {
   CHECK(builtin_playset(Builtin::Promoted, {}).channels[0].kind == ChannelKind::MakapixPromoted);
 }
 
+
+TEST_CASE("playset_external_kind") {
+  using namespace p64::content;
+  ChannelKind k;
+  CHECK((kind_from_name("external", "", k) && k == ChannelKind::External));
+  CHECK(std::string(kind_name(ChannelKind::External)) == "external");
+  ChannelSpec c;
+  c.kind = ChannelKind::External;
+  std::string error;
+  CHECK(!c.validate(error));  // an identifier is required
+  c.identifier = "pics";
+  CHECK(!c.validate(error));  // and it names a provider
+  c.identifier = "Fake:pics";
+  CHECK(!c.validate(error));  // provider ids are lower case
+  c.identifier = "fake:pics";
+  CHECK(c.validate(error));
+  CHECK(c.provider_id() == "fake");
+  CHECK(c.provider_channel() == "pics");
+  CHECK(c.default_display_name() == "pics");
+  CHECK(c.is_external());
+  CHECK(!c.is_makapix());
+  CHECK(c.needs_network());
+  CHECK(!c.needs_card());
+  CHECK(!c.needs_pairing());
+  CHECK(c.supported());
+  c.identifier = "fake:a/b:c.d-e_f";
+  CHECK(c.validate(error));
+  c.identifier = "fake:has space";
+  CHECK(!c.validate(error));
+  c.identifier = "fake:" + std::string(48, 'x');
+  CHECK(!c.validate(error));
+  // JSON round trip keeps the kind and the identifier.
+  Playset p;
+  p.name = "ext";
+  c.identifier = "fake:pics";
+  p.channels.push_back(c);
+  cJSON *doc = playset_to_json(p);
+  Playset back;
+  REQUIRE(playset_from_json(doc, back, error));
+  cJSON_Delete(doc);
+  REQUIRE_EQ(back.channels.size(), 1u);
+  CHECK(back.channels[0].kind == ChannelKind::External);
+  CHECK(back.channels[0].identifier == "fake:pics");
+}
+
+TEST_CASE("provider_registry") {
+  using namespace p64::content;
+  struct P : Provider {
+    const char *id_;
+    explicit P(const char *id) : id_(id) {}
+    const char *id() const override { return id_; }
+    const char *label() const override { return "P"; }
+    bool owns(const ChannelSpec &spec) const override { return spec.is_makapix() && std::string(id_) == "mk"; }
+    State state() override { return {true, false}; }
+    void set_active_channels(const std::vector<ChannelRef> &) override {}
+    bool snapshot(const ChannelRef &, ChannelSnapshot &) override { return false; }
+    bool resolve(const ChannelRef &, const ProviderItem &, std::string &, std::string &) override { return false; }
+    void note_load_failed(const ChannelRef &, const ProviderItem &, bool) override {}
+    void note_shown(int32_t, const ChannelRef *, bool) override {}
+    void note_hidden() override {}
+    bool memory_bytes(const std::string &path, std::vector<uint8_t> &out) override {
+      if (path != std::string("mem:") + id_) return false;
+      out = {1, 2, 3};
+      return true;
+    }
+    std::vector<ChannelOffer> offers() override { return {{"one", "One"}}; }
+  };
+  providers::clear();
+  P a("aa"), mk("mk");
+  providers::add(&a);
+  providers::add(&mk);
+  providers::add(&a);  // twice is once
+  CHECK_EQ(providers::all().size(), 2u);
+  CHECK(providers::find("mk") == &mk);
+  CHECK(providers::find("zz") == nullptr);
+  ChannelSpec local;
+  CHECK(providers::for_spec(local) == nullptr);
+  ChannelSpec promoted;
+  promoted.kind = ChannelKind::MakapixPromoted;
+  CHECK(providers::for_spec(promoted) == &mk);
+  ChannelSpec ext;
+  ext.kind = ChannelKind::External;
+  ext.identifier = "aa:one";
+  CHECK(providers::for_spec(ext) == &a);
+  ext.identifier = "zz:one";
+  CHECK(providers::for_spec(ext) == nullptr);
+  std::vector<uint8_t> bytes;
+  CHECK(providers::memory_bytes("mem:mk", bytes));
+  CHECK_EQ(bytes.size(), 3u);
+  CHECK(!providers::memory_bytes("mem:zz", bytes));
+  cJSON *doc = providers::status_json();
+  REQUIRE(cJSON_GetArraySize(doc) == 2);
+  cJSON *first = cJSON_GetArrayItem(doc, 0);
+  CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(first, "id"))) == "aa");
+  CHECK(cJSON_IsTrue(cJSON_GetObjectItem(first, "online")));
+  CHECK(cJSON_IsFalse(cJSON_GetObjectItem(first, "authorized")));
+  CHECK(cJSON_GetArraySize(cJSON_GetObjectItem(first, "channels")) == 1);
+  cJSON_Delete(doc);
+  providers::clear();
+}
 
 TEST_CASE("playset_json") {
   using namespace p64::content;

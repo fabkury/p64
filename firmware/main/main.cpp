@@ -189,7 +189,9 @@ extern "C" void app_main() {
   mk.set_rotation = [](uint16_t r) {
     p64::system::settings_update([r](p64::system::Settings &st) { st.rotation = r; });
   };
-  mk.play_artwork = p64::show::play_downloaded;
+  mk.play_artwork = [](const std::string &path, int32_t post_id, const std::string &name) {
+    p64::show::play_downloaded(path, "makapix", post_id, name);
+  };
   mk.play_playset = p64::show::activate_transient;
   mk.current_post_id = p64::show::current_post_id;
   mk.is_paused = p64::show::is_paused;

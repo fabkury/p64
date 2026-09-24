@@ -13,7 +13,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "p64/makapix/makapix.hpp"
+#include "p64/content/provider.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/storage/card.hpp"
 
@@ -55,7 +55,7 @@ void do_load(Request &r) {
   std::vector<uint8_t> bytes;
   std::string error;
   if (r.path.rfind("mem:", 0) == 0) {  // the memory cache used without a card
-    if (!makapix::memory_bytes(r.path, bytes)) {
+    if (!content::providers::memory_bytes(r.path, bytes)) {
       res->missing = true;
       res->error = "no longer in the memory cache";
       g_on_load(res);

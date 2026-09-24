@@ -59,6 +59,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_content", "src", "playset_json.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "scheduler.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "provider.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "makapix_index.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts_data.cpp"),
@@ -148,7 +149,6 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),
 ]
-
 
 def newest_mtime(paths):
     latest = 0.0

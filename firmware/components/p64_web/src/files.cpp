@@ -168,7 +168,7 @@ esp_err_t format_handler(httpd_req_t *req) {
   if (!storage::format(error)) return reply_error(req, "500 Internal Server Error", "FORMAT_FAILED", error);
   system::publish(system::Event::CardMounted);
   system::publish(system::Event::LocalFilesChanged);
-  system::publish(system::Event::MakapixChannelChanged);
+  system::publish(system::Event::ProviderChannelChanged);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddBoolToObject(d, "formatted", true);
   return reply_ok(req, d);

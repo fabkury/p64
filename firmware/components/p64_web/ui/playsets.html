@@ -151,7 +151,20 @@ h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
 p64.nav('playsets');
 var state = { playsets: [], builtins: [], active: '', max: 32, editing: null, channels: [], folders: [] };
 var colors = ['#8B5CFF', '#FF4D97', '#33A6FF', '#42D86E', '#FFC533', '#FF8A33', '#2BD6D6', '#E84DD6'];
-var kindLabels = { local: 'Local', promoted: 'Promoted', all: 'All artworks', own: 'Own artworks', artist: 'Artist', hashtag: 'Hashtag', reactions: 'Reactions', url_list: 'URL list', pinned: 'Pinned' };
+var kindLabels = { local: 'Local', promoted: 'Promoted', all: 'All artworks', own: 'Own artworks', artist: 'Artist', hashtag: 'Hashtag', reactions: 'Reactions', url_list: 'URL list', pinned: 'Pinned', external: 'External' };
+// Content providers beyond Makapix (status.providers): each offers channels as "<id>:<channel>".
+state.providers = [];
+function providerOf(identifier) { var id = (identifier || '').split(':')[0]; for (var i = 0; i < state.providers.length; i++) if (state.providers[i].id === id) return state.providers[i]; return null; }
+function externalLabel(identifier) {
+    var p = providerOf(identifier), ch = (identifier || '').substring((identifier || '').indexOf(':') + 1);
+    if (p) for (var i = 0; i < (p.channels || []).length; i++) if (p.channels[i].identifier === ch) return p.channels[i].label;
+    return identifier || '?';
+}
+function renderProviderSources() {
+    var sel = document.getElementById('channelSource');
+    for (var i = sel.options.length - 1; i >= 0; i--) if (sel.options[i].value.indexOf('provider:') === 0) sel.remove(i);
+    state.providers.forEach(function (p) { if ((p.channels || []).length) { var o = document.createElement('option'); o.value = 'provider:' + p.id; o.textContent = p.label; sel.appendChild(o); } });
+}
 var reserved = ['Promoted', 'All', 'Followed', 'Local'];
 
 function load() {
@@ -239,6 +252,7 @@ function defaultName(c) {
     if (c.kind === 'artist') return 'Artist ' + (c.identifier || '?');
     if (c.kind === 'reactions') return (c.identifier || '?') + '\'s reactions';
     if (c.kind === 'hashtag') return '#' + (c.identifier || 'tag');
+    if (c.kind === 'external') return externalLabel(c.identifier);
     return kindLabels[c.kind] || c.kind;
 }
 function renderWeights() {
@@ -282,7 +296,17 @@ function fieldsFor(c, i) {
         return '<div><label class="form-label" style="font-size:12px">Hashtag (without #)</label><div class="sqid-input-row"><input type="text" class="form-input" id="ident_' + i + '" maxlength="64" placeholder="pixelart" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim().replace(/^#/,\'\'))">' +
             '<button type="button" class="btn btn-secondary btn-small" onclick="verify(\'hashtag\', document.getElementById(\'ident_' + i + '\').value, \'res_' + i + '\', ' + i + ')">Check</button></div><div class="check-results" id="res_' + i + '">Enter the hashtag to check.</div></div>';
     }
+    if (c.kind === 'external') {
+        var p = providerOf(c.identifier);
+        if (p && (p.channels || []).length) {
+            return '<div><label class="form-label" style="font-size:12px">' + p64.esc(p.label) + ' channel</label><select class="form-input" onchange="setField(' + i + ',\'identifier\',this.value)">' + providerChannelOptions(p, c.identifier) + '</select></div>';
+        }
+        return '<div><label class="form-label" style="font-size:12px">Provider channel (provider:channel)</label><input type="text" class="form-input" maxlength="64" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim())"></div>';
+    }
     return '<div style="padding:8px;background:var(--c-card-bg);border-radius:8px;font-size:13px;color:var(--c-card-fg-muted)">' + p64.esc(builtinHintKind(c.kind)) + '</div>';
+}
+function providerChannelOptions(p, selected) {
+    return (p.channels || []).map(function (ch) { var v = p.id + ':' + ch.identifier; return '<option value="' + p64.esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + p64.esc(ch.label) + '</option>'; }).join('');
 }
 function builtinHintKind(kind) { return { promoted: 'Makapix Club\'s promoted artworks; works without pairing', all: 'Every public Makapix artwork (paired)', own: 'Your own artworks (paired)' }[kind] || ''; }
 function folderOptions(selected) {
@@ -338,7 +362,10 @@ function showAddChannel() {
 function closeAddChannel() { document.getElementById('addChannelModal').classList.remove('active'); }
 function updateSourceFields() {
     var src = document.getElementById('channelSource').value, c = document.getElementById('sourceFields');
-    if (src === 'local') {
+    if (src.indexOf('provider:') === 0) {
+        var p = providerOf(src.substring(9) + ':');
+        c.innerHTML = '<div class="form-group"><label class="form-label">' + p64.esc(p ? p.label : 'Provider') + ' channel</label><select id="extIdent" class="form-input">' + (p ? providerChannelOptions(p, '') : '') + '</select></div>';
+    } else if (src === 'local') {
         c.innerHTML = '<div class="form-group"><label class="form-label">Folder</label><select id="localFolder" class="form-input">' + folderOptions('') + '</select>' +
             '<p class="setting-hint">Folders under animations/ on the card; new files there are picked up within seconds.</p></div>';
     } else {
@@ -362,6 +389,7 @@ function updateKindFields() {
 function addChannel() {
     var src = document.getElementById('channelSource').value, c = { kind: 'promoted', identifier: '', display_name: document.getElementById('channelDisplayName').value.trim(), weight: 100, offset: 0 };
     if (src === 'local') { c.kind = 'local'; c.identifier = document.getElementById('localFolder').value; }
+    else if (src.indexOf('provider:') === 0) { c.kind = 'external'; c.identifier = document.getElementById('extIdent').value; if (!c.identifier) { p64.toast('The provider offers no channel', true); return; } }
     else {
         c.kind = document.getElementById('mkKind').value;
         var id = document.getElementById('mkIdent');
@@ -384,6 +412,7 @@ p64.checkAuth();
 p64.startStatus();
 var playsetsVersion = null;
 p64.onStatus(function (d) {
+    if (d.providers && JSON.stringify(d.providers) !== JSON.stringify(state.providers)) { state.providers = d.providers; renderProviderSources(); }
     if (d.playback && d.playback.playset && d.playback.playset.name !== state.active) { state.active = d.playback.playset.name; renderList(); }
     // The list, the built-ins' availability or the folders changed (another browser, pairing, the card).
     if (playsetsVersion !== null && d.playsets_version !== playsetsVersion) load();

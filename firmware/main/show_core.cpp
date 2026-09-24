@@ -6,11 +6,11 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <map>
 #include <memory>
 #include <vector>
 
 #include "p64/content/local_index.hpp"
-#include "p64/content/makapix_index.hpp"
 #include "p64/content/playset_json.hpp"
 #include "p64/decode/decoder.hpp"
 #include "status_screens.hpp"
@@ -66,10 +66,23 @@ std::string channel_dir(const content::ChannelSpec &spec) {
   return spec.identifier.empty() ? g_env->animations_dir() : g_env->animations_dir() + "/" + spec.identifier;
 }
 
-makapix::ChannelRef ref_of(const content::ChannelSpec &spec) { return makapix::ChannelRef{spec.kind, spec.identifier}; }
+// The channel as its provider sees it: External channels drop the "<provider>:" prefix.
+content::ChannelRef ref_of(const content::ChannelSpec &spec) {
+  return content::ChannelRef{spec.kind, spec.is_external() ? spec.provider_channel() : spec.identifier};
+}
 
 std::string display_name(const content::ChannelSpec &spec) {
-  return spec.display_name.empty() ? spec.default_display_name() : spec.display_name;
+  if (!spec.display_name.empty()) return spec.display_name;
+  if (spec.is_external()) {
+    // The provider's own label for the channel when it offers one.
+    if (content::Provider *p = content::providers::for_spec(spec)) {
+      const std::string channel = spec.provider_channel();
+      for (const content::ChannelOffer &offer : p->offers()) {
+        if (offer.identifier == channel) return offer.label;
+      }
+    }
+  }
+  return spec.default_display_name();
 }
 
 // Why a channel cannot supply artworks right now ("" when it can).
@@ -79,15 +92,19 @@ std::string channel_status(const ChannelRuntime &ch) {
   f.local = ch.spec.kind == content::ChannelKind::Local;
   if (f.local) {
     f.card_mounted = g_env->card_mounted();
+  } else if (!ch.provider) {
+    f.supported = false;  // an External channel of a provider that is not registered
   } else {
-    const makapix::Status ms = g_env->makapix_status();
-    f.needs_pairing = ch.spec.needs_pairing();
-    f.paired = ms.state == makapix::State::Paired;
-    f.online = ms.online;
-    f.index_entries = ch.mk_entries.size();
-    f.cached = ch.mk_cached.size();
-    f.refreshed = ch.mk_last_refresh != 0;
-    f.oversized = ch.mk_oversized;
+    const content::Provider::State ps = ch.provider->state();
+    // Makapix channels beyond Promoted need pairing; a provider's External channels need
+    // its credentials in place.
+    f.needs_pairing = ch.spec.needs_pairing() || ch.spec.is_external();
+    f.paired = ps.authorized;
+    f.online = ps.online;
+    f.index_entries = ch.listed;
+    f.cached = ch.items.size();
+    f.refreshed = ch.last_refresh != 0;
+    f.oversized = ch.oversized;
     f.max_side = settings().makapix_max_side;
   }
   return rules::channel_status(f);
@@ -129,7 +146,7 @@ void enter_animation_show(const char *why) {
 
 bool has_local_channels() {
   for (const ChannelRuntime &ch : st.channels) {
-    if (!ch.makapix) return true;
+    if (!ch.provider) return true;
   }
   return false;
 }
@@ -145,32 +162,31 @@ void update_counts() {
   for (size_t i = 0; i < st.channels.size(); ++i) {
     ChannelRuntime &ch = st.channels[i];
     ch.status = channel_status(ch);
-    const uint32_t count = ch.makapix ? static_cast<uint32_t>(ch.mk_cached.size())
-                                      : (ch.available ? static_cast<uint32_t>(ch.entries.size()) : 0);
+    const uint32_t count = ch.provider ? static_cast<uint32_t>(ch.items.size())
+                                       : (ch.available ? static_cast<uint32_t>(ch.entries.size()) : 0);
     st.scheduler.set_count(i, ch.status.empty() ? count : 0);
   }
 }
 
-// Pulls the Makapix channels' indexes from the Makapix component.
-void snapshot_makapix(ChannelRuntime &ch) {
-  makapix::ChannelSnapshot snap;
-  ch.mk_entries.clear();
-  ch.mk_cached.clear();
-  ch.mk_last_refresh = 0;
-  ch.mk_oversized = 0;
-  if (g_env->makapix_snapshot(ref_of(ch.spec), snap)) {
-    ch.mk_entries = std::move(snap.entries);
-    ch.mk_last_refresh = snap.last_refresh;
-    ch.mk_oversized = snap.oversized;
-    // Pickable: cached and within the size limit (an index walked before the limit was
-    // lowered still lists bigger artworks until its refresh lands).
+// Pulls a provider channel's snapshot: what the provider can play now, filtered by the
+// size limit (an index walked before the limit was lowered still lists bigger artworks
+// until its refresh lands).
+void snapshot_provider(ChannelRuntime &ch) {
+  content::ChannelSnapshot snap;
+  ch.items.clear();
+  ch.listed = 0;
+  ch.last_refresh = 0;
+  ch.oversized = 0;
+  if (ch.provider && ch.provider->snapshot(ref_of(ch.spec), snap)) {
+    ch.listed = snap.listed;
+    ch.last_refresh = snap.last_refresh;
+    ch.oversized = snap.oversized;
     const uint16_t max_side = settings().makapix_max_side;
-    for (size_t i = 0; i < ch.mk_entries.size() && i < 65535; ++i) {
-      const content::MakapixEntry &e = ch.mk_entries[i];
-      if ((e.flags & content::kMakapixCached) && content::fits_side(e, max_side)) ch.mk_cached.push_back(static_cast<uint16_t>(i));
+    for (const content::ProviderItem &item : snap.items) {
+      if (content::fits_side(item, max_side)) ch.items.push_back(item);
     }
   }
-  ch.available = static_cast<uint32_t>(ch.mk_cached.size());
+  ch.available = static_cast<uint32_t>(ch.items.size());
 }
 
 // --- picking and playing --------------------------------------------------------------
@@ -184,7 +200,7 @@ bool pick_fresh(Pick &out) {
     ChannelRuntime &ch = st.channels[c];
     const int avoid = rules::avoid_entry(cur != nullptr, cur ? cur->channel_index : -1, cur ? cur->playset : std::string(),
                                          cur ? cur->entry_index : -1, c, st.playset.name);
-    const size_t pool = ch.makapix ? ch.mk_cached.size() : ch.entries.size();
+    const size_t pool = ch.provider ? ch.items.size() : ch.entries.size();
     const size_t tries = std::min<size_t>(pool, 16);
     for (size_t t = 0; t < tries; ++t) {
       const int e = st.scheduler.pick_entry(c, avoid);
@@ -194,16 +210,15 @@ bool pick_fresh(Pick &out) {
       out.entry = e;
       out.pool = static_cast<uint32_t>(pool);
       out.channel_name = display_name(ch.spec);
-      if (ch.makapix) {
-        const content::MakapixEntry &entry = ch.mk_entries[ch.mk_cached[e]];
-        out.makapix = true;
-        out.mk_entry = entry;
-        out.path = g_env->makapix_artwork_path(entry);
-        out.name = entry.sqid[0] ? std::string(entry.sqid) : "post " + std::to_string(entry.post_id);
+      if (ch.provider) {
+        const content::ProviderItem &item = ch.items[e];
+        out.provider = ch.provider;
+        out.item = item;
+        if (!ch.provider->resolve(ref_of(ch.spec), item, out.path, out.name)) continue;  // gone meanwhile
       } else {
         const content::LocalEntry &entry = ch.entries[e];
         if (entry.missing || entry.rejected) continue;
-        out.makapix = false;
+        out.provider = nullptr;
         out.path = channel_dir(ch.spec) + "/" + entry.name;
         out.name = entry.name;
       }
@@ -216,9 +231,9 @@ bool pick_fresh(Pick &out) {
 void mark_entry(const Pick &pick, bool missing) {
   if (pick.generation != st.generation || pick.channel < 0 || static_cast<size_t>(pick.channel) >= st.channels.size()) return;
   ChannelRuntime &ch = st.channels[pick.channel];
-  if (pick.makapix) {
-    g_env->makapix_note_load_failed(pick.mk_entry, missing);
-    snapshot_makapix(ch);
+  if (pick.provider) {
+    pick.provider->note_load_failed(ref_of(ch.spec), pick.item, missing);
+    snapshot_provider(ch);
     update_counts();
     return;
   }
@@ -242,14 +257,24 @@ void request_prepare() {
   st.prepared_load_id = g_env->load(p.path, settings().background);
 }
 
+// Every provider hears what is on the panel: the item's own provider gets note_shown
+// (presence, views), every other one note_hidden.
+void report_hidden() {
+  for (content::Provider *p : content::providers::all()) p->note_hidden();
+}
+
 void report_shown(const content::HistoryItem &item) {
-  if (item.post_id < 0) {
-    g_env->makapix_note_hidden();
-    return;
+  content::Provider *owner = item.provider.empty() ? nullptr : content::providers::find(item.provider);
+  for (content::Provider *p : content::providers::all()) {
+    if (p != owner) p->note_hidden();
   }
-  makapix::ChannelRef ref{static_cast<content::ChannelKind>(item.channel_kind), item.channel_identifier};
+  if (!owner) return;
+  content::ChannelSpec spec;
+  spec.kind = static_cast<content::ChannelKind>(item.channel_kind);
+  spec.identifier = item.channel_identifier;
+  const content::ChannelRef ref = ref_of(spec);
   const bool from_channel = item.source == content::Source::Channel;
-  g_env->makapix_note_shown(item.post_id, from_channel ? &ref : nullptr, item.source == content::Source::PlayThisMakapix);
+  owner->note_shown(item.item_id, from_channel ? &ref : nullptr, !from_channel);
 }
 
 void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem item, bool push) {
@@ -296,9 +321,11 @@ void play_prepared() {
     item.channel_kind = static_cast<uint8_t>(spec.kind);
     item.channel_identifier = spec.identifier;
   }
-  if (st.prepared_pick.makapix) {
-    item.post_id = st.prepared_pick.mk_entry.post_id;
-    item.sqid = st.prepared_pick.mk_entry.sqid;
+  if (st.prepared_pick.provider) {
+    item.provider = st.prepared_pick.provider->id();
+    item.item_id = st.prepared_pick.item.id;
+    // Makapix names its items by sqid when the listing carried one, "post N" otherwise.
+    if (item.provider == "makapix" && st.prepared_pick.name.rfind("post ", 0) != 0) item.sqid = st.prepared_pick.name;
   }
   play_artwork(std::move(st.prepared), std::move(item), true);
   st.prepared.reset();
@@ -314,7 +341,7 @@ void show_frame(const char *name) {
   st.widget_up = false;
   g_artwork_up = false;
   st.paused = false;
-  g_env->makapix_note_hidden();
+  report_hidden();
   g_env->playback_swapped(-1);
 }
 
@@ -407,7 +434,7 @@ void play_widget(system::WidgetKind kind, bool interlude) {
     item.shown_at_us = st.swap_at_us;
     st.history.push(std::move(item));
   }
-  g_env->makapix_note_hidden();
+  report_hidden();
   LOGI("widget %s%s", g_env->widget_name(kind), interlude ? " (interlude)" : "");
   g_env->playback_swapped(static_cast<int32_t>(st.history.position()));
 }
@@ -456,7 +483,7 @@ void take_stream() {
   st.stage.take(g_env->stream_source());
   g_stream_up = true;
   g_env->play(st.stage.on_panel());
-  g_env->makapix_note_hidden();
+  report_hidden();
   const stream::Status ss = g_env->stream_status();
   LOGI("stream takes the panel: %s %dx%d from %s (behind: %s)", ss.protocol.c_str(), ss.width, ss.height,
            ss.sender.c_str(), st.stage.behind() ? st.stage.behind()->name().c_str() : "nothing");
@@ -562,14 +589,17 @@ void install(loader::ScanResult &r) {
                      st.channels.size() != r.playset.channels.size();
   st.playset = r.playset;
   std::vector<ChannelRuntime> channels(st.playset.channels.size());
-  std::vector<makapix::ChannelRef> refs;
+  std::map<content::Provider *, std::vector<content::ChannelRef>> active;
   size_t entries = 0;
   for (size_t i = 0; i < channels.size(); ++i) {
     ChannelRuntime &ch = channels[i];
     ch.spec = st.playset.channels[i];
-    ch.makapix = ch.spec.is_makapix();
-    if (ch.makapix) {
-      refs.push_back(ref_of(ch.spec));
+    ch.provider = ch.spec.kind == content::ChannelKind::Local ? nullptr : content::providers::for_spec(ch.spec);
+    if (ch.provider) {
+      active[ch.provider].push_back(ref_of(ch.spec));
+    } else if (ch.spec.kind != content::ChannelKind::Local) {
+      // A provider channel nobody serves (an External id of a provider that is not
+      // registered on this build): it stays in the playset, unusable, and says so.
     } else {
       if (i < r.entries.size()) ch.entries = std::move(r.entries[i]);
       ch.available = static_cast<uint32_t>(ch.entries.size());
@@ -578,9 +608,13 @@ void install(loader::ScanResult &r) {
     entries += ch.entries.size();
   }
   st.channels = std::move(channels);
-  g_env->makapix_set_active_channels(refs);
+  // Every registered provider hears which of its channels are in play (none, for most).
+  for (content::Provider *p : content::providers::all()) {
+    const auto it = active.find(p);
+    p->set_active_channels(it == active.end() ? std::vector<content::ChannelRef>{} : it->second);
+  }
   for (ChannelRuntime &ch : st.channels) {
-    if (ch.makapix) snapshot_makapix(ch);
+    if (ch.provider) snapshot_provider(ch);
   }
   if (fresh) {
     std::vector<uint32_t> weights, offsets;
@@ -738,11 +772,11 @@ void on_scanned_impl(std::unique_ptr<loader::ScanResult> res) {
   }
 }
 
-void on_makapix_changed() {
+void on_provider_changed() {
   bool any = false;
   for (ChannelRuntime &ch : st.channels) {
-    if (!ch.makapix) continue;
-    snapshot_makapix(ch);
+    if (!ch.provider) continue;
+    snapshot_provider(ch);
     any = true;
   }
   if (!any) return;
@@ -751,12 +785,13 @@ void on_makapix_changed() {
   g_env->notify_web();
   // A pick prepared while the cache was still tiny (the same artwork again, or one of
   // a handful) is replaced once there is something to choose from.
-  if (st.prepared && st.prepared_pick.makapix && st.prepared_pick.channel >= 0 &&
+  if (st.prepared && st.prepared_pick.provider && st.prepared_pick.channel >= 0 &&
       static_cast<size_t>(st.prepared_pick.channel) < st.channels.size()) {
-    const uint32_t pool = static_cast<uint32_t>(st.channels[st.prepared_pick.channel].mk_cached.size());
+    const uint32_t pool = static_cast<uint32_t>(st.channels[st.prepared_pick.channel].items.size());
     const content::HistoryItem *cur = st.history.current();
-    if (rules::replace_prepared_pick(st.prepared_pick.mk_entry.post_id, st.prepared_pick.pool, pool,
-                                     cur && st.current, cur ? cur->post_id : -1)) {
+    const bool same_provider = cur && cur->provider == st.prepared_pick.provider->id();
+    if (rules::replace_prepared_pick(st.prepared_pick.item.id, st.prepared_pick.pool, pool, cur && st.current,
+                                     same_provider ? cur->item_id : -1)) {
       st.prepared.reset();
       st.prepared_pick = Pick{};
     }
@@ -822,7 +857,7 @@ void do_pause() {
   st.widget_up = false;
   g_artwork_up = false;
   st.paused = true;
-  g_env->makapix_note_hidden();
+  report_hidden();
   LOGI("paused");
   g_env->playback_swapped(-1);
 }
@@ -838,18 +873,19 @@ void do_resume() {
   }
 }
 
-void do_play_file(const std::string &path, int32_t post_id, const std::string &name) {
+void do_play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
   enter_animation_show("play-this");
   content::HistoryItem item;
   item.kind = content::ItemKind::Artwork;
-  item.source = post_id >= 0 ? content::Source::PlayThisMakapix
-                             : (path.rfind(g_env->downloads_dir(), 0) == 0 || path.rfind("mem:dl-", 0) == 0)
-                                   ? content::Source::PlayThisUrl
-                                   : content::Source::PlayThisFile;
+  item.source = (!provider.empty() && item_id >= 0) ? content::Source::PlayThisMakapix
+                : (path.rfind(g_env->downloads_dir(), 0) == 0 || path.rfind("mem:dl-", 0) == 0)
+                    ? content::Source::PlayThisUrl
+                    : content::Source::PlayThisFile;
   item.path = path;
   item.name = name.empty() ? basename_of(path) : name;
   item.playset = st.playset.name;
-  item.post_id = post_id;
+  item.provider = item_id >= 0 ? provider : std::string();
+  item.item_id = item_id;
   st.pending.purpose = Pending::Purpose::PlayThis;
   st.pending.direction = 0;
   st.pending.item = std::move(item);
@@ -991,7 +1027,8 @@ cJSON *item_json(const content::HistoryItem &item, size_t index, bool current) {
   cJSON_AddStringToObject(o, "channel", item.channel.c_str());
   cJSON_AddNumberToObject(o, "channel_index", item.channel_index);
   cJSON_AddStringToObject(o, "playset", item.playset.c_str());
-  if (item.post_id >= 0) cJSON_AddNumberToObject(o, "post_id", item.post_id);
+  if (!item.provider.empty()) cJSON_AddStringToObject(o, "provider", item.provider.c_str());
+  if (item.item_id >= 0) cJSON_AddNumberToObject(o, "post_id", item.item_id);
   if (!item.sqid.empty()) cJSON_AddStringToObject(o, "sqid", item.sqid.c_str());
   cJSON_AddNumberToObject(o, "shown_s_ago", static_cast<double>((now_us() - item.shown_at_us) / kSecond));
   cJSON_AddBoolToObject(o, "current", current);
@@ -1081,7 +1118,9 @@ void pause() { do_pause(); }
 void resume() { do_resume(); }
 void reset_timer() { st.swap_at_us = now_us(); }
 void refresh() { st.rescan_due_us = now_us(); }
-void play_file(const std::string &path, int32_t post_id, const std::string &name) { do_play_file(path, post_id, name); }
+void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
+  do_play_file(path, provider, item_id, name);
+}
 
 void activate(const std::string &name) {
   enter_animation_show("playset");
@@ -1098,7 +1137,7 @@ void on_scanned(std::unique_ptr<loader::ScanResult> result) { on_scanned_impl(st
 void card_changed() { st.rescan_due_us = now_us() + kSecond / 5; }
 void files_changed() { st.rescan_due_us = now_us() + kRescanDebounceUs; }
 void settings_changed() { settings_changed_impl(); }
-void makapix_changed() { on_makapix_changed(); }
+void provider_changed() { on_provider_changed(); }
 void makapix_state(makapix::State state) { on_makapix_state(static_cast<uint32_t>(state)); }
 
 void wifi_connected() {
@@ -1125,7 +1164,7 @@ bool is_paused() { return st.paused; }
 
 int32_t current_post_id() {
   const content::HistoryItem *cur = st.history.current();
-  return (st.current && cur) ? cur->post_id : -1;
+  return (st.current && cur && cur->provider == "makapix") ? cur->item_id : -1;
 }
 
 const std::string &active_playset_name() { return st.playset.name; }
@@ -1160,7 +1199,8 @@ cJSON *status_json() {
       cJSON_AddNumberToObject(a, "channel_index", cur->channel_index);
       const char *source = cur->source == content::Source::Channel ? "channel" : "play_this";
       cJSON_AddStringToObject(a, "source", source);
-      if (cur->post_id >= 0) cJSON_AddNumberToObject(a, "post_id", cur->post_id);
+      if (!cur->provider.empty()) cJSON_AddStringToObject(a, "provider", cur->provider.c_str());
+      if (cur->item_id >= 0) cJSON_AddNumberToObject(a, "post_id", cur->item_id);
       if (!cur->sqid.empty()) cJSON_AddStringToObject(a, "sqid", cur->sqid.c_str());
     }
   }
@@ -1210,13 +1250,14 @@ cJSON *channels_json() {
     cJSON_AddStringToObject(o, "display_name", display_name(ch.spec).c_str());
     cJSON_AddNumberToObject(o, "weight", ch.spec.weight);
     cJSON_AddNumberToObject(o, "offset", ch.spec.offset);
-    cJSON_AddNumberToObject(o, "entries", static_cast<double>(ch.makapix ? ch.mk_entries.size() : ch.entries.size()));
+    cJSON_AddNumberToObject(o, "entries", static_cast<double>(ch.provider ? ch.listed : ch.entries.size()));
     cJSON_AddNumberToObject(o, "available", ch.available);
     cJSON_AddStringToObject(o, "status", ch.status.c_str());
-    if (ch.makapix) {
-      makapix::ChannelSnapshot snap;
-      if (g_env->makapix_snapshot(ref_of(ch.spec), snap)) {
-        cJSON_AddNumberToObject(o, "cached", snap.cached);
+    if (ch.provider) {
+      cJSON_AddStringToObject(o, "provider", ch.provider->id());
+      content::ChannelSnapshot snap;
+      if (ch.provider->snapshot(ref_of(ch.spec), snap)) {
+        cJSON_AddNumberToObject(o, "cached", static_cast<double>(snap.items.size()));
         cJSON_AddNumberToObject(o, "last_refresh", snap.last_refresh);
         cJSON_AddNumberToObject(o, "oversized", snap.oversized);
         cJSON_AddBoolToObject(o, "refreshing", snap.refreshing);

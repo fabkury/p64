@@ -28,6 +28,7 @@ const char *kind_name(ChannelKind kind) {
     case ChannelKind::MakapixReactions: return "reactions";
     case ChannelKind::UrlList: return "url_list";
     case ChannelKind::Pinned: return "pinned";
+    case ChannelKind::External: return "external";
   }
   return "unknown";
 }
@@ -51,6 +52,8 @@ bool kind_from_name(const std::string &name, const std::string &sub_name, Channe
     out = ChannelKind::UrlList;
   } else if (name == "pinned") {
     out = ChannelKind::Pinned;
+  } else if (name == "external") {
+    out = ChannelKind::External;
   } else if (name == "named") {  // p3a: {"type":"named","name":"all"|"promoted"}
     if (sub_name == "promoted") {
       out = ChannelKind::MakapixPromoted;
@@ -110,8 +113,41 @@ std::string ChannelSpec::default_display_name() const {
     case ChannelKind::MakapixReactions: return "Reactions of " + identifier;
     case ChannelKind::UrlList: return "URL list " + identifier;
     case ChannelKind::Pinned: return "Pinned " + identifier;
+    case ChannelKind::External: return provider_channel().empty() ? identifier : provider_channel();
   }
   return "";
+}
+
+std::string ChannelSpec::provider_id() const {
+  const size_t colon = identifier.find(':');
+  return colon == std::string::npos ? std::string() : identifier.substr(0, colon);
+}
+
+std::string ChannelSpec::provider_channel() const {
+  const size_t colon = identifier.find(':');
+  return colon == std::string::npos ? std::string() : identifier.substr(colon + 1);
+}
+
+bool valid_provider_id(const std::string &s) {
+  if (s.empty() || s.size() > 16) return false;
+  for (char c : s) {
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;
+  }
+  return true;
+}
+
+bool valid_external_identifier(const std::string &s) {
+  const size_t colon = s.find(':');
+  if (colon == std::string::npos || !valid_provider_id(s.substr(0, colon))) return false;
+  const std::string channel = s.substr(colon + 1);
+  if (channel.empty() || channel.size() > 47) return false;
+  for (char c : channel) {
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.' ||
+          c == ':' || c == '/' || c == '-')) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool ChannelSpec::validate(std::string &error) const {
@@ -147,6 +183,12 @@ bool ChannelSpec::validate(std::string &error) const {
     case ChannelKind::Pinned:
       error = std::string(kind_name(kind)) + " channels are not supported yet";
       return false;
+    case ChannelKind::External:
+      if (!valid_external_identifier(identifier)) {
+        error = "external channel: identifier must be <provider>:<channel>";
+        return false;
+      }
+      break;
   }
   if (display_name.size() > kMaxDisplayName) {
     error = "display name longer than 64 characters";

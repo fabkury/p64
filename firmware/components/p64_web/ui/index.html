@@ -251,8 +251,8 @@ function renderInfo() {
     document.getElementById('artwork-info-rows').innerHTML = rows;
     area.hidden = false;
 }
-function kindLetter(kind) { return kind === 'local' ? 'L' : 'M'; }
-function kindName(kind) { return { local: 'card', promoted: 'promoted', all: 'all', own: 'own', artist: 'artist', hashtag: 'hashtag', reactions: 'reactions', url_list: 'url list', pinned: 'pinned' }[kind] || kind; }
+function kindLetter(kind) { return kind === 'local' ? 'L' : kind === 'external' ? 'E' : 'M'; }
+function kindName(kind) { return { local: 'card', promoted: 'promoted', all: 'all', own: 'own', artist: 'artist', hashtag: 'hashtag', reactions: 'reactions', url_list: 'url list', pinned: 'pinned', external: 'external' }[kind] || kind; }
 // A channel whose listing landed empty is not blocked: it simply has nothing (yet).
 function emptyStatus(status) { return status === 'no artworks' || status.indexOf('nothing fits ') === 0; }
 function renderChannels() {

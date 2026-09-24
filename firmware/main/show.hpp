@@ -39,7 +39,8 @@ void refresh();
 bool play_file(const std::string &absolute_path, std::string &error);
 // Play a downloaded artwork now: a card path or "mem:<key>", with its Makapix post id
 // (-1 for a plain URL) and a display name.
-void play_downloaded(const std::string &path, int32_t post_id, const std::string &name);
+// A provider's download to play now (its id, the item's id or -1 for a plain URL).
+void play_downloaded(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name);
 // Activate a playset by name (built-in or stored); false with a reason when unknown.
 bool activate_playset(const std::string &name, std::string &error);
 // Activate a playset that is not stored (from the site, or the Followed built-in).

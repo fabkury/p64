@@ -62,7 +62,7 @@ enum class Cmd : uint8_t {
   CardChanged,
   FilesChanged,
   Settings,
-  MakapixChanged,
+  ProviderChanged,
   MakapixState,
   WifiConnected,
   StreamStarted,
@@ -74,6 +74,7 @@ struct Command {
   uint32_t number;
   std::string *text;
   std::string *text2;
+  std::string *text3;
   loader::LoadResult *load;
   loader::ScanResult *scan;
   content::Playset *playset;
@@ -157,20 +158,6 @@ class DeviceEnv : public ShowEnv {
   std::string downloads_dir() override { return storage::downloads_dir(); }
   makapix::Status makapix_status() override { return makapix::status(); }
   bool makapix_paired() override { return makapix::paired(); }
-  void makapix_set_active_channels(const std::vector<makapix::ChannelRef> &refs) override {
-    makapix::set_active_channels(refs);
-  }
-  bool makapix_snapshot(const makapix::ChannelRef &ref, makapix::ChannelSnapshot &out) override {
-    return makapix::snapshot(ref, out);
-  }
-  std::string makapix_artwork_path(const content::MakapixEntry &entry) override { return makapix::artwork_path(entry); }
-  void makapix_note_shown(int32_t post_id, const makapix::ChannelRef *channel, bool play_this) override {
-    makapix::note_shown(post_id, channel, play_this);
-  }
-  void makapix_note_hidden() override { makapix::note_hidden(); }
-  void makapix_note_load_failed(const content::MakapixEntry &entry, bool missing) override {
-    makapix::note_load_failed(entry, missing);
-  }
   bool makapix_play_followed(std::string &error) override { return makapix::play_followed(error); }
   net::wifi::Status wifi_status() override { return net::wifi::status(); }
   UpdateState update_state() override {
@@ -208,12 +195,14 @@ class DeviceEnv : public ShowEnv {
 DeviceEnv g_env;
 
 void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
-          loader::ScanResult *scan = nullptr, std::string *text2 = nullptr, content::Playset *playset = nullptr) {
-  Command c{type, number, text, text2, load, scan, playset};
+          loader::ScanResult *scan = nullptr, std::string *text2 = nullptr, content::Playset *playset = nullptr,
+          std::string *text3 = nullptr) {
+  Command c{type, number, text, text2, text3, load, scan, playset};
   if (!g_commands || xQueueSend(g_commands, &c, pdMS_TO_TICKS(500)) != pdTRUE) {
     ESP_LOGW(TAG, "command queue full; dropped command %d", static_cast<int>(type));
     delete text;
     delete text2;
+    delete text3;
     delete load;
     delete scan;
     delete playset;
@@ -230,10 +219,12 @@ void handle(Command &c) {
     case Cmd::ResetTimer: core::reset_timer(); break;
     case Cmd::Refresh: core::refresh(); break;
     case Cmd::PlayFile:
-      if (c.text) core::play_file(*c.text, -1, "");
+      if (c.text) core::play_file(*c.text, "", -1, "");
       break;
     case Cmd::PlayDownloaded:
-      if (c.text) core::play_file(*c.text, static_cast<int32_t>(c.number), c.text2 ? *c.text2 : "");
+      if (c.text) {
+        core::play_file(*c.text, c.text3 ? *c.text3 : "", static_cast<int32_t>(c.number), c.text2 ? *c.text2 : "");
+      }
       break;
     case Cmd::Activate:
       if (c.text) core::activate(*c.text);
@@ -246,7 +237,7 @@ void handle(Command &c) {
     case Cmd::CardChanged: core::card_changed(); break;
     case Cmd::FilesChanged: core::files_changed(); break;
     case Cmd::Settings: core::settings_changed(); break;
-    case Cmd::MakapixChanged: core::makapix_changed(); break;
+    case Cmd::ProviderChanged: core::provider_changed(); break;
     case Cmd::MakapixState: core::makapix_state(static_cast<makapix::State>(c.number)); break;
     case Cmd::WifiConnected: core::wifi_connected(); break;
     case Cmd::StreamStarted: core::stream_started(); break;
@@ -254,6 +245,7 @@ void handle(Command &c) {
   }
   delete c.text;
   delete c.text2;
+  delete c.text3;
   delete c.playset;
 }
 
@@ -292,12 +284,12 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
   system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { send(Cmd::Settings); });
-  system::subscribe(system::Event::MakapixChannelChanged, [](const system::Message &) { send(Cmd::MakapixChanged); });
+  system::subscribe(system::Event::ProviderChannelChanged, [](const system::Message &) { send(Cmd::ProviderChanged); });
   system::subscribe(system::Event::MakapixStateChanged,
                     [](const system::Message &m) { send(Cmd::MakapixState, static_cast<uint32_t>(m.arg)); });
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { send(Cmd::WifiConnected); });
-  system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { send(Cmd::MakapixChanged); });
-  system::subscribe(system::Event::TimeSynced, [](const system::Message &) { send(Cmd::MakapixChanged); });
+  system::subscribe(system::Event::WifiDisconnected, [](const system::Message &) { send(Cmd::ProviderChanged); });
+  system::subscribe(system::Event::TimeSynced, [](const system::Message &) { send(Cmd::ProviderChanged); });
   system::subscribe(system::Event::StreamStarted, [](const system::Message &) { send(Cmd::StreamStarted); });
   system::subscribe(system::Event::StreamEnded, [](const system::Message &) { send(Cmd::StreamEnded); });
   return true;
@@ -345,9 +337,9 @@ bool play_file(const std::string &absolute_path, std::string &error) {
   return true;
 }
 
-void play_downloaded(const std::string &path, int32_t post_id, const std::string &name) {
-  send(Cmd::PlayDownloaded, static_cast<uint32_t>(post_id), new std::string(path), nullptr, nullptr,
-       new std::string(name));
+void play_downloaded(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
+  send(Cmd::PlayDownloaded, static_cast<uint32_t>(item_id), new std::string(path), nullptr, nullptr,
+       new std::string(name), nullptr, new std::string(provider));
 }
 
 bool activate_playset(const std::string &name, std::string &error) {

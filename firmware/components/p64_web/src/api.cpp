@@ -15,6 +15,7 @@
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "p64/content/provider.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/gfx/fonts.hpp"
 #include "p64/gfx/png_encode.hpp"
@@ -231,6 +232,7 @@ cJSON *build_status() {
   }
   if (g_hooks.playback_status) cJSON_AddItemToObject(d, "playback", g_hooks.playback_status());
   cJSON_AddItemToObject(d, "makapix", makapix_routes::makapix_status());
+  cJSON_AddItemToObject(d, "providers", p64::content::providers::status_json());  // ADR 0012
   {
     const widgets::Reading r = widgets::sensor();
     cJSON *sn = cJSON_AddObjectToObject(d, "sensor");

@@ -21,10 +21,11 @@ struct HistoryItem {
   std::string channel;      // channel display name ("" for play-this)
   int channel_index = -1;   // index in the playset at pick time, -1 for play-this
   int entry_index = -1;     // index in the channel's entries at pick time
-  uint8_t channel_kind = 0;         // content::ChannelKind of the channel (Makapix views need it)
-  std::string channel_identifier;   // the channel's identifier (sqid, tag, folder)
+  uint8_t channel_kind = 0;         // content::ChannelKind of the channel (providers' views need it)
+  std::string channel_identifier;   // the channel's identifier (sqid, tag, folder, provider channel)
   std::string playset;      // active playset name at pick time
-  int32_t post_id = -1;     // Makapix post id, -1 for anything else
+  std::string provider;     // the content provider the item came from ("" for local files and plain URLs)
+  int32_t item_id = -1;     // the provider's item id (Makapix: the post id), -1 for anything else
   std::string sqid;         // Makapix public sqid when known
   uint8_t widget = 0;       // interludes: which widget
   int64_t shown_at_us = 0;  // when it went up (monotonic)

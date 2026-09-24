@@ -6,6 +6,7 @@
 #include "show_rules.hpp"
 
 #include <cstdarg>
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -218,12 +219,6 @@ class FakeEnv : public p64::show::ShowEnv {
   std::string downloads_dir() override { return "/sd/p64/downloads"; }
   p64::makapix::Status makapix_status() override { return {}; }
   bool makapix_paired() override { return false; }
-  void makapix_set_active_channels(const std::vector<p64::makapix::ChannelRef> &) override {}
-  bool makapix_snapshot(const p64::makapix::ChannelRef &, p64::makapix::ChannelSnapshot &) override { return false; }
-  std::string makapix_artwork_path(const p64::content::MakapixEntry &) override { return ""; }
-  void makapix_note_shown(int32_t, const p64::makapix::ChannelRef *, bool) override {}
-  void makapix_note_hidden() override {}
-  void makapix_note_load_failed(const p64::content::MakapixEntry &, bool) override {}
   bool makapix_play_followed(std::string &error) override {
     error = "not paired";
     return false;
@@ -286,6 +281,59 @@ class FakeEnv : public p64::show::ShowEnv {
   uint32_t rng = 12345;
   std::shared_ptr<FrameSource> stream;
 };
+
+// A content provider with one channel, "pics", whose items live under a cache folder
+// (ADR 0012). The test decides what it can play and watches what the show reports.
+class FakeProvider : public p64::content::Provider {
+ public:
+  std::vector<int32_t> items = {1, 2, 3};
+  bool online = true, authorized = true;
+  std::vector<std::string> active;   // channel identifiers the show set active
+  std::vector<int32_t> shown;        // note_shown ids, in order
+  std::vector<int32_t> failed;       // note_load_failed ids
+  int hidden = 0;
+  uint16_t side = 32;
+  uint32_t extra_listed = 0;  // listed but not at hand (still downloading)
+
+  const char *id() const override { return "fake"; }
+  const char *label() const override { return "Fake source"; }
+  bool owns(const p64::content::ChannelSpec &) const override { return false; }
+  State state() override { return {online, authorized}; }
+  void set_active_channels(const std::vector<p64::content::ChannelRef> &refs) override {
+    active.clear();
+    for (const auto &r : refs) active.push_back(r.identifier);
+  }
+  bool snapshot(const p64::content::ChannelRef &ref, p64::content::ChannelSnapshot &out) override {
+    if (ref.identifier != "pics") return false;
+    for (int32_t id : items) out.items.push_back({id, side, side});
+    out.listed = static_cast<uint32_t>(items.size()) + extra_listed;
+    out.last_refresh = 1700000000;
+    return true;
+  }
+  bool resolve(const p64::content::ChannelRef &, const p64::content::ProviderItem &item, std::string &path,
+               std::string &name) override {
+    path = "/sd/p64/cache/fake/" + std::to_string(item.id) + ".gif";
+    name = "pic " + std::to_string(item.id);
+    return true;
+  }
+  void note_load_failed(const p64::content::ChannelRef &, const p64::content::ProviderItem &item, bool) override {
+    failed.push_back(item.id);
+    items.erase(std::remove(items.begin(), items.end(), item.id), items.end());
+  }
+  void note_shown(int32_t id, const p64::content::ChannelRef *, bool) override { shown.push_back(id); }
+  void note_hidden() override { ++hidden; }
+  std::vector<p64::content::ChannelOffer> offers() override { return {{"pics", "The pictures"}}; }
+};
+
+p64::content::Playset external_playset(const std::string &identifier = "fake:pics") {
+  p64::content::Playset p;
+  p.name = "ext";
+  p64::content::ChannelSpec c;
+  c.kind = p64::content::ChannelKind::External;
+  c.identifier = identifier;
+  p.channels.push_back(c);
+  return p;
+}
 
 // A show restored on the Local playset with three files, the first artwork on the panel.
 struct Show {
@@ -419,6 +467,89 @@ TEST_CASE("show core: a missing file is marked and another pick plays") {
   REQUIRE(core::state().current);
   CHECK(core::state().current->name() == "c.gif");
   CHECK(core::state().load_failures >= 1);
+}
+
+TEST_CASE("show core: a provider channel plays its items and hears what happened (ADR 0012)") {
+  namespace providers = p64::content::providers;
+  providers::clear();
+  FakeProvider fake;
+  fake.extra_listed = 1;
+  providers::add(&fake);
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::activate_transient(external_playset());
+  env.complete_scan({});  // no local channel: the scan brings nothing
+  REQUIRE_EQ(fake.active.size(), 1u);
+  CHECK(fake.active[0] == "pics");  // the provider sees its own identifier, without the prefix
+  const core::State &st = core::state();
+  REQUIRE_EQ(st.channels.size(), 1u);
+  CHECK(st.channels[0].provider == &fake);
+  CHECK_EQ(st.channels[0].available, 3u);
+  CHECK(st.channels[0].status.empty());
+  CHECK(st.channels[0].listed == 4u);
+  env.complete_loads();
+  REQUIRE(st.current);
+  REQUIRE_EQ(fake.shown.size(), 1u);
+  const p64::content::HistoryItem *cur = st.history.current();
+  REQUIRE(cur);
+  CHECK(cur->name == "pic " + std::to_string(fake.shown[0]));  // the provider's name for the item
+  CHECK(cur->path == "/sd/p64/cache/fake/" + std::to_string(fake.shown[0]) + ".gif");
+  CHECK(cur->provider == "fake");
+  CHECK(cur->item_id == fake.shown[0]);
+  CHECK(cur->channel == "The pictures");  // the provider's label for the channel
+  CHECK(core::current_post_id() == -1);   // not a Makapix post
+  // The channels document names the provider and its counts.
+  cJSON *doc = core::channels_json();
+  cJSON *ch = cJSON_GetArrayItem(cJSON_GetObjectItem(doc, "channels"), 0);
+  CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(ch, "provider"))) == "fake");
+  CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(ch, "kind"))) == "external");
+  CHECK(cJSON_GetObjectItem(ch, "cached")->valueint == 3);
+  CHECK(cJSON_GetObjectItem(ch, "entries")->valueint == 4);
+  cJSON_Delete(doc);
+  // A file that fails to load is reported to the provider, which drops it; another plays.
+  env.complete_loads();  // the prepared one
+  const int32_t prepared_id = st.prepared_pick.item.id;
+  env.missing_files.insert("/sd/p64/cache/fake/" + std::to_string(prepared_id) + ".gif");
+  core::refresh();  // drop the prepared artwork and pick again
+  for (int i = 0; i < 6 && fake.failed.empty(); ++i) {
+    env.complete_loads();
+    core::next();
+  }
+  CHECK(!fake.failed.empty());
+  CHECK(std::find(fake.items.begin(), fake.items.end(), fake.failed[0]) == fake.items.end());
+  // The size limit applies to provider items too: nothing fits, the channel is out of
+  // play (its index still lists the items, so it reads as still downloading).
+  env.cfg->makapix_max_side = 16;
+  core::provider_changed();
+  CHECK_EQ(st.channels[0].available, 0u);
+  CHECK(st.channels[0].status == "downloading");
+  providers::clear();
+}
+
+TEST_CASE("show core: a provider channel nobody serves, or without credentials, says so") {
+  namespace providers = p64::content::providers;
+  providers::clear();
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::activate_transient(external_playset("nobody:pics"));
+  env.complete_scan({});
+  REQUIRE_EQ(core::state().channels.size(), 1u);
+  CHECK(core::state().channels[0].provider == nullptr);
+  CHECK(core::state().channels[0].status == "not supported yet");
+  FakeProvider fake;
+  fake.authorized = false;
+  providers::add(&fake);
+  core::activate_transient(external_playset());
+  env.complete_scan({});
+  CHECK(core::state().channels[0].status == "needs pairing");
+  fake.authorized = true;
+  fake.online = false;
+  fake.items.clear();
+  core::provider_changed();
+  CHECK(core::state().channels[0].status == "offline");
+  providers::clear();
 }
 
 TEST_CASE("show core: history navigation goes back and forward through what was shown") {

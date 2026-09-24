@@ -2,7 +2,7 @@
 // indexes and the artwork cache, downloads, the MQTT session for commands and presence,
 // views and likes. One worker task on core 0 does every HTTPS request in turn (one TLS
 // session at a time next to the persistent MQTT one); the show reads snapshots and
-// hears about changes on the event bus (MakapixStateChanged, MakapixChannelChanged).
+// hears about changes on the event bus (MakapixStateChanged, ProviderChannelChanged).
 #pragma once
 
 #include <cstdint>
@@ -12,6 +12,7 @@
 
 #include "p64/content/makapix_index.hpp"
 #include "p64/content/playset.hpp"
+#include "p64/content/provider.hpp"
 
 namespace p64::makapix {
 
@@ -43,10 +44,9 @@ struct Status {
   uint64_t last_sweep_freed = 0;
 };
 
-struct ChannelRef {
-  content::ChannelKind kind = content::ChannelKind::MakapixPromoted;
-  std::string identifier;
-};
+// The show addresses channels through the content provider interface (ADR 0012);
+// Makapix's channel reference is the generic one.
+using ChannelRef = content::ChannelRef;
 // "promoted", "all", "own", "artist-<sqid>", "hashtag-<tag>", "reactions-<sqid>".
 std::string channel_id(const ChannelRef &ref);
 // The server's channel name and context for query_posts and view events.
@@ -77,9 +77,11 @@ struct Hooks {
   std::function<bool()> is_paused;
 };
 
-bool start(const Hooks &hooks);
+bool start(const Hooks &hooks);  // also registers the provider below with content::providers
 Status status();
 bool paired();
+// Makapix Club as a content provider: id "makapix", serving every Makapix channel kind.
+content::Provider &provider();
 
 // Pairing (spec 13): asks the server for a code; status() carries it until the owner
 // enters it on the site or it expires (15 min).

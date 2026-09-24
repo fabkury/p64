@@ -4,6 +4,7 @@
 idf_component_register(
     SRCS
         "src/makapix.cpp"
+        "src/provider.cpp"
         "src/fetcher.cpp"
         "src/api.cpp"
         "src/contract.cpp"

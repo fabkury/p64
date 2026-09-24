@@ -68,7 +68,7 @@ const char *event_name(Event type) {
       return "local files changed";
     case Event::PlaysetsChanged:
       return "playsets changed";
-    case Event::MakapixChannelChanged:
+    case Event::ProviderChannelChanged:
       return "makapix channel changed";
     case Event::MakapixStateChanged:
       return "makapix state changed";
