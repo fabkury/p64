@@ -51,7 +51,7 @@ LAST_RENDER_FRAME = int(28.4 * FPS)     # after that the end card is composed wi
 PANEL = [
     (0.0,  7.0,  "gif:HqTx_64x64_night-light-crane.gif"),
     (7.0,  18.6, "gif:9cQL_64x64_canopy.gif"),
-    (18.6, 20.8, "gif:gnG6_64x64_yellow-tang.gif"),
+    (18.6, 20.8, "gif:ct8R_64x64_paws2025-in-the-stars.gif"),
     (20.8, 21.7, "clock"),
     (21.7, 22.6, "analogue"),
     (22.6, 23.6, "weather"),

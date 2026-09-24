@@ -20,7 +20,8 @@ slow), ffmpeg on the PATH, and a Python with Pillow and numpy (the system one). 
 `docs/video/` in PowerShell 7:
 
 ```
-.\make.ps1            # everything below, in order; about two hours on an RTX 5050 laptop
+.\make.ps1            # everything below, in order; 45 min to 2 h on an RTX 5050 laptop (3 s a frame
+                      # when the GPU boosts, 10 s under the laptop's 14 W software power cap)
 .\make.ps1 -Quick     # 16 samples and every fourth frame, for a look at the motion (7.5 fps)
 ```
 
@@ -31,7 +32,7 @@ The steps, if you want one of them alone:
 | 1 | `openscad -o build/values.echo -D piece="values" pieces.scad` and one `-o build/<piece>.stl -D piece="<piece>"` per piece | `pieces.scad` includes the enclosure source with `encoders = true` and exports each mock-up (panel frame, LED board, controller, adapters, cradle insert, encoder boards, knobs, screws) as its own STL in the shell's design coordinates, plus the numbers Blender needs. |
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
 | 3 | `blender -b -P scene.py -- [--start N --end N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
-| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, fades, captions, the end card; encodes `../p64b-concept.mp4` with ffmpeg. |
+| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, fades, captions, the end card; encodes `../p64b-concept.mp4` with ffmpeg (about 8 min for the 900 frames). |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
 the panel shows, the captions. Change it and rerun from step 2 (the panel) or 3 (camera,
@@ -56,5 +57,8 @@ explosion) or 4 (captions only: a captions change needs no re-render).
 - The LED face is a 64 x 64 texture behind a grid of rounded apertures on a glossy black
   body, a look, not the panel's optics; the real GOB panel diffuses more.
 - The artworks are from `firmware/tests/host/corpus/gifs/` (Makapix Club community pieces
-  already used by the host tests); swap them in `storyboard.PANEL`.
+  already used by the host tests): night-light-crane, canopy, paws2025-in-the-stars and
+  lo-fi-glow; swap them in `storyboard.PANEL`. Pale artworks blow out at the LED face's
+  emission strength (yellow-tang did, 2026-09-24): pick dark ones or lower `Strength`
+  in `scene.py`.
 - Nothing here is measured. The video is a concept render of the v7b model as designed.
