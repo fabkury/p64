@@ -20,5 +20,5 @@ $samples = if ($Quick) { 16 } else { 48 }
 Remove-Item build\frames\*.png -ErrorAction SilentlyContinue
 & $blender -b -P scene.py -- --step $step --samples $samples
 
-$out = if ($Quick) { "..\p64b-concept-preview.mp4" } else { "..\p64b-concept.mp4" }
+$out = if ($Quick) { "..\p64b-concept-preview.mp4" } else { "..\p64b-concept-v2.mp4" }
 python compose.py --step $step --out $out

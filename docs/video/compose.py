@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Composes the rendered frames into the video: LED bloom, fades, captions, the end card.
 
-    python compose.py [--out ../p64b-concept.mp4] [--step N] [--frames a,b,c]   (from docs/video/; Pillow, numpy, ffmpeg)
+    python compose.py [--out ../p64b-concept-v2.mp4] [--captions v1|v2] [--step N] [--frames a,b,c]
 
 Reads build/frames/f_NNNN.png (from scene.py), writes build/comp/c_NNNN.png and encodes
 them with ffmpeg (H.264, yuv420p, 30 fps). --frames composes only those frames, for a
 look at the captions without a full pass; --step N takes every Nth frame (rendered with
-the same step) into a preview at FPS / N. Times come from storyboard.py.
+the same step) into a preview at FPS / N; --captions picks the caption set (v2, the
+default, is the short one; v1 the first cut). Times come from storyboard.py.
 """
 
 import argparse
@@ -35,7 +36,8 @@ def font(bold, size):
     return ImageFont.load_default(size=size)
 
 
-F_HEAD, F_SUB, F_TITLE, F_SMALL = font(True, 44), font(False, 30), font(True, 96), font(False, 26)
+F_HEAD, F_SUB, F_TITLE, F_SMALL = font(True, 50), font(False, 32), font(True, 96), font(False, 26)
+CAPTIONS = sb.CAPTIONS
 
 
 def ramp(t, t0, t1, fade):
@@ -58,7 +60,7 @@ def bloom(im, threshold=0.72, radius=18, gain=0.5):
 
 
 def caption(im, t):
-    for t0, t1, head, sub in sb.CAPTIONS:
+    for t0, t1, head, sub in CAPTIONS:
         k = ramp(t, t0, t1, sb.CAPTION_FADE)
         if k <= 0:
             continue
@@ -70,9 +72,10 @@ def caption(im, t):
         for y in range(200):
             bd.line((0, y, W, y), fill=int(140 * min(1, y / 110)))
         layer.paste((0, 0, 0, 255), (0, H - 200), band)
-        y = H - 92 + int((1 - k) * 18)
+        y = (H - 92 if sub else H - 70) + int((1 - k) * 18)
         d.text((W // 2, y), head, font=F_HEAD, fill=(255, 255, 255, 255), anchor="ms")
-        d.text((W // 2, y + 46), sub, font=F_SUB, fill=(190, 196, 210, 255), anchor="ms")
+        if sub:
+            d.text((W // 2, y + 48), sub, font=F_SUB, fill=(190, 196, 210, 255), anchor="ms")
         alpha = layer.split()[3].point(lambda v: int(v * k))
         layer.putalpha(alpha)
         im.alpha_composite(layer)
@@ -115,10 +118,13 @@ def compose_frame(f):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept.mp4"))
+    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v2.mp4"))
+    ap.add_argument("--captions", choices=("v1", "v2"), default="v2")
     ap.add_argument("--frames", default=None)
     ap.add_argument("--step", type=int, default=1)
     a = ap.parse_args()
+    global CAPTIONS
+    CAPTIONS = sb.CAPTIONS_V1 if a.captions == "v1" else sb.CAPTIONS_V2
     os.makedirs(COMP, exist_ok=True)
     if a.frames:
         frames = [int(x) for x in a.frames.split(",")]

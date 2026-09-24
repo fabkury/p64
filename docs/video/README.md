@@ -8,9 +8,14 @@ icons, and a plasma stands in for a live stream. Made on 2026-09-24 for the publ
 p64 is, what is inside it, and what it does. The device on screen is the model, not a
 photo: nothing of v7 has been printed yet (see `enclosure/README.md`).
 
-The video itself (`docs/video/p64b-concept.mp4`, 1920 x 1080, 30 fps, H.264, silent) is
+The video itself (`docs/p64b-concept-v2.mp4`, 1920 x 1080, 30 fps, H.264, silent) is
 not committed, to keep the repository small; this folder holds everything that makes it,
 so one command regenerates it. `build/` is git-ignored.
+
+Two caption versions exist over the same render: **v1**, the first cut (twelve captions of
+1.5 to 3 s, two lines each; `docs/p64b-concept-v1.mp4`, `compose.py --captions v1`), and
+**v2**, after the user found v1's text too much and too brief (seven captions of 3 to
+4.6 s, one line each; the default). Both caption sets are in `storyboard.py`.
 
 ## Regenerate
 
@@ -32,7 +37,7 @@ The steps, if you want one of them alone:
 | 1 | `openscad -o build/values.echo -D piece="values" pieces.scad` and one `-o build/<piece>.stl -D piece="<piece>"` per piece | `pieces.scad` includes the enclosure source with `encoders = true` and exports each mock-up (panel frame, LED board, controller, adapters, cradle insert, encoder boards, knobs, screws) as its own STL in the shell's design coordinates, plus the numbers Blender needs. |
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
 | 3 | `blender -b -P scene.py -- [--start N --end N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
-| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, fades, captions, the end card; encodes `../p64b-concept.mp4` with ffmpeg (about 8 min for the 900 frames). |
+| 4 | `python compose.py [--captions v1\|v2] [--frames a,b,c]` | Bloom around the LEDs, fades, captions, the end card; encodes `../p64b-concept-v2.mp4` with ffmpeg (about 8 min for the 900 frames). |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
 the panel shows, the captions. Change it and rerun from step 2 (the panel) or 3 (camera,
@@ -40,13 +45,13 @@ explosion) or 4 (captions only: a captions change needs no re-render).
 
 ## What is in the 30 seconds
 
-| Time | Picture | Caption |
+| Time | Picture | Caption (v2) |
 |---|---|---|
-| 0 to 4 s | Front three-quarter view, an animation playing | what p64 is, size, price |
-| 4 to 7 s | Orbit to the back: the vents, the six screws, the USB-C window, the two knobs | the encoder roles (A brightness / pause, B next-previous / like) |
-| 7 to 15 s | Exploded view from the side, panel to screws: panel, controller, adapters, insert, encoder boards, shell, nuts and knobs, screws | one part per caption |
-| 15 to 19 s | Everything comes back together while the camera returns to the front | plugs together, p64a needs no soldering |
-| 19 to 28 s | Feature beats on the panel: a second animation, the digital and analogue clocks, the weather, a live-stream plasma, a fourth animation | card and Makapix Club, widgets, DDP streams, the web UI and OTA |
+| 0 to 4 s | Front three-quarter view, an animation playing | what p64 is, size |
+| 4 to 8 s | Orbit to the back: the vents, the six screws, the USB-C window, the two knobs; the explosion begins | the two knobs and their roles |
+| 8 to 15 s | Exploded view from the side, panel to screws: panel, controller, adapters, insert, encoder boards, shell, nuts and knobs, screws | the panel and the driver board; the print, the adapters, the screws |
+| 15 to 19 s | Everything comes back together while the camera returns to the front | no soldering for p64a, p64b adds the knobs |
+| 19 to 28 s | Feature beats on the panel: a second animation, the digital and analogue clocks, the weather, a live-stream plasma, a fourth animation | card and Makapix Club, clock, weather; streams and the web UI |
 | 28 to 30 s | End card | logo, repository, licence |
 
 ## Honest notes

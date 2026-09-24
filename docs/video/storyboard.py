@@ -61,7 +61,9 @@ PANEL = [
 ]
 
 # --- captions (compose.py): (t0, t1, headline, line 2) ------------------------------
-CAPTIONS = [
+# v1 (2026-09-24, the first cut): twelve captions of 1.5 to 3 s, two lines each. Kept so the
+# two versions can be compared; compose.py --captions v1 uses it.
+CAPTIONS_V1 = [
     (0.8,  4.0,  "p64: a 64 × 64 pixel-art player for your desk",
                  "128 mm square · USB-C · open source · about $80 in parts"),
     (4.3,  7.0,  "p64b: two rotary encoders on the back",
@@ -86,7 +88,19 @@ CAPTIONS = [
     (25.6, 27.6, "Web UI at p64.local, HTTP API with WebSocket push",
                  "optional PIN, tap to skip, OTA updates from GitHub Releases"),
 ]
-CAPTION_FADE = 0.3
+# v2 (the user's request, 2026-09-24: far less text, each caption up for longer): seven
+# captions of 3 to 4.6 s, one line each, a short second line on two of them. The default.
+CAPTIONS_V2 = [
+    (0.8,  4.2,  "p64: a 64 × 64 pixel-art player", "128 mm · USB-C · open source"),
+    (4.4,  8.4,  "Two knobs on the back (p64b)", "brightness and pause · next and like"),
+    (8.8,  12.0, "Inside: the LED panel and the ESP32-S3 driver board", ""),
+    (12.2, 15.2, "One 3D print, two USB-C adapters, six screws", ""),
+    (15.6, 18.6, "No soldering for p64a", "p64b adds the two knobs"),
+    (18.8, 23.4, "Art from microSD or Makapix Club · clock · weather", ""),
+    (23.6, 27.4, "Live streams over Wi-Fi · web UI at p64.local", ""),
+]
+CAPTIONS = CAPTIONS_V2
+CAPTION_FADE = 0.4
 
 FADE_IN = (0.0, 0.8)                    # from black
 FADE_OUT = (27.6, 28.4)                 # to black
