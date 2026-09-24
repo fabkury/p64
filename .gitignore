@@ -1,24 +1,25 @@
-# ESP-IDF build products of the hardware test bed (hardware-tests/, the former firmware/)
-hardware-tests/build/
-hardware-tests/sdkconfig
-hardware-tests/sdkconfig.old
-hardware-tests/sdkconfig.secrets
-hardware-tests/managed_components/
-hardware-tests/dependencies.lock.old
-hardware-tests/tools/gifcheck/build/
-
-# The product firmware (firmware/): same ESP-IDF layout assumed until the project
-# takes shape; credentials must never be committed from either folder.
+# The product firmware (firmware/): ESP-IDF build products; credentials must never be
+# committed from either ESP-IDF folder.
 firmware/build/
 firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/sdkconfig.secrets
 firmware/managed_components/
 firmware/dependencies.lock.old
-
-# Upstream clones kept locally for reference (see firmware/README.md)
-firmware/reference/
 firmware/tests/host/build*/
+
+# firmware/reference/ holds upstream clones kept locally (git-ignored, see
+# firmware/README.md) and, tracked, the hardware test bed hardware-tests/ (the former
+# firmware/, moved here on 2026-09-24) with its own ESP-IDF build products ignored.
+firmware/reference/*
+!firmware/reference/hardware-tests/
+firmware/reference/hardware-tests/build/
+firmware/reference/hardware-tests/sdkconfig
+firmware/reference/hardware-tests/sdkconfig.old
+firmware/reference/hardware-tests/sdkconfig.secrets
+firmware/reference/hardware-tests/managed_components/
+firmware/reference/hardware-tests/dependencies.lock.old
+firmware/reference/hardware-tests/tools/gifcheck/build/
 
 # Editors and OS
 .vscode/

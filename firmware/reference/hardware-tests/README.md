@@ -1,10 +1,12 @@
 # p64 hardware tests
 
-This folder was `firmware/` until 2026-09-19. It is the test firmware that brought up the
-driver board and the panel, kept as technical reference (pin map, driver patch, frame
-pacing, tonal depth, network settings, microSD, measured numbers) for the product firmware
-that is being built from zero in `firmware/`. It still builds and flashes as described
-below; everything in it refers to this folder.
+This folder was `firmware/` until 2026-09-19, then `hardware-tests/` at the repository
+root until 2026-09-24, when it moved under `firmware/reference/` (tracked in git, unlike
+the upstream clones beside it). It is the test firmware that brought up the driver board
+and the panel, kept as technical reference (pin map, driver patch, frame pacing, tonal
+depth, network settings, microSD, measured numbers) for the product firmware that is
+being built from zero in `firmware/`. It still builds and flashes as described below;
+every relative path in this document is from this folder.
 
 ESP-IDF firmware for the Waveshare ESP32-S3-RGB-Matrix driver board and the
 RGB-Matrix-P2-64x64 panel. Written in C++20 directly on top of the
@@ -423,7 +425,7 @@ TLS sessions once caused.
 ## Layout
 
 ```
-hardware-tests/
+firmware/reference/hardware-tests/
   CMakeLists.txt          ESP-IDF project "p64"
   sdkconfig.defaults      every setting that differs from ESP-IDF defaults (board, panel, pins)
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
@@ -491,7 +493,7 @@ The main loop presents one frame per panel refresh.
 ## Upstream references
 
 - Board: <https://docs.waveshare.com/ESP32-S3-RGB-Matrix>, examples and schematic in
-  <https://github.com/waveshareteam/ESP32-S3-RGB-Matrix> (cloned under `../firmware/reference/`, git-ignored; the
+  <https://github.com/waveshareteam/ESP32-S3-RGB-Matrix> (cloned beside this folder under `../`, git-ignored; the
   clone command is in `firmware/README.md`).
 - Panel: <https://docs.waveshare.com/RGB-Matrix-Px-64x64>.
 - Driver: <https://github.com/esphome-libs/esp-hub75> (docs/ has menuconfig, troubleshooting

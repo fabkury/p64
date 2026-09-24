@@ -266,7 +266,7 @@ already there).
   loop handles them exactly as it handles `/api/v1/action/next`, `previous` and `pause`.
 - Settings: `encoders.enabled`, `encoders.invert` (swap the turn direction).
 - Docs: `firmware/docs/architecture.md`, `api.md`, `PROGRESS.md`; the wiring and the
-  bench numbers into `hardware-tests/README.md` (board facts) and `enclosure/README.md`.
+  bench numbers into `firmware/reference/hardware-tests/README.md` (board facts) and `enclosure/README.md`.
 
 ## 7. In-shell assembly, solderless
 

@@ -95,12 +95,13 @@ reason (`CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n`).
 
 ## 4. Display
 
-Ported from the hardware tests (`hardware-tests/main/display.*`) and extended:
+Ported from the hardware tests (`reference/hardware-tests/main/display.*`) and extended:
 
 - Frame boundaries are read from the LCD GDMA channel (the driver's flip only relinks
   descriptors); `wait_for_back_buffer()` sleeps until just before the predicted boundary,
   spins on the end-of-frame flag and confirms the descriptor pointer left the old chain.
-  The rationale and the failure modes are in `hardware-tests/README.md` "Frame pacing".
+  The rationale and the failure modes are in `reference/hardware-tests/README.md` "Frame
+  pacing".
 - Rotation is applied in the display layer while copying the logical frame into the
   physical buffer; the driver stays at ROTATE_0. Auto rotation is a value the inputs
   component sets.

@@ -2,7 +2,7 @@
 # Only deviations from ESP-IDF's own defaults are listed. The generated sdkconfig is
 # git-ignored; edit this file (a changed default only takes effect after deleting the
 # generated sdkconfig or through menuconfig). Measured reasons for the panel and network
-# values are in ../hardware-tests/README.md.
+# values are in reference/hardware-tests/README.md.
 
 CONFIG_IDF_TARGET="esp32s3"
 

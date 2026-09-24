@@ -33,7 +33,6 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE = os.path.abspath(os.path.join(HERE, "..", ".."))
-REPO = os.path.abspath(os.path.join(FIRMWARE, ".."))
 COMPONENTS = os.path.join(FIRMWARE, "components")
 ZLIB = os.path.join(FIRMWARE, "managed_components", "espressif__zlib", "zlib")
 LIBPNG = os.path.join(COMPONENTS, "libpng")
@@ -499,7 +498,7 @@ def main():
 
     files = args.files or (
         sorted(glob.glob(os.path.join(HERE, "corpus", "*.*")))
-        + sorted(glob.glob(os.path.join(REPO, "hardware-tests", "assets", "gifs", "*.gif"))))
+        + sorted(glob.glob(os.path.join(FIRMWARE, "reference", "hardware-tests", "assets", "gifs", "*.gif"))))
     if not files:
         print("no files found")
         return 2

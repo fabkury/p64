@@ -14,11 +14,12 @@ folders of work live here, each with its own README that is the detailed referen
   vocabulary is `CONTEXT.md`. Its design is `firmware/docs/architecture.md`, its state of
   progress `firmware/docs/PROGRESS.md` (read that first when resuming), its API
   `firmware/docs/api.md`. The "Firmware" section below has the commands. Do not carry
-  code or patterns over from `hardware-tests/` on your own initiative.
-- `hardware-tests/`: the former `firmware/` (renamed on 2026-09-19; git history follows
-  the rename, `git log --follow` works on its files): ESP-IDF v5.5 test firmware, C++20,
+  code or patterns over from the hardware tests on your own initiative.
+- `firmware/reference/hardware-tests/`: the former `firmware/` (renamed on 2026-09-19,
+  moved under `firmware/reference/` on 2026-09-24; git history follows both moves,
+  `git log --follow` works on its files): ESP-IDF v5.5 test firmware, C++20,
   directly on the `esphome/esp-hub75` DMA driver (vendored and patched under
-  `hardware-tests/components/esp-hub75`). No Arduino, no LVGL, no Waveshare BSP (only
+  `firmware/reference/hardware-tests/components/esp-hub75`). No Arduino, no LVGL, no Waveshare BSP (only
   its pin map was reused). It is the technical reference for the product firmware (what
   the hardware taught: pin map, driver patch, frame pacing, GDMA, network, microSD), not
   its architectural reference. The "Hardware tests" sections below describe it.
@@ -41,7 +42,8 @@ enclosure has one source and two variant files (`enclosure/src/p64_enclosure_v7a
 and `_v7b.scad`), outputs under `enclosure/output/p64a/` and `p64b/`; the firmware is
 shared. Anything new that touches the encoders is a p64b matter.
 
-Also: `firmware/reference/` is git-ignored upstream clones: Waveshare's example repo,
+Also: `firmware/reference/` is git-ignored upstream clones (the one tracked exception is
+`hardware-tests/`, above): Waveshare's example repo,
 `p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the
 reference for module boundaries, web UI and Makapix client) and `makapix/` (the Makapix
 Club server, github.com/fabkury/makapix, the device contract in its `docs/player/` and
@@ -146,7 +148,8 @@ on 2026-09-20, `firmware/docs/PROGRESS.md`).
 
 ## Hardware tests: commands
 
-All from `hardware-tests/`, in PowerShell 7 (the scripts dot-source ESP-IDF themselves):
+All from `firmware/reference/hardware-tests/`, in PowerShell 7 (the scripts dot-source
+ESP-IDF themselves):
 
 ```
 .\tools\build.ps1              # idf.py build
@@ -176,7 +179,7 @@ Environment facts that bite:
   while `GET /debug/reboot` restarts the firmware (no lines lost).
 - `sdkconfig.defaults` is the source of truth (board, panel, pins, driver options);
   `sdkconfig` is generated and ignored. `dependencies.lock` is committed. Wi-Fi
-  credentials live only in the git-ignored `hardware-tests/sdkconfig.secrets` (template:
+  credentials live only in the git-ignored `sdkconfig.secrets` of that folder (template:
   `sdkconfig.secrets.example`), applied by the project CMakeLists on top of the
   defaults; never write them anywhere else, and never echo the SSID or password
   into a summary (the Wi-Fi driver's own log lines print the SSID).
@@ -217,10 +220,10 @@ not re-presented. Measured: 6.9 ms per `draw_pixels()` for 64x64 with 10 planes 
 with 8), so the copy is the cost to watch before any faster refresh. The main task runs on core 1
 (`ESP_MAIN_TASK_AFFINITY_CPU1`), Wi-Fi and lwIP on core 0.
 Changing `sdkconfig.defaults` or `sdkconfig.secrets` does not touch an existing
-generated `sdkconfig`: delete `hardware-tests/sdkconfig` (or use menuconfig) for a changed
+generated `sdkconfig`: delete the folder's `sdkconfig` (or use menuconfig) for a changed
 default to take effect.
 
-Driver: `esp-hub75` 0.3.6 is vendored under `hardware-tests/components/esp-hub75` with a patch
+Driver: `esp-hub75` 0.3.6 is vendored under `components/esp-hub75` of that folder with a patch
 ("p64 patch" markers, listed in its `P64-CHANGES.md`): planes at or below the driver's
 transition bit get halving output-enable windows so `HUB75_MIN_REFRESH_RATE` no longer
 collapses the levels (upstream gave them equal weight), the LUT is refitted to the real
@@ -228,7 +231,7 @@ on-times, the gamma 2.2 table is fixed (upstream mapped black to white), and get
 expose frame period, descriptor count and transition bit (Display relies on them).
 Current setting 10 bits, minimum 250 Hz -> transition 4, 271.3 Hz, 1024 codes (plane 0
 on a 50 ns pulse); the reasoning, the numbers and the neighbouring settings are in
-`hardware-tests/README.md` "Tonal depth and refresh". The
+its README "Tonal depth and refresh". The
 released driver lacks things present on its git main (no `row_decoder`; `ICN2038S` is a
 distinct enumerator). Brightness 0 blanks the panel; 1-255 go through a curve floored at
 ~17/255 on a 64-wide panel, and any value below 255 now costs the low planes first.
@@ -265,7 +268,7 @@ one Display.
 
 Network: `sdkconfig.defaults` sets a 64 KB TCP window, lwIP buffers in PSRAM and
 mbedTLS buffers internal + dynamic; measured numbers and the reasoning are in
-`hardware-tests/README.md` "Network throughput". `P64_SPEEDTEST` (menuconfig, off) runs a
+its README "Network throughput". `P64_SPEEDTEST` (menuconfig, off) runs a
 download test 45 s after boot and logs it; it downloads ~12 MB, so never leave it on.
 Makapix Club is ~220 ms away and its throughput is erratic (20-220 KB/s); that is the
 path, not the device.
@@ -284,7 +287,7 @@ the panel pair's receive channel; restarting the Hub75Driver in place. `Display`
 "panel DMA stalled" once when it detects the frozen pointer; `/debug` shows the flag.
 
 GIF playback (`main/gif_player.*`): bitbank2/AnimatedGIF, vendored as
-`hardware-tests/components/animatedgif` (Apache-2.0, one documented local patch), used in
+`components/animatedgif` of that folder (Apache-2.0, one documented local patch), used in
 `GIF_DRAW_RAW` mode with an RGB888 palette; `GifPlayer` composites the lines it gets
 into an RGB888 canvas (transparency, all four disposal modes, black background) and
 `Scaler` fits the canvas into 64x64 (nearest up, box-average down, black bars).
@@ -299,7 +302,7 @@ the native bottom, and the controller's USB-C ports sit behind the native right 
 enclosure turns the panel 90 degrees clockwise (front view); the matching setting is
 `CONFIG_HUB75_ROTATE_90`, to be switched on when the shell is in use.
 
-Style: `hardware-tests/.clang-format` (Google, 2 spaces, 120 columns), same as the driver.
+Style: the folder's `.clang-format` (Google, 2 spaces, 120 columns), same as the driver.
 
 ## Enclosure
 

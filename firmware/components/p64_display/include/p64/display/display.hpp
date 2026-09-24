@@ -2,8 +2,8 @@
 // it rotates them, applies the channel gains, copies them into the driver's back buffer
 // and flips on a panel refresh boundary.
 //
-// Tear-free timing (ported from the hardware tests, see hardware-tests/README.md "Frame
-// pacing"): the driver's flip only relinks the DMA descriptor chain and the DMA keeps
+// Tear-free timing (ported from the hardware tests, see reference/hardware-tests/README.md
+// "Frame pacing"): the driver's flip only relinks the DMA descriptor chain and the DMA keeps
 // scanning the old front buffer until that frame ends. The driver gives no signal, so
 // Display watches the LCD GDMA channel: present() clears the channel's end-of-frame
 // flag before the flip, and wait_for_back_buffer() sleeps until shortly before the next

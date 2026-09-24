@@ -16,12 +16,10 @@ on:
     branches: [main]
     paths:
       - "firmware/**"
-      - "hardware-tests/assets/gifs/**"
       - ".github/workflows/firmware.yml"
   pull_request:
     paths:
       - "firmware/**"
-      - "hardware-tests/assets/gifs/**"
       - ".github/workflows/firmware.yml"
   workflow_dispatch:
 

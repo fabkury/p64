@@ -10,7 +10,7 @@ an ADR when the change reverses one; keep the settings and limits tables complet
 
 Sources referred to as "p3a" are the user's ESP32-P4 player firmware (v1.2.3, cloned at
 `firmware/reference/p3a`); "the server" is Makapix Club (cloned at
-`firmware/reference/makapix`); "the hardware tests" are `hardware-tests/`.
+`firmware/reference/makapix`); "the hardware tests" are `firmware/reference/hardware-tests/`.
 
 ## 1. Product
 
@@ -46,7 +46,7 @@ Principles, in priority order:
 
 Firmware platform: ESP-IDF v5.5, C++, the vendored and patched `esp-hub75` driver from
 the hardware tests (pin map, GDMA priority, refresh and tonal-depth findings recorded in
-`hardware-tests/README.md`). Single supported target; the panel's width and height are
+`firmware/reference/hardware-tests/README.md`). Single supported target; the panel's width and height are
 one configuration property read everywhere, never literal numbers.
 
 ## 3. Panel and picture
@@ -811,9 +811,9 @@ night schedule.
 - Makapix Club server: `firmware/reference/makapix/CONTEXT.md`, `docs/player/`,
   `docs/mqtt-api/README.md`, `docs/http-api/player-rpc.md`, `api/openapi.json`,
   `docs/protect-artworks/`, `docs/p3a/messages/0001` (User-Agent contract).
-- Hardware tests: `hardware-tests/README.md` sections "Frame pacing", "Tonal depth and
+- Hardware tests: `firmware/reference/hardware-tests/README.md` sections "Frame pacing", "Tonal depth and
   refresh", "Network throughput", "Hardware facts baked into sdkconfig.defaults";
-  `hardware-tests/components/esp-hub75/P64-CHANGES.md`.
+  `firmware/reference/hardware-tests/components/esp-hub75/P64-CHANGES.md`.
 - Fonts: `firmware/assets/fonts/*/​*-Info.md` (VEXED, CC-BY 4.0).
 - Protocols: DDP (3waylabs, "Distributed Display Protocol"), Open-Meteo API, WMO weather
   interpretation codes.

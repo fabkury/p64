@@ -104,11 +104,12 @@ So 64x64 animations decode well inside the 16.7 ms budget of 60 fps in every for
 the no-drop rule (ADR 0003), as the spec allows. Run it again after decoder or scaler
 changes: `python tests/device/api_smoke.py http://p64.local --corpus --bench`.
 
-## Relation to `hardware-tests/`
+## Relation to `reference/hardware-tests/`
 
-`hardware-tests/` is the previous `firmware/` folder: the test firmware that brought up
-the driver board and the panel (git history follows the rename; `git log --follow` works
-on its files). It is the technical reference for this project, not the architectural one:
+`reference/hardware-tests/` is the previous `firmware/` folder: the test firmware that
+brought up the driver board and the panel (renamed `hardware-tests/` on 2026-09-19, moved
+under `reference/` on 2026-09-24; git history follows both moves, `git log --follow` works
+on its files). Unlike the clones beside it, it is tracked in git. It is the technical reference for this project, not the architectural one:
 
 - Take from it what the hardware taught: the pin map, the vendored and patched esp-hub75
   driver, the frame pacing against the panel's DMA, the tonal-depth and refresh numbers,
@@ -118,12 +119,12 @@ on its files). It is the technical reference for this project, not the architect
   fetcher/web split) as given; they were shaped by testing one thing at a time, not by
   the device we want to build.
 
-Its README, `hardware-tests/README.md`, holds the details and the measured numbers.
+Its README, `reference/hardware-tests/README.md`, holds the details and the measured numbers.
 
 ## Reference clones
 
-`reference/` (git-ignored) holds local clones of upstream repositories, the way
-`hardware-tests/reference/` did until 2026-09-19. Waveshare's example repository for the
+`reference/` holds local clones of upstream repositories, git-ignored (the tracked
+`hardware-tests/` beside them is the exception). Waveshare's example repository for the
 driver board (schematic, examples, pin map) is the one the hardware tests were written
 against; to re-create it, from `firmware/`:
 

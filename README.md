@@ -123,7 +123,7 @@ there yet, as of 2026-09-21:
 | `docs/spec/p64-spec.md`, `CONTEXT.md`, `docs/adr/` | What the device does (the specification), the vocabulary, and the decisions that are hard to reverse. |
 | `docs/build-your-own.md`, `docs/images/` | The build guide, the photos (`photos/`) and the web UI screenshots. |
 | `docs/hardware/` | Wiring projects for the two rotary encoders, with schematics. |
-| `hardware-tests/` | The test firmware that brought up the board and panel; the technical reference for what the hardware taught (pin map, driver patch, frame pacing, DMA). |
+| `firmware/reference/hardware-tests/` | The test firmware that brought up the board and panel; the technical reference for what the hardware taught (pin map, driver patch, frame pacing, DMA). |
 | `prompt/` | The task prompt of each development session, in order. |
 
 ## About
