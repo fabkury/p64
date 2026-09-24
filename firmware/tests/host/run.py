@@ -252,7 +252,12 @@ def build(build_dir):
         # first on PATH and crashes at load time when it is from another toolchain.
         # The sanitizers need the dynamic runtime (and are Linux/macOS only).
         link = sanitizer_flags() if SANITIZE else ["-static"]
-        subprocess.run(["g++", *link, *objects, "-o", exe], check=True)
+        # The object list goes through a response file: with the private area's vendored
+        # libraries it outgrows Windows' command-line limit.
+        rsp = os.path.join(build_dir, "objects.rsp")
+        with open(rsp, "w", encoding="utf-8") as f:
+            f.write(chr(10).join(o.replace(chr(92), "/") for o in objects))
+        subprocess.run(["g++", *link, "@" + rsp, "-o", exe], check=True)
     return exe
 
 
