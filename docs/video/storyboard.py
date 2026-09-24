@@ -47,16 +47,19 @@ EXPLODE_STAGGER = 0.08                  # s between the groups' starts, front to
 LAST_RENDER_FRAME = int(28.4 * FPS)     # after that the end card is composed without Blender
 
 # --- what the panel shows (bake_leds.py): (t0, t1, source) --------------------------
-# sources: "gif:<file in firmware/tests/host/corpus/gifs>", "clock", "analogue", "weather", "stream"
+# sources: "art:<file in docs/video/artworks>" (the user's selection, 2026-09-24; f12030f3 is
+# the hero piece and leads), "gif:<file in firmware/tests/host/corpus/gifs>" (v1 and v2 used
+# night-light-crane, canopy, paws2025-in-the-stars, lo-fi-glow), "clock", "analogue",
+# "weather", "stream"
 PANEL = [
-    (0.0,  7.0,  "gif:HqTx_64x64_night-light-crane.gif"),
-    (7.0,  18.6, "gif:9cQL_64x64_canopy.gif"),
-    (18.6, 20.8, "gif:ct8R_64x64_paws2025-in-the-stars.gif"),
+    (0.0,  7.0,  "art:f12030f3-d150-4af1-9b16-d3a65a4b1df8.webp"),   # the hero artwork
+    (7.0,  18.6, "art:c5170051-2bad-48dd-b242-ad4c804d12f1.webp"),   # seen from behind, then during the reassembly
+    (18.6, 20.8, "art:d2afeeba-0b9e-4840-adbc-3c6bc2b47637.webp"),
     (20.8, 21.7, "clock"),
     (21.7, 22.6, "analogue"),
     (22.6, 23.6, "weather"),
     (23.6, 25.6, "stream"),
-    (25.6, 28.4, "gif:zNUc_64x64_lo-fi-glow.gif"),
+    (25.6, 28.4, "art:900f7d49-f1a4-4ba4-a54a-88e25de33e8d.webp"),
     (28.4, 30.0, "black"),
 ]
 

@@ -3,15 +3,17 @@
 
     python bake_leds.py            (from docs/video/; needs Pillow and numpy)
 
-Follows storyboard.PANEL: corpus GIFs from firmware/tests/host/corpus/gifs (played at their
-own frame timings, looping, small canvases scaled up by whole numbers like the firmware
-does), the digital clock, the analogue clock, the weather widget (with the firmware's own
+Follows storyboard.PANEL: artworks from docs/video/artworks (animated WebP, the user's
+selection of 2026-09-24) or corpus GIFs from firmware/tests/host/corpus/gifs, played at
+their own frame timings, looping, small canvases scaled up by whole numbers like the
+firmware does; the digital clock, the analogue clock, the weather widget (with the firmware's own
 pixel fonts from firmware/assets/fonts and its icons from firmware/assets/weather) and a
 plasma standing in for a live DDP stream. Blender maps the sequence onto the LED face.
 """
 
 import math
 import os
+import struct
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -21,6 +23,7 @@ import storyboard as sb
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 GIFS = os.path.join(ROOT, "firmware", "tests", "host", "corpus", "gifs")
+ARTWORKS = os.path.join(HERE, "artworks")
 FONTS = os.path.join(ROOT, "firmware", "assets", "fonts")
 WEATHER = os.path.join(ROOT, "firmware", "assets", "weather")
 OUT = os.path.join(HERE, "build", "leds")
@@ -52,9 +55,27 @@ def text(im, xy, s, f, fill, scale=1, anchor="la"):
     im.alpha_composite(big.crop((0, 0, W, W)))
 
 
-class Gif:
-    def __init__(self, name):
-        im = Image.open(os.path.join(GIFS, name))
+def webp_durations(path):
+    """Frame durations in ms from the ANMF chunks (Pillow reports 0 for these files)."""
+    data = open(path, "rb").read()
+    if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return []
+    pos, durs = 12, []
+    while pos + 8 <= len(data):
+        tag, size = data[pos:pos + 4], struct.unpack("<I", data[pos + 4:pos + 8])[0]
+        if tag == b"ANMF":
+            d = data[pos + 20:pos + 23]
+            durs.append(d[0] | d[1] << 8 | d[2] << 16)
+        pos += 8 + size + (size & 1)
+    return durs
+
+
+class Anim:
+    """An animated GIF or WebP as 64 x 64 RGBA frames with their start times."""
+
+    def __init__(self, path):
+        im = Image.open(path)
+        durs = webp_durations(path) if path.lower().endswith(".webp") else []
         self.frames, self.times = [], []
         t = 0.0
         for i in range(getattr(im, "n_frames", 1)):
@@ -66,7 +87,8 @@ class Gif:
             canvas.alpha_composite(fr, ((W - fr.width) // 2, (W - fr.height) // 2))
             self.frames.append(canvas)
             self.times.append(t)
-            t += max(im.info.get("duration", 100), 20) / 1000.0
+            ms = durs[i] if i < len(durs) else im.info.get("duration", 100)
+            t += max(ms, 20) / 1000.0
         self.period = t
 
     def at(self, t):
@@ -95,6 +117,9 @@ def degree(im, xy, fill):
     d.point([(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)], fill=fill)
 
 
+ANALOGUE_SECONDS = 12.4    # 21:47:12.4 when the face appears: the first tick lands 0.6 s in, inside the 0.9 s beat
+
+
 def analogue(t):
     im = Image.new("RGBA", (W, W), (0, 0, 0, 255))
     d = ImageDraw.Draw(im)
@@ -104,7 +129,7 @@ def analogue(t):
         for r0 in ((28, 29, 30) if k % 3 == 0 else (30,)):
             d.point((round(c + r0 * math.sin(a)), round(c - r0 * math.cos(a))),
                     fill=(255, 255, 255, 255) if k % 3 == 0 else (150, 150, 170, 255))
-    sec = (47 * 60 + t * 6) % 60                       # 21:47:xx, seconds ticking from the segment start
+    sec = (ANALOGUE_SECONDS + t) % 60                  # one tick per second of video time (t is seconds since the segment start)
     hm = 21 % 12 + 47 / 60
     hand = lambda frac, r, col, w: d.line((c, c, c + r * math.sin(frac * 2 * math.pi), c - r * math.cos(frac * 2 * math.pi)),
                                          fill=col, width=w)
@@ -153,15 +178,15 @@ def write_dot_mask(path, n=W, px=2048, fill=0.78):
 def main():
     os.makedirs(OUT, exist_ok=True)
     write_dot_mask(os.path.join(HERE, "build", "led_mask.png"))
-    gifs = {}
+    anims = {}
     for f in range(1, sb.FRAMES + 1):
         t = (f - 1) / sb.FPS
         seg = next(s for s in sb.PANEL if s[0] <= t < s[1])
         t0, _, src = seg
-        if src.startswith("gif:"):
-            name = src[4:]
-            gifs.setdefault(name, Gif(name))
-            im = gifs[name].at(t - t0)
+        if src.startswith("gif:") or src.startswith("art:"):
+            path = os.path.join(GIFS if src.startswith("gif:") else ARTWORKS, src[4:])
+            anims.setdefault(path, Anim(path))
+            im = anims[path].at(t - t0)
         elif src == "clock":
             im = clock(t - t0)
         elif src == "analogue":

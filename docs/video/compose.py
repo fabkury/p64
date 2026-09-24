@@ -118,7 +118,7 @@ def compose_frame(f):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v2.mp4"))
+    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v3.mp4"))
     ap.add_argument("--captions", choices=("v1", "v2"), default="v2")
     ap.add_argument("--frames", default=None)
     ap.add_argument("--step", type=int, default=1)

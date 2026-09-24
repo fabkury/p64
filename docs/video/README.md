@@ -15,7 +15,10 @@ so one command regenerates it. `build/` is git-ignored.
 Two caption versions exist over the same render: **v1**, the first cut (twelve captions of
 1.5 to 3 s, two lines each; `docs/p64b-concept-v1.mp4`, `compose.py --captions v1`), and
 **v2**, after the user found v1's text too much and too brief (seven captions of 3 to
-4.6 s, one line each; the default). Both caption sets are in `storyboard.py`.
+4.6 s, one line each; the default). Both caption sets are in `storyboard.py`. **v3**
+(`docs/p64b-concept-v3.mp4`) is a new render with v2's captions: the explosion flies out
+horizontally (the tilted axis had sent parts under the table) with outer parts leading
+(a shaft no longer pokes through its knob), the user's artworks, the clock fixed.
 
 ## Regenerate
 
@@ -61,9 +64,12 @@ explosion) or 4 (captions only: a captions change needs no re-render).
   (`pc_screws` in `pieces.scad`), M3 x 10 pan heads sitting 1 mm below the back face.
 - The LED face is a 64 x 64 texture behind a grid of rounded apertures on a glossy black
   body, a look, not the panel's optics; the real GOB panel diffuses more.
-- The artworks are from `firmware/tests/host/corpus/gifs/` (Makapix Club community pieces
-  already used by the host tests): night-light-crane, canopy, paws2025-in-the-stars and
-  lo-fi-glow; swap them in `storyboard.PANEL`. Pale artworks blow out at the LED face's
-  emission strength (yellow-tang did, 2026-09-24): pick dark ones or lower `Strength`
-  in `scene.py`.
+- The artworks (since v3) are the user's selection in `docs/video/artworks/` (animated
+  64 x 64 WebP; `f12030f3...` is the hero piece and leads; the sunset, the Van Gogh and the
+  living room follow), read with their own frame durations from the ANMF chunks. v1 and
+  v2 used corpus GIFs from `firmware/tests/host/corpus/gifs/`; `storyboard.PANEL` takes
+  either (`art:` or `gif:`). The LED face's emission is `P64_LED_STRENGTH` (default 2.5;
+  9 in v1 and v2 clipped pale artworks to white).
+- The analogue clock ticks once per second of video time since v3 (v1 and v2 ran it six
+  times too fast).
 - Nothing here is measured. The video is a concept render of the v7b model as designed.

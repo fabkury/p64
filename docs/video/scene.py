@@ -27,6 +27,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 BUILD = os.path.join(HERE, "build")
 SHELL_STL = os.path.join(ROOT, "enclosure", "output", "p64b", "v7b", "p64_enclosure_print.stl")
 MM = 0.001
+LED_STRENGTH = float(os.environ.get("P64_LED_STRENGTH", "2.5"))   # emission of a full-white LED; 9 clipped pale artworks to white (v1, v2)
 
 
 def args():
@@ -104,7 +105,7 @@ def led_face_material(frames_dir, mask_path):
     body.inputs["Roughness"].default_value = 0.3
     body.inputs["Coat Weight"].default_value = 0.6
     emit = nt.nodes.new("ShaderNodeEmission")
-    emit.inputs["Strength"].default_value = 9.0
+    emit.inputs["Strength"].default_value = LED_STRENGTH
     tex = nt.nodes.new("ShaderNodeTexImage")
     first = os.path.join(frames_dir, "led_0001.png")
     img = bpy.data.images.load(first)
