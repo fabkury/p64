@@ -1,0 +1,7 @@
+This is a test of your abilities.
+
+This repository contains the v7b model of p64b, an envisioned desktop pixel art player.
+
+Please do:
+ 1. Ask me questions to collect more details and information about the p64 project and its intended features and highlights.
+ 2. Then proceed to create an engineering concept video of the device. Feel free to use Blender for it (already installed in this computer) if that's your choice.
