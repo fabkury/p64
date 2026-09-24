@@ -54,7 +54,11 @@ More photos:
 | ![The weather widget](docs/images/photos/p64-brick-wall-weather.jpg) | ![A mosaic of small artworks](docs/images/photos/p64-brick-wall-artwork-mosaic.jpg) | ![The whole desk, p64 at the left](docs/images/photos/p64-desk-wide.jpg) |
 | The weather widget | A mosaic artwork | On the desk |
 
-The rest are in [`docs/images/photos/`](docs/images/photos/).
+The rest are in [`docs/images/photos/`](docs/images/photos/). There is also a 30-second
+concept video of p64b rendered from the enclosure model (the shell as designed, the
+mock-ups, the panel playing corpus animations and the widgets): the pipeline is in
+[`docs/video/`](docs/video/README.md), the MP4 is regenerated with one command and is not
+committed.
 
 ## What you need
 

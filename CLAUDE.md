@@ -25,6 +25,11 @@ folders of work live here, each with its own README that is the detailed referen
   its architectural reference. The "Hardware tests" sections below describe it.
 - `enclosure/`: the OpenSCAD shell, versioned as separate `.scad` files with outputs
   under `enclosure/output/vN/`.
+- `docs/video/`: the p64b concept video pipeline (2026-09-24): `pieces.scad` exports the
+  enclosure source's mock-ups, `bake_leds.py` the panel frames, `scene.py` builds and
+  renders in Blender 5.2 (Cycles, GPU), `compose.py` adds bloom, captions and the end
+  card, `storyboard.py` holds every time; `make.ps1` runs it all. `build/` and the MP4s
+  are git-ignored; its README has the steps.
 - `docs/hardware/`: wiring projects for the two rotary encoders of p64b
   (`encoders-solderless.md`, `encoders-soldered.md`, schematics drawn by
   `tools/draw_encoders.py` with schemdraw),
