@@ -19,7 +19,8 @@ file and checks the dumps in Python against Pillow (run.py:358-395), a spec-comp
 APNG compositor written because Pillow's is wrong (run.py:204-300), a Python twin of the
 scaler (run.py:157-201) and the browser delay rule (run.py:350-355). Tolerance 0 for
 GIF, PNG and BMP, 1 for WebP and APNG (run.py:371). Corpus: 22 Pillow-made files in
-`tests/host/corpus/` plus 64 GIFs from `../hardware-tests/assets/gifs/`: 86 files, 1531
+`tests/host/corpus/` plus 64 GIFs from the hardware tests (in `tests/host/corpus/gifs/`
+since 2026-09-24): 86 files, 1531
 frames.
 
 Flags: C++ `g++ -std=c++20 -O2 -Wall -Wextra -D__LINUX__` (run.py:128); vendored C

@@ -2,8 +2,9 @@
 """Check the firmware's GIF pipeline on the PC against Pillow.
 
 Builds tools/gifcheck/gifcheck.cpp with the vendored AnimatedGIF and the firmware's
-gif_player.cpp (the exact code the board runs), decodes every GIF given (default:
-assets/gifs/*.gif), and compares, frame by frame:
+gif_player.cpp (the exact code the board runs), decodes every GIF given (default: the
+64 Makapix GIFs in firmware/tests/host/corpus/gifs/, this folder's corpus until
+2026-09-24), and compares, frame by frame:
 
   1. the composited canvas against Pillow's decode of the same frame (transparent
      pixels expected black), pixel-exact;
@@ -26,6 +27,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE = os.path.abspath(os.path.join(HERE, "..", ".."))
+CORPUS = os.path.abspath(os.path.join(FIRMWARE, "..", "..", "tests", "host", "corpus", "gifs"))
 DST_W, DST_H = 64, 64
 
 
@@ -170,11 +172,11 @@ def check(path, frames_path):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("gifs", nargs="*", help="GIF files (default: assets/gifs/*.gif)")
+    ap.add_argument("gifs", nargs="*", help="GIF files (default: firmware/tests/host/corpus/gifs/*.gif)")
     ap.add_argument("--keep", action="store_true", help="keep the dumped frames in tools/gifcheck/build/")
     args = ap.parse_args()
 
-    gifs = args.gifs or sorted(glob.glob(os.path.join(FIRMWARE, "assets", "gifs", "*.gif")))
+    gifs = args.gifs or sorted(glob.glob(os.path.join(CORPUS, "*.gif")))
     if not gifs:
         print("no GIFs found")
         return 2

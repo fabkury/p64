@@ -7,7 +7,8 @@ PC's gcc/g++ (the exact decoder code the board runs), then:
 
   1. runs the unit tests (scaler, rotation, gains, sniffing, delay rule, frame queue);
   2. decodes every file of the corpora (tests/host/corpus/* made with Pillow, plus the
-     hardware tests' GIF corpus) with the firmware's decoders + scaler and compares each
+     64 Makapix GIFs in tests/host/corpus/gifs/, the hardware tests' former corpus) with
+     the firmware's decoders + scaler and compares each
      frame of the first loop against Pillow: canvas pixel-exact (transparent pixels
      black), delays after the browser rule, and the scaled output against a Python twin
      of the scaling rule.
@@ -498,7 +499,7 @@ def main():
 
     files = args.files or (
         sorted(glob.glob(os.path.join(HERE, "corpus", "*.*")))
-        + sorted(glob.glob(os.path.join(FIRMWARE, "reference", "hardware-tests", "assets", "gifs", "*.gif"))))
+        + sorted(glob.glob(os.path.join(HERE, "corpus", "gifs", "*.gif"))))
     if not files:
         print("no files found")
         return 2

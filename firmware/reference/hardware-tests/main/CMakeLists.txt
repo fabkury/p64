@@ -1,5 +1,6 @@
 # No GIF is embedded in the binary: artwork comes from the microSD card at boot and
-# from Makapix Club afterwards (assets/gifs is the test corpus of tools/gifcheck).
+# from Makapix Club afterwards (the test corpus of tools/gifcheck is
+# firmware/tests/host/corpus/gifs, the former assets/gifs of this folder).
 idf_component_register(
     SRCS
         "main.cpp"

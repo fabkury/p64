@@ -293,9 +293,11 @@ into an RGB888 canvas (transparency, all four disposal modes, black background) 
 `Scaler` fits the canvas into 64x64 (nearest up, box-average down, black bars).
 `gif_player.*` must stay free of ESP-IDF includes: `tools/gifcheck/gifcheck.py` builds
 it natively with the harness in that folder and compares every frame of every GIF in
-`assets/gifs/` against Pillow, pixel-exact; run it after touching the decoder, the
-compositor, the scaler, or the assets. `assets/gifs/` is only that test corpus (and
-the set the README's copy loop uploads to the card); it is not embedded in the firmware.
+`firmware/tests/host/corpus/gifs/` (the 64 Makapix GIFs that were this folder's
+`assets/gifs/` until 2026-09-24, shared with the product firmware's host tests) against
+Pillow, pixel-exact; run it after touching the decoder, the compositor, the scaler, or
+the corpus. The corpus is also the set the README's copy loop uploads to the card; it is
+not embedded in the firmware.
 
 Orientation: the firmware drives the panel in native orientation (`ROTATE_0`): row 63 is
 the native bottom, and the controller's USB-C ports sit behind the native right edge. The

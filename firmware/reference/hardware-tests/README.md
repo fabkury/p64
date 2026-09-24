@@ -22,8 +22,9 @@ the moment it lands, and from then on to a fresh download every 30 s, or as soon
 the next one lands when it is late (Wi-Fi down, request failed, NTP not synced yet):
 the current artwork stays up meanwhile and the fetcher keeps trying every few
 seconds. Nothing but fresh downloads plays after the startup one; no GIF is embedded in
-the firmware any more (the 64 in `assets/gifs/` are the test corpus of `gifcheck`, and
-the copy loop under "microSD card" puts them on a card). GIFs
+the firmware any more (the 64 Makapix GIFs that were `assets/gifs/` here live in
+`../../tests/host/corpus/gifs/` since 2026-09-24, as the test corpus of `gifcheck` and of
+the product firmware's host tests; the copy loop under "microSD card" puts them on a card). GIFs
 play at their intended speed, looping as needed; frame delays are honoured with the
 browser rule (a delay under 20 ms is shown for 100 ms). Top-left, on a 70 % black box
 (the artwork shows through at 30 % brightness), a 24-hour clock (HH:MM) set from NTP
@@ -150,7 +151,7 @@ holds the pins, the bus clock (20 MHz; lower it if the panel ever stalls during 
 traffic) and the format policy.
 
 ```
-for f in assets/gifs/*.gif; do curl -T "$f" "http://p64.local/sd/$(basename "$f")"; done
+for f in ../../tests/host/corpus/gifs/*.gif; do curl -T "$f" "http://p64.local/sd/$(basename "$f")"; done
 curl http://p64.local/sd
 curl "http://p64.local/sd/play?seconds=10"
 curl "http://p64.local/play?file=5PKj_32x32_piranha-plant.gif&seconds=20"
@@ -234,7 +235,7 @@ modes (the library itself does not implement "restore previous"), and `Scaler` f
 canvas into the 64x64 frame. `gif_player.*` has no ESP-IDF dependencies on purpose.
 
 `tools/gifcheck/gifcheck.py` builds that exact code natively (needs g++ and Pillow),
-decodes every GIF in `assets/gifs/`, and compares every frame's canvas against Pillow
+decodes every GIF in `../../tests/host/corpus/gifs/`, and compares every frame's canvas against Pillow
 and every scaled frame against a Python twin of the scaler, pixel-exact. Run it after
 touching the decoder, the compositor, the scaler or the assets:
 
@@ -244,7 +245,7 @@ python tools\gifcheck\gifcheck.py a.gif    # specific files
 ```
 
 Adding artwork to the device: copy the `.gif` to the microSD card (see "microSD
-card"); `assets/gifs/` is only the test corpus and is not embedded in the firmware.
+card"); the corpus is only for testing and is not embedded in the firmware.
 
 The panel is driven in its **native orientation** (`CONFIG_HUB75_ROTATE_0`).
 
@@ -429,7 +430,6 @@ firmware/reference/hardware-tests/
   CMakeLists.txt          ESP-IDF project "p64"
   sdkconfig.defaults      every setting that differs from ESP-IDF defaults (board, panel, pins)
   partitions.csv          32 MB flash: nvs, otadata, phy, ota_0 (4 MB), ota_1 (4 MB), storage
-  assets/gifs/            64 Makapix GIFs: the gifcheck test corpus, and what the card copy loop uploads
   components/animatedgif/ vendored bitbank2/AnimatedGIF decoder (see its README)
   components/esp-hub75/   vendored esphome/esp-hub75 0.3.6 with the p64 patch (see P64-CHANGES.md)
   main/
