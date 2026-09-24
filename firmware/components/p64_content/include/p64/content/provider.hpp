@@ -95,6 +95,11 @@ class Provider {
   virtual std::vector<ChannelOffer> offers() { return {}; }
   // Provider-specific status for the status document (may be null).
   virtual cJSON *status_json() { return nullptr; }
+  // An absolute path of the provider's own settings page on this device (null when it
+  // has none); the Settings page links to it.
+  virtual const char *settings_path() { return nullptr; }
+  // Forgets whatever credentials the provider stores (factory reset).
+  virtual void erase_credentials() {}
 };
 
 // The registry. Providers are registered at start-up (before the show restores its
@@ -109,8 +114,10 @@ Provider *for_spec(const ChannelSpec &spec);
 // Asks every provider for a "mem:" path.
 bool memory_bytes(const std::string &path, std::vector<uint8_t> &out);
 // The `providers` array of the status document: id, label, online, authorized, the
-// offered channels and each provider's own status.
+// offered channels, each provider's own status and its settings_path when it has one.
 cJSON *status_json();
+// Every provider forgets its credentials (factory reset).
+void erase_credentials();
 }  // namespace providers
 
 }  // namespace p64::content

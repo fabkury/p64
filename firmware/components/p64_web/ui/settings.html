@@ -320,6 +320,11 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="auto-check">Check for updates automatically (every 12 h)</label><label class="toggle-switch"><input type="checkbox" id="auto-check" onchange="save({updates:{auto_check:this.checked}})"><span class="toggle-slider"></span></label></div>
     </div>
     <div class="section">
+        <h3>Content providers</h3>
+        <div id="providers-list"><div class="setting-hint">-</div></div>
+        <div class="setting-hint">Sources of channel artworks on this device. Makapix Club is configured on its own tab; a provider with a Settings link has its own page.</div>
+    </div>
+    <div class="section">
         <h3>Diagnostics</h3>
         <div class="info-row"><span class="info-label">Panel</span><span class="info-value" id="diag-panel">-</span></div>
         <div class="info-row"><span class="info-label">Frames</span><span class="info-value" id="diag-frames">-</span></div>
@@ -529,6 +534,13 @@ p64.onStatus(function (d) {
     document.getElementById('mk-counters').textContent = 'refreshes ' + m.refreshes + ', downloads ' + m.downloads + (m.download_failures ? ' (' + m.download_failures + ' failed)' : '') + ', views ' + m.views_sent + ', commands ' + m.commands;
     var st = d.stream || {};
     document.getElementById('stream-status').textContent = st.active ? ('Receiving ' + st.protocol + ' ' + st.width + 'x' + st.height + ' from ' + st.sender + ' at ' + (st.fps || 0).toFixed(1) + ' fps, latency ' + (st.last_latency_ms || 0).toFixed(1) + ' ms') : 'No stream at the moment.' + ' Frames ' + st.frames + ', incomplete ' + st.incomplete + ', rejected ' + st.rejected + '.';
+    var pl = document.getElementById('providers-list');
+    var provs = d.providers || [];
+    pl.innerHTML = provs.length ? provs.map(function (p) {
+      return '<div class="info-row"><span class="info-label">' + p64.esc(p.label || p.id) + '</span><span class="info-value">' +
+        '<span class="status-badge ' + (p.authorized ? 'status-connected' : 'status-neutral') + '">' + (p.authorized ? 'ready' : 'not configured') + '</span> ' +
+        (p.online ? 'online' : 'offline') + (p.settings_path ? ' &middot; <a href="' + p64.esc(p.settings_path) + '" style="color:var(--c-primary)">Settings</a>' : '') + '</span></div>';
+    }).join('') : '<div class="setting-hint">none</div>';
     var f = d.firmware || {};
     document.getElementById('sys-ver').textContent = f.version || '-';
     document.getElementById('sys-built').textContent = f.built || '-';

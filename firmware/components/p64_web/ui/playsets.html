@@ -298,12 +298,16 @@ function fieldsFor(c, i) {
     }
     if (c.kind === 'external') {
         var p = providerOf(c.identifier);
-        if (p && (p.channels || []).length) {
-            return '<div><label class="form-label" style="font-size:12px">' + p64.esc(p.label) + ' channel</label><select class="form-input" onchange="setField(' + i + ',\'identifier\',this.value)">' + providerChannelOptions(p, c.identifier) + '</select></div>';
+        if (p && offerKnown(p, c.identifier)) {
+            // One of the provider's offered channels; "Other" switches to the typed form.
+            return '<div><label class="form-label" style="font-size:12px">' + p64.esc(p.label) + ' channel</label><select class="form-input" onchange="setField(' + i + ',\'identifier\',this.value === \'__other\' ? \'\' : this.value)">' + providerChannelOptions(p, c.identifier) + '<option value="__other">Other (type provider:channel)&hellip;</option></select></div>';
         }
-        return '<div><label class="form-label" style="font-size:12px">Provider channel (provider:channel)</label><input type="text" class="form-input" maxlength="64" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim())"></div>';
+        return '<div><label class="form-label" style="font-size:12px">Provider channel (provider:channel)</label><input type="text" class="form-input" maxlength="64" placeholder="provider:channel" value="' + p64.esc(c.identifier) + '" onchange="setField(' + i + ',\'identifier\',this.value.trim())"></div>';
     }
     return '<div style="padding:8px;background:var(--c-card-bg);border-radius:8px;font-size:13px;color:var(--c-card-fg-muted)">' + p64.esc(builtinHintKind(c.kind)) + '</div>';
+}
+function offerKnown(p, identifier) {
+    return (p.channels || []).some(function (ch) { return p.id + ':' + ch.identifier === identifier; });
 }
 function providerChannelOptions(p, selected) {
     return (p.channels || []).map(function (ch) { var v = p.id + ':' + ch.identifier; return '<option value="' + p64.esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + p64.esc(ch.label) + '</option>'; }).join('');
@@ -364,7 +368,8 @@ function updateSourceFields() {
     var src = document.getElementById('channelSource').value, c = document.getElementById('sourceFields');
     if (src.indexOf('provider:') === 0) {
         var p = providerOf(src.substring(9) + ':');
-        c.innerHTML = '<div class="form-group"><label class="form-label">' + p64.esc(p ? p.label : 'Provider') + ' channel</label><select id="extIdent" class="form-input">' + (p ? providerChannelOptions(p, '') : '') + '</select></div>';
+        c.innerHTML = '<div class="form-group"><label class="form-label">' + p64.esc(p ? p.label : 'Provider') + ' channel</label><select id="extIdent" class="form-input" onchange="document.getElementById(\'extOtherRow\').style.display = this.value === \'__other\' ? \'\' : \'none\'">' + (p ? providerChannelOptions(p, '') : '') + '<option value="__other">Other (type provider:channel)&hellip;</option></select></div>' +
+            '<div class="form-group" id="extOtherRow" style="display:none"><label class="form-label">Channel identifier</label><input type="text" id="extOther" class="form-input" maxlength="64" placeholder="' + p64.esc((p ? p.id : 'provider') + ':channel') + '"><p class="setting-hint">The provider\'s own page lists what it accepts here.</p></div>';
     } else if (src === 'local') {
         c.innerHTML = '<div class="form-group"><label class="form-label">Folder</label><select id="localFolder" class="form-input">' + folderOptions('') + '</select>' +
             '<p class="setting-hint">Folders under animations/ on the card; new files there are picked up within seconds.</p></div>';
@@ -389,7 +394,11 @@ function updateKindFields() {
 function addChannel() {
     var src = document.getElementById('channelSource').value, c = { kind: 'promoted', identifier: '', display_name: document.getElementById('channelDisplayName').value.trim(), weight: 100, offset: 0 };
     if (src === 'local') { c.kind = 'local'; c.identifier = document.getElementById('localFolder').value; }
-    else if (src.indexOf('provider:') === 0) { c.kind = 'external'; c.identifier = document.getElementById('extIdent').value; if (!c.identifier) { p64.toast('The provider offers no channel', true); return; } }
+    else if (src.indexOf('provider:') === 0) {
+        c.kind = 'external'; c.identifier = document.getElementById('extIdent').value;
+        if (c.identifier === '__other') c.identifier = document.getElementById('extOther').value.trim();
+        if (!c.identifier || c.identifier.indexOf(':') < 1) { p64.toast('Enter the channel as provider:channel', true); return; }
+    }
     else {
         c.kind = document.getElementById('mkKind').value;
         var id = document.getElementById('mkIdent');

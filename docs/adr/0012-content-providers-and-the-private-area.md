@@ -38,6 +38,12 @@ history: not a channel); a private release channel for OTA (a token on the devic
 private repository, for one device); a private ignore rule in `.git/info/exclude` (the
 user does not mind the folder's name being known, only its contents).
 
+Two more hooks followed the same day, for providers that keep credentials: a provider may
+declare a `settings_path` (its own page on the device; the public Settings page lists
+every provider and links to that page, so a private provider gets a settings entry
+without the public UI naming it) and `erase_credentials()`, which the factory reset calls
+on every provider.
+
 Consequences: a device running a private build must not install a public release without
 knowing it drops the private parts; the OTA status carries `private_build` and the Update
 page warns before the install. `firmware/budgets.json` and CI describe the public

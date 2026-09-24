@@ -659,6 +659,12 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   with a fake provider (items, a failed item reported and dropped, labels, the size
   limit, an unserved provider, missing credentials), the registry, the `external` kind
   and its JSON (118 cases).
+- 2026-09-24, provider hooks: `Provider::settings_path()` (published in `providers`, the
+  Settings page's System tab lists every provider with a Settings link when set) and
+  `Provider::erase_credentials()` (called by the factory reset); the Playsets page's
+  External channel select gains "Other" for identifiers a provider does not offer by
+  name; `run.py` accepts globs and `system_includes` in the private manifest. Host tests
+  for both hooks.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

@@ -10,6 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "p64/content/psram.hpp"
+#include "p64/content/provider.hpp"
 #include "p64/makapix/makapix.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/wifi.hpp"
@@ -117,6 +118,7 @@ void check_boot_hold(playback::Player &player, gfx::Frame &scratch) {
   ESP_LOGW(TAG, "factory reset: erasing settings, state, Wi-Fi, Makapix and PIN");
   std::string error;
   makapix::unpair(error);
+  content::providers::erase_credentials();  // every other content provider (ADR 0012)
   net::wifi::erase_credentials();
   system::state::erase_all();
   system::settings_reset();

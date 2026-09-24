@@ -155,6 +155,7 @@ HEADER_DIRS = [
 # its tests/host/manifest.json names pure sources, include directories and unit-test
 # files that join the host build when the folder exists. Absent on CI, so private
 # tests never gate the public build; present, they run with the public ones.
+SYSTEM_INCLUDES = ()  # private -isystem dirs (set from the manifest below)
 PRIVATE = os.path.join(FIRMWARE, "private")
 PRIVATE_MANIFEST = os.path.join(PRIVATE, "tests", "host", "manifest.json")
 if os.path.exists(PRIVATE_MANIFEST):
@@ -163,10 +164,21 @@ if os.path.exists(PRIVATE_MANIFEST):
     _units = sorted(glob.glob(os.path.join(PRIVATE, "tests", "host", "unit", "*.cpp")))
     for _u in _m.get("unit", []):
         _units.append(os.path.join(PRIVATE, _u))
-    _priv_sources = [os.path.join(PRIVATE, p) for p in _m.get("sources", [])] + _units
+    # `sources` entries may be globs (vendored C libraries are many files); a .c source
+    # is compiled by gcc as C, like the public vendored libraries. `system_includes`
+    # are -isystem (their warnings are not ours).
+    _priv_sources = []
+    for _p in _m.get("sources", []):
+        _hits = sorted(glob.glob(os.path.join(PRIVATE, _p), recursive=True))
+        if not _hits:
+            sys.exit("private manifest: no source matches %s" % _p)
+        _priv_sources += _hits
+    _priv_sources += _units
     _priv_includes = [os.path.join(PRIVATE, p) for p in _m.get("includes", [])]
+    _priv_system = [os.path.join(PRIVATE, p) for p in _m.get("system_includes", [])]
     CXX_SOURCES += _priv_sources
-    INCLUDES += _priv_includes
+    INCLUDES += _priv_includes + _priv_system
+    SYSTEM_INCLUDES = tuple(_priv_system)
     HEADER_DIRS += _priv_includes
     if _priv_sources:
         print("private area: %d source(s) from %s" % (len(_priv_sources), os.path.relpath(PRIVATE_MANIFEST, FIRMWARE)))
@@ -207,7 +219,7 @@ def compile_object(src, obj, is_cxx, header_mtime):
     if os.path.exists(obj) and os.path.getmtime(obj) > max(os.path.getmtime(src), header_mtime):
         return
     # Vendored headers as system headers: their warnings are not ours to fix.
-    inc = ["-isystem" + i if i.startswith(VENDORED_INCLUDES) else "-I" + i for i in INCLUDES]
+    inc = ["-isystem" + i if i.startswith(VENDORED_INCLUDES) or i.startswith(SYSTEM_INCLUDES) else "-I" + i for i in INCLUDES]
     if is_cxx:
         warn = ["-Wall", "-Wextra"]
         if WERROR and not src.startswith(VENDORED):

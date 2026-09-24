@@ -143,7 +143,23 @@ TEST_CASE("provider_registry") {
   CHECK(cJSON_IsTrue(cJSON_GetObjectItem(first, "online")));
   CHECK(cJSON_IsFalse(cJSON_GetObjectItem(first, "authorized")));
   CHECK(cJSON_GetArraySize(cJSON_GetObjectItem(first, "channels")) == 1);
+  CHECK(cJSON_GetObjectItem(first, "settings_path") == nullptr);  // none declared
   cJSON_Delete(doc);
+  // A provider with a settings page and credentials: the path is published and the
+  // factory reset reaches it.
+  struct Q : P {
+    int erased = 0;
+    Q() : P("qq") {}
+    const char *settings_path() override { return "/qq"; }
+    void erase_credentials() override { ++erased; }
+  } q;
+  providers::add(&q);
+  doc = providers::status_json();
+  cJSON *third = cJSON_GetArrayItem(doc, 2);
+  CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(third, "settings_path"))) == "/qq");
+  cJSON_Delete(doc);
+  providers::erase_credentials();
+  CHECK(q.erased == 1);
   providers::clear();
 }
 

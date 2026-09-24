@@ -56,9 +56,14 @@ cJSON *status_json() {
       cJSON_AddItemToArray(channels, c);
     }
     if (cJSON *own = p->status_json()) cJSON_AddItemToObject(o, "status", own);
+    if (const char *path = p->settings_path()) cJSON_AddStringToObject(o, "settings_path", path);
     cJSON_AddItemToArray(arr, o);
   }
   return arr;
+}
+
+void erase_credentials() {
+  for (Provider *p : g_providers) p->erase_credentials();
 }
 
 }  // namespace p64::content::providers

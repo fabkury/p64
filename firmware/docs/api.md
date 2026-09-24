@@ -80,7 +80,9 @@ supported yet"); `url_list` and `pinned` are reserved. p3a's shape (`type`/`name
 `providers` (in `/api/v1/status`): the registered content providers,
 `[{id, label, online, authorized, channels:[{identifier, label}], status?}]`; `channels`
 are the external channels the provider offers (their identifiers without the
-`<provider>:` prefix), `status` the provider's own document when it has one. Makapix Club
+`<provider>:` prefix), `status` the provider's own document when it has one, and
+`settings_path` the absolute path of its own settings page when it serves one (the
+Settings page links to it). Makapix Club
 is listed as `makapix` with no offered channels (its channels are kinds of their own);
 the public firmware lists nothing else.
 
