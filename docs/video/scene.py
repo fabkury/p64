@@ -213,17 +213,26 @@ def build(v):
             ob.matrix_parent_inverse = piv.matrix_world.inverted()
         # the highlight: a thin ring on the shell around the knob and the pointer line, both
         # emissive, lit only while that knob moves (a light on the axis only painted the face grey)
+        # flat and flush with the face (a 0.7 mm torus read as a bump even unlit), and hidden
+        # from the render whenever it is dark, so it exists only as light
         ring_mat = principled(f"knob_ring{i}", (0.02, 0.02, 0.02), rough=0.5)
         rb = ring_mat.node_tree.nodes["Principled BSDF"]
         rb.inputs["Emission Color"].default_value = (1.0, 0.85, 0.6, 1.0)
         rb.inputs["Emission Strength"].default_value = 0.0
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.0125, minor_radius=0.0007, major_segments=72, minor_segments=12)
+        bpy.ops.mesh.primitive_circle_add(radius=0.0132, vertices=96, fill_type="NGON")
         ring = bpy.context.object
         ring.name = f"knob_ring{i}"
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.inset(thickness=0.0014, depth=0.0)     # an annulus 1.4 mm wide, outer radius 13.2 mm
+        bpy.ops.mesh.delete(type="FACE")
+        bpy.ops.object.mode_set(mode="OBJECT")
         ring.data.materials.append(ring_mat)
         ring.parent = device
         ring.matrix_parent_inverse = Matrix.Identity(4)
-        ring.matrix_basis = piv.matrix_basis @ Matrix.Translation((0, 0, 0.0009))
+        ring.matrix_basis = piv.matrix_basis @ Matrix.Translation((0, 0, 0.00015))
+        ring.hide_render = True
+        piv["ring"] = ring.name
         ring["group"] = "shell"                                  # it belongs to the shell's face
         ring["base"] = list(ring.location)                       # the explosion adds its offset to this
         objs.append(ring)
@@ -433,6 +442,9 @@ def animate(device, objs, shell):
                         inp = bpy.data.materials[name].node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
                         inp.default_value = strength
                         inp.keyframe_insert("default_value", frame=f)
+                    ring = bpy.data.objects[ob["ring"]]
+                    ring.hide_render = hi <= 0.0
+                    ring.keyframe_insert("hide_render", frame=f)
                 ob.location = loc
                 ob.keyframe_insert("location", frame=f)
 
