@@ -15,13 +15,14 @@ import os
 import subprocess
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 import storyboard as sb
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 FRAMES = os.path.join(HERE, "build", "frames")
+LEDS = os.path.join(HERE, "build", "leds")
 COMP = os.path.join(HERE, "build", "comp")
 LOGO = os.path.join(ROOT, "docs", "images", "logo", "p64-logo.png")
 FONT_DIR = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
@@ -81,6 +82,52 @@ def caption(im, t):
         im.alpha_composite(layer)
 
 
+VCELL, VN = 10, 64                      # the virtual screen: 10 px per LED, 640 px square
+VSIZE = VCELL * VN
+VCENTRE = (1430, 470)
+_vmask = None
+
+
+def vmask():
+    global _vmask
+    if _vmask is None:
+        m = Image.new("L", (VSIZE, VSIZE), 0)
+        d = ImageDraw.Draw(m)
+        for j in range(VN):
+            for i in range(VN):
+                x, y = i * VCELL, j * VCELL
+                d.rounded_rectangle((x + 1, y + 1, x + VCELL - 2, y + VCELL - 2), radius=2, fill=255)
+        _vmask = m
+    return _vmask
+
+
+def virtual_screen(im, t, f):
+    """The front of the panel, drawn flat in the empty half of the frame during the knob scene."""
+    k = ramp(t, sb.VIRTUAL[0], sb.VIRTUAL[1], 0.5)
+    if k <= 0:
+        return
+    led = Image.open(os.path.join(LEDS, f"led_{f:04d}.png")).convert("RGB")
+    big = led.resize((VSIZE, VSIZE), Image.NEAREST)
+    body = Image.new("RGB", (VSIZE, VSIZE), (16, 16, 18))
+    lit = Image.composite(big, body, vmask())
+    glow = big.filter(ImageFilter.GaussianBlur(16)).point(lambda v: int(v * 0.45))
+    lit = ImageChops.add(lit, glow)
+    pad = 40
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    x0, y0 = VCENTRE[0] - VSIZE // 2, VCENTRE[1] - VSIZE // 2
+    d = ImageDraw.Draw(layer)
+    d.rounded_rectangle((x0 - pad, y0 - pad, x0 + VSIZE + pad, y0 + VSIZE + pad), radius=18, fill=(8, 8, 10, 235))
+    layer.paste(lit.convert("RGBA"), (x0, y0))
+    d.text((VCENTRE[0], y0 - pad - 16), "the front of the panel", font=F_SUB, fill=(150, 156, 170, 255), anchor="ms")
+    for t0, t1, text in sb.VIRTUAL_LABELS:
+        kk = ramp(t, t0, t1, 0.25)
+        if kk > 0:
+            d.text((VCENTRE[0], y0 + VSIZE + pad + 44), text, font=F_HEAD, fill=(255, 255, 255, int(255 * kk)), anchor="ms")
+    alpha = layer.split()[3].point(lambda v: int(v * k))
+    layer.putalpha(alpha)
+    im.alpha_composite(layer)
+
+
 def end_card(t):
     k = ramp(t, sb.END_CARD[0], sb.END_CARD[1] + 1, 0.5)
     im = Image.new("RGBA", (W, H), (6, 6, 8, 255))
@@ -104,6 +151,7 @@ def compose_frame(f):
         return end_card(t).convert("RGB")
     im = Image.open(os.path.join(FRAMES, f"f_{f:04d}.png")).convert("RGB")
     im = bloom(im).convert("RGBA")
+    virtual_screen(im, t, f)
     caption(im, t)
     dim = 1.0
     if t < sb.FADE_IN[1]:
@@ -118,13 +166,13 @@ def compose_frame(f):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v3.mp4"))
-    ap.add_argument("--captions", choices=("v1", "v2"), default="v2")
+    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v4.mp4"))
+    ap.add_argument("--captions", choices=("v4",), default="v4")
     ap.add_argument("--frames", default=None)
     ap.add_argument("--step", type=int, default=1)
     a = ap.parse_args()
     global CAPTIONS
-    CAPTIONS = sb.CAPTIONS_V1 if a.captions == "v1" else sb.CAPTIONS_V2
+    CAPTIONS = sb.CAPTIONS
     os.makedirs(COMP, exist_ok=True)
     if a.frames:
         frames = [int(x) for x in a.frames.split(",")]

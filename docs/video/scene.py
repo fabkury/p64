@@ -94,6 +94,10 @@ def mats():
     MATS["grey"] = principled("grey_plastic", (0.3, 0.3, 0.32), rough=0.5)
     MATS["black"] = principled("black_plastic", (0.02, 0.02, 0.02), rough=0.45)
     MATS["knob"] = principled("knob_black", (0.015, 0.015, 0.015), rough=0.35, coat=0.3)
+    MATS["mark"] = principled("knob_mark", (0.9, 0.9, 0.9), rough=0.5)
+    bsdf = MATS["mark"].node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Emission Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 0.6
     MATS["floor"] = principled("floor", (0.02, 0.02, 0.024), rough=0.42, coat=0.0, spec=0.3)
 
 
@@ -183,12 +187,40 @@ def build(v):
         ("enc_body", "enc_body", "grey", "encoders"),
         ("enc_metal", "enc_metal", "metal", "encoders"),
         ("enc_nut", "enc_nut", "dark_metal", "enc_nut"),
-        ("enc_knob", "enc_knob", "knob", "enc_knob"),
         ("screws", "screws", "dark_metal", "screws"),
     ]
     objs = []
     for f, name, mat, group in pieces:
         objs.append(import_stl(os.path.join(BUILD, f + ".stl"), name, MATS[mat], device, group))
+
+    # the knobs: one object each on a pivot at its shaft axis, so they can turn and be pressed
+    # (v4); the pivot is what the explosion moves
+    for i in range(2):
+        p, zb = v["enc_pos"][i], v["z_back_enc"][i]
+        piv = bpy.data.objects.new(f"knob_pivot{i}", None)
+        scene.collection.objects.link(piv)
+        piv.parent = device
+        piv.location = (p[0] * MM, p[1] * MM, zb * MM)
+        piv.rotation_euler = (-math.radians(v["back_ang"]), 0, 0)
+        piv["group"] = "enc_knob"
+        piv["base"] = [p[0] * MM, p[1] * MM, zb * MM]
+        piv["knob"] = i
+        bpy.context.view_layer.update()
+        knob = import_stl(os.path.join(BUILD, f"enc_knob{i}.stl"), f"knob{i}", MATS["knob"], device, "enc_knob")
+        mark = import_stl(os.path.join(BUILD, f"enc_mark{i}.stl"), f"knob_mark{i}", MATS["mark"], device, "enc_knob")
+        for ob in (knob, mark):
+            ob.parent = piv
+            ob.matrix_parent_inverse = piv.matrix_world.inverted()
+        light = bpy.data.lights.new(f"knob_glow{i}", "POINT")
+        light.energy = 0.0
+        light.color = (1.0, 0.9, 0.75)
+        light.shadow_soft_size = 0.03
+        glow = bpy.data.objects.new(f"knob_glow{i}", light)
+        scene.collection.objects.link(glow)
+        glow.parent = piv
+        glow.location = (0, 0, 0.045)
+        piv["glow"] = glow.name
+        objs.append(piv)
 
     # the shell: the committed print STL, print_orient() undone -> design coordinates
     shell = import_stl(SHELL_STL, "shell", MATS["shell"], device, "shell")
@@ -298,13 +330,28 @@ def camera_pose(t):
     beats = sb.CAMERA
     if t <= beats[0][0]:
         b = beats[0]
-        return b[2:]
+        return b[2:8]
     for i in range(len(beats) - 1):
         a, b = beats[i], beats[i + 1]
         if a[1] <= t <= b[0]:
             k = smooth((t - a[1]) / (b[0] - a[1])) if b[0] > a[1] else 1.0
-            return tuple(lerp(a[j], b[j], k) for j in range(2, 7))
-    return beats[-1][2:]
+            return tuple(lerp(a[j], b[j], k) for j in range(2, 8))
+    return beats[-1][2:8]
+
+
+def knob_state(t, knob):
+    """(degrees turned clockwise seen from behind, press depth 0..1, highlight 0..1) at time t."""
+    angle, depth, hi = 0.0, 0.0, 0.0
+    for t0, t1, k, kind, amount in sb.KNOB_ACTIONS:
+        if k != knob:
+            continue
+        u = (t - t0) / (t1 - t0)
+        if kind == "turn":
+            angle += amount * smooth(u)
+        elif kind == "press" and 0.0 <= u <= 1.0:
+            depth = max(depth, math.sin(math.pi * u))
+        hi = max(hi, min(1.0, (t - t0 + 0.3) / 0.3, (t1 - t + 0.3) / 0.3))
+    return angle, depth, max(0.0, hi)
 
 
 def explode_k(t, order, n):
@@ -344,21 +391,35 @@ def animate(device, objs, shell):
 
     for f in range(1, sb.LAST_RENDER_FRAME + 1):
         t = (f - 1) / sb.FPS
-        az, el, dist, tz, ty = camera_pose(t)
+        az, el, dist, tz, ty, tx = camera_pose(t)
         tgt = Vector((centre.x, centre.y, tz)) + axis * ty
-        target.location = tgt
-        target.keyframe_insert("location", frame=f)
         a, e = math.radians(az), math.radians(el)
-        cam.location = tgt + Vector((math.sin(a) * math.cos(e), math.cos(a) * math.cos(e), math.sin(e))) * dist
+        pos = tgt + Vector((math.sin(a) * math.cos(e), math.cos(a) * math.cos(e), math.sin(e))) * dist
+        right = (tgt - pos).cross(Vector((0, 0, 1))).normalized()   # slide both sideways: the device leaves the centre
+        target.location = tgt + right * tx
+        target.keyframe_insert("location", frame=f)
+        cam.location = pos + right * tx
         cam.keyframe_insert("location", frame=f)
-        if f == 1 or f % 3 == 0 or sb.EXPLODE_T0 <= t <= sb.EXPLODE_T1 + 1 or sb.COLLAPSE_T0 <= t <= sb.COLLAPSE_T1 + 1:
+        in_knob_scene = sb.KNOB_SCENE[0] - 0.5 <= t <= sb.KNOB_SCENE[1] + 0.5
+        if f == 1 or f % 3 == 0 or sb.EXPLODE_T0 <= t <= sb.EXPLODE_T1 + 1 or sb.COLLAPSE_T0 <= t <= sb.COLLAPSE_T1 + 1 or in_knob_scene:
             for ob in objs:
                 g = ob["group"]
                 mm = sb.EXPLODE_MM[g]
                 if mm == 0.0:
                     continue
                 k = explode_k(t, groups.index(g), len(groups))
-                ob.location = axis_local * (mm * MM * k)
+                base = Vector(ob["base"]) if "base" in ob else Vector((0, 0, 0))
+                loc = base + axis_local * (mm * MM * k)
+                if "knob" in ob:                                        # a knob pivot: turn, press, glow
+                    angle, depth, hi = knob_state(t, ob["knob"])
+                    outward = ob.matrix_basis.to_3x3() @ Vector((0, 0, 1))
+                    loc -= outward * (sb.KNOB_PRESS_MM * MM * depth)
+                    ob.rotation_euler = (ob.rotation_euler.x, 0, -math.radians(angle))
+                    ob.keyframe_insert("rotation_euler", frame=f)
+                    glow = bpy.data.objects[ob["glow"]]
+                    glow.data.energy = 0.07 * hi
+                    glow.data.keyframe_insert("energy", frame=f)
+                ob.location = loc
                 ob.keyframe_insert("location", frame=f)
 
 

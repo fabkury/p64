@@ -175,6 +175,49 @@ def write_dot_mask(path, n=W, px=2048, fill=0.78):
     im.save(path)
 
 
+HEART_ROWS = [".XX...XX.", "XXXX.XXXX", "XXXXXXXXX", "XXXXXXXXX", ".XXXXXXX.", "..XXXXX..", "...XXX...", "....X...."]
+
+
+def brightness_at(t):
+    pts = sb.BRIGHTNESS
+    if t <= pts[0][0] or t >= pts[-1][0]:
+        return 1.0
+    for (t0, b0), (t1, b1) in zip(pts, pts[1:]):
+        if t0 <= t <= t1:
+            return b0 + (b1 - b0) * (t - t0) / (t1 - t0)
+    return 1.0
+
+
+def pause_shift(t):
+    """Seconds the artwork's clock has stood still by time t (knob A's pause)."""
+    s = 0.0
+    for p0, p1 in sb.PAUSES:
+        if t >= p1:
+            s += p1 - p0
+        elif t >= p0:
+            s += t - p0
+    return s
+
+
+def knob_effects(im, t):
+    """What the knob scene does to the picture: brightness, the pause mark, the like heart."""
+    k = brightness_at(t)
+    if k < 1.0:
+        im = Image.eval(im, lambda v: int(v * k))
+    d = ImageDraw.Draw(im)
+    if sb.PAUSE_ICON[0] <= t < sb.PAUSE_ICON[1]:
+        d.rectangle((55, 3, 56, 9), fill=(255, 255, 255))
+        d.rectangle((59, 3, 60, 9), fill=(255, 255, 255))
+    if sb.HEART[0] <= t < sb.HEART[1]:
+        pop = min(1.0, (t - sb.HEART[0]) / 0.25)
+        col = (255, int(50 + 40 * pop), int(70 + 40 * pop))
+        for j, row in enumerate(HEART_ROWS):
+            for i, c in enumerate(row):
+                if c == "X":
+                    d.point((52 + i, 53 + j), fill=col)
+    return im
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     write_dot_mask(os.path.join(HERE, "build", "led_mask.png"))
@@ -186,7 +229,7 @@ def main():
         if src.startswith("gif:") or src.startswith("art:"):
             path = os.path.join(GIFS if src.startswith("gif:") else ARTWORKS, src[4:])
             anims.setdefault(path, Anim(path))
-            im = anims[path].at(t - t0)
+            im = anims[path].at(t - t0 - pause_shift(t) + pause_shift(t0))
         elif src == "clock":
             im = clock(t - t0)
         elif src == "analogue":
@@ -197,7 +240,7 @@ def main():
             im = stream(t - t0)
         else:
             im = Image.new("RGBA", (W, W), (0, 0, 0, 255))
-        im.convert("RGB").save(os.path.join(OUT, f"led_{f:04d}.png"))
+        knob_effects(im.convert("RGB"), t).save(os.path.join(OUT, f"led_{f:04d}.png"))
     print(f"wrote {sb.FRAMES} frames to {OUT}")
 
 

@@ -59,7 +59,9 @@ module pc_enc_body()    { for (i = [0 : 1]) on_enc(i) translate([0, 0, enc_z_boa
 module pc_enc_metal()   { for (i = [0 : 1]) on_enc(i) { translate([0, 0, -back_t]) cylinder(d = enc_bush_d, h = enc_bush_l);
                                                         translate([0, 0, -back_t]) cylinder(d = enc_shaft_d, h = enc_shaft_l); } }
 module pc_enc_nut()     { for (i = [0 : 1]) on_enc(i) translate([0, 0, -enc_spot_t]) cylinder(d = 10 / cos(30), h = enc_nut_h, $fn = 6); }
-module pc_enc_knob()    { for (i = [0 : 1]) on_enc(i) translate([0, 0, -enc_spot_t + enc_nut_h + 0.3]) cylinder(d = knob_d, h = knob_h); }
+module pc_enc_knob()    { for (i = [0 : 1]) pc_knob(i); }
+module pc_knob(i)       { on_enc(i) translate([0, 0, -enc_spot_t + enc_nut_h + 0.3]) cylinder(d = knob_d, h = knob_h); }   // one knob, for the v4 knob scene
+module pc_mark(i)       { on_enc(i) translate([-0.6, 1.5, -enc_spot_t + enc_nut_h + 0.3 + knob_h - 0.05]) cube([1.2, knob_d/2 - 2.5, 0.45]); }   // its pointer line, centre to rim
 
 // ---- screws: six M3 x 10 pan heads in the counterbores (mock-up only, not in the source) ----
 module pc_screws() { for (p = holes) on_back(p[1]) translate([p[0], 0, 0]) {
@@ -86,6 +88,10 @@ if (piece == "enc_body")     pc_enc_body();
 if (piece == "enc_metal")    pc_enc_metal();
 if (piece == "enc_nut")      pc_enc_nut();
 if (piece == "enc_knob")     pc_enc_knob();
+if (piece == "enc_knob0")    pc_knob(0);       // design x = +47: the right knob seen from the back (knob A in the video)
+if (piece == "enc_knob1")    pc_knob(1);       // design x = -47: the left knob (knob B)
+if (piece == "enc_mark0")    pc_mark(0);
+if (piece == "enc_mark1")    pc_mark(1);
 if (piece == "screws")       pc_screws();
 if (piece == "values") {
     echo(VALUES = str("{",
