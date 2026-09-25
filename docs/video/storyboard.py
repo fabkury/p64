@@ -90,7 +90,7 @@ VIRTUAL_LABELS = [                      # under the virtual screen: what the kno
 
 # the last stretch, the device from the front: the studio lights go down so the LEDs and the
 # haze carry the picture (t0, t1, level): fade from t0 to t1 down to level, then hold
-STUDIO_DIM = (38.6, 40.2, 0.22)
+STUDIO_DIM = (38.6, 40.2, 0.12)
 
 LAST_RENDER_FRAME = int(48.4 * FPS)     # after that the end card is composed without Blender
 
