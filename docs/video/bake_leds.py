@@ -155,9 +155,10 @@ def stream(t):
     y, x = np.mgrid[0:W, 0:W].astype(np.float32) / W
     v = (np.sin(x * 6 + t * 2.0) + np.sin((y * 5 + x * 2) - t * 1.6)
          + np.sin(np.hypot(x - 0.5 + 0.3 * math.sin(t), y - 0.5 + 0.3 * math.cos(t * 0.7)) * 12 - t * 3)) / 3
-    r = (np.sin(v * math.pi) * 0.5 + 0.5) * 255
-    g = (np.sin(v * math.pi + 2.1) * 0.5 + 0.5) * 255
-    b = (np.sin(v * math.pi + 4.2) * 0.5 + 0.5) * 255
+    k = 0.55 * 255                                     # at full saturation the plasma whited out the panel and its glow
+    r = (np.sin(v * math.pi) * 0.5 + 0.5) * k
+    g = (np.sin(v * math.pi + 2.1) * 0.5 + 0.5) * k
+    b = (np.sin(v * math.pi + 4.2) * 0.5 + 0.5) * k
     a = np.full_like(r, 255)
     return Image.fromarray(np.stack([r, g, b, a], -1).astype(np.uint8), "RGBA")
 
