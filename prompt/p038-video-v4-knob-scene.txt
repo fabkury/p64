@@ -1,0 +1,11 @@
+Thanks.
+
+Let's now start a new version of the video (keep the current ones), starting from everything we have so far. If my accounting is correct, we're in v3, so let's start v4 of the video.
+
+Here's what I want to add:
+ 1. After the explosion breakout, one new "scene" comes in. Add about 10 seconds of total duration (to the 30 seconds video) just because of this scene.
+ 2. The new "scene" is a focus on the assembled device, non-exploded, seen from behind, focusing on the two knobs. The device occupies one half of the frame, leaving empty space on the other side.
+ 3. In that scene, the knobs are shown rotating one at a time. While each knob rotates, a "virtual screen" on that other side (the empty space in the frame) shows the effect of rotating the knob. In other words, we're going to simulate a second p64 on the screen, this time just its screen, and use it to demonstrate "live" what happens when you rotate the each knob.
+ 4. After the "zoom in" on the knobs with their "virtual device" on the side, the "virtual device" fades off and the video resumes towards its completion (the "zoom in" on the knobs is not the last scene on the video).
+
+Create several key frames first, so we both can review them. If you don't like the first set of keyframes you generate, feel free to iterate a bit until they're right.
