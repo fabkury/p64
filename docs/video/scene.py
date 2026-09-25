@@ -31,7 +31,9 @@ LED_STRENGTH = float(os.environ.get("P64_LED_STRENGTH", "4.5"))   # emission of 
                                                                   # highlights roll off instead of clipping: 9 under Standard clipped pale artworks)
 VIEW = os.environ.get("P64_VIEW", "Khronos PBR Neutral")           # "Standard" clipped; "AgX" desaturates the LEDs; PBR Neutral keeps their hue
 LOOK = os.environ.get("P64_LOOK", "None")
-HAZE = float(os.environ.get("P64_HAZE", "0.03"))
+HAZE = float(os.environ.get("P64_HAZE", "0.10"))
+GLOW_W = float(os.environ.get("P64_GLOW_W", "1.2"))               # the glow light's power at a full-white panel (lights the haze only)
+LED_MEAN = json.load(open(os.path.join(BUILD, "led_mean.json"))) if os.path.exists(os.path.join(BUILD, "led_mean.json")) else [[1, 1, 1]]
 RING_Z, RING_R, RING_W = 0.0095, 0.0138, 0.0012                   # the knob highlight ring: height on the shaft axis, outer radius, width (m)
 
 
@@ -283,6 +285,20 @@ def build(v):
     if face.data.polygons[0].normal.z > 0:
         face.data.flip_normals()
     objs.append(face)
+    # the glow light: an area light on the LED face, coloured per frame from the picture's mean,
+    # lighting the haze only (light linking), so the panel's picture visibly lights the air in
+    # front of it; the emissive face alone scatters too little to read
+    gl = bpy.data.lights.new("led_glow", "AREA")
+    gl.shape = "SQUARE"
+    gl.size = v["board"] * MM
+    gl.energy = 0.0
+    gl.spread = math.radians(110)
+    glow = bpy.data.objects.new("led_glow", gl)
+    scene.collection.objects.link(glow)
+    glow.parent = device
+    glow.location = (0, 0, z0 - 0.002)
+    glow.rotation_euler = (0, 0, 0)          # an area light emits along its -Z: the front
+    glow["group"] = "panel"
 
     # stand the device on its wedge foot: OpenSCAD's standing() = rotate([tilt]) rotate([90]) about X
     device.rotation_euler = (math.radians(90 + v["tilt"]), 0, 0)
@@ -334,10 +350,22 @@ def studio():
         out = nt.nodes.new("ShaderNodeOutputMaterial")
         sc = nt.nodes.new("ShaderNodeVolumeScatter")
         sc.inputs["Density"].default_value = HAZE
-        sc.inputs["Anisotropy"].default_value = float(os.environ.get("P64_HAZE_ANISO", "0.6"))
+        sc.inputs["Anisotropy"].default_value = float(os.environ.get("P64_HAZE_ANISO", "0.7"))
         nt.links.new(sc.outputs["Volume"], out.inputs["Volume"])
         haze.data.materials.append(hm)
         haze.visible_shadow = False
+        # only the LEDs (and the knob rings) light the haze: the studio lights are unlinked from it,
+        # otherwise their scatter greys the whole scene and swamps the panel's glow
+        excl = bpy.data.collections.new("haze_receivers")
+        excl.objects.link(haze)
+        for co in excl.collection_objects:
+            co.light_linking.link_state = "EXCLUDE"
+        for ob in scene.objects:
+            if ob.type == "LIGHT" and ob.name != "led_glow":
+                ob.light_linking.receiver_collection = excl
+        only = bpy.data.collections.new("haze_only")
+        only.objects.link(haze)
+        bpy.data.objects["led_glow"].light_linking.receiver_collection = only
     world = bpy.data.worlds.new("studio")
     scene.world = world
     world.use_nodes = True
@@ -431,6 +459,13 @@ def animate(device, objs, shell):
         cam.location = pos + right * tx
         cam.keyframe_insert("location", frame=f)
         in_knob_scene = sb.KNOB_SCENE[0] - 0.5 <= t <= sb.KNOB_SCENE[1] + 0.5
+        m = LED_MEAN[min(f, len(LED_MEAN)) - 1]
+        lum = 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]
+        gl = bpy.data.objects["led_glow"].data
+        gl.energy = GLOW_W * lum
+        gl.color = tuple(c / max(m) for c in m) if max(m) > 0 else (1, 1, 1)
+        gl.keyframe_insert("energy", frame=f)
+        gl.keyframe_insert("color", frame=f)
         cav = bpy.data.objects["cavity"].data
         cav.energy = 14.0 * smooth(min((t - sb.CAVITY[0]) / 0.8, (sb.CAVITY[1] - t) / 0.8))
         cav.keyframe_insert("energy", frame=f)

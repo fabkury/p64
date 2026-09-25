@@ -82,9 +82,15 @@ explosion) or 4 (captions only: a captions change needs no re-render).
   either (`art:` or `gif:`). The LED face's emission is `P64_LED_STRENGTH` (default 4.5 under
   the Khronos PBR Neutral view transform, `P64_VIEW`, whose highlights roll off; v1 and v2
   used Standard at 9, which clipped pale artworks to white; AgX was tried and desaturated
-  the LEDs). A thin scattering volume around the device (`P64_HAZE`, default 0.03 per
-  metre, 0 removes it) lets the LEDs light the air and the floor in front of them (the
-  user's request of 2026-09-24: brighter LEDs with a little volumetric light).
+  the LEDs). A scattering volume around the device (`P64_HAZE`, default 0.10 per
+  metre, 0 removes it) lets the LEDs light the air in front of them (the user's request
+  of 2026-09-24: brighter LEDs with volumetric light). The studio lights are unlinked
+  from the volume (Cycles light linking), otherwise their scatter greys the scene and
+  swamps the panel; and since the emissive LED face alone scatters too little to read,
+  an area light on the face, coloured and dimmed per frame from the baked picture's mean
+  (`build/led_mean.json`, written by `bake_leds.py`) and linked to the volume only, does
+  the visible glow (`P64_GLOW_W`, default 1.2 W at a full-white panel; 4 W washes the
+  picture out, 40 W whites the frame).
 - The analogue clock ticks once per second of video time since v3 (v1 and v2 ran it six
   times too fast).
 - Nothing here is measured. The video is a concept render of the v7b model as designed.

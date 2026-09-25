@@ -222,6 +222,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     write_dot_mask(os.path.join(HERE, "build", "led_mask.png"))
     anims = {}
+    means = []                                        # per-frame mean colour of the panel, for the glow light in scene.py
     for f in range(1, sb.FRAMES + 1):
         t = (f - 1) / sb.FPS
         seg = next(s for s in sb.PANEL if s[0] <= t < s[1])
@@ -240,7 +241,11 @@ def main():
             im = stream(t - t0)
         else:
             im = Image.new("RGBA", (W, W), (0, 0, 0, 255))
-        knob_effects(im.convert("RGB"), t).save(os.path.join(OUT, f"led_{f:04d}.png"))
+        out = knob_effects(im.convert("RGB"), t)
+        out.save(os.path.join(OUT, f"led_{f:04d}.png"))
+        means.append([round(float(v), 4) for v in (np.asarray(out).astype(np.float32) / 255.0).reshape(-1, 3).mean(axis=0)])
+    import json
+    json.dump(means, open(os.path.join(HERE, "build", "led_mean.json"), "w"))
     print(f"wrote {sb.FRAMES} frames to {OUT}")
 
 
