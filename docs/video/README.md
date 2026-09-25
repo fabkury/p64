@@ -18,7 +18,7 @@ found v1's text too much and too brief (seven captions of 3 to 4.6 s, one line e
 **v3** (`p64b-concept-v3-draft*.mp4`, 15 fps drafts), a new render: the explosion flies out
 horizontally (the tilted axis had sent parts under the table) with outer parts leading
 (a shaft no longer pokes through its knob), the user's artworks, the clock fixed,
-brighter LEDs under PBR Neutral, the haze; **v4** (the current storyboard) adds the knob
+brighter LEDs under PBR Neutral, the haze; **v4** (the current video, rendered at 96 samples on 2026-09-24) adds the knob
 scene, 45 s in all: after the reassembly the camera settles behind the device, which sits
 in the left half of the frame, and a "virtual screen" (the front of the panel, drawn flat
 in the right half by `compose.py` from the same baked LED frames) shows what each knob
@@ -36,8 +36,8 @@ slow), ffmpeg on the PATH, and a Python with Pillow and numpy (the system one). 
 `docs/video/` in PowerShell 7:
 
 ```
-.\make.ps1            # everything below, in order; 2 to 4 h on an RTX 5050 laptop for the 1452 frames
-                      # (3 to 10 s a frame with the haze, depending on the GPU's power state)
+.\make.ps1            # everything below, in order; the v4 pass (96 samples, the haze and the glow light)
+                      # takes several hours on an RTX 5050 laptop, depending on the GPU's power state
 .\make.ps1 -Quick     # 16 samples and every fourth frame, for a look at the motion (7.5 fps)
 ```
 
@@ -47,7 +47,7 @@ The steps, if you want one of them alone:
 |---|---|---|
 | 1 | `openscad -o build/values.echo -D piece="values" pieces.scad` and one `-o build/<piece>.stl -D piece="<piece>"` per piece | `pieces.scad` includes the enclosure source with `encoders = true` and exports each mock-up (panel frame, LED board, controller, adapters, cradle insert, encoder boards, knobs, screws) as its own STL in the shell's design coordinates, plus the numbers Blender needs. |
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
-| 3 | `blender -b -P scene.py -- [--start N --end N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
+| 3 | `blender -b -P scene.py -- [--start N --end N] [--step N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
 | 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). ||| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
@@ -93,4 +93,9 @@ explosion) or 4 (captions only: a captions change needs no re-render).
   picture out, 40 W whites the frame).
 - The analogue clock ticks once per second of video time since v3 (v1 and v2 ran it six
   times too fast).
+- v4's other look decisions, all the user's: the LED face and mask are matte (the glossy
+  coat reflected the key light as a hot spot), the studio lights dim to 12 % for the last,
+  frontal stretch (`storyboard.STUDIO_DIM`), a paused panel is off, the stream plasma
+  runs at 55 %, the active knob is marked by a floating emissive ring that exists only
+  while lit, and the exploded view gets a look into the shell's cavity with its own light.
 - Nothing here is measured. The video is a concept render of the v7b model as designed.

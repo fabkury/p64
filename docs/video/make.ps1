@@ -1,5 +1,5 @@
 # make.ps1: regenerates the p64b concept video from scratch (see README.md).
-#   .\make.ps1            full quality, about two hours on an RTX 5050 laptop
+#   .\make.ps1            full quality (96 samples), several hours on an RTX 5050 laptop
 #   .\make.ps1 -Quick     16 samples, every fourth frame: a 7.5 fps preview in a few minutes
 param([switch]$Quick)
 $ErrorActionPreference = "Stop"
@@ -16,7 +16,7 @@ foreach ($p in $pieces) { & $openscad -o "build\$p.stl" -D "piece=`"$p`"" pieces
 python bake_leds.py
 
 $step = if ($Quick) { 4 } else { 1 }
-$samples = if ($Quick) { 16 } else { 48 }
+$samples = if ($Quick) { 16 } else { 96 }
 Remove-Item build\frames\*.png -ErrorAction SilentlyContinue
 & $blender -b -P scene.py -- --step $step --samples $samples
 
