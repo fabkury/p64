@@ -28,8 +28,8 @@ CAMERA = [
     (7.0,   7.0,  -150,   22,  0.50, 0.064, 0.00, 0.00),     # back three-quarter (over the right shoulder)
     (9.0,   9.0,  -102,   24,  0.62, 0.060, 0.10, 0.00),     # exploded: from the side and above, the stack reads left to right
     (15.2,  15.2, -122,   18,  0.60, 0.060, 0.11, 0.00),     # slow orbit along the stack
-    (17.0,  17.0,  -64,   30,  0.52, 0.078, 0.14, 0.00),     # into the shell's cavity: from the front-right, above the panel
-    (18.8,  18.8,  -50,   27,  0.50, 0.078, 0.14, 0.00),     # slow drift over the cavity
+    (17.0,  17.0,  -64,   30,  0.58, 0.072, 0.085, 0.00),    # into the shell's cavity: from the front-right, aimed between panel and shell
+    (18.8,  18.8,  -50,   27,  0.56, 0.072, 0.085, 0.00),    # slow drift over the cavity
     (20.2,  20.2, -122,   18,  0.60, 0.060, 0.11, 0.00),     # back to the side for the reassembly
     (23.0,  23.0,  158,   12,  0.56, 0.062, 0.00, 0.105),    # the knob scene: the whole back, device in the left half
     (36.6,  36.6,  164,   10,  0.53, 0.062, 0.00, 0.105),    # slow drift while the knobs turn
