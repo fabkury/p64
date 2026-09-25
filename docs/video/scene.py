@@ -86,7 +86,7 @@ def mats():
     MATS["insert"] = principled("pla_tomato", (0.65, 0.12, 0.06), rough=0.5)
     MATS["frame"] = principled("frame_plastic", (0.06, 0.06, 0.065), rough=0.6)
     MATS["board"] = principled("pcb_green", (0.02, 0.10, 0.05), rough=0.35, coat=0.4)
-    MATS["mask"] = principled("led_mask", (0.01, 0.01, 0.012), rough=0.3, coat=0.6)
+    MATS["mask"] = principled("led_mask", (0.012, 0.012, 0.014), rough=0.9, coat=0.0, spec=0.15)   # matte: an LED panel's mask is not glossy
     MATS["chip_pcb"] = principled("pcb_blue", (0.02, 0.05, 0.16), rough=0.35, coat=0.4)
     MATS["enc_board"] = principled("pcb_dark", (0.02, 0.06, 0.04), rough=0.35, coat=0.4)
     MATS["metal"] = principled("steel", (0.75, 0.75, 0.77), rough=0.35, metallic=1.0)
@@ -112,9 +112,10 @@ def led_face_material(frames_dir, mask_path):
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     mix = nt.nodes.new("ShaderNodeMixShader")
     body = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    body.inputs["Base Color"].default_value = (0.01, 0.01, 0.012, 1)
-    body.inputs["Roughness"].default_value = 0.3
-    body.inputs["Coat Weight"].default_value = 0.6
+    body.inputs["Base Color"].default_value = (0.012, 0.012, 0.014, 1)
+    body.inputs["Roughness"].default_value = 0.9            # matte, like the real mask between the LEDs (0.3 with a coat read as an LCD)
+    body.inputs["Coat Weight"].default_value = 0.0
+    body.inputs["Specular IOR Level"].default_value = 0.15
     emit = nt.nodes.new("ShaderNodeEmission")
     emit.inputs["Strength"].default_value = LED_STRENGTH
     tex = nt.nodes.new("ShaderNodeTexImage")
