@@ -1,6 +1,6 @@
 # The p64b concept video
 
-A 30-second rendered concept video of p64b (the variant with the two rotary encoders),
+A 45-second rendered concept video of p64b (the variant with the two rotary encoders),
 built from the v7b enclosure model, the mock-ups in the same OpenSCAD source and the
 firmware's own assets: the panel plays four animations from the host-test GIF corpus, the
 clock and weather faces are drawn with the firmware's bundled pixel fonts and weather
@@ -8,17 +8,25 @@ icons, and a plasma stands in for a live stream. Made on 2026-09-24 for the publ
 p64 is, what is inside it, and what it does. The device on screen is the model, not a
 photo: nothing of v7 has been printed yet (see `enclosure/README.md`).
 
-The video itself (`docs/p64b-concept-v2.mp4`, 1920 x 1080, 30 fps, H.264, silent) is
+The video itself (`docs/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent) is
 not committed, to keep the repository small; this folder holds everything that makes it,
 so one command regenerates it. `build/` is git-ignored.
 
-Two caption versions exist over the same render: **v1**, the first cut (twelve captions of
-1.5 to 3 s, two lines each; `docs/p64b-concept-v1.mp4`, `compose.py --captions v1`), and
-**v2**, after the user found v1's text too much and too brief (seven captions of 3 to
-4.6 s, one line each; the default). Both caption sets are in `storyboard.py`. **v3**
-(`docs/p64b-concept-v3.mp4`) is a new render with v2's captions: the explosion flies out
+Versions so far, all kept side by side in `docs/` (git-ignored): **v1**, the first cut
+(twelve captions of 1.5 to 3 s, two lines each); **v2**, the same render after the user
+found v1's text too much and too brief (seven captions of 3 to 4.6 s, one line each);
+**v3** (`p64b-concept-v3-draft*.mp4`, 15 fps drafts), a new render: the explosion flies out
 horizontally (the tilted axis had sent parts under the table) with outer parts leading
-(a shaft no longer pokes through its knob), the user's artworks, the clock fixed.
+(a shaft no longer pokes through its knob), the user's artworks, the clock fixed,
+brighter LEDs under PBR Neutral, the haze; **v4** (the current storyboard) adds the knob
+scene, 45 s in all: after the reassembly the camera settles behind the device, which sits
+in the left half of the frame, and a "virtual screen" (the front of the panel, drawn flat
+in the right half by `compose.py` from the same baked LED frames) shows what each knob
+does as it turns and is pressed: A dims and brightens, A pressed pauses and resumes, B
+steps to the next and the previous artwork, B pressed likes (a heart). The knobs are
+separate pieces on pivots with a pointer line each (`pieces.scad`), and a faint point
+light marks the active knob. The 30 s timelines of v1 to v3 are in git history (commit
+d682551).
 
 ## Regenerate
 
@@ -28,8 +36,8 @@ slow), ffmpeg on the PATH, and a Python with Pillow and numpy (the system one). 
 `docs/video/` in PowerShell 7:
 
 ```
-.\make.ps1            # everything below, in order; 45 min to 2 h on an RTX 5050 laptop (3 s a frame
-                      # when the GPU boosts, 10 s under the laptop's 14 W software power cap)
+.\make.ps1            # everything below, in order; 1.5 to 3 h on an RTX 5050 laptop for the 1302 frames
+                      # (3 to 10 s a frame with the haze, depending on the GPU's power state)
 .\make.ps1 -Quick     # 16 samples and every fourth frame, for a look at the motion (7.5 fps)
 ```
 
@@ -40,22 +48,24 @@ The steps, if you want one of them alone:
 | 1 | `openscad -o build/values.echo -D piece="values" pieces.scad` and one `-o build/<piece>.stl -D piece="<piece>"` per piece | `pieces.scad` includes the enclosure source with `encoders = true` and exports each mock-up (panel frame, LED board, controller, adapters, cradle insert, encoder boards, knobs, screws) as its own STL in the shell's design coordinates, plus the numbers Blender needs. |
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
 | 3 | `blender -b -P scene.py -- [--start N --end N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
-| 4 | `python compose.py [--captions v1\|v2] [--frames a,b,c]` | Bloom around the LEDs, fades, captions, the end card; encodes `../p64b-concept-v2.mp4` with ffmpeg (about 8 min for the 900 frames). |
+| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 12 min for the 1350 frames). ||| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 12 min for the 1350 frames). |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
 the panel shows, the captions. Change it and rerun from step 2 (the panel) or 3 (camera,
 explosion) or 4 (captions only: a captions change needs no re-render).
 
-## What is in the 30 seconds
+## What is in the 45 seconds (v4)
 
-| Time | Picture | Caption (v2) |
+| Time | Picture | Caption |
 |---|---|---|
-| 0 to 4 s | Front three-quarter view, an animation playing | what p64 is, size |
-| 4 to 8 s | Orbit to the back: the vents, the six screws, the USB-C window, the two knobs; the explosion begins | the two knobs and their roles |
+| 0 to 4 s | Front three-quarter view, the hero artwork playing | what p64 is, size |
+| 4 to 8 s | Orbit to the back: the vents, the six screws, the USB-C window, the two knobs; the explosion begins | the back of the shell |
 | 8 to 15 s | Exploded view from the side, panel to screws: panel, controller, adapters, insert, encoder boards, shell, nuts and knobs, screws | the panel and the driver board; the print, the adapters, the screws |
-| 15 to 19 s | Everything comes back together while the camera returns to the front | no soldering for p64a, p64b adds the knobs |
-| 19 to 28 s | Feature beats on the panel: a second animation, the digital and analogue clocks, the weather, a live-stream plasma, a fourth animation | card and Makapix Club, clock, weather; streams and the web UI |
-| 28 to 30 s | End card | logo, repository, licence |
+| 15 to 18 s | Everything comes back together while the camera moves behind the device | no soldering for p64a, p64b adds the knobs |
+| 18 to 32 s | The knob scene: the device in the left half, the virtual screen in the right; knob A turns down and up, is pressed twice; knob B turns forward and back, is pressed | knob A: brightness, press to pause; knob B: next / previous, press to like |
+| 32 to 34 s | The virtual screen fades, the camera returns to the front | |
+| 34 to 43 s | Feature beats on the panel: Van Gogh, the digital and analogue clocks, the weather, a live-stream plasma, the living room | card and Makapix Club, clock, weather; streams and the web UI |
+| 43 to 45 s | End card | logo, repository, licence |
 
 ## Honest notes
 
