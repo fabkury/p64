@@ -22,3 +22,6 @@ Remove-Item build\frames\*.png -ErrorAction SilentlyContinue
 
 $out = if ($Quick) { "..\p64b-concept-preview.mp4" } else { "..\p64b-concept-v4.mp4" }
 python compose.py --step $step --out $out
+
+$withAudio = $out -replace "\.mp4$", "-audio.mp4"
+python audio.py --mux $out $withAudio          # the music bed (audio.py), muxed into a second file; the silent one stays

@@ -8,7 +8,8 @@ icons, and a plasma stands in for a live stream. Made on 2026-09-24 for the publ
 p64 is, what is inside it, and what it does. The device on screen is the model, not a
 photo: nothing of v7 has been printed yet (see `enclosure/README.md`).
 
-The video itself (`docs/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent) is
+The video itself (`docs/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent; `-audio.mp4`
+with the music bed) is
 not committed, to keep the repository small; this folder holds everything that makes it,
 so one command regenerates it. `build/` is git-ignored.
 
@@ -49,6 +50,8 @@ The steps, if you want one of them alone:
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
 | 3 | `blender -b -P scene.py -- [--start N --end N] [--step N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
 | 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). ||| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). |
+
+| 5 | `python audio.py --mux ../p64b-concept-v4.mp4 ../p64b-concept-v4-audio.mp4` | The music bed: a lo-fi chiptune track synthesised from scratch (square, triangle and pulse waves, noise drums, a low-pass "tape" tone; no samples, nothing to license), arranged from `storyboard.py` (soft opening, a lift at the explosion, sparse under the knob scene, full for the frontal stretch, one held chord over the end card), normalised to -18 LUFS with ffmpeg's loudnorm and muxed into a copy of the silent video (the video stream is copied). The silent MP4 stays; the one with sound is `docs/p64b-concept-v4-audio.mp4` (the user's choice, 2026-09-25). |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
 the panel shows, the captions. Change it and rerun from step 2 (the panel) or 3 (camera,
