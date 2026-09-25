@@ -31,7 +31,8 @@ LED_STRENGTH = float(os.environ.get("P64_LED_STRENGTH", "4.5"))   # emission of 
                                                                   # highlights roll off instead of clipping: 9 under Standard clipped pale artworks)
 VIEW = os.environ.get("P64_VIEW", "Khronos PBR Neutral")           # "Standard" clipped; "AgX" desaturates the LEDs; PBR Neutral keeps their hue
 LOOK = os.environ.get("P64_LOOK", "None")
-HAZE = float(os.environ.get("P64_HAZE", "0.03"))                  # scattering density of the studio air, per metre; 0 removes the volume
+HAZE = float(os.environ.get("P64_HAZE", "0.03"))
+RING_Z, RING_R, RING_W = 0.0095, 0.0138, 0.0012                   # the knob highlight ring: height on the shaft axis, outer radius, width (m)
 
 
 def args():
@@ -213,25 +214,30 @@ def build(v):
             ob.matrix_parent_inverse = piv.matrix_world.inverted()
         # the highlight: a thin ring on the shell around the knob and the pointer line, both
         # emissive, lit only while that knob moves (a light on the axis only painted the face grey)
-        # flat and flush with the face (a 0.7 mm torus read as a bump even unlit), and hidden
-        # from the render whenever it is dark, so it exists only as light
+        # a flat annulus floating in front of the knob, double-sided emission, hidden from the
+        # render whenever it is dark, so it exists only as light (a torus on the shell read as a
+        # ring on the shell, even unlit)
         ring_mat = principled(f"knob_ring{i}", (0.02, 0.02, 0.02), rough=0.5)
         rb = ring_mat.node_tree.nodes["Principled BSDF"]
         rb.inputs["Emission Color"].default_value = (1.0, 0.85, 0.6, 1.0)
         rb.inputs["Emission Strength"].default_value = 0.0
-        bpy.ops.mesh.primitive_circle_add(radius=0.0132, vertices=96, fill_type="NGON")
+        bpy.ops.mesh.primitive_circle_add(radius=RING_R, vertices=96, fill_type="NGON")
         ring = bpy.context.object
         ring.name = f"knob_ring{i}"
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.inset(thickness=0.0014, depth=0.0)     # an annulus 1.4 mm wide, outer radius 13.2 mm
+        bpy.ops.mesh.inset(thickness=RING_W, depth=0.0)     # an annulus
         bpy.ops.mesh.delete(type="FACE")
         bpy.ops.object.mode_set(mode="OBJECT")
         ring.data.materials.append(ring_mat)
         ring.parent = device
         ring.matrix_parent_inverse = Matrix.Identity(4)
-        ring.matrix_basis = piv.matrix_basis @ Matrix.Translation((0, 0, 0.00015))
+        # floating: the knob's base is 2.4 mm out (the nut) and its top 17.9 mm; the ring hangs
+        # around the knob's side, 7 mm off the shell and 8 mm short of the face, 3.8 mm clear
+        # of the knob all round, so it lights the shell and the knob's side but touches neither
+        ring.matrix_basis = piv.matrix_basis @ Matrix.Translation((0, 0, RING_Z))
         ring.hide_render = True
+        ring_mat.use_backface_culling = False
         piv["ring"] = ring.name
         ring["group"] = "shell"                                  # it belongs to the shell's face
         ring["base"] = list(ring.location)                       # the explosion adds its offset to this
