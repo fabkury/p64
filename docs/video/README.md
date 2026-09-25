@@ -22,7 +22,7 @@ brighter LEDs under PBR Neutral, the haze; **v4** (the current storyboard) adds 
 scene, 45 s in all: after the reassembly the camera settles behind the device, which sits
 in the left half of the frame, and a "virtual screen" (the front of the panel, drawn flat
 in the right half by `compose.py` from the same baked LED frames) shows what each knob
-does as it turns and is pressed: A dims and brightens, A pressed pauses and resumes, B
+does as it turns and is pressed: A dims and brightens, A pressed blanks the panel (pause) and resumes, B
 steps to the next and the previous artwork, B pressed likes (a heart). The knobs are
 separate pieces on pivots with a pointer line each (`pieces.scad`), and a faint point
 light marks the active knob. The 30 s timelines of v1 to v3 are in git history (commit

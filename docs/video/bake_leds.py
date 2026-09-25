@@ -204,10 +204,9 @@ def knob_effects(im, t):
     k = brightness_at(t)
     if k < 1.0:
         im = Image.eval(im, lambda v: int(v * k))
+    if any(p0 <= t < p1 for p0, p1 in sb.PAUSES):       # paused = the panel is off (the user's correction, 2026-09-24)
+        return Image.new("RGB", (W, W), (0, 0, 0))
     d = ImageDraw.Draw(im)
-    if sb.PAUSE_ICON[0] <= t < sb.PAUSE_ICON[1]:
-        d.rectangle((55, 3, 56, 9), fill=(255, 255, 255))
-        d.rectangle((59, 3, 60, 9), fill=(255, 255, 255))
     if sb.HEART[0] <= t < sb.HEART[1]:
         pop = min(1.0, (t - sb.HEART[0]) / 0.25)
         col = (255, int(50 + 40 * pop), int(70 + 40 * pop))

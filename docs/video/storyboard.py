@@ -74,8 +74,7 @@ KNOB_ACTIONS = [
 KNOB_PRESS_MM = 1.2                     # how far a pressed knob travels
 # what the panel does, as seen on the virtual screen (bake_leds.py, compose.py)
 BRIGHTNESS = [(24.4, 1.0), (26.2, 0.22), (26.6, 0.22), (28.4, 1.0)]   # linear between the points, 1.0 outside
-PAUSES = [(29.0, 30.8)]                 # the artwork's time stands still
-PAUSE_ICON = (29.1, 30.8)
+PAUSES = [(29.0, 30.8)]                 # the panel is off; the artwork resumes where it stopped
 NEXT_ARTWORK = (31.9, 33.3)             # the "next" artwork is up between these (see PANEL)
 HEART = (34.7, 36.2)                    # the like acknowledgement
 VIRTUAL_LABELS = [                      # under the virtual screen: what the knob just did
