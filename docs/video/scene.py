@@ -319,6 +319,8 @@ def studio():
     area("rim", (-0.45, -0.7, 0.55), c, 22, 0.5, (0.8, 0.88, 1.0))
     area("back_key", (0.6, -0.8, 0.8), c, 24, 1.0, (1.0, 0.96, 0.9))
     area("top", (0, -0.1, 1.4), c, 6, 1.5, (1, 1, 1))
+    # a light into the shell's cavity, on only while the camera looks into it (CAVITY_LIGHT in animate())
+    area("cavity", (0.35, 0.05, 0.45), (0.0, -0.14, 0.07), 0.0, 0.5, (1.0, 0.97, 0.92))
 
     if HAZE > 0:                                       # a thin haze around the device: the LEDs light the air in front of them
         bpy.ops.mesh.primitive_cube_add(size=2.0, location=(0, 0, 0.6))
@@ -429,6 +431,9 @@ def animate(device, objs, shell):
         cam.location = pos + right * tx
         cam.keyframe_insert("location", frame=f)
         in_knob_scene = sb.KNOB_SCENE[0] - 0.5 <= t <= sb.KNOB_SCENE[1] + 0.5
+        cav = bpy.data.objects["cavity"].data
+        cav.energy = 14.0 * smooth(min((t - sb.CAVITY[0]) / 0.8, (sb.CAVITY[1] - t) / 0.8))
+        cav.keyframe_insert("energy", frame=f)
         if f == 1 or f % 3 == 0 or sb.EXPLODE_T0 <= t <= sb.EXPLODE_T1 + 1 or sb.COLLAPSE_T0 <= t <= sb.COLLAPSE_T1 + 1 or in_knob_scene:
             for ob in objs:
                 g = ob["group"]
