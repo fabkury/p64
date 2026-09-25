@@ -211,15 +211,28 @@ def build(v):
         for ob in (knob, mark):
             ob.parent = piv
             ob.matrix_parent_inverse = piv.matrix_world.inverted()
-        light = bpy.data.lights.new(f"knob_glow{i}", "POINT")
-        light.energy = 0.0
-        light.color = (1.0, 0.9, 0.75)
-        light.shadow_soft_size = 0.03
-        glow = bpy.data.objects.new(f"knob_glow{i}", light)
-        scene.collection.objects.link(glow)
-        glow.parent = piv
-        glow.location = (0, 0, 0.045)
-        piv["glow"] = glow.name
+        # the highlight: a thin ring on the shell around the knob and the pointer line, both
+        # emissive, lit only while that knob moves (a light on the axis only painted the face grey)
+        ring_mat = principled(f"knob_ring{i}", (0.02, 0.02, 0.02), rough=0.5)
+        rb = ring_mat.node_tree.nodes["Principled BSDF"]
+        rb.inputs["Emission Color"].default_value = (1.0, 0.85, 0.6, 1.0)
+        rb.inputs["Emission Strength"].default_value = 0.0
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.0125, minor_radius=0.0007, major_segments=72, minor_segments=12)
+        ring = bpy.context.object
+        ring.name = f"knob_ring{i}"
+        ring.data.materials.append(ring_mat)
+        ring.parent = device
+        ring.matrix_parent_inverse = Matrix.Identity(4)
+        ring.matrix_basis = piv.matrix_basis @ Matrix.Translation((0, 0, 0.0009))
+        ring["group"] = "shell"                                  # it belongs to the shell's face
+        ring["base"] = list(ring.location)                       # the explosion adds its offset to this
+        objs.append(ring)
+        mark_mat = MATS["mark"].copy()
+        mark_mat.name = f"knob_mark{i}"
+        mark.data.materials.clear()
+        mark.data.materials.append(mark_mat)
+        piv["ring_mat"] = ring_mat.name
+        piv["mark_mat"] = mark_mat.name
         objs.append(piv)
 
     # the shell: the committed print STL, print_orient() undone -> design coordinates
@@ -416,9 +429,10 @@ def animate(device, objs, shell):
                     loc -= outward * (sb.KNOB_PRESS_MM * MM * depth)
                     ob.rotation_euler = (ob.rotation_euler.x, 0, -math.radians(angle))
                     ob.keyframe_insert("rotation_euler", frame=f)
-                    glow = bpy.data.objects[ob["glow"]]
-                    glow.data.energy = 0.07 * hi
-                    glow.data.keyframe_insert("energy", frame=f)
+                    for name, strength in ((ob["ring_mat"], 3.0 * hi), (ob["mark_mat"], 0.6 + 2.4 * hi)):
+                        inp = bpy.data.materials[name].node_tree.nodes["Principled BSDF"].inputs["Emission Strength"]
+                        inp.default_value = strength
+                        inp.keyframe_insert("default_value", frame=f)
                 ob.location = loc
                 ob.keyframe_insert("location", frame=f)
 
