@@ -34,6 +34,8 @@ LOOK = os.environ.get("P64_LOOK", "None")
 HAZE = float(os.environ.get("P64_HAZE", "0.10"))
 GLOW_W = float(os.environ.get("P64_GLOW_W", "1.2"))               # the glow light's power at a full-white panel (lights the haze only)
 LED_MEAN = json.load(open(os.path.join(BUILD, "led_mean.json"))) if os.path.exists(os.path.join(BUILD, "led_mean.json")) else [[1, 1, 1]]
+DIM_ON = os.environ.get("P64_DIM", "1") != "0"                    # the studio dimming of the last stretch (storyboard.STUDIO_DIM)
+STUDIO_LIGHTS = {}
 RING_Z, RING_R, RING_W = 0.0095, 0.0138, 0.0012                   # the knob highlight ring: height on the shaft axis, outer radius, width (m)
 
 
@@ -330,6 +332,8 @@ def studio():
         return ob
 
     c = (0, 0, 0.07)
+    global STUDIO_LIGHTS
+    STUDIO_LIGHTS = {"key": 28, "fill": 7, "rim": 22, "back_key": 24, "top": 6}   # base powers; dimmed in the last stretch
     # area lights read as their radiance in glossy reflections: keep the power low for a dark studio
     area("key", (0.55, 0.75, 0.75), c, 28, 1.0, (1.0, 0.96, 0.9))
     area("fill", (-0.8, 0.5, 0.3), c, 7, 1.2, (0.9, 0.93, 1.0))
@@ -467,6 +471,12 @@ def animate(device, objs, shell):
         gl.color = tuple(c / max(m) for c in m) if max(m) > 0 else (1, 1, 1)
         gl.keyframe_insert("energy", frame=f)
         gl.keyframe_insert("color", frame=f)
+        d0, d1, lvl = sb.STUDIO_DIM
+        dim = 1.0 - (1.0 - lvl) * smooth((t - d0) / (d1 - d0)) if DIM_ON else 1.0
+        for name in STUDIO_LIGHTS:
+            ld = bpy.data.objects[name].data
+            ld.energy = STUDIO_LIGHTS[name] * dim
+            ld.keyframe_insert("energy", frame=f)
         cav = bpy.data.objects["cavity"].data
         cav.energy = 14.0 * smooth(min((t - sb.CAVITY[0]) / 0.8, (sb.CAVITY[1] - t) / 0.8))
         cav.keyframe_insert("energy", frame=f)
