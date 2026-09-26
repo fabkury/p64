@@ -1,0 +1,5 @@
+Let's now polish this area in http://p64.local/settings#system:
+
+"Built on ESP-IDF (Apache-2.0), esphome/esp-hub75 (with the p64 patch), bitbank2/AnimatedGIF (Apache-2.0), libpng, libwebp (BSD), zlib, cJSON (MIT), Open-Meteo weather data; the web UI shares its stylesheet and themes with p3a. Pixel fonts by VEXED (CC BY 4.0): Capital Hill, Everyday Slight, Everyday Standard, Everyday Typical, Everyday Ample and High Birth (bundled with their authors' licences in assets/fonts)."
+
+This is a lot of information for a tiny font footnote. Please "elevate" this footnote to an area within "About p64", easier to read, and perhaps using bulleted lists or even a table maybe.
