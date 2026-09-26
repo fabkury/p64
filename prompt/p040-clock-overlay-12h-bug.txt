@@ -1,0 +1,8 @@
+I just caught a bug in p64.
+
+Here's what I did:
+ 1. I went to the settings in the web UI (p64.local/settings) and changed the clock overlay from 24 h to 12 h.
+
+Nothing happened. The clock on the LED panel didn't change at all.
+
+Please diagnose and fix what's wrong, then flash the new firmware so I can see the fix worked.
