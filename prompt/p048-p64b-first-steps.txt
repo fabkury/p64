@@ -1,0 +1,3 @@
+I am ready to begin soldering work in the p64 project. This means pursuing the p64b design.
+
+Please guide me exactly on what are my first steps in the p64b project.
