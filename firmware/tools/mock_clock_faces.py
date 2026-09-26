@@ -621,6 +621,308 @@ def horizon_face(hour, minute, weekday, day, month, lat=40.7, lon=-74.0, tz=-4, 
     return frame
 
 
+# ---------------------------------------------------------------- 4. Words
+
+# A word clock: a 12x9 grid of letters, the ones that spell the time lit. The grid is
+# its own (no product's layout): the minute words on top, the hours in the middle,
+# O'CLOCK and AM/PM at the bottom; four corner dots add the minutes past the five.
+WORD_ROWS = [
+    "ITBISQHALFAX",
+    "QUARTERXFIVE",
+    "TWENTYKTENTO",
+    "PASTXONETWOK",
+    "THREEFOURSIX",
+    "FIVESEVENTEN",
+    "EIGHTNINEXYZ",
+    "ELEVENTWELVE",
+    "OCLOCKQAMPMX",
+]
+WORDS = {  # word: (row, first column, length); the "m" suffix marks a minute word
+    "IT": (0, 0, 2), "IS": (0, 3, 2), "HALF": (0, 6, 4), "QUARTER": (1, 0, 7), "FIVEm": (1, 8, 4),
+    "TWENTY": (2, 0, 6), "TENm": (2, 7, 3), "TO": (2, 10, 2), "PAST": (3, 0, 4), "ONE": (3, 5, 3),
+    "TWO": (3, 8, 3), "THREE": (4, 0, 5), "FOUR": (4, 5, 4), "SIX": (4, 9, 3), "FIVE": (5, 0, 4),
+    "SEVEN": (5, 4, 5), "TEN": (5, 9, 3), "EIGHT": (6, 0, 5), "NINE": (6, 5, 4), "ELEVEN": (7, 0, 6),
+    "TWELVE": (7, 6, 6), "OCLOCK": (8, 0, 6), "AM": (8, 7, 2), "PM": (8, 9, 2),
+}
+HOUR_WORDS = ["TWELVE", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN"]
+MINUTE_WORDS = [[], ["FIVEm", "PAST"], ["TENm", "PAST"], ["QUARTER", "PAST"], ["TWENTY", "PAST"],
+                ["TWENTY", "FIVEm", "PAST"], ["HALF", "PAST"], ["TWENTY", "FIVEm", "TO"], ["TWENTY", "TO"],
+                ["QUARTER", "TO"], ["TENm", "TO"], ["FIVEm", "TO"]]
+
+# A 3x5 capital alphabet, drawn for the grid (the bundled fonts are wider).
+ALPHABET = {
+    "A": ["###", "#.#", "###", "#.#", "#.#"], "B": ["##.", "#.#", "##.", "#.#", "##."],
+    "C": ["###", "#..", "#..", "#..", "###"], "D": ["##.", "#.#", "#.#", "#.#", "##."],
+    "E": ["###", "#..", "##.", "#..", "###"], "F": ["###", "#..", "##.", "#..", "#.."],
+    "G": ["###", "#..", "#.#", "#.#", "###"], "H": ["#.#", "#.#", "###", "#.#", "#.#"],
+    "I": ["###", ".#.", ".#.", ".#.", "###"], "J": ["..#", "..#", "..#", "#.#", "###"],
+    "K": ["#.#", "#.#", "##.", "#.#", "#.#"], "L": ["#..", "#..", "#..", "#..", "###"],
+    "M": ["#.#", "###", "###", "#.#", "#.#"], "N": ["##.", "#.#", "#.#", "#.#", "#.#"],
+    "O": ["###", "#.#", "#.#", "#.#", "###"], "P": ["###", "#.#", "###", "#..", "#.."],
+    "Q": ["###", "#.#", "#.#", "###", "..#"], "R": ["###", "#.#", "##.", "#.#", "#.#"],
+    "S": ["###", "#..", "###", "..#", "###"], "T": ["###", ".#.", ".#.", ".#.", ".#."],
+    "U": ["#.#", "#.#", "#.#", "#.#", "###"], "V": ["#.#", "#.#", "#.#", "#.#", ".#."],
+    "W": ["#.#", "#.#", "###", "###", "#.#"], "X": ["#.#", "#.#", ".#.", "#.#", "#.#"],
+    "Y": ["#.#", "#.#", ".#.", ".#.", ".#."], "Z": ["###", "..#", ".#.", "#..", "###"],
+}
+
+
+def words_assets():
+    letters = {k: bitmap(v) for k, v in ALPHABET.items()}
+    sheet = Image.new("RGBA", (26 * 4 - 1, 5), (0, 0, 0, 0))
+    for i, k in enumerate(sorted(letters)):
+        sheet.paste(Image.new("RGBA", (3, 5), (255, 255, 255, 255)), (i * 4, 0), letters[k])
+    save_asset("words", "alphabet", sheet)
+    # the bezel: a brushed dark-steel frame, 3 px, with a lit inner edge and corner screws
+    bezel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(bezel)
+    for i in range(3):
+        v = (74, 72, 96, 58)[i]
+        d.rectangle((i, i, W - 1 - i, H - 1 - i), outline=(v, v, v + 4, 255))
+    for y in range(0, H, 3):  # the brush: every third row a shade lighter
+        for x in list(range(0, 3)) + list(range(W - 3, W)):
+            r, g, b, a = bezel.getpixel((x, y))
+            bezel.putpixel((x, y), (min(255, r + 14), min(255, g + 14), min(255, b + 14), 255))
+    d.rectangle((3, 3, W - 4, H - 4), outline=(28, 28, 32, 255))
+    for cx, cy in ((1, 1), (W - 2, 1), (1, H - 2), (W - 2, H - 2)):  # screw heads
+        bezel.putpixel((cx, cy), (130, 130, 138, 255))
+    save_asset("words", "bezel", bezel)
+    return letters, bezel
+
+
+def words_face(hour, minute, second=0):
+    frame = Image.new("RGB", (W, H), (12, 12, 15))
+    letters, bezel = words_assets()
+    unlit, lit, dot_on, dot_off = (42, 42, 50), (255, 250, 232), (255, 250, 232), (42, 42, 50)
+    step, rem = minute // 5, minute % 5
+    h12 = hour % 12 if step < 7 else (hour + 1) % 12
+    active = {"IT", "IS", HOUR_WORDS[h12], "AM" if hour < 12 else "PM"} | set(MINUTE_WORDS[step])
+    if step == 0:
+        active.add("OCLOCK")
+    lit_cells = set()
+    for w in active:
+        r, c, n = WORDS[w]
+        lit_cells |= {(r, c + i) for i in range(n)}
+    x0, y0 = 8, 5
+    for r, row in enumerate(WORD_ROWS):
+        for c, ch in enumerate(row):
+            stamp(frame, letters[ch], x0 + c * 4, y0 + r * 6, lit if (r, c) in lit_cells else unlit)
+    # the minute dots in the corners, clockwise from top-left
+    d = ImageDraw.Draw(frame)
+    for i, (x, y) in enumerate(((4, 4), (58, 4), (58, 58), (4, 58))):
+        d.rectangle((x, y, x + 1, y + 1), fill=dot_on if i < rem else dot_off)
+    blit(frame, bezel, 0, 0)
+    return frame
+
+
+# ---------------------------------------------------------------- 5. Hourglass
+
+# The hour as sand: the top bulb holds what is left of it, the bottom what has run, a
+# stream between them grain by grain. The numerals are the flip's (a shared asset).
+
+
+def hourglass_assets():
+    """The frame (26x52): walnut end plates with a highlight, two brass posts, the glass
+    outline as one light line. The bulbs' inner widths per row are returned for the sand."""
+    fw, fh = 26, 52
+    frame = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+    d = ImageDraw.Draw(frame)
+    walnut, wal_hi, wal_lo = (92, 52, 28, 255), (128, 78, 40, 255), (60, 34, 18, 255)
+    brass, brass_hi = (176, 132, 56, 255), (222, 184, 92, 255)
+    glass = (120, 140, 170, 255)
+    for y0 in (0, fh - 5):
+        d.rectangle((0, y0, fw - 1, y0 + 4), fill=walnut)
+        d.line((1, y0, fw - 2, y0), fill=wal_hi)
+        d.line((1, y0 + 4, fw - 2, y0 + 4), fill=wal_lo)
+        d.point((0, y0), fill=wal_lo)
+        d.point((fw - 1, y0), fill=wal_lo)
+    for x in (1, fw - 3):
+        d.rectangle((x, 5, x + 1, fh - 6), fill=brass)
+        d.line((x, 5, x, fh - 6), fill=brass_hi)
+    # the bulbs: half-widths per row, top bulb rows 5..25, neck 26, bottom bulb 27..46
+    widths = {}
+    for i, y in enumerate(range(5, 26)):
+        t = i / 20
+        widths[y] = int(round(9 - 8 * t ** 2.2))
+    widths[26] = 1
+    for i, y in enumerate(range(27, 47)):
+        t = 1 - i / 19
+        widths[y] = int(round(9 - 8 * t ** 2.2))
+    cx = 12.5
+    for y, hw in widths.items():
+        d.point((int(cx - hw - 1), y), fill=glass)
+        d.point((int(cx + hw + 1), y), fill=glass)
+    d.line((int(cx - 9), 5, int(cx + 9), 5), fill=glass)
+    d.line((int(cx - 9), 46, int(cx + 9), 46), fill=glass)
+    save_asset("hourglass", "frame", frame)
+    sand = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
+    for y in range(4):
+        for x in range(4):
+            sand.putpixel((x, y), (232, 184, 84, 255) if (x + y) % 2 else (204, 150, 56, 255))
+    save_asset("hourglass", "sand", sand)
+    return frame, widths, sand
+
+
+def hourglass_face(hour, minute, second, weekday, day, month):
+    frame = Image.new("RGB", (W, H), (10, 10, 18))
+    glass, widths, sand = hourglass_assets()
+    digits = digit_sheet("flip", "digits", FLIP_DIGITS)
+    gx, gy = 3, 6
+    cx = gx + 12
+    blit(frame, glass, gx, gy)
+    px = frame.load()
+
+    def sand_at(x, y):
+        c = sand.getpixel((x % 4, y % 4))
+        px[x, y] = c[:3]
+
+    # the top bulb: rows 5..25 inside the glass, filled from the neck up by the fraction left
+    top_rows = [(y, widths[y]) for y in range(5, 26)]
+    area = sum(2 * hw + 1 for _, hw in top_rows)
+    left = area * (60 - minute) / 60
+    filled = 0
+    surface = None
+    for y, hw in reversed(top_rows):
+        if filled >= left:
+            break
+        for x in range(int(cx - hw), int(cx + hw) + 1):
+            sand_at(x, gy + y)
+        filled += 2 * hw + 1
+        surface = (y, hw)
+    if surface and surface[1] >= 2:  # the funnel: the surface dips towards the middle
+        y, hw = surface
+        for x in range(int(cx - 1), int(cx + 1) + 1):
+            px[x, gy + y] = (10, 10, 18)
+    # the bottom bulb: a heap from the floor up by the fraction run, peaked under the neck
+    bot_rows = [(y, widths[y]) for y in range(27, 47)]
+    area = sum(2 * hw + 1 for _, hw in bot_rows)
+    run = area * minute / 60
+    filled = 0
+    heap_top = 47
+    for y, hw in reversed(bot_rows):
+        if filled >= run:
+            break
+        for x in range(int(cx - hw), int(cx + hw) + 1):
+            sand_at(x, gy + y)
+        filled += 2 * hw + 1
+        heap_top = y
+    if minute > 0:  # the peak: two rows narrowing above the heap
+        for k, hw in ((1, 2), (2, 0)):
+            y = heap_top - k
+            if y > 27:
+                for x in range(int(cx - hw), int(cx + hw) + 1):
+                    sand_at(x, gy + y)
+        heap_top -= 2
+    # the stream: one pixel wide from the neck to the heap, a grain missing on odd seconds
+    for y in range(26, min(heap_top, 46)):
+        if (y + second) % 3 != 0:
+            sand_at(int(cx), gy + y)
+    # the readout: the hour and the minute stacked in the flip numerals, the date under
+    ink, dim = (226, 214, 190), (110, 104, 96)
+    for text, y in ((f"{hour:02d}", 7), (f"{minute:02d}", 27)):
+        x = 40
+        for ch in text:
+            stamp(frame, digits[int(ch)], x, y, ink)
+            x += 11
+    small = load_font("everyday-slight")
+    draw_centred(frame, small, 48, weekday, dim, cx=49)
+    draw_centred(frame, small, 55, f"{day} {month}", dim, cx=49)
+    return frame
+
+
+# ---------------------------------------------------------------- 6. Orrery
+
+# A brass orrery on a star chart: the Earth goes round the Sun once in twelve hours, the
+# Moon round the Earth once an hour, Mercury round the Sun once a minute; the time in
+# figures on a brass plaque at the bottom.
+ORRERY_CX, ORRERY_CY = 31.5, 27.5
+R_EARTH, R_MERCURY, R_MOON = 20, 10, 4
+
+
+def orrery_assets():
+    sun = Image.new("RGBA", (9, 9), (0, 0, 0, 0))
+    d = ImageDraw.Draw(sun)
+    d.ellipse((1, 1, 7, 7), fill=(255, 176, 40, 255))
+    d.ellipse((2, 2, 6, 6), fill=(255, 226, 110, 255))
+    d.ellipse((3, 3, 5, 5), fill=(255, 250, 200, 255))
+    for x, y in ((4, 0), (4, 8), (0, 4), (8, 4)):
+        sun.putpixel((x, y), (255, 150, 30, 255))
+    save_asset("orrery", "sun", sun)
+    earth = Image.new("RGBA", (5, 5), (0, 0, 0, 0))
+    d = ImageDraw.Draw(earth)
+    d.ellipse((0, 0, 4, 4), fill=(48, 110, 220, 255))
+    for x, y in ((1, 1), (2, 1), (1, 2), (3, 3), (2, 3)):
+        earth.putpixel((x, y), (70, 170, 80, 255))
+    earth.putpixel((2, 0), (180, 210, 255, 255))
+    save_asset("orrery", "earth", earth)
+    moon = Image.new("RGBA", (3, 3), (0, 0, 0, 0))
+    ImageDraw.Draw(moon).ellipse((0, 0, 2, 2), fill=(214, 214, 224, 255))
+    moon.putpixel((1, 1), (170, 170, 184, 255))
+    save_asset("orrery", "moon", moon)
+    mercury = Image.new("RGBA", (3, 3), (0, 0, 0, 0))
+    ImageDraw.Draw(mercury).ellipse((0, 0, 2, 2), fill=(200, 150, 110, 255))
+    save_asset("orrery", "mercury", mercury)
+    # the plate: the star chart with the brass rings (dotted circles), twelve ticks and
+    # the plaque; drawn once, static
+    plate = Image.new("RGBA", (W, H), (7, 8, 20, 255))
+    px = plate.load()
+    rng = 12345
+    for _ in range(70):
+        rng = (rng * 1103515245 + 12345) % 2147483648
+        x, y = (rng >> 8) % W, (rng >> 3) % 53
+        px[x, y] = (40, 44, 70, 255) if rng % 5 else (70, 76, 110, 255)
+    brass, brass_dim = (196, 150, 64, 255), (120, 92, 40, 255)
+    for r, colour in ((R_EARTH, brass), (R_MERCURY, brass_dim)):
+        for i in range(720):
+            a = math.radians(i / 2)
+            x, y = int(round(ORRERY_CX + r * math.sin(a))), int(round(ORRERY_CY - r * math.cos(a)))
+            if (x + y) % 2 == 0:
+                px[x, y] = colour
+    for i in range(12):
+        a = math.radians(i * 30)
+        for r in ((23, 25) if i % 3 == 0 else (23, 24)):
+            x, y = int(round(ORRERY_CX + r * math.sin(a))), int(round(ORRERY_CY - r * math.cos(a)))
+            px[x, y] = brass
+    d = ImageDraw.Draw(plate)
+    d.rectangle((15, 54, 48, 63), fill=(150, 112, 44, 255))
+    d.rectangle((16, 55, 47, 62), fill=(96, 70, 26, 255))
+    d.line((16, 55, 47, 55), fill=(214, 172, 84, 255))
+    for x, y in ((17, 63), (46, 63), (17, 54), (46, 54)):
+        plate.putpixel((x, y), (230, 200, 120, 255))
+    save_asset("orrery", "plate", plate)
+    return sun, earth, moon, mercury, plate
+
+
+def orrery_face(hour, minute, second):
+    frame = Image.new("RGB", (W, H), (0, 0, 0))
+    sun, earth, moon, mercury, plate = orrery_assets()
+    blit(frame, plate, 0, 0)
+    d = ImageDraw.Draw(frame)
+
+    def at(r, angle_deg, cx=ORRERY_CX, cy=ORRERY_CY):
+        a = math.radians(angle_deg)
+        return cx + r * math.sin(a), cy - r * math.cos(a)
+
+    hour_a = ((hour % 12) + minute / 60) * 30
+    minute_a = (minute + second / 60) * 6
+    second_a = second * 6
+    ex, ey = at(R_EARTH, hour_a)
+    mx, my = at(R_MOON, minute_a, ex, ey)
+    qx, qy = at(R_MERCURY, second_a)
+    # the arms, brass, from the hub to each body
+    arm = (150, 112, 44)
+    d.line((ORRERY_CX, ORRERY_CY, ex, ey), fill=arm)
+    d.line((ORRERY_CX, ORRERY_CY, qx, qy), fill=(110, 82, 34))
+    d.line((ex, ey, mx, my), fill=arm)
+    blit(frame, sun, int(round(ORRERY_CX - 4.5)), int(round(ORRERY_CY - 4.5)))
+    blit(frame, earth, int(round(ex - 2.5)), int(round(ey - 2.5)))
+    blit(frame, moon, int(round(mx - 1.5)), int(round(my - 1.5)))
+    blit(frame, mercury, int(round(qx - 1.5)), int(round(qy - 1.5)))
+    font = load_font("capital-hill")
+    draw_centred(frame, font, 57, f"{hour:02d}:{minute:02d}", (240, 208, 130))
+    return frame
+
+
 # ---------------------------------------------------------------- output
 
 
@@ -651,11 +953,24 @@ def main():
         ("flip", flip_face(10, 32, wd, day, mon, 37)),
         ("nixie", nixie_face(10, 32, wd, day, mon)),
         ("horizon", horizon_face(18, 42, wd, day, mon)),
+        ("words", words_face(10, 32)),
+        ("hourglass", hourglass_face(10, 32, 37, wd, day, mon)),
+        ("orrery", orrery_face(10, 32, 37)),
     ]
     for name, img in faces:
         img.save(os.path.join(OUT, name + ".png"))
         upscale(img, 8).save(os.path.join(OUT, name + "@8x.png"))
-    contact_sheet(faces).save(os.path.join(OUT, "contact-sheet.png"))
+    contact_sheet(faces, scale=5, columns=3).save(os.path.join(OUT, "contact-sheet.png"))
+    # the second three over a few moments
+    times = [(0, 0, 0), (7, 15, 12), (10, 32, 37), (14, 45, 50), (19, 58, 5), (23, 30, 20)]
+    for name, fn in (("words", lambda h, m, s: words_face(h, m, s)),
+                     ("hourglass", lambda h, m, s: hourglass_face(h, m, s, wd, day, mon)),
+                     ("orrery", lambda h, m, s: orrery_face(h, m, s))):
+        contact_sheet([(f"{h:02d}:{m:02d}", fn(h, m, s)) for h, m, s in times], scale=4, columns=6).save(
+            os.path.join(OUT, name + "-moments.png"))
+    # the hourglass and the orrery over a few seconds
+    save_gif(os.path.join(OUT, "hourglass@8x.gif"), [(hourglass_face(10, 32, s, wd, day, mon), 500) for s in range(6)], 8)
+    save_gif(os.path.join(OUT, "orrery@8x.gif"), [(orrery_face(10, 32, s), 500) for s in range(30, 42)], 8)
     # the flip's animation: a minute, and the hour with both tiles
     for name, seq in (("flip-minute", flip_animation(10, 32, 10, 33, wd, day, mon)),
                       ("flip-hour", flip_animation(10, 59, 11, 0, wd, day, mon))):
