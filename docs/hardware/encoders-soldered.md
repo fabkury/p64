@@ -25,14 +25,18 @@ unassigned; a settings switch swaps A and B once the shell shows which knob is l
 ## 1. Parts
 
 On hand (2026-09-21): the two 5880 boards, the two 5528 knobs, the 4209 and 4397 cables
-(150 mm), the 4399 cable (50 mm), the 2.2 k resistors, the ELEGOO breadboards, a
-multimeter, fine tweezers, jumper wires or header pins (the 5880 bags include a short
-header strip each). No soldering iron yet (2026-09-23).
+(150 mm), the 4399 cable (50 mm), the 2.2 k resistors, the ELEGOO breadboards, fine
+tweezers, jumper wires or header pins (the 5880 bags include a short header strip each).
+The soldering kit of the table below arrived on 2026-09-26. **No multimeter yet**
+(2026-09-26): every continuity and voltage check in this document is optional until one
+arrives; the probe firmware (section 5) is the check that matters, and the "no
+multimeter" notes in sections 3.3, 4 and 6.1 say what to do instead.
 
 Still needed:
 
 | Part | For | Note |
 |---|---|---|
+| Multimeter | continuity (A0 bridge, no A0/A1 short) and the bus voltages | any; the bench record stays blank without it, the firmware probe is the working substitute |
 | 2 mm hex key | the knobs' set screws | not included with the knobs |
 | SH-SH cable, 200 mm (Adafruit 4401) | board to board inside the shell | the two knob positions are 94 mm apart and the sockets face up/down; the 50 mm 4399 is for the bench only |
 | Electrical tape or 3 mm heat-shrink | wrapping the cable joints | tape is fine |
@@ -116,6 +120,12 @@ one blob of solder. Do it before the bench build, on the board that will be knob
 - Continuity between the A0 pads and the neighbouring A1 pads: no beep.
 - The real test is the probe firmware (section 5): the board must answer at 0x37, and
   the NeoPixel colour tells which board is which.
+- No multimeter: inspect under a magnifier or the phone camera zoomed in. A bridge that
+  looks continuous and shiny across the A0 gap, with a clear dark gap to A1 on both sides,
+  passes; the probe settles it. A board that still answers at 0x36 has an open bridge;
+  one that answers at 0x38 has A1 bridged too (an A0+A1 bridge gives 0x39: fix it,
+  section 3.2 step 5). A short to a neighbouring trace is unlikely from one small bead but
+  is why the inspection is for a gap on both sides.
 - Mark the board (a dot of paint or tape on the edge) as "B / 0x37".
 
 ## 4. Bench build
@@ -152,6 +162,14 @@ step 5.
 9. `.\tools\flash.ps1` from `firmware/` with everything connected: the IO46 question.
    Pass: the chain stays connected for good. Fail: pull the four 4209 pins to flash.
 10. Note `GET /api/v1/diag/memory` once as the baseline.
+
+No multimeter: skip steps 2, 5 and 8. Identify the 4209's wires from Adafruit's page for
+the cable instead (JST SH pin 1 to 4 = black, red, blue, yellow on the 4209; the
+controller's socket is pin 1 IO45, 2 IO46, 3 3V3, 4 GND, so black = IO45, red = IO46,
+blue = 3V3, yellow = GND, and the schematic and the socket's pin-1 mark confirm it).
+Check the plug's orientation before power: pin 1 of the socket is on the side of the
+board marked on the silkscreen. The voltages are then inferred: if the probe firmware
+reads both boards without errors, the levels are high enough.
 
 Bench record:
 
@@ -205,7 +223,10 @@ pull-ups use.
 3. Cut the leads flush with side cutters.
 4. Check: continuity between the SDA pad and VIN reads about 2.2 k on the ohms range
    (the 10 k on the board in parallel shows about 1.8 k); the same for SCL. No
-   continuity between SDA and SCL, or between VIN and GND.
+   continuity between SDA and SCL, or between VIN and GND. No multimeter: inspect each
+   joint for a shiny cone with clear gaps to the neighbouring pads, then run
+   `encoders_smoke.py`; a VIN-to-GND short would show as the board not lighting its
+   NeoPixel and would be visible as solder across two adjacent holes.
 
 Board 2 gets no resistors: one pair per bus.
 
