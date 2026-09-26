@@ -18,12 +18,21 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_IGNORE_NOTFOUND=y
 # CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL is set at the end of this file (1024 since 2026-09-22).
 CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+# No PSRAM memory test at boot: it cost 0.8 s of every boot (measured 2026-09-26: "SPI
+# SRAM memory test OK" at 1477 ms, the app started at 1486 ms); a bad chip now shows up
+# as a crash instead of a boot-time report.
+CONFIG_SPIRAM_MEMTEST=n
 
 # --- Partition table: two 8 MB app slots, 64 KB NVS, 256 KB core dump, data ---
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # The app marks itself valid at boot; an image that never gets there rolls back.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# No image hash at power-on: the 2.5 MB image is read in the bootloader's slow single-line
+# mode and took 0.6 s (measured 2026-09-26). Software resets and the first boot after an
+# update still verify, so the rollback above keeps working; a running slot corrupted in
+# flash would crash at power-on instead of falling back (accepted, spec 15.1).
+CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON=y
 # Updates may also come from a plain-HTTP URL on the LAN (a local build); the SHA256 the
 # caller supplies is what protects that path.
 CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
