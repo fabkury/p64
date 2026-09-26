@@ -47,6 +47,16 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-2); }
 .grid2 label, .grid3 label { display: block; font-size: 0.78rem; color: var(--c-text-light); margin-bottom: 2px; }
 .grid2 input, .grid2 select, .grid3 input, .grid3 select { width: 100%; box-sizing: border-box; }
+.credits-title { margin-top: var(--sp-4); margin-bottom: var(--sp-2); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-card-fg-muted); }
+.credits { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.credits th { text-align: left; font-weight: 500; font-size: 0.78rem; color: var(--c-card-fg-muted); padding: 0 var(--sp-2) var(--sp-1) 0; border-bottom: 1px solid var(--c-card-border); }
+.credits td { padding: var(--sp-2) var(--sp-2) var(--sp-2) 0; border-bottom: 1px solid var(--c-card-border); vertical-align: top; color: var(--c-card-fg); }
+.credits tr:last-child td { border-bottom: none; }
+.credits td:first-child { font-weight: 500; }
+.credits td:last-child, .credits th:last-child { white-space: nowrap; padding-right: 0; }
+.credits a { color: var(--c-primary); text-decoration: none; }
+.credits a:hover { text-decoration: underline; }
+.credits + .setting-hint { margin-top: var(--sp-2); }
 </style>
 </head>
 <body class="has-bottom-nav">
@@ -354,7 +364,22 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Author</span><span class="info-value">Fabr&iacute;cio Kury</span></div>
         <div class="info-row"><span class="info-label">Source</span><span class="info-value"><a href="https://github.com/fabkury/p64" target="_blank" rel="noopener" style="color:var(--c-primary)">github.com/fabkury/p64</a></span></div>
         <div class="info-row"><span class="info-label">Hardware</span><span class="info-value">Waveshare ESP32-S3-RGB-Matrix + RGB-Matrix-P2-64x64</span></div>
-        <p class="setting-hint" style="margin-top:8px">Built on ESP-IDF (Apache-2.0), esphome/esp-hub75 (with the p64 patch), bitbank2/AnimatedGIF (Apache-2.0), libpng, libwebp (BSD), zlib, cJSON (MIT), Open-Meteo weather data; the web UI shares its stylesheet and themes with p3a. Pixel fonts by VEXED (CC BY 4.0): Capital Hill, Everyday Slight, Everyday Standard, Everyday Typical, Everyday Ample and High Birth (bundled with their authors' licences in assets/fonts).</p>
+        <div class="credits-title">Built with</div>
+        <table class="credits">
+            <thead><tr><th>Component</th><th>Role</th><th>Licence</th></tr></thead>
+            <tbody>
+            <tr><td><a href="https://github.com/espressif/esp-idf" target="_blank" rel="noopener">ESP-IDF</a></td><td>the framework: FreeRTOS, Wi-Fi, TLS, HTTP, NVS, OTA</td><td>Apache-2.0</td></tr>
+            <tr><td><a href="https://github.com/esphome/esp-hub75" target="_blank" rel="noopener">esp-hub75</a></td><td>the LED panel driver, with the p64 patch</td><td>MIT</td></tr>
+            <tr><td><a href="https://github.com/bitbank2/AnimatedGIF" target="_blank" rel="noopener">AnimatedGIF</a></td><td>GIF decoding</td><td>Apache-2.0</td></tr>
+            <tr><td><a href="https://github.com/pnggroup/libpng" target="_blank" rel="noopener">libpng</a></td><td>PNG decoding</td><td>libpng</td></tr>
+            <tr><td><a href="https://zlib.net" target="_blank" rel="noopener">zlib</a></td><td>inflate, for PNG</td><td>zlib</td></tr>
+            <tr><td><a href="https://github.com/webmproject/libwebp" target="_blank" rel="noopener">libwebp</a></td><td>WebP decoding</td><td>BSD-3-Clause</td></tr>
+            <tr><td><a href="https://github.com/DaveGamble/cJSON" target="_blank" rel="noopener">cJSON</a></td><td>JSON, in the API and the stored documents</td><td>MIT</td></tr>
+            <tr><td><a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></td><td>the weather forecast</td><td>CC BY 4.0</td></tr>
+            <tr><td><a href="https://v3x3d.itch.io/" target="_blank" rel="noopener">Pixel fonts by VEXED</a></td><td>Capital Hill, Everyday Slight, Everyday Standard, Everyday Typical, Everyday Ample and High Birth</td><td>CC BY 4.0</td></tr>
+            </tbody>
+        </table>
+        <div class="setting-hint">The fonts ship with their authors' licences in <span class="mono">assets/fonts</span> of the repository.</div>
     </div>
 </div>
 <script src="/static/app.js"></script>
