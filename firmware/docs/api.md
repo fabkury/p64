@@ -34,7 +34,10 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 channel_index, source}` (absent on a status screen or pause), `screen` (the status
 screen holding the panel: `pairing`, `paired`, `connected`, `setup`, `update`, or ""),
 `no_artwork` (reason or ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
-{interval_s, remaining_s}`, `prepared`, `swaps`, `load_failures`, `frames`, `late`,
+{interval_s, remaining_s}`, `prepared`, `boot {animation_end_ms, first_artwork_ms}` (ms since
+the app started, about 0.7 s after reset; the first artwork of this boot, -1 until one has
+played: spec 15.1, acceptance 18.8),
+`swaps`, `load_failures`, `frames`, `late`,
 `skipped`. Two change counters let a page refetch only when something moved: `playback.playset.version`
 grows whenever the channel list or its counts change (a scan installed, a Makapix index
 refreshed, an artwork cached), `playsets_version` whenever the playset list, the

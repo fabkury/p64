@@ -374,9 +374,9 @@ widgets have their own font settings.
 
 | Screen | When | Content |
 |---|---|---|
-| Boot | power-on until the first artwork | boot animation (default 2 s; 0 to 5 s; 0 = off) |
+| Boot | power-on until the first artwork | boot animation (default 3 s; 1 to 7 s, or 0 = off) |
 | Setup | setup mode with no network saved (holds the panel); with a saved network only in place of "no artwork" (artworks keep playing from the cache) | pages cycling every 3 s: "Wi-Fi setup", "Join" the AP name `p64-setup`, "Open" `192.168.4.1` |
-| Connected | for 15 s after joining a network | hostname and IP address |
+| Connected | after joining a network, only when nothing plays and nothing is loading once the boot animation has ended; for 15 s, or until an artwork is ready | hostname and IP address |
 | Pairing | while a pairing code is valid | the 6-character code, then "paired" for 10 s |
 | No artwork | active playset has nothing available | "no artwork" plus the reason (no card, offline, empty) |
 | Stream waiting | Stream state, no frames | hostname, IP, ports |
@@ -505,7 +505,9 @@ server (default `pool.ntp.org`), then `time.google.com` and `time.cloudflare.com
 on every Wi-Fi connection, and every 6 hours. An answer earlier than the firmware's build
 date is refused. Once trusted, the time stays trusted until the next reboot, even if NTP
 stops answering (the status shows the age of the last answer). Until the first answer,
-clock features show `--:--`, and Makapix, the night schedule and the cache sweep wait; the
+clock features show `--:--`, and Makapix's refreshes and downloads, the night schedule and
+the cache sweep wait (a channel's index and cached artworks are read from the card and
+play before that, since 2026-09-26); the
 log and the web UI say the device is waiting for NTP. Accepted deviation: a file written
 to the card before the first answer (an upload in the first seconds after boot) carries
 FAT's 1980 date. Time zone: chosen from the IANA list in the web UI and mapped by an
@@ -642,11 +644,18 @@ p3a's client is the reference implementation. p64 uses:
 
 ### 15.1 Boot
 
-Power-on to the first artwork in under 3 s with a card and a cached artwork. Order of
-appearance: boot animation (default 2 s) while the card mounts and the active playset is
-restored; first artwork; Wi-Fi joins in the background; the "connected" status screen
-does not interrupt an artwork that is already up (it is shown only when nothing is
-playing yet, otherwise the IP is in the web UI).
+Power-on to the first artwork no later than 2 s after the boot animation ends, with a
+card and a cached artwork (any playset: a local folder, or a provider channel whose index
+and files are on the card; neither the network nor the time is needed). Order of
+appearance: boot animation (default 3 s) while the card mounts, the active playset is
+restored and the providers read their indexes from the card; first artwork; Wi-Fi joins
+in the background. A normal boot shows no network message at all: the "connected" status
+screen appears only when nothing plays and nothing is on its way once the boot animation
+has ended, and an artwork that becomes ready replaces it (decided 2026-09-26, after the
+screen was found holding the panel for its 15 s on every boot: the IP landed during the
+boot animation, and the first artwork waited until 18 s). The IP is in the web UI and at
+`p64.local`. The status document carries `boot.first_artwork_ms` and
+`boot.animation_end_ms`; `budgets.json` holds the 2 s allowance.
 
 ### 15.2 Updates
 
@@ -696,7 +705,7 @@ All persisted unless noted. Ranges are inclusive.
 | Display | rotation | 0, 90, 180, 270, auto | 90 |
 | Display | background colour | RGB 0 to 255 each | 0, 0, 0 |
 | Display | RGB gains | 50 to 100 % each | 100, 100, 100 |
-| Display | boot animation length | 0 to 5000 ms | 2000 |
+| Display | boot animation length | 0 (off), or 1000 to 7000 ms | 3000 |
 | Show | main state | animation show, widget, stream | animation show |
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |
@@ -764,7 +773,9 @@ device and read over diagnostics.
    allocation (`tests/device/panel_mode_smoke.py`); a camera measurement is still open.
 7. Brightness: 255 with the 27 W supply draws under 15 W at full white; the ceiling holds
    under Makapix commands and schedules.
-8. Boot: power-on to first artwork under 3 s with a cached artwork; setup mode reachable
+8. Boot: power-on to the first artwork within 2 s of the boot animation's end with a
+   cached artwork (`first_artwork_ms - animation_end_ms` in the status, checked by
+   `api_smoke.py` against `budgets.json`); setup mode reachable
    within 60 s on a device with wrong credentials; the AP disappears within 5 s of the
    saved network connecting.
 9. Streams: a 60 fps DDP stream at 64x64 shows every frame with latency under 30 ms on a

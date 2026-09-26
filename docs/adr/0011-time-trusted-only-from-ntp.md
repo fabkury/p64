@@ -12,7 +12,14 @@ DHCP (option 42), then the configured server (default `pool.ntp.org`), then
 `time.google.com` and `time.cloudflare.com`. An answer earlier than the firmware's build
 date is refused before it reaches the system clock. Until the first accepted answer the
 time is unknown: clocks show `--:--`, and Makapix, the night schedule, the cache sweep and
-the loader's "last played" touch wait. Once trusted, the time stays trusted until the next
+the loader's "last played" touch wait. (Amended 2026-09-26: what a provider holds on the
+card, its channel index and the cached artworks, is read and plays before the time is
+trusted; only refreshes, downloads, presence, views and the sweep wait. An index loaded
+before the time was known gets its refresh due once the device is online, which implies
+the time; an artwork played before the first NTP answer is not touched, so its
+last-played date moves at its next play. Found while measuring the time to the first
+artwork: a cached Promoted playset never played before Wi-Fi and NTP, and never at all
+without them, although every file was on the card.) Once trusted, the time stays trusted until the next
 reboot, even if NTP stops answering: the device's clock drifts well under a second a day,
 and the status shows the age of the last answer.
 

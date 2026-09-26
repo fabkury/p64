@@ -693,6 +693,39 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `show.cpp` (the rule and a core scenario: a channel with a check running is available
   and plays; the count drops to 0 when it ends). Verified on the device: the channel is
   available the instant its index loads, the check ends 30 s later in the background.
+- 2026-09-26, time-to-first-artwork (prompts p044, p045): measured before anything was
+  touched, the first artwork went up 18.2 s after a reset, with the Local playset as with
+  a Makapix one, against the spec's 3 s. Three causes, from the boot log: (1) the
+  "connected" status screen: the IP landed during the boot animation, nothing was
+  "playing yet", so the screen took the panel for its 15 s and the artwork that was
+  prepared by then waited (since M6; acceptance 18.8 had been failing unnoticed);
+  (2) a Makapix channel's index was read from the card only inside the fetcher loop,
+  which waits for Wi-Fi and NTP, so a cached Promoted playset could not play before the
+  time was trusted, and never played at all without a network (the playsets document
+  claimed it "plays from its cache when offline"); (3) before the app even started, the
+  PSRAM memory test cost 0.8 s and the bootloader's image hash 0.6 s (2.5 MB read in the
+  slow single-line mode OPI flash leaves the bootloader). The "last played" touch was
+  never the gate: the loader already plays any file and only skips the touch while the
+  clock is untrusted. Done: the connected screen is decided at the boot animation's end
+  by `rules::connected_screen` (skipped when anything is up or on its way, else shown,
+  and an artwork that becomes ready replaces it after 2 s); the "no artwork" reason also
+  waits for the animation's end (it used to cut the rings short); the Makapix fetcher and
+  the private provider read an active channel's index at once, network or not, and settle
+  its refresh age once online (`policy::next_unloaded_channel`, `kNeverUs`); the channel
+  status says "offline" before "downloading"; `CONFIG_SPIRAM_MEMTEST=n` and
+  `CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON=y` (software resets and the first boot
+  after an update still verify, so the rollback stands); the boot animation is 0 (off) or
+  1 to 7 s, default 3 s (the user's decision; the web UI field follows); the status
+  document carries `playback.boot {animation_end_ms, first_artwork_ms}` and
+  `api_smoke.py` checks the gap against `first_artwork_after_animation_ms` (2000) in
+  `budgets.json`. Host tests: the rule, two show-core scenarios (the 18 s boot replayed,
+  and the IP shown then yielding to a late artwork), the policy helpers, the settings
+  clamp. Measured on the device after a software reset: app started at 0.68 s (was
+  1.49), card mounted 1.32 s, playset restored 1.43 s, Promoted index from the card
+  1.90 s, IP 2.37 s, first artwork 3.78 s with the 3 s animation (2.78 s with 2 s), NTP
+  3.9 s; the status reports the artwork 2 ms after the animation's end. A power-on reset
+  (the only one that skips the image hash) is still to be timed by hand. Spec 6.4, 10.2,
+  15.1, 16 and 18.8 and ADR 0011 amended.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
