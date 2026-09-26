@@ -746,7 +746,19 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   Host tests: the solar model against the almanac (New York 2026-09-26 sunrise and
   sunset, the full moon), the words grid, the flip's state machine, the hold times minus
   the milliseconds, the orrery's arithmetic, the hourglass's sand, 12 h mode, the settings
-  round trip. Device: `tests/device/faces_smoke.py` (below).
+  round trip. Device (flashed 2026-09-26 16:38, `tests/device/faces_smoke.py`): every face
+  draws and the settings echo it; the flip, nixie, words, hourglass and orrery frames read
+  back from `/api/v1/frame.raw` are pixel for pixel the host render for the device's own
+  minute, and so is the horizon for the weather location (Greenwich, overcast, night at
+  16:41 EDT, which is what Open-Meteo's `is_day` said too); the flip's ten-frame change
+  was caught live by polling the frame across a minute boundary (7 distinct frames in
+  1.1 s at the API's rate); the seconds rail, the hourglass stream and Mercury move with
+  the second. Internal heap after cycling the faces 70 KB free, largest 34.8 KB
+  (`api_smoke.py` 0 failures against the budgets, `ui_smoke.py` 0 failures). The flash
+  cost is 68 KB of sprites; no internal RAM is allocated by the faces (the flip draws its
+  frames from a per-pixel function, the horizon from the sprites and floats on the
+  stack). Note for the horizon: it shows the sky over the weather location in the
+  device's local zone, so a location far from the device shows that place's day or night.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

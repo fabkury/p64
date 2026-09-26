@@ -125,8 +125,8 @@ def main():
     # memory after all the faces
     st, mem = request(base, "GET", "/api/v1/diag/memory")
     if st == 200:
-        free = mem["data"].get("internal", {}).get("free", mem["data"].get("free_internal", 0))
-        print("  internal free after the faces: %s" % free)
+        heap = mem["data"].get("heap", {}).get("internal", {})
+        print("  internal heap after the faces: %s free, largest %s" % (heap.get("free"), heap.get("largest_free")))
     if keep:
         settings(base, {"show": {"main_state": "widget"}, "widgets": {"widget": "clock"},
                         "clock": {"face": keep, "seconds": clock["seconds"], "blink_colon": clock["blink_colon"]}})
