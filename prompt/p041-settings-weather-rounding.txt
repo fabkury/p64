@@ -1,0 +1,8 @@
+Thanks.
+
+Let's now polish http://p64.local/settings#widgets.
+
+I see in the Weather section:
+ - "Now 20.799999237060547 C, partly cloudy (19 min old)."
+ 
+Please round that temperature number to 1 decimal digit.
