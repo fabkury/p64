@@ -11,8 +11,10 @@ std::string channel_status(const ChannelFacts &f) {
     // not downloading (the Divoom channel of 2026-09-26 read "downloading" for half an
     // hour after a boot with every file already on the card).
     if (f.unchecked > 0) return "checking files";
-    if (f.index_entries > 0) return "downloading";
+    // An index read from the card before the network (2026-09-26) with nothing at hand
+    // downloads only once online.
     if (!f.online) return "offline";
+    if (f.index_entries > 0) return "downloading";
     if (!f.refreshed) return "no listing yet";
     // The listing landed empty: the channel has nothing, or nothing small enough.
     if (f.oversized > 0) {
@@ -70,6 +72,11 @@ StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool
   if (!frames_arriving || already_up || !allowed) return StreamGate::No;
   if (boot_running || user_screen) return StreamGate::Wait;
   return StreamGate::Take;
+}
+
+ConnectedScreen connected_screen(bool boot_running, bool something_up, bool something_coming) {
+  if (boot_running) return ConnectedScreen::Wait;
+  return (something_up || something_coming) ? ConnectedScreen::Skip : ConnectedScreen::Show;
 }
 
 SetupScreen setup_screen(bool setup_mode, bool network_saved) {

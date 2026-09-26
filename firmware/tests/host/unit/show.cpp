@@ -97,6 +97,8 @@ TEST_CASE("show: channel status texts (spec 6.4)") {
   mk.refreshed = false;
   mk.oversized = 0;
   mk.index_entries = 50;
+  CHECK(rules::channel_status(mk) == "offline");  // an index loaded before the network: nothing downloads yet
+  mk.online = true;
   CHECK(rules::channel_status(mk) == "downloading");
   // A provider still checking its cached files after a boot, holding them back, is not
   // downloading (the Divoom channel of 2026-09-26); one that offers them meanwhile plays.
@@ -129,6 +131,14 @@ TEST_CASE("show: streams take the panel when allowed, after the boot animation a
   CHECK(rules::stream_gate(true, true, true, false, false) == rules::StreamGate::No);
   CHECK(rules::stream_gate(true, false, false, false, false) == rules::StreamGate::No);
   CHECK(rules::stream_gate(false, false, true, false, false) == rules::StreamGate::No);
+}
+
+TEST_CASE("show: the connected screen waits for the boot animation, then shows only when nothing is up or coming") {
+  CHECK(rules::connected_screen(true, false, false) == rules::ConnectedScreen::Wait);
+  CHECK(rules::connected_screen(true, true, true) == rules::ConnectedScreen::Wait);
+  CHECK(rules::connected_screen(false, true, false) == rules::ConnectedScreen::Skip);
+  CHECK(rules::connected_screen(false, false, true) == rules::ConnectedScreen::Skip);
+  CHECK(rules::connected_screen(false, false, false) == rules::ConnectedScreen::Show);
 }
 
 TEST_CASE("show: what the state puts up during a stream waits behind it and returns (spec 8.3)") {
@@ -369,6 +379,91 @@ TEST_CASE("show core: restore scans the playset, plays a pick and prepares the n
   CHECK(show.env.last_played() == show.current());
   CHECK(core::state().prepared);  // the next artwork is ready before it is due (spec 3.6)
   CHECK(core::overlay_allowed());
+}
+
+// The 18 s boot of 2026-09-26: the IP landed during the boot animation, nothing was
+// "playing yet", and the connected screen held the panel for its 15 s while the first
+// artwork sat prepared. A normal boot goes boot animation, then artwork (spec 15.1).
+TEST_CASE("show core: an IP that lands during the boot animation never delays the first artwork (2026-09-26)") {
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::boot(std::make_shared<p64::playback::StaticSource>("boot", Frame()), 3000);
+  core::restore("Local");
+  env.complete_scan({"a.gif", "b.gif"});
+  env.complete_loads();  // the first pick is prepared, but the boot animation holds
+  CHECK(!core::state().current);
+  CHECK(core::state().prepared);
+  core::wifi_connected();  // the IP, 1 s into the animation
+  core::tick();
+  CHECK(core::state().screen == core::Screen::None);
+  CHECK(env.last_played() == "boot");
+  env.now += 2999000;
+  core::tick();
+  CHECK(env.last_played() == "boot");
+  env.now += 1000;  // the animation ends: the artwork, not the IP
+  core::tick();
+  REQUIRE(core::state().current);
+  CHECK(core::state().screen == core::Screen::None);
+  CHECK(std::count(env.played.begin(), env.played.end(), "status") == 0);
+  CHECK_EQ(core::state().first_artwork_us, env.now);
+  cJSON *st = core::status_json();
+  cJSON *boot = cJSON_GetObjectItem(st, "boot");
+  REQUIRE(boot);
+  CHECK_EQ(static_cast<int64_t>(cJSON_GetObjectItem(boot, "first_artwork_ms")->valuedouble), env.now / 1000);
+  CHECK_EQ(static_cast<int64_t>(cJSON_GetObjectItem(boot, "animation_end_ms")->valuedouble), core::state().boot_until_us / 1000);
+  cJSON_Delete(st);
+  // An artwork that is still loading when the animation ends counts as on its way too.
+  core::init(env, scratch);
+  env.played.clear();
+  core::boot(std::make_shared<p64::playback::StaticSource>("boot", Frame()), 3000);
+  core::restore("Local");
+  env.complete_scan({"a.gif"});  // the load is requested, not answered yet
+  core::wifi_connected();
+  env.now += 3000000;
+  core::tick();
+  CHECK(core::state().screen == core::Screen::None);
+  env.complete_loads();
+  CHECK(core::state().current);
+  CHECK(std::count(env.played.begin(), env.played.end(), "status") == 0);
+}
+
+TEST_CASE("show core: with nothing to play at the boot animation's end the IP shows, then yields to the first artwork") {
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::boot(std::make_shared<p64::playback::StaticSource>("boot", Frame()), 3000);
+  core::restore("Local");
+  env.complete_scan({});  // an empty folder: "no artwork" waits behind the animation
+  core::wifi_connected();
+  core::tick();
+  CHECK(core::state().screen == core::Screen::None);  // the animation still runs
+  CHECK(env.last_played() == "boot");                 // and nothing cut it short
+  env.now += 3000000;
+  core::tick();
+  CHECK(core::state().screen == core::Screen::Connected);
+  CHECK(env.last_played() == "status");
+  CHECK(std::count(env.played.begin(), env.played.end(), "no artwork") == 1);  // the reason went up first, at the animation's end
+  // A file appears and the rescan finds it: the pick is prepared behind the screen...
+  core::refresh();
+  core::tick();
+  env.complete_scan({"late.gif"});
+  env.complete_loads();
+  CHECK(core::state().prepared);
+  CHECK(core::state().screen == core::Screen::Connected);  // ...readable for its minimum stay...
+  env.now += 1999000;
+  core::tick();
+  CHECK(core::state().screen == core::Screen::Connected);
+  env.now += 1000;
+  core::tick();  // ...then the artwork replaces it, well before the 15 s
+  CHECK(core::state().screen == core::Screen::None);
+  REQUIRE(core::state().current);
+  CHECK(core::state().current->name() == "late.gif");
+  CHECK_EQ(core::state().first_artwork_us, env.now);
+  // A later reconnection while an artwork plays shows nothing.
+  core::wifi_connected();
+  core::tick();
+  CHECK(core::state().screen == core::Screen::None);
 }
 
 TEST_CASE("show core: the auto-swap puts the prepared artwork up after the interval") {

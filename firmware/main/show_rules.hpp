@@ -77,6 +77,15 @@ enum class StreamGate : uint8_t { No, Wait, Take };
 // that needs the user: pairing, setup, update, finish first), or does not take it at all.
 StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool user_screen);
 
+// The "connected" screen (spec 6.4, 15.1; decided 2026-09-26): a normal boot shows no
+// network message. The decision waits for the boot animation to end; then the screen is
+// skipped when something is up (an artwork, a widget, the pause frame, another screen,
+// a stream) or on its way (an artwork prepared or loading), and shown otherwise. Before
+// this the screen took the panel for its 15 s on every boot: the IP landed during the
+// boot animation, nothing was "playing yet", and the first artwork waited until 18 s.
+enum class ConnectedScreen : uint8_t { Wait, Skip, Show };
+ConnectedScreen connected_screen(bool boot_running, bool something_up, bool something_coming);
+
 // Setup mode on the panel (spec 6.4, 10.1; settled 2026-09-23): with no network saved the
 // Setup screen holds the panel whatever plays; when a saved network is only down, artworks
 // keep playing from the cache and the setup pages replace the "no artwork" screen only.

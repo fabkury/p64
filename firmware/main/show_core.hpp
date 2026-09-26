@@ -145,9 +145,18 @@ struct State {
   int64_t boot_until_us = 0;   // the boot animation holds the panel until then
   std::shared_ptr<playback::Artwork> current;  // the artwork on the panel (null: status screen or pause)
   std::string status_reason;   // the "no artwork" reason on the panel ("" when none)
+  bool status_pending = false; // ...decided while the boot animation ran: drawn at its end if still nothing
   std::string last_error;      // the last load or activation failure, for the UI
   Screen screen = Screen::None;  // a status screen that holds the panel
   int64_t screen_until_us = 0;   // when a timed screen ends (0 = until its cause ends)
+  // The "connected" screen (rules::connected_screen): an IP landed and the decision
+  // waits for the boot animation; once up, the screen yields to a ready artwork after a
+  // short minimum stay.
+  bool connected_pending = false;
+  int64_t connected_yield_us = 0;
+  // Time-to-first-artwork (spec 15.1, acceptance 18.8): when the first artwork of this
+  // boot went up (0 = none yet); the status document reports it next to boot_until_us.
+  int64_t first_artwork_us = 0;
   // The setup pages: on the Setup screen, or in place of the "no artwork" screen.
   bool setup_pages_up = false;
   int setup_page = 0;

@@ -24,6 +24,8 @@ constexpr int64_t kRetryUs = 5 * kSecond;            // while nothing can be sho
 constexpr int64_t kIdleRescanUs = 30 * kSecond;      // rescan period while nothing can be shown
 constexpr int64_t kPairedScreenUs = 10 * kSecond;    // spec 6.4
 constexpr int64_t kUpdateFailedScreenUs = 10 * kSecond;  // "Update failed", then the artwork
+constexpr int64_t kConnectedScreenUs = 15 * kSecond;     // spec 6.4: the IP, when nothing plays
+constexpr int64_t kConnectedMinUs = 2 * kSecond;         // ...readable for this long before an artwork replaces it
 constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
 
 ShowEnv *g_env = nullptr;
@@ -291,6 +293,7 @@ void play_artwork(std::shared_ptr<playback::Artwork> art, content::HistoryItem i
   st.screen = Screen::None;
   st.paused = false;
   st.swap_at_us = now;
+  if (!st.first_artwork_us) st.first_artwork_us = now;
   item.shown_at_us = now;
   if (push) {
     st.history.push(std::move(item));
@@ -361,13 +364,27 @@ bool setup_instead_of_no_artwork() {
   return rules::setup_screen(w.setup_mode, w.network_saved) == rules::SetupScreen::InsteadOfNoArtwork;
 }
 
+void put_status_up();
+
 void show_status(const std::string &reason) {
   if (st.screen != Screen::None) return;  // a screen with a purpose holds the panel
   if (!st.current && !st.paused && st.status_reason == reason) return;
   st.status_reason = reason;
   st.retry_at_us = now_us() + kRetryUs;
   if (!st.rescan_due_us && has_local_channels()) st.rescan_due_us = now_us() + kIdleRescanUs;
-  LOGW("no artwork: %s", reason.c_str());
+  // The boot animation runs its course first (spec 15.1): the reason goes up at its end
+  // if nothing can play by then (before 2026-09-26 "no artwork: offline" cut the
+  // animation short on every boot whose provider index had not loaded yet).
+  if (now_us() < st.boot_until_us) {
+    st.status_pending = true;
+    return;
+  }
+  put_status_up();
+}
+
+void put_status_up() {
+  st.status_pending = false;
+  LOGW("no artwork: %s", st.status_reason.c_str());
   if (setup_instead_of_no_artwork()) {  // nothing to play and no network: say how to set it up
     st.setup_page = 0;
     draw_setup_page();
@@ -375,7 +392,7 @@ void show_status(const std::string &reason) {
     st.setup_pages_up = true;
     return;
   }
-  status_screens::no_artwork(*g_scratch, reason);
+  status_screens::no_artwork(*g_scratch, st.status_reason);
   show_frame("no artwork");
 }
 
@@ -412,6 +429,7 @@ void show_screen(Screen screen, int64_t for_us) {
 }
 
 void load_current_history_item(Pending::Purpose purpose, int direction);
+void resolve_connected();
 
 // A widget takes the panel: the Widget state, an interlude, or an interlude revisited
 // through history (spec 6.1, 6.2).
@@ -723,6 +741,7 @@ void on_loaded_impl(std::unique_ptr<loader::LoadResult> res) {
     st.prepared = res->artwork;
     LOGD("prepared %s (read %u ms, open %u ms)", res->artwork->name().c_str(), static_cast<unsigned>(res->read_ms), static_cast<unsigned>(res->open_ms));
     if (st.want_prepared_now && can_swap_now() && show_active()) play_prepared();
+    resolve_connected();  // the IP screen, if up, yields to it after its minimum stay
     return;
   }
   if (res->id == st.pending.load_id) {
@@ -962,6 +981,28 @@ void follow_setup() {
   }
 }
 
+// The "connected" screen: decided once the boot animation has ended (rules::connected_screen),
+// and ended early by an artwork that becomes ready while it is up.
+void resolve_connected() {
+  const int64_t now = now_us();
+  if (st.screen == Screen::Connected && st.prepared && now >= st.connected_yield_us && show_active()) {
+    end_screen();  // the artwork replaces the IP (spec 15.1)
+    return;
+  }
+  if (!st.connected_pending) return;
+  const bool up = st.current || st.widget_up || st.paused || st.screen != Screen::None || g_stream_up;
+  const bool coming = st.prepared || st.prepared_load_id != 0 || st.pending.load_id != 0;
+  switch (rules::connected_screen(now < st.boot_until_us, up, coming)) {
+    case rules::ConnectedScreen::Wait: return;
+    case rules::ConnectedScreen::Skip: st.connected_pending = false; return;
+    case rules::ConnectedScreen::Show:
+      st.connected_pending = false;
+      show_screen(Screen::Connected, kConnectedScreenUs);
+      st.connected_yield_us = now + kConnectedMinUs;
+      return;
+  }
+}
+
 // Periodic work: the auto-swap timer, the boot hold, rescans, retries.
 void tick_impl() {
   const int64_t now = now_us();
@@ -972,6 +1013,13 @@ void tick_impl() {
   if (st.want_stream) take_stream();
   if (st.want_widget && now >= st.boot_until_us) play_widget(s.widget, false);
   if (st.want_prepared_now && st.prepared && can_swap_now() && show_active()) play_prepared();
+  if (st.status_pending && now >= st.boot_until_us) {
+    st.status_pending = false;
+    const bool up = st.current || st.widget_up || st.paused || st.screen != Screen::None || g_stream_up;
+    const bool coming = st.prepared || st.prepared_load_id != 0 || st.pending.load_id != 0;
+    if (!up && !coming && !st.status_reason.empty()) put_status_up();
+  }
+  resolve_connected();
   if (rules::auto_swap_due(swap_timer_runs(), s.auto_swap_seconds, now, st.swap_at_us)) {
     if (!roll_interlude()) swap_fresh();
   }
@@ -1005,6 +1053,8 @@ int64_t wait_us_impl() {
   }
   if (st.want_widget) consider(st.boot_until_us);
   if (st.want_prepared_now && st.prepared) consider(st.boot_until_us);
+  if (st.connected_pending || st.status_pending) consider(st.boot_until_us);
+  if (st.screen == Screen::Connected && st.prepared) consider(st.connected_yield_us);
   consider(st.rescan_due_us);
   consider(st.screen_until_us);
   if (st.setup_pages_up) consider(st.setup_page_at_us);
@@ -1144,8 +1194,10 @@ void provider_changed() { on_provider_changed(); }
 void makapix_state(makapix::State state) { on_makapix_state(static_cast<uint32_t>(state)); }
 
 void wifi_connected() {
-  // The IP goes on the panel only when nothing is playing yet (spec 15.1).
-  if (!st.current && !st.paused && st.screen == Screen::None) show_screen(Screen::Connected, 15 * kSecond);
+  // The IP goes on the panel only when nothing plays and nothing is on its way once the
+  // boot animation has ended (spec 15.1, rules::connected_screen).
+  st.connected_pending = true;
+  resolve_connected();
   update_counts();
 }
 
@@ -1228,6 +1280,12 @@ cJSON *status_json() {
       (!st.paused && st.current && s.auto_swap_seconds) ? st.swap_at_us + s.auto_swap_seconds * kSecond - now : -kSecond;
   cJSON_AddNumberToObject(as, "remaining_s", remaining < 0 ? -1 : static_cast<double>(remaining / kSecond));
   cJSON_AddBoolToObject(p, "prepared", static_cast<bool>(st.prepared));
+  // Time-to-first-artwork (spec 15.1, 18.8): both in ms of the clock now_us() counts (on
+  // the device esp_timer, which starts with the app, about 0.7 s after reset since
+  // 2026-09-26); first_artwork_ms is -1 until an artwork has played.
+  cJSON *boot = cJSON_AddObjectToObject(p, "boot");
+  cJSON_AddNumberToObject(boot, "animation_end_ms", static_cast<double>(st.boot_until_us / 1000));
+  cJSON_AddNumberToObject(boot, "first_artwork_ms", st.first_artwork_us ? static_cast<double>(st.first_artwork_us / 1000) : -1);
   cJSON_AddNumberToObject(p, "swaps", st.swaps);
   cJSON_AddNumberToObject(p, "load_failures", st.load_failures);
   const ShowEnv::RenderTotals r = g_env->render_totals();

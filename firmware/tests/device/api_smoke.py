@@ -79,6 +79,20 @@ def budgets():
         return json.load(f)
 
 
+def check_boot_budget(d, b):
+    """Time-to-first-artwork (spec 15.1, 18.8): the first artwork of this boot went up at
+    most first_artwork_after_animation_ms after the boot animation ended. Skipped when
+    nothing has played since boot (no card, empty playset)."""
+    boot = d.get("playback", {}).get("boot", {})
+    first, end = boot.get("first_artwork_ms", -1), boot.get("animation_end_ms", 0)
+    check(isinstance(first, (int, float)) and isinstance(end, (int, float)), "status carries playback.boot")
+    if first is None or first < 0:
+        print("     boot: no artwork played yet; the TTFA budget is not checked")
+        return
+    check(first - end <= b["first_artwork_after_animation_ms"],
+          "first artwork %d ms, %d ms after the boot animation (budget %d ms)" % (first, first - end, b["first_artwork_after_animation_ms"]))
+
+
 def check_heap_budget(base, b):
     """Steady-state internal RAM against the budget: free and largest block."""
     st, j = request(base, "GET", "/api/v1/diag/memory")
@@ -103,6 +117,7 @@ def main():
     check(d.get("panel", {}).get("refresh_hz", 0) > 100, f"panel refresh {d.get('panel', {}).get('refresh_hz', 0):.1f} Hz")
     check_heap_budget(base, b)
     check(isinstance(d.get("playback", {}).get("playset", {}).get("version"), int), "status carries playback.playset.version")
+    check_boot_budget(d, b)
     check(isinstance(d.get("playsets_version"), int), "status carries playsets_version")
 
     st, j = request(base, "GET", "/api/v1/settings")
