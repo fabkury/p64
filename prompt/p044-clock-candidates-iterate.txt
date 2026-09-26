@@ -1,0 +1,7 @@
+Thanks for your suggestions. Let's iterate on them before considering new ones. Make sure to commit what you've already accomplished, plus whatever else we do here.
+
+1. Flip: This one looks good, but can you animate it? I mean animating the flip motion using pixel art assets. If you can, show me using GIF files. If you can't, just say so and I'll think what to do.
+
+2. Horizon: This one looks great, but could you a) generate a couple more times of the day, and b) make each time of the day more varied, more different than the other times? Or take it to the next level: somehow obtain (or calculate) the position of the sun, and procedurally generate the widget?
+
+In p64, each widget is allowed to be anything, do anything. I mean things like run its own custom code, custom logic, custom screen drawing procedures, etc.
