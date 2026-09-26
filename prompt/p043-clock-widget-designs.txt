@@ -1,0 +1,9 @@
+Please design 3 new and different clock widgets for p64.
+
+For each widget:
+ - Draw bitmap assets (e.g PNG files) for the user interface (e.g. corners, highlights, icons, textures, you name it)
+ - Use those assets, embedded in the firmware, to design and draw beautiful, sophisticated clock widgets.
+
+Remember that the resolution of p64 is fixed at 64x64 pixels.
+
+Before any work of actually implementing the clock widgets in p64, please draw them, in their final composited look, in 64x64 pixel PNG files that I can review and approve or reject. Only after their final designs have been approved by me, can they be actually implemented in p64. It is very likely that I will ask you to generate even more than 3 candidate designs for review, so be ready for that, but let's start with just 3.
