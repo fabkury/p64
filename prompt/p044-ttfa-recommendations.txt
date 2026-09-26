@@ -1,0 +1,15 @@
+p64 has received great development over time, but in incremental fashion. This leads to situations where not everything is as optimized as it could reasonably be.
+
+Today I want to talk about one metric:
+ - Time-to-first-artwork (TTFA): How long it takes for the device to display the first artwork after a clean, error-free boot.
+
+I am aware of at least 2 limitations to a short TTFA that are by design:
+ 1. Boot logo: The boot logo overrides the screen on boot, no matter what. Nothing else can be displayed until the boot logo animation sequence has ended.
+ 2. NTP sync: Touching files (so their last playback time is recorded in mtime) can only happen after time has been synchronized to NTP, otherwise local time can't be trusted.
+
+It seems to me, but I am not sure, that if we make the change below, we could potentially shorten TTFA with safety:
+ A. Allow artworks to be played back, without being touched (without changing mtime), when time has not yet been synchronized to NTP. This could potentially have (I am not sure) the added benefit of allowing playback even if NTP sync fails permanently.
+
+Please investigate the matter and come up with recommendations for shortening TTFA. For each recommendation, list its ESTIMATED IMPACT ON TTFA, CONS, COSTS and RISKS.
+
+Don't implement anything yet, just make proposals and recommendations first.
