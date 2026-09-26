@@ -1,0 +1,5 @@
+This is exciting. I like the new clock faces you generated.
+
+Before we commit to implementing them, please greatly expand your work: generate 3 more clockfaces, using custom-drawn pixel art assets. Try to explore wildly different concepts/designs in each clockface.
+
+Don't forget to commit everything.
