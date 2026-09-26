@@ -283,26 +283,29 @@ cJSON *weather_json() {
     f = g_forecast;
     error = g_weather_error;
   }
+  // The model's floats go out rounded to a tenth: widened to double as they are, 20.8 f
+  // prints as 20.799999237060547 (seen in the web UI on 2026-09-26).
+  const auto tenths = [](float v) { return std::round(static_cast<double>(v) * 10.0) / 10.0; };
   cJSON *o = cJSON_CreateObject();
   cJSON_AddBoolToObject(o, "valid", f.valid);
   cJSON_AddStringToObject(o, "error", error.c_str());
   if (!f.valid) return o;
   cJSON_AddNumberToObject(o, "age_s", static_cast<double>((esp_timer_get_time() - f.fetched_us) / kSecond));
-  cJSON_AddNumberToObject(o, "temperature", f.temperature);
+  cJSON_AddNumberToObject(o, "temperature", tenths(f.temperature));
   cJSON_AddStringToObject(o, "units", f.imperial ? "imperial" : "metric");
   cJSON_AddNumberToObject(o, "humidity", f.humidity);
   cJSON_AddNumberToObject(o, "code", f.code);
   cJSON_AddStringToObject(o, "condition", icons::group_name(icons::group_for_code(f.code)));
   cJSON_AddBoolToObject(o, "is_day", f.is_day);
-  cJSON_AddNumberToObject(o, "today_max", f.today.max);
-  cJSON_AddNumberToObject(o, "today_min", f.today.min);
+  cJSON_AddNumberToObject(o, "today_max", tenths(f.today.max));
+  cJSON_AddNumberToObject(o, "today_min", tenths(f.today.min));
   cJSON *days = cJSON_AddArrayToObject(o, "days");
   for (int i = 0; i < f.day_count; ++i) {
     cJSON *d = cJSON_CreateObject();
     cJSON_AddStringToObject(d, "weekday", clock_format::weekday_short(f.days[i].weekday));
     cJSON_AddStringToObject(d, "condition", icons::group_name(icons::group_for_code(f.days[i].code)));
-    cJSON_AddNumberToObject(d, "max", f.days[i].max);
-    cJSON_AddNumberToObject(d, "min", f.days[i].min);
+    cJSON_AddNumberToObject(d, "max", tenths(f.days[i].max));
+    cJSON_AddNumberToObject(d, "min", tenths(f.days[i].min));
     cJSON_AddItemToArray(days, d);
   }
   return o;

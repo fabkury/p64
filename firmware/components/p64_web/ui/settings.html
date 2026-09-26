@@ -562,7 +562,7 @@ p64.onStatus(function (d) {
     var inp = d.inputs || {};
     document.getElementById('diag-imu').textContent = inp.imu_present ? ('present, ' + (inp.calibrated ? 'calibrated' : 'not calibrated') + (inp.auto_rotation_resolved ? ', auto rotation ' + inp.auto_rotation : '')) : 'absent';
     var we = d.weather || {};
-    document.getElementById('weather-status').textContent = we.valid ? 'Now ' + we.temperature + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
+    document.getElementById('weather-status').textContent = we.valid ? 'Now ' + Number(we.temperature).toFixed(1) + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
 });
 p64.get('/api/v1/fonts').then(function (fonts) {
     [['ov-font', true], ['clock-font', false]].forEach(function (m) {

@@ -173,6 +173,9 @@ def main():
     check(we.get("valid"), "weather fetched: %s" % str(we)[:120])
     if we.get("valid"):
         check(-40 < we["temperature"] < 50 and len(we.get("days", [])) >= 2, "weather numbers plausible")
+        # The floats go out rounded to a tenth (2026-09-26: 20.8 came out as 20.799999237060547).
+        nums = [we["temperature"], we["today_max"], we["today_min"]] + [d[k] for d in we["days"] for k in ("max", "min")]
+        check(all(abs(v * 10 - round(v * 10)) < 1e-6 for v in nums), "weather numbers carry at most one decimal: %s" % nums)
 
     # An interlude: 100 % clock at a 5 s auto-swap in the Animation show.
     settings(base, {"show": {"main_state": "animation_show", "auto_swap_seconds": 5}, "widgets": {"interlude_percent": {"clock": 100}}})
