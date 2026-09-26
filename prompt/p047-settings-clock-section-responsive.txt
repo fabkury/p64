@@ -1,0 +1,5 @@
+Thanks. This is great.
+
+Let's now polish http://p64.local/settings#widgets, particularly the "Clock" section. It has many controls, such as font, and hours (12/24 h), that only apply to some widgets/clockfaces. Please make the web UI be responsive to the "Face" selection, that is, it only shows the settings that are relevant for the currently selected face.
+
+Commit your progress and test everything on the real device.
