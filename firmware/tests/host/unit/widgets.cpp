@@ -391,7 +391,9 @@ TEST_CASE("faces: the cached overlay stamps the same pixels as the font drawing,
           // The reference: the same text drawn straight with the font renderer, 2 px from
           // the corner's edges.
           const std::string text = p64::widgets::clock_format::time_text(t, h24, false);
-          const int w = p64::gfx::fonts::width(font, text, 1), h = p64::gfx::fonts::cap_height(font, 1);
+          const std::string marker = p64::widgets::clock_format::meridiem(t, h24);  // "PM" in 12 h mode
+          const int tw = p64::gfx::fonts::width(font, text, 1), h = p64::gfx::fonts::cap_height(font, 1);
+          const int w = tw + (marker.empty() ? 0 : 2 + p64::gfx::fonts::width(font, marker, 1));
           const bool right = corner == p64::system::Corner::TopRight || corner == p64::system::Corner::BottomRight;
           const bool centre = corner == p64::system::Corner::TopCenter || corner == p64::system::Corner::BottomCenter;
           const bool bottom = corner == p64::system::Corner::BottomLeft || corner == p64::system::Corner::BottomRight ||
@@ -400,10 +402,50 @@ TEST_CASE("faces: the cached overlay stamps the same pixels as the font drawing,
           const int x = right ? 64 - w - 2 : centre ? (64 - w) / 2 : 2;
           p64::gfx::fonts::draw(direct, font, x, bottom ? 64 - h - 2 : 2, text, s.clock_overlay.colour, 1,
                                 border ? &halo : nullptr);
+          if (!marker.empty())
+            p64::gfx::fonts::draw(direct, font, x + tw + 2, bottom ? 64 - h - 2 : 2, marker, s.clock_overlay.colour, 1,
+                                  border ? &halo : nullptr);
           if (centre) CHECK(std::abs((sprite->x0 + sprite->x1) - 63) <= 2);  // balanced about the middle
           CHECK(std::memcmp(direct.data(), stamped.data(), Frame::bytes()) == 0);
         }
       }
+    }
+  }
+}
+
+TEST_CASE("faces: the 12 h overlay carries AM or PM, so it never looks like the 24 h one") {
+  // 2026-09-26: the user switched the overlay to 12 h at 12:18 and saw no change. The
+  // setting had applied; 10, 11 and 12 o'clock simply draw the same digits in both modes,
+  // and the overlay had no marker to say which half of the day it was.
+  auto sprite = std::make_unique<faces::OverlaySprite>();
+  const Rgb ink{255, 255, 255}, halo{0, 0, 0};
+  for (size_t i = 0; i < p64::gfx::fonts::kFontCount; ++i) {
+    const p64::gfx::fonts::Font &font = *p64::gfx::fonts::kFonts[i];
+    if (!font.overlay) continue;
+    for (const int hour : {0, 9, 10, 11, 12, 13, 23}) {
+      CAPTURE(font.name);
+      CAPTURE(hour);
+      const tm t = at(hour, 18, 0);
+      p64::system::Settings s24, s12;
+      s24.clock_overlay.font = s12.clock_overlay.font = font.name;
+      s12.clock_overlay.h24 = false;
+      Frame a, b;
+      a.clear(Rgb{0, 0, 0});
+      b.clear(Rgb{0, 0, 0});
+      faces::build_overlay(*sprite, s24, t);
+      faces::stamp_overlay(a, *sprite);
+      faces::build_overlay(*sprite, s12, t);
+      faces::stamp_overlay(b, *sprite);
+      CHECK(std::memcmp(a.data(), b.data(), Frame::bytes()) != 0);
+      CHECK(sprite->x1 <= 62);  // the marker fits inside the margin
+      // The 12 h drawing: the time, 2 px, then the marker the digital clock face shows.
+      Frame ref;
+      ref.clear(Rgb{0, 0, 0});
+      const std::string text = p64::widgets::clock_format::time_text(t, false, false);
+      p64::gfx::fonts::draw(ref, font, 2, 2, text, ink, 1, &halo);
+      p64::gfx::fonts::draw(ref, font, 2 + p64::gfx::fonts::width(font, text, 1) + 2, 2, hour < 12 ? "AM" : "PM", ink, 1,
+                            &halo);
+      CHECK(std::memcmp(ref.data(), b.data(), Frame::bytes()) == 0);
     }
   }
 }

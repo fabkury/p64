@@ -190,8 +190,10 @@ TEST_CASE("fonts") {
     for (int y = 1 + cap_height(f, 1); y < 64; ++y)
       for (int x = 0; x < 64; ++x) lit_below += g.get(x, y).r ? 1 : 0;
     CHECK_EQ(lit_below, 0);
-    // The overlay's fonts keep HH:MM small enough for a corner.
+    // The overlay's fonts keep HH:MM small enough for a corner, and the 12 h form with its
+    // AM/PM marker (2 px after the time) inside the panel's 2 px margins.
     if (f.overlay) CHECK(width(f, "23:59", 1) <= 32);
+    if (f.overlay) CHECK(width(f, "12:59", 1) + 2 + width(f, "PM", 1) <= 60);
   }
   // The mask gets the same pixels as the frame, at any scale, a missing glyph included.
   for (int scale = 1; scale <= 3; ++scale) {

@@ -22,7 +22,7 @@ std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind);
 const char *widget_name(system::WidgetKind kind);
 
 // The clock overlay (spec 6.1): `overlay_key()` changes whenever the drawing would (the
-// minute, the settings); 0 means "nothing to draw". `draw_overlay()` paints HH:MM with an
+// minute, the settings); 0 means "nothing to draw". `draw_overlay()` paints HH:MM (AM or PM appended in 12 h mode) with an
 // outline in the chosen corner. Both run on the player task, the key first: the key
 // converts the time and, when it changed, draws the overlay once into a cached sprite;
 // `draw_overlay()` only stamps that sprite (faces::OverlaySprite).

@@ -55,16 +55,26 @@ uint32_t overlay_key(const system::Settings &s, const tm &t) {
 
 namespace {
 
-// Where the overlay's text goes: its font, text and top-left corner.
+// The AM/PM marker follows the time after this many pixels, as on the digital clock face.
+constexpr int kMarkerGap = 2;
+
+// Where the overlay's text goes: its font, the time, the AM/PM marker ("" in 24 h mode)
+// and the time's top-left corner. In 12 h mode the marker is what tells the modes apart:
+// 10, 11 and 12 o'clock draw the same digits in both (2026-09-26, seen at 12:18).
 struct OverlayLayout {
   const gfx::fonts::Font *font;
   std::string text;
+  std::string marker;
   int x, y;
+  int marker_x() const { return x + gfx::fonts::width(*font, text, 1) + kMarkerGap; }
 };
 
 OverlayLayout overlay_layout(const system::Settings &s, const tm &t) {
-  OverlayLayout l{&overlay_font(s.clock_overlay.font), clock_format::time_text(t, s.clock_overlay.h24, false), 0, 0};
-  const int w = gfx::fonts::width(*l.font, l.text, 1);
+  const system::Settings::ClockOverlay &o = s.clock_overlay;
+  OverlayLayout l{&overlay_font(o.font), clock_format::time_text(t, o.h24, false), clock_format::meridiem(t, o.h24), 0,
+                  0};
+  int w = gfx::fonts::width(*l.font, l.text, 1);
+  if (!l.marker.empty()) w += kMarkerGap + gfx::fonts::width(*l.font, l.marker, 1);
   const int h = gfx::fonts::cap_height(*l.font, 1);
   const int margin = 2;  // one pixel plus the outline
   l.x = l.y = margin;
@@ -81,6 +91,7 @@ void build_overlay(OverlaySprite &out, const system::Settings &s, const tm &t) {
   const OverlayLayout l = overlay_layout(s, t);
   std::memset(out.mask, 0, sizeof(out.mask));
   gfx::fonts::draw_mask(out.mask, *l.font, l.x, l.y, l.text, 1, s.clock_overlay.border);
+  if (!l.marker.empty()) gfx::fonts::draw_mask(out.mask, *l.font, l.marker_x(), l.y, l.marker, 1, s.clock_overlay.border);
   out.text = s.clock_overlay.colour;
   out.border = s.clock_overlay.border_colour;
   out.border_opacity = s.clock_overlay.border_opacity;

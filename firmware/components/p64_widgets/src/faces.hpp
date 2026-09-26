@@ -31,7 +31,8 @@ uint32_t draw_clock(gfx::Frame &out, const system::Settings &s, const tm *time);
 // its colour and opacity), never 0.
 uint32_t overlay_key(const system::Settings &s, const tm &t);
 
-// The overlay, HH:MM in the chosen corner with an optional 1 px border, drawn once when
+// The overlay, HH:MM (AM or PM appended in 12 h mode) in the chosen corner with an
+// optional 1 px border, drawn once when
 // the key changes and stamped on every frame: the player draws it on each frame of an
 // animation, and redrawing the glyphs and converting the time again each time cost about
 // 380 us a frame on the device (2026-09-23). The text is opaque; the border is blended at

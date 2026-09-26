@@ -670,6 +670,15 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   an external channel applies after a round trip through the store (seen on the device:
   the channel view named an external channel by its identifier). Host test in
   `content.cpp`.
+- 2026-09-26, clock overlay: in 12 h mode the overlay appends AM or PM (1x, 2 px after
+  the time, as the digital clock face does). Reported as "switching the overlay to 12 h
+  does nothing": the setting saved and the drawing followed it (verified on the device
+  with the time zone set to UTC for a minute: "4:20" against "16:20"), but the switch
+  was made at 12:18, and 10, 11 and 12 o'clock draw the same digits in both modes, so
+  nothing visible changed and the 12-hour overlay never said which half of the day it
+  was. Spec 6.1 amended; the web UI's option reads "12 h (AM/PM)". Host tests in
+  `widgets.cpp` (12 h differs from 24 h at every hour, the marker fits every overlay
+  font and corner, the cached sprite matches the font drawing) and `decode_gfx.cpp`.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

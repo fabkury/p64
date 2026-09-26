@@ -336,7 +336,10 @@ persists that, so an artwork never plays inside the Widget or Stream state (sett
 
 Plays the active playset as in section 4, with:
 
-- Clock overlay: optional (default on), HH:MM, 24-hour by default with a 12-hour option,
+- Clock overlay: optional (default on), HH:MM, 24-hour by default with a 12-hour option
+  that appends AM or PM after a 2 px gap, as the Clock widget's digital face does
+  (2026-09-26: without the marker the 12-hour overlay drew the same digits as the 24-hour
+  one at 10, 11 and 12 o'clock and never said which half of the day it was),
   in one of the bundled pixel fonts offered for it (Capital Hill, Everyday Slight,
   Standard, Typical or Ample; default Capital Hill 6 px) at 1x, text colour configurable
   (default white) with a 1 px border so it reads over any artwork: on or off, its colour

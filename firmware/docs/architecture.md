@@ -350,7 +350,7 @@ task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six h
 without a refresh. The temperature widget reads the SHTC3 through a sampler task every
 minute (calibration offsets from the settings, the trend from the last hour of samples)
 and the reading is always in the status document. The overlay is a player hook: `key()`
-changes with the minute and the overlay settings and, when it does, draws HH:MM with its
+changes with the minute and the overlay settings and, when it does, draws HH:MM (AM or PM appended in 12 h mode) with its
 border (colour, opacity) into a cached `faces::OverlaySprite`; `draw()` only stamps that
 sprite in the chosen corner; static images are re-emitted from the player's kept copy when the
 key changes, so the overlay ticks without a decode.
