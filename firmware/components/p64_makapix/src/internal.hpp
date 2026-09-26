@@ -31,6 +31,7 @@ struct Channel {
   uint32_t fail_streak = 0;
   bool refreshing = false;
   bool loaded = false;  // the index file was looked for
+  bool age_unknown = false;  // loaded before the time was trusted: the refresh is settled once online
   bool dirty = false;   // flags changed since the last save
   bool active = false;  // in the active playset
   bool rewalk = false;  // the size limit changed during a walk: walk again as soon as it ends

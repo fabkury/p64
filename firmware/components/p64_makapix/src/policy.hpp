@@ -45,6 +45,22 @@ Channel *next_channel_needing_service(const std::vector<std::unique_ptr<Channel>
 // After an index loads from the card: when its first refresh is due (0 = at once).
 int64_t next_refresh_after_load(uint32_t age_s, uint32_t interval_s, int64_t now_us);
 
+// A refresh that is never due: an index loaded before the time was trusted has an
+// unknown age (ADR 0011); its refresh is settled once the device is online, which
+// implies the time (2026-09-26).
+constexpr int64_t kNeverUs = INT64_MAX;
+
+// An active channel whose index has not been read from the card yet (nullptr: none). The
+// read needs neither the network nor the time, so it happens before both (2026-09-26):
+// what is cached plays from the boot animation's end, and plays offline.
+template <typename Channel>
+Channel *next_unloaded_channel(const std::vector<std::unique_ptr<Channel>> &channels) {
+  for (const auto &ch : channels) {
+    if (ch->active && !ch->loaded) return ch.get();
+  }
+  return nullptr;
+}
+
 // A walk step begins: whether it starts a new walk. A walk resumed after more than
 // kWalkIdleUs (its channel left the playset meanwhile) starts over, since its kept-alive
 // connection has died and its cursor may be stale (ESP_ERR_HTTP_WRITE_DATA, 2026-09-21).

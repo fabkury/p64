@@ -132,6 +132,25 @@ TEST_CASE("makapix policy: a walk in progress first, then an unloaded index, the
   CHECK(policy::next_channel_needing_service(chs, 9000) == chs[0].get());
 }
 
+TEST_CASE("makapix policy: an active channel's index is read before the network; its age settles later (2026-09-26)") {
+  std::vector<std::unique_ptr<FakeChannel>> chs;
+  for (int i = 0; i < 3; ++i) chs.push_back(std::make_unique<FakeChannel>());
+  CHECK(policy::next_unloaded_channel(chs) == nullptr);
+  chs[1]->loaded = false;
+  chs[2]->loaded = false;
+  CHECK(policy::next_unloaded_channel(chs) == chs[1].get());
+  chs[1]->active = false;  // not in the playset: its index waits
+  CHECK(policy::next_unloaded_channel(chs) == chs[2].get());
+  chs[2]->loaded = true;
+  CHECK(policy::next_unloaded_channel(chs) == nullptr);
+  // Loaded with the age unknown: never due, whatever the clock says, until it is settled.
+  chs[0]->next_refresh_us = policy::kNeverUs;
+  chs[2]->next_refresh_us = policy::kNeverUs;
+  CHECK(policy::next_channel_needing_service(chs, INT64_MAX - 1) == nullptr);
+  chs[2]->next_refresh_us = 0;  // settled: due at once
+  CHECK(policy::next_channel_needing_service(chs, 1) == chs[2].get());
+}
+
 TEST_CASE("makapix policy: an index from the card refreshes when older than the interval") {
   CHECK_EQ(policy::next_refresh_after_load(14400, 14400, 7), 0);
   CHECK_EQ(policy::next_refresh_after_load(100, 14400, 7), 7 + int64_t(14300) * policy::kSecond);

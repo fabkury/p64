@@ -152,11 +152,21 @@ Channel *next_channel_needing_service() {
   return policy::next_channel_needing_service(g_channels, esp_timer_get_time());
 }
 
+Channel *next_unloaded_channel() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return policy::next_unloaded_channel(g_channels);
+}
+
+// The index from the card, read as soon as the channel is active: before the network
+// and the time (2026-09-26), so the cache plays from the boot animation's end and plays
+// offline. The age of the index, and so its next refresh, waits for a trusted clock
+// (settle_ages) when the load comes first.
 void load_channel(Channel *ch) {
   content::MakapixEntries entries;
   uint32_t last_refresh = 0;
   const bool loaded = cache::load_index(ch->id, entries, last_refresh);
   const uint32_t interval = system::settings().makapix_refresh_seconds;
+  const bool time_known = net::clock::synced();
   const uint32_t now = epoch_now();
   {
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -167,12 +177,32 @@ void load_channel(Channel *ch) {
       recount_cached(*ch);
       // Fresh enough: the next refresh waits for the interval; else refresh now.
       const uint32_t age = now > last_refresh ? now - last_refresh : 0;
-      ch->next_refresh_us = policy::next_refresh_after_load(age, interval, esp_timer_get_time());
-      ESP_LOGI(TAG, "channel %s: %u entries from the card, %u cached, %lld s old", ch->id.c_str(),
-               static_cast<unsigned>(ch->entries.size()), static_cast<unsigned>(ch->cached), static_cast<long long>(age));
+      ch->age_unknown = !time_known;
+      ch->next_refresh_us = time_known ? policy::next_refresh_after_load(age, interval, esp_timer_get_time())
+                                       : policy::kNeverUs;
+      if (time_known) {
+        ESP_LOGI(TAG, "channel %s: %u entries from the card, %u cached, %lld s old", ch->id.c_str(),
+                 static_cast<unsigned>(ch->entries.size()), static_cast<unsigned>(ch->cached), static_cast<long long>(age));
+      } else {
+        ESP_LOGI(TAG, "channel %s: %u entries from the card, %u cached (age known once the time is)", ch->id.c_str(),
+                 static_cast<unsigned>(ch->entries.size()), static_cast<unsigned>(ch->cached));
+      }
     }
   }
   publish_channel_changed();
+}
+
+// Online implies a trusted clock (ADR 0011): indexes loaded before it get their refresh due.
+void settle_ages() {
+  const uint32_t interval = system::settings().makapix_refresh_seconds;
+  const uint32_t now = epoch_now();
+  std::lock_guard<std::mutex> lock(g_mutex);
+  for (auto &ch : g_channels) {
+    if (!ch->age_unknown) continue;
+    ch->age_unknown = false;
+    const uint32_t age = now > ch->last_refresh ? now - ch->last_refresh : 0;
+    ch->next_refresh_us = policy::next_refresh_after_load(age, interval, esp_timer_get_time());
+  }
 }
 
 void finish_walk(Channel *ch, bool ok, const std::string &error) {
@@ -687,7 +717,13 @@ void task(void *) {
       std::lock_guard<std::mutex> lock(g_mutex);
       g_status.online = up;
     }
+    // Card work, network or not: an active channel's index (its cache plays at once).
+    if (Channel *ch = next_unloaded_channel()) {
+      load_channel(ch);
+      continue;
+    }
     if (!up) continue;
+    settle_ages();
     if (g_parked_followed) {
       Job *parked = g_parked_followed;
       g_parked_followed = nullptr;
@@ -714,11 +750,7 @@ void task(void *) {
       }
     }
     if (Channel *ch = next_channel_needing_service()) {
-      if (!ch->loaded) {
-        load_channel(ch);
-        continue;
-      }
-      refresh_step(ch);  // one page; downloads get their turn below
+      refresh_step(ch);  // one page; downloads get their turn below (the index is loaded above)
     }
     const bool downloaded = download_step();
     if (g_vault.open() && esp_timer_get_time() - g_vault_used_us > kVaultIdleUs) g_vault.close();
