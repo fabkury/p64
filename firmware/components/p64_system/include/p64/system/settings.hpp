@@ -38,7 +38,7 @@ struct Settings {
   bool rotation_auto = false;  // IMU decides; `rotation` is the fallback
   gfx::Rgb background{0, 0, 0};
   uint8_t gain_r = 100, gain_g = 100, gain_b = 100;  // 50..100 %
-  uint16_t boot_animation_ms = 2000;                 // 0..5000
+  uint16_t boot_animation_ms = 3000;                 // 0 (off) or 1000..7000 (decided 2026-09-26)
 
   // Show
   MainState main_state = MainState::AnimationShow;

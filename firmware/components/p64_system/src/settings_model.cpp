@@ -115,7 +115,8 @@ void Settings::clamp() {
   gain_r = clamp_to<uint8_t>(gain_r, 50, 100);
   gain_g = clamp_to<uint8_t>(gain_g, 50, 100);
   gain_b = clamp_to<uint8_t>(gain_b, 50, 100);
-  boot_animation_ms = clamp_to<uint16_t>(boot_animation_ms, 0, 5000);
+  // 0 is off; anything else is a length between 1 and 7 s (decided 2026-09-26).
+  if (boot_animation_ms != 0) boot_animation_ms = clamp_to<uint16_t>(boot_animation_ms, 1000, 7000);
   if (auto_swap_seconds != 0) auto_swap_seconds = clamp_to<uint32_t>(auto_swap_seconds, 5, 86400);
   clock.scale = clamp_to<uint8_t>(clock.scale, 1, 3);
   clock_overlay.border_opacity = clamp_to<uint8_t>(clock_overlay.border_opacity, 1, 255);
