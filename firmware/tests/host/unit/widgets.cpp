@@ -199,7 +199,7 @@ TEST_CASE("faces: the widest clock (seconds, 12 h, scale 3) shrinks to fit the p
   faces::draw_clock(f, s, &t);
   CHECK_EQ(lit_rect(f, 0, 0, 0, 63), 0);    // a free column at each edge
   CHECK_EQ(lit_rect(f, 63, 0, 63, 63), 0);
-  s.clock.analogue = true;
+  s.clock.face = p64::system::ClockFace::Analogue;
   CHECK_EQ(faces::draw_clock(f, s, &t), 1000u);  // the analogue face with its second hand
 }
 

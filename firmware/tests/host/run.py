@@ -67,6 +67,16 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "clock_format.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "analogue.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "faces.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "sprite.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "solar.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "themed_common.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_flip.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_nixie.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_horizon.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_words.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_hourglass.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_orrery.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "clock_assets.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
@@ -502,6 +512,56 @@ def check(path, frames_path):
     return fmt, n, problems
 
 
+def check_faces(exe, build_dir):
+    """The themed clock faces against the mock's references (tests/host/corpus/clock/): every
+    face pixel for pixel, the horizon (floating point) within a tolerance."""
+    from PIL import Image
+    refs = sorted(glob.glob(os.path.join(HERE, "corpus", "clock", "*.png")))
+    if not refs:
+        return 0
+    out_dir = os.path.join(build_dir, "faces")
+    os.makedirs(out_dir, exist_ok=True)
+    run = subprocess.run([exe, "faces", out_dir, *refs], capture_output=True, text=True)
+    if run.returncode != 0:
+        print(run.stdout, run.stderr)
+        print("CLOCK FACES FAILED to render")
+        return 1
+    failures = 0
+    exact = 0
+    for ref in refs:
+        name = os.path.splitext(os.path.basename(ref))[0]
+        expected = Image.open(ref).convert("RGB").tobytes()
+        with open(os.path.join(out_dir, name + ".rgb"), "rb") as f:
+            ours = f.read()
+        if len(ours) != len(expected):
+            print(f"  {name}: {len(ours)} bytes, expected {len(expected)}")
+            failures += 1
+            continue
+        if ours == expected:
+            exact += 1
+            continue
+        # per-pixel largest channel difference
+        worst, off = 0, 0
+        first = None
+        for i in range(0, len(ours), 3):
+            d = max(abs(ours[i + k] - expected[i + k]) for k in range(3))
+            if d > 8:
+                off += 1
+                if first is None:
+                    first = (i // 3 % DST_W, i // 3 // DST_W, tuple(ours[i:i + 3]), tuple(expected[i:i + 3]))
+            worst = max(worst, d)
+        tolerant = name.startswith("horizon-")
+        if tolerant and off <= DST_W * DST_H * 3 // 100:
+            continue
+        failures += 1
+        print(f"  {name}: {off} pixels differ by more than 8 (worst {worst}); first at ({first[0]},{first[1]}): ours {first[2]} vs {first[3]}")
+    print(f"clock faces: {len(refs)} references, {exact} pixel-exact, {len(refs) - exact - failures} within tolerance, {failures} failed")
+    if failures:
+        print("CLOCK FACES FAILED")
+        return 1
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", help="artwork files (default: both corpora)")
@@ -533,6 +593,9 @@ def main():
         print(unit.stderr)
         print("UNIT TESTS FAILED")
         return 1
+    faces = check_faces(exe, build_dir)
+    if faces:
+        return faces
     if args.no_files:
         return 0
 

@@ -92,7 +92,10 @@ gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, roll
 are done, and M10 delivered the web UI in p3a's layout and five themes
 (`components/p64_web/ui/`: four pages, the shared static files, the setup portal on the
 same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
-the analogue clock face followed on 2026-09-20; open: the acceptance measurements that
+the analogue clock face followed on 2026-09-20 and six themed clock faces on 2026-09-26
+(flip, nixie, horizon, words, hourglass, orrery: `tools/mock_clock_faces.py` is the design
+reference and writes the pixel-exact test references, `tools/gen_clock_assets.py` bakes
+`assets/clock/` into the firmware); open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
@@ -147,7 +150,7 @@ them and get host tests: the show is `main/show_core.cpp` behind the `ShowEnv` i
 (`show.cpp` is only the shell; scenario tests drive the core with a fake env), and the
 pure halves elsewhere are `p64/playback/timing.hpp`, `settings_model.cpp`,
 `p64_makapix/src/contract.cpp` and `policy.cpp`, `p64_web/src/auth_rules.cpp`,
-`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp`, `p64_net/src/time_rules.cpp`, and the driver's
+`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp` and the themed faces (`face_*.cpp`, `solar.cpp`, compared pixel for pixel with the mock's references), `p64_net/src/time_rules.cpp`, and the driver's
 `src/platforms/gdma/p64_bcm.h`. New logic goes into those, not into the shells. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
 OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is

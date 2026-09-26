@@ -6,6 +6,7 @@
 #include <deque>
 #include <mutex>
 #include <new>
+#include <sys/time.h>
 
 #include "analogue.hpp"
 #include "clock_format.hpp"
@@ -128,15 +129,29 @@ void weather_task(void *) {
 
 // --- drawing helpers ------------------------------------------------------------------
 
-// The local time at a moment on the monotonic clock (frames are rendered ahead).
-bool local_time_at(int64_t due_us, tm &out) {
+// The local time at a moment on the monotonic clock (frames are rendered ahead), with the
+// milliseconds into its second and the zone's offset from UTC (hours, DST included) when
+// asked.
+bool local_time_at(int64_t due_us, tm &out, int *millis = nullptr, float *tz_hours = nullptr) {
   time_t t;
   if (!net::clock::now_utc(t)) return false;
-  if (due_us > 0) {
-    const int64_t delta = due_us - esp_timer_get_time();
-    t += static_cast<time_t>(delta / kSecond);
-  }
+  timeval tv{};
+  gettimeofday(&tv, nullptr);
+  int64_t total_us = static_cast<int64_t>(tv.tv_sec) * kSecond + tv.tv_usec;
+  if (due_us > 0) total_us += due_us - esp_timer_get_time();
+  t = static_cast<time_t>(total_us / kSecond);
   localtime_r(&t, &out);
+  if (millis) *millis = static_cast<int>((total_us % kSecond) / 1000);
+  if (tz_hours) {
+    tm utc;
+    gmtime_r(&t, &utc);
+    int diff = (out.tm_hour * 60 + out.tm_min) - (utc.tm_hour * 60 + utc.tm_min);
+    if (out.tm_year != utc.tm_year || out.tm_yday != utc.tm_yday) {
+      const bool later = out.tm_year > utc.tm_year || (out.tm_year == utc.tm_year && out.tm_yday > utc.tm_yday);
+      diff += later ? 24 * 60 : -24 * 60;
+    }
+    *tz_hours = diff / 60.0f;
+  }
   return true;
 }
 
@@ -150,13 +165,29 @@ class ClockSource : public playback::FrameSource {
     const std::shared_ptr<const system::Settings> view = system::settings_view();
     const system::Settings &s = *view;
     tm t;
-    const bool have = local_time_at(due_us, t);
-    delay_ms = faces::draw_clock(out, s, have ? &t : nullptr);
+    faces::ClockContext ctx;
+    float tz_hours = 0;
+    const bool have = local_time_at(due_us, t, &ctx.millis, &tz_hours);
+    ctx.time = have ? &t : nullptr;
+    // The horizon's place and weather: the weather widget's location and, when a forecast
+    // is fresh, its current condition; without a location 40 N and solar time.
+    if (s.weather.location_set) {
+      ctx.sky.latitude = s.weather.latitude;
+      ctx.sky.longitude = s.weather.longitude;
+      ctx.sky.tz_hours = tz_hours;
+    }
+    if (s.clock.face == system::ClockFace::Horizon) {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      if (g_forecast.valid && esp_timer_get_time() - g_forecast.fetched_us <= faces::kWeatherStaleUs)
+        faces::weather_to_sky(g_forecast.code, ctx.sky);
+    }
+    delay_ms = faces::draw_clock(out, s, ctx, state_);
     return true;
   }
 
  private:
   std::string name_ = "clock";
+  faces::ClockState state_;  // the flip's animation
 };
 
 class WeatherSource : public playback::FrameSource {

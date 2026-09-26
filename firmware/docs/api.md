@@ -130,7 +130,8 @@ today_max, today_min, days:[{weekday, condition, max, min}]}`; `playback.state` 
 panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`,
 `history/go`, `resume`, `play`, the Makapix commands, a tap) switches
 `show.main_state` to `animation_show` and persists it (spec 6); a client that wants the
-Widget or Stream state back sets it again afterwards. Settings groups `clock` (face, font, scale, seconds, blink_colon, h24,
+Widget or Stream state back sets it again afterwards. Settings groups `clock` (face: `digital`, `analogue`, `flip`, `nixie`, `horizon`, `words`,
+`hourglass` or `orrery`; font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) join
 `show.clock_overlay` (enabled, font, corner: `top_left`, `top_center`, `top_right`,

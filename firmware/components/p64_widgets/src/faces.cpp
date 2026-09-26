@@ -156,16 +156,42 @@ void draw_trend(Frame &f, int x, int y, float per_hour, Rgb colour) {
   }
 }
 
-uint32_t draw_clock(Frame &out, const system::Settings &s, const tm *time) {
+namespace {
+
+uint32_t hold_ms(int64_t ms) { return ms < 1 ? 1 : ms > 60000 ? 60000 : static_cast<uint32_t>(ms); }
+uint32_t to_next_second(const ClockContext &c) { return hold_ms(1000 - c.millis); }
+uint32_t to_next_minute(const tm &t, const ClockContext &c) { return hold_ms((60 - t.tm_sec) * 1000LL - c.millis); }
+
+}  // namespace
+
+void weather_to_sky(int wmo_code, themed::Sky &sky) {
+  using themed::Sky;
+  switch (icons::group_for_code(wmo_code)) {
+    case icons::Group::Clear: sky.cover = 0, sky.precip = Sky::Precip::None; break;
+    case icons::Group::Partly: sky.cover = 1, sky.precip = Sky::Precip::None; break;
+    case icons::Group::Overcast:
+    case icons::Group::Fog: sky.cover = 3, sky.precip = Sky::Precip::None; break;
+    case icons::Group::Showers: sky.cover = 2, sky.precip = Sky::Precip::Rain; break;
+    case icons::Group::SnowShowers: sky.cover = 2, sky.precip = Sky::Precip::Snow; break;
+    case icons::Group::Snow: sky.cover = 3, sky.precip = Sky::Precip::Snow; break;
+    default: sky.cover = 3, sky.precip = Sky::Precip::Rain; break;  // drizzle, rain, freezing rain, thunder, hail
+  }
+}
+
+uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &ctx, ClockState &state) {
+  using system::ClockFace;
   const gfx::fonts::Font &font = font_named(s.clock.font);
-  out.clear(s.clock.background);
-  if (!time) {
+  if (!ctx.time) {
+    state.phase = 0;
+    state.shown = false;
+    out.clear(s.clock.background);
     gfx::fonts::draw_centred(out, font, 20, "--:--", s.clock.colour, 2);
     gfx::fonts::draw_centred(out, font, 42, "NO TIME", s.clock.colour, 1);
     return 1000;
   }
-  const tm &t = *time;
-  if (s.clock.analogue) {
+  const tm &t = *ctx.time;
+  if (s.clock.face == ClockFace::Analogue) {
+    out.clear(s.clock.background);
     analogue::Style st;
     st.ink = s.clock.colour;
     st.background = s.clock.background;
@@ -174,27 +200,82 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const tm *time) {
     // The numerals sit inside the rim ticks: a font taller than 7 px would cover them.
     st.font = font.size <= 7 ? &font : &gfx::fonts::default_font();
     analogue::draw(out, st, t);
-    const uint32_t delay_ms = s.clock.seconds ? 1000 : static_cast<uint32_t>((60 - t.tm_sec) * 1000);
-    return delay_ms > 60000 ? 60000 : delay_ms;
+    return s.clock.seconds ? to_next_second(ctx) : to_next_minute(t, ctx);
   }
-  const bool colon = !s.clock.blink_colon || (t.tm_sec % 2 == 0);
-  std::string text = clock_format::time_text(t, s.clock.h24, s.clock.seconds, colon);
-  const std::string mer = clock_format::meridiem(t, s.clock.h24);
-  int scale = s.clock.scale;
-  while (scale > 1 && gfx::fonts::width(font, text, scale) + (mer.empty() ? 0 : gfx::fonts::width(font, mer, 1) + 2) > Frame::width() - 2) --scale;
-  const int th = gfx::fonts::cap_height(font, scale);
-  const int total = gfx::fonts::width(font, text, scale) + (mer.empty() ? 0 : gfx::fonts::width(font, mer, 1) + 2);
-  const int x = (Frame::width() - total) / 2;
-  const int y = 14;
-  gfx::fonts::draw(out, font, x, y, text, s.clock.colour, scale);
-  if (!mer.empty()) gfx::fonts::draw(out, font, x + gfx::fonts::width(font, text, scale) + 2, y + th - gfx::fonts::cap_height(font, 1), mer, s.clock.colour, 1);
-  // The date in the same font when it fits the panel, else in the default one.
-  const std::string date = clock_format::date_text(t, s.clock.month_first);
-  const gfx::fonts::Font &date_font = gfx::fonts::width(font, date, 1) <= Frame::width() - 2 ? font : gfx::fonts::default_font();
-  gfx::fonts::draw_centred(out, date_font, y + th + 8, date, s.clock.colour, 1);
-  // Until the next second when seconds or the blink show, else until the next minute.
-  const uint32_t delay_ms = (s.clock.seconds || s.clock.blink_colon) ? 1000 : static_cast<uint32_t>((60 - t.tm_sec) * 1000);
-  return delay_ms > 60000 ? 60000 : delay_ms;
+  if (s.clock.face == ClockFace::Digital) {
+    out.clear(s.clock.background);
+    const bool colon = !s.clock.blink_colon || (t.tm_sec % 2 == 0);
+    std::string text = clock_format::time_text(t, s.clock.h24, s.clock.seconds, colon);
+    const std::string mer = clock_format::meridiem(t, s.clock.h24);
+    int scale = s.clock.scale;
+    while (scale > 1 && gfx::fonts::width(font, text, scale) + (mer.empty() ? 0 : gfx::fonts::width(font, mer, 1) + 2) > Frame::width() - 2) --scale;
+    const int th = gfx::fonts::cap_height(font, scale);
+    const int total = gfx::fonts::width(font, text, scale) + (mer.empty() ? 0 : gfx::fonts::width(font, mer, 1) + 2);
+    const int x = (Frame::width() - total) / 2;
+    const int y = 14;
+    gfx::fonts::draw(out, font, x, y, text, s.clock.colour, scale);
+    if (!mer.empty()) gfx::fonts::draw(out, font, x + gfx::fonts::width(font, text, scale) + 2, y + th - gfx::fonts::cap_height(font, 1), mer, s.clock.colour, 1);
+    // The date in the same font when it fits the panel, else in the default one.
+    const std::string date = clock_format::date_text(t, s.clock.month_first);
+    const gfx::fonts::Font &date_font = gfx::fonts::width(font, date, 1) <= Frame::width() - 2 ? font : gfx::fonts::default_font();
+    gfx::fonts::draw_centred(out, date_font, y + th + 8, date, s.clock.colour, 1);
+    // Until the next second when seconds or the blink show, else until the next minute.
+    return (s.clock.seconds || s.clock.blink_colon) ? to_next_second(ctx) : to_next_minute(t, ctx);
+  }
+  // The themed faces (spec 7.1, approved 2026-09-26): their own colours and fonts; the
+  // seconds setting runs the per-second element, the blink setting the colon.
+  const themed::Moment m = themed::Moment::from(t);
+  const themed::Options o{s.clock.seconds, s.clock.blink_colon, s.clock.h24, s.clock.month_first};
+  switch (s.clock.face) {
+    case ClockFace::Flip: {
+      if (state.phase > 0) {  // mid-change: the next frame
+        themed::draw_flip(out, m, o, state.phase, &state.from);
+        if (++state.phase > themed::kFlipFrames) {
+          state.phase = 0;
+          state.shown = true;
+          state.shown_hour = m.hour;
+          state.shown_minute = m.minute;
+        }
+        return themed::kFlipFrameMs;
+      }
+      if (state.shown && (m.hour != state.shown_hour || m.minute != state.shown_minute)) {  // a change: frame 1
+        state.from = m;
+        state.from.hour = state.shown_hour;
+        state.from.minute = state.shown_minute;
+        themed::draw_flip(out, m, o, 1, &state.from);
+        state.phase = 2;
+        return themed::kFlipFrameMs;
+      }
+      state.shown = true;
+      state.shown_hour = m.hour;
+      state.shown_minute = m.minute;
+      themed::draw_flip(out, m, o);
+      return o.seconds ? to_next_second(ctx) : to_next_minute(t, ctx);
+    }
+    case ClockFace::Nixie:
+      themed::draw_nixie(out, m, o);
+      return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
+    case ClockFace::Horizon:
+      themed::draw_horizon(out, m, o, ctx.sky);
+      return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
+    case ClockFace::Words:
+      themed::draw_words(out, m, o);
+      return to_next_minute(t, ctx);
+    case ClockFace::Hourglass:
+      themed::draw_hourglass(out, m, o);
+      return o.seconds ? to_next_second(ctx) : to_next_minute(t, ctx);
+    case ClockFace::Orrery:
+    default:
+      themed::draw_orrery(out, m, o);
+      return (o.seconds || o.blink) ? to_next_second(ctx) : to_next_minute(t, ctx);
+  }
+}
+
+uint32_t draw_clock(Frame &out, const system::Settings &s, const tm *time) {
+  ClockContext ctx;
+  ctx.time = time;
+  ClockState state;
+  return draw_clock(out, s, ctx, state);
 }
 
 void draw_weather(Frame &out, const system::Settings &s, const weather_model::Forecast &f, const std::string &error,

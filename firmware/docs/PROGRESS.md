@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -726,6 +726,27 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   3.9 s; the status reports the artwork 2 ms after the animation's end. A power-on reset
   (the only one that skips the image hash) is still to be timed by hand. Spec 6.4, 10.2,
   15.1, 16 and 18.8 and ADR 0011 amended.
+- 2026-09-26, themed clock faces (prompts p043 to p046): six new faces designed as
+  64x64 mock-ups first (flip, nixie, horizon, then words, hourglass, orrery), reviewed and
+  approved by the user, then implemented. The pipeline: `tools/mock_clock_faces.py` draws
+  each face's pixel-art assets into `assets/clock/<face>/` (only when a PNG is missing, so
+  hand edits survive), renders the review images under `docs/design/clock-candidates/`
+  and writes 32 test references under `tests/host/corpus/clock/` using the firmware's own
+  glyph tables and integer arithmetic; `tools/gen_clock_assets.py` bakes the PNGs into
+  `clock_assets.cpp` (20 sprites, 68 KB of flash) with a Q14 sine table for the orrery;
+  `tests/host/run.py` renders the same 32 moments with the firmware's code and compares
+  them pixel for pixel (all 32 exact, the floating-point horizon included). Settings:
+  `clock.face` is now an eight-value enum (the `analogue` flag is gone; the API key and
+  its old values are unchanged); the seconds setting runs the per-second element (the
+  flip's rail, the hourglass's stream, Mercury), the blinking colon applies to the nixie,
+  horizon and orrery colons, 12 h mode blanks the leading zero and adds AM/PM; the horizon
+  takes the weather location, the zone offset (local minus UTC) and the forecast's cover
+  and precipitation from the clock source, 40 N and solar time without a location. The
+  flip's minute change is ten 45 ms frames driven by a `ClockState` in the clock source.
+  Host tests: the solar model against the almanac (New York 2026-09-26 sunrise and
+  sunset, the full moon), the words grid, the flip's state machine, the hold times minus
+  the milliseconds, the orrery's arithmetic, the hourglass's sand, 12 h mode, the settings
+  round trip. Device: `tests/device/faces_smoke.py` (below).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

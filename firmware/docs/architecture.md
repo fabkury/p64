@@ -26,7 +26,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
-| `p64_widgets` | clock (digital, analogue), weather, temperature; font and icon assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`: everything drawn) |
+| `p64_widgets` | clock (digital, analogue, six themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
@@ -344,7 +344,22 @@ show; it asks for the next frame at the next minute (or second when seconds or t
 blinking colon show). Its analogue face (`analogue.cpp`, pure and host-tested) draws
 into the frame with integer Bresenham lines around a centre at 31.5 (a nudge keeps the
 axis-aligned hands on one column); the digital face and the analogue one share the
-colour, font, seconds and date-order settings. The weather keeps one `Forecast` (Open-Meteo current conditions
+colour, font, seconds and date-order settings. The six themed faces (2026-09-26: flip,
+nixie, horizon, words, hourglass, orrery; `face_*.cpp` behind `themed.hpp`) draw from
+pixel-art sprites: the PNGs under `assets/clock/<face>/` are baked by
+`tools/gen_clock_assets.py` into `clock_assets.cpp` (about 68 KB of flash, RGBA, plus a
+Q14 sine table so the orrery needs no floating-point trigonometry), and `sprite.hpp`
+stamps them with a 0/1 alpha. `tools/mock_clock_faces.py` is the design reference: it
+draws the same faces on the host with the same arithmetic (the bundled fonts through the
+very glyph tables of `fonts_data.cpp`, integer maths wherever a pixel depends on it) and
+writes the references under `tests/host/corpus/clock/`, which `tests/host/run.py` compares
+with the firmware's pixels after the unit tests (every face pixel-exact; the horizon,
+floating point, within a tolerance, and it has been exact so far). The clock source
+hands `draw_clock` a `ClockContext` (the time with its milliseconds, the weather location
+and the zone offset, the forecast's cover and precipitation for the horizon) and keeps a
+`ClockState` for the flip, whose minute change is ten 45 ms frames drawn from one
+per-pixel function of the tile (no tile image is kept). `solar.cpp` (NOAA's low-precision
+sun, a synodic moon phase, a rough moon position) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours
 without a refresh. The temperature widget reads the SHTC3 through a sampler task every

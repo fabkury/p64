@@ -9,6 +9,7 @@
 #include "p64/gfx/frame.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/widgets/widgets.hpp"
+#include "themed.hpp"
 #include "weather_model.hpp"
 
 namespace p64::widgets::faces {
@@ -23,8 +24,26 @@ const gfx::fonts::Font &font_named(const std::string &name);
 const gfx::fonts::Font &overlay_font(const std::string &name);
 std::string temperature_text(float value, bool decimals);
 
-// The clock (digital or analogue) for `time`, or "--:--" / "NO TIME" when there is none.
-// Returns how long the frame holds: to the next second or the next minute.
+// What the clock draws from besides the settings: the time (null while unknown) with the
+// milliseconds into its second, the place and the weather for the horizon face.
+struct ClockContext {
+  const tm *time = nullptr;
+  int millis = 0;
+  themed::Sky sky;  // 40 N and solar time until a location is set; the weather when fetched
+};
+// The flip's animation state, kept by the clock source between frames.
+struct ClockState {
+  bool shown = false;  // shown_hour and shown_minute hold what the flip last drew at rest
+  int shown_hour = 0, shown_minute = 0;
+  int phase = 0;        // 1..themed::kFlipFrames while a change animates
+  themed::Moment from;  // the tiles before the change
+};
+// The weather's WMO code as the horizon's cloud cover and precipitation.
+void weather_to_sky(int wmo_code, themed::Sky &sky);
+// The clock in the chosen face, or "--:--" / "NO TIME" when there is no time. Returns how
+// long the frame holds: to the next second, the next minute, or a flip frame (45 ms).
+uint32_t draw_clock(gfx::Frame &out, const system::Settings &s, const ClockContext &ctx, ClockState &state);
+// The same with only the time (no animation state): the digital and analogue faces' tests.
 uint32_t draw_clock(gfx::Frame &out, const system::Settings &s, const tm *time);
 // The clock overlay (spec 6.1) at `t`: a key that changes whenever the drawing would (the
 // minute and every setting that shapes it: font, corner, 12/24 h, colour, the border and

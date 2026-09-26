@@ -3,6 +3,7 @@
 //   p64_hosttest [doctest options]                 unit tests (doctest; the files under unit/)
 //   p64_hosttest unit [doctest options]            the same (the first argument is dropped)
 //   p64_hosttest dump <w> <h> <out_dir> <file>...  dump every frame of each file's first loop
+//   p64_hosttest faces <out_dir> <ref.png>...      draw the clock faces named by the references
 //
 // doctest options of use: -tc="scheduler*" runs matching cases, -s shows every check,
 // -r=junit writes JUnit XML for CI, -ltc lists the cases.
@@ -10,6 +11,11 @@
 // dump writes <out_dir>/<basename>.frames:
 //   "P64FRM" NL "<format> <w> <h> <ox> <oy> <ow> <oh> <animated> <has_alpha>" NL "<n>" NL "<delay_0> ..." NL
 //   then per frame: w*h*3 bytes of canvas RGB888, then dst_w*dst_h*3 bytes scaled.
+//
+// faces writes <out_dir>/<basename>.rgb (64*64*3 bytes) for each reference, whose name says
+// what to draw: <face>-HHMMSS[-flags].png on Saturday 2026-09-26 (flags: s seconds on,
+// b blinking colon, h 12-hour, pN the flip's frame N of the change from the minute before);
+// run.py compares them with the PNGs tools/mock_clock_faces.py drew.
 
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest.h"
@@ -26,6 +32,8 @@
 #include "p64/decode/decoder.hpp"
 #include "p64/gfx/frame.hpp"
 #include "p64/gfx/scaler.hpp"
+#include "faces.hpp"
+#include "p64/system/settings.hpp"
 
 namespace {
 
@@ -121,10 +129,75 @@ int run_dump(int argc, char **argv) {
   return failures ? 1 : 0;
 }
 
+int run_faces(int argc, char **argv) {
+  if (argc < 4) {
+    std::fprintf(stderr, "usage: p64_hosttest faces <out_dir> <ref.png>...\n");
+    return 2;
+  }
+  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"};
+  const std::string out_dir = argv[2];
+  int failures = 0;
+  for (int i = 3; i < argc; ++i) {
+    std::string name = basename_of(argv[i]);
+    if (name.size() > 4 && name.compare(name.size() - 4, 4, ".png") == 0) name.resize(name.size() - 4);
+    const size_t d1 = name.find('-');
+    const size_t d2 = d1 == std::string::npos ? d1 : name.find('-', d1 + 1);
+    if (d1 == std::string::npos || name.size() < d1 + 7) {
+      std::fprintf(stderr, "%s: not <face>-HHMMSS[-flags]\n", name.c_str());
+      ++failures;
+      continue;
+    }
+    const std::string face = name.substr(0, d1), hms = name.substr(d1 + 1, 6);
+    const std::string flags = d2 == std::string::npos ? "" : name.substr(d2 + 1);
+    p64::system::Settings s;
+    bool known = false;
+    for (int k = 0; k < 8; ++k)
+      if (face == kFaces[k]) s.clock.face = static_cast<p64::system::ClockFace>(k), known = true;
+    if (!known) {
+      std::fprintf(stderr, "%s: unknown face\n", name.c_str());
+      ++failures;
+      continue;
+    }
+    s.clock.seconds = flags.find('s') != std::string::npos;
+    s.clock.blink_colon = flags.find('b') != std::string::npos;
+    s.clock.h24 = flags.find('h') == std::string::npos;
+    tm t{};
+    t.tm_year = 126, t.tm_mon = 8, t.tm_mday = 26, t.tm_wday = 6, t.tm_yday = 268;
+    t.tm_hour = std::atoi(hms.substr(0, 2).c_str());
+    t.tm_min = std::atoi(hms.substr(2, 2).c_str());
+    t.tm_sec = std::atoi(hms.substr(4, 2).c_str());
+    p64::widgets::faces::ClockContext ctx;
+    ctx.time = &t;
+    p64::widgets::faces::ClockState state;
+    p64::gfx::Frame frame;
+    const size_t p = flags.find('p');
+    if (p != std::string::npos) {  // frame N of the flip's change from the minute before
+      const int n = std::atoi(flags.c_str() + p + 1);
+      state.shown = true;
+      state.shown_minute = (t.tm_min + 59) % 60;
+      state.shown_hour = t.tm_min ? t.tm_hour : (t.tm_hour + 23) % 24;
+      for (int k = 0; k < n; ++k) p64::widgets::faces::draw_clock(frame, s, ctx, state);
+    } else {
+      p64::widgets::faces::draw_clock(frame, s, ctx, state);
+    }
+    const std::string out_path = out_dir + "/" + name + ".rgb";
+    std::FILE *out = std::fopen(out_path.c_str(), "wb");
+    if (!out) {
+      std::fprintf(stderr, "%s: cannot write %s\n", name.c_str(), out_path.c_str());
+      ++failures;
+      continue;
+    }
+    std::fwrite(frame.data(), 1, p64::gfx::Frame::bytes(), out);
+    std::fclose(out);
+  }
+  return failures ? 1 : 0;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
   if (argc >= 2 && std::strcmp(argv[1], "dump") == 0) return run_dump(argc, argv);
+  if (argc >= 2 && std::strcmp(argv[1], "faces") == 0) return run_faces(argc, argv);
   doctest::Context context;
   if (argc >= 2 && std::strcmp(argv[1], "unit") == 0) {
     context.applyCommandLine(argc - 1, argv + 1);

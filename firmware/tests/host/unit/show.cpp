@@ -522,7 +522,7 @@ TEST_CASE("show core: a settings change in the Widget state redraws the widget a
   show.env.cfg->main_state = p64::system::MainState::Widget;
   core::settings_changed();
   const size_t n = show.env.played.size();
-  show.env.cfg->clock.analogue = true;  // the face changed on the Settings page
+  show.env.cfg->clock.face = p64::system::ClockFace::Analogue;  // the face changed on the Settings page
   core::settings_changed();
   CHECK_EQ(show.env.played.size(), n + 1);  // restarted, not left until its next minute
   CHECK(show.env.last_played() == "widget:clock");

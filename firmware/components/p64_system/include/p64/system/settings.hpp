@@ -22,6 +22,9 @@ enum class ChannelSelect : uint8_t { Stochastic = 0, Swrr = 1 };
 // The clock overlay's position: the four corners, or centred at the top or the bottom.
 enum class Corner : uint8_t { TopLeft = 0, TopRight = 1, BottomLeft = 2, BottomRight = 3, TopCenter = 4, BottomCenter = 5 };
 enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2 };
+// The clock widget's face (spec 7.1): the digital and analogue ones honour the font and
+// colour settings; the six themed ones (approved 2026-09-26) draw with their own assets.
+enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7 };
 
 struct Settings {
   // Display
@@ -62,7 +65,7 @@ struct Settings {
   WidgetKind widget = WidgetKind::Clock;
   uint8_t interlude_clock = 0, interlude_weather = 0, interlude_temperature = 0;  // 0..100 %
   struct Clock {
-    bool analogue = false;  // face: digital (default) or analogue (drawn later)
+    ClockFace face = ClockFace::Digital;
     std::string font = "capital-hill";
     uint8_t scale = 2;      // 1..3
     bool seconds = false;

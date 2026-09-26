@@ -155,7 +155,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Clock</h3>
-        <div class="grid3" style="margin-bottom:8px"><div><label>Face</label><select class="sel" style="min-width:0" id="clock-face" onchange="save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option></select></div></div>
+        <div class="grid3" style="margin-bottom:8px"><div><label>Face</label><select class="sel" style="min-width:0" id="clock-face" onchange="save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option><option value="flip">Flip</option><option value="nixie">Nixie</option><option value="horizon">Horizon</option><option value="words">Words</option><option value="hourglass">Hourglass</option><option value="orrery">Orrery</option></select></div></div>
         <div class="grid3">
             <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"></select></div>
             <div><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
@@ -166,7 +166,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
             <div><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
         </div>
-        <div class="setting-hint">The analogue face: ticks, the numerals 12, 3, 6 and 9, crisp hands, the date under the centre; the seconds setting adds a second hand.</div>
+        <div class="setting-hint">The font, scale and colours apply to the digital and analogue faces. The themed faces draw with their own pixel art: Flip (split-flap tiles that turn on the minute), Nixie (four tubes on a walnut base), Horizon (a landscape that follows the real sun and moon at the weather location, with the weather's clouds and rain), Words (the time spelled on a letter grid), Hourglass (the hour as sand) and Orrery (the Earth, the Moon and Mercury as the hands). The seconds setting adds the second hand, the flip's rail, the hourglass's stream and Mercury; the blinking colon applies where a face has a colon.</div>
     </div>
     <div class="section">
         <h3>Weather</h3>

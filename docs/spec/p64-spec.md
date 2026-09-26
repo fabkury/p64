@@ -405,6 +405,34 @@ refresh of being asked so it can be shown seamlessly.
   with no anti-aliasing (hour hand 2 px wide and short, moving continuously; minute
   hand 1 px and long, stepping per minute); a second hand in the accent colour when the
   seconds setting is on; a hub; the date in dimmed small text under the centre.
+- Themed faces (designed and approved 2026-09-26, prompts p043 to p046), each drawn from
+  its own pixel-art assets (`firmware/assets/clock/`, baked into the firmware) with its own
+  colours and fonts, so the font, scale and colour settings do not apply to them:
+  - Flip: two split-flap tiles with the hour and the minute in 9x16 numerals, the weekday
+    and the date above, an amber seconds rail below (with the seconds setting); a minute
+    change turns the tiles in ten frames of 45 ms (the old upper leaf falls, the new lower
+    leaf lands; the hour tile one frame behind the minute tile).
+  - Nixie: four tubes with orange wire numerals and a neon colon (the blinking-colon
+    setting applies) on a brass-trimmed walnut base, the date in dim amber under it.
+  - Horizon: a landscape computed from where the sun really is (NOAA's low-precision
+    formulas from the weather location and the local time; 40 N and solar time when no
+    location is set): the sky's colours and its twilight glow on the sun's side, the sun
+    (red near the horizon, gold with rays above), stars once the sun is 4 degrees down,
+    the moon with its phase, clouds by the weather's cover drifting with the minute, rain
+    or snow from the current condition, hills and a tree that darken at night; the time on
+    top in outlined white, the date on the ground.
+  - Words: a 12x9 letter grid behind a brushed bezel, the letters that spell the time lit
+    ("IT IS HALF PAST TEN AM", to the five minutes) and four corner dots for the minutes
+    past; twelve-hour by nature (AM and PM are on the grid).
+  - Hourglass: the hour as sand (the top bulb holds what is left, the bottom the heap that
+    has run, a stream between them that loses a grain every second with the seconds
+    setting), the hour and the minute stacked beside it, the date under them.
+  - Orrery: on a star chart with brass rings, the Earth goes round the Sun once in twelve
+    hours, its Moon round the Earth once an hour and Mercury round the Sun once a minute
+    (with the seconds setting); the time in figures on a brass plaque.
+  In 12 h mode the themed faces blank the leading zero of the hour and show AM or PM
+  where each has room. They redraw once a minute unless a setting gives them a
+  per-second element.
 - Face choice, font, scale and colours are settings.
 
 ### 7.2 Weather
@@ -713,7 +741,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude probability, per widget | 0 to 100 % | 0 |
-| Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery; the rest as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
 | Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; on, 4064 |
@@ -750,6 +778,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | PIN | 4 to 8 digits |
 | Downloads folder | capped by setting, default 64 MB |
 | Fonts bundled | 6 (5 offered for the clock overlay) |
+| Clock faces | 8 (digital, analogue and six themed) |
 
 ## 18. Acceptance criteria
 

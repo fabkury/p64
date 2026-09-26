@@ -1,12 +1,17 @@
-# Clock face candidates (prompts p043 to p045, 2026-09-26)
+# Clock face candidates (prompts p043 to p046, 2026-09-26)
 
-Mock-ups of new clock widgets for review, drawn by `tools/mock_clock_faces.py`. Nothing here
-is implemented in the firmware yet: a face is built only once its design is approved.
+The six faces were designed here as mock-ups, approved by the user on 2026-09-26 and then
+implemented in the firmware (`components/p64_widgets/src/face_*.cpp`, settings value
+`clock.face`). `tools/mock_clock_faces.py` stays the design reference: it draws the assets
+(`assets/clock/<face>/`, baked by `tools/gen_clock_assets.py`), these review images and the
+test references under `tests/host/corpus/clock/` that `tests/host/run.py` compares with the
+firmware's pixels. Edit a face in the mock, regenerate, then match it in the C++ until the
+comparison is exact again.
 
-Every mock-up is made the way the firmware would make it: bitmap assets (the PNGs under
-`assets/<face>/`, drawn by the script and editable by hand afterwards) stamped onto a 64x64
-frame, plus text from the bundled pixel fonts at their native size, integer-scaled, without
-anti-aliasing. `<face>.png` is the real 64x64 frame, `<face>@8x.png` the same enlarged
+Every mock-up is made the way the firmware makes it: bitmap assets (the PNGs under
+`firmware/assets/clock/<face>/`, drawn by the script and editable by hand afterwards)
+stamped onto a 64x64 frame, plus text from the bundled pixel fonts through the firmware's
+own glyph tables, integer-scaled, without anti-aliasing. `<face>.png` is the real 64x64 frame, `<face>@8x.png` the same enlarged
 nearest-neighbour for looking at, `contact-sheet.png` all six side by side.
 
 | Face | Idea | Assets | Text | Moves |
