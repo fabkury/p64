@@ -98,7 +98,13 @@ TEST_CASE("show: channel status texts (spec 6.4)") {
   mk.oversized = 0;
   mk.index_entries = 50;
   CHECK(rules::channel_status(mk) == "downloading");
+  // A provider still checking its cached files after a boot, holding them back, is not
+  // downloading (the Divoom channel of 2026-09-26); one that offers them meanwhile plays.
+  mk.unchecked = 50;
+  CHECK(rules::channel_status(mk) == "checking files");
   mk.cached = 1;
+  CHECK(rules::channel_status(mk).empty());
+  mk.unchecked = 0;
   CHECK(rules::channel_status(mk).empty());
   rules::ChannelFacts future;
   future.supported = false;
@@ -294,6 +300,7 @@ class FakeProvider : public p64::content::Provider {
   int hidden = 0;
   uint16_t side = 32;
   uint32_t extra_listed = 0;  // listed but not at hand (still downloading)
+  uint32_t unchecked = 0;     // a post-load file check still running over this many entries
 
   const char *id() const override { return "fake"; }
   const char *label() const override { return "Fake source"; }
@@ -308,6 +315,7 @@ class FakeProvider : public p64::content::Provider {
     for (int32_t id : items) out.items.push_back({id, side, side});
     out.listed = static_cast<uint32_t>(items.size()) + extra_listed;
     out.last_refresh = 1700000000;
+    out.unchecked = unchecked;
     return true;
   }
   bool resolve(const p64::content::ChannelRef &, const p64::content::ProviderItem &item, std::string &path,
@@ -524,6 +532,41 @@ TEST_CASE("show core: a provider channel plays its items and hears what happened
   core::provider_changed();
   CHECK_EQ(st.channels[0].available, 0u);
   CHECK(st.channels[0].status == "downloading");
+  providers::clear();
+}
+
+TEST_CASE("show core: a provider checking its files after a boot keeps playing (2026-09-26)") {
+  // The Divoom channel read "downloading" with 0 available for half an hour after every
+  // boot: its provider offered only the entries its file check had passed, and the show
+  // heard nothing while the check ran. The contract now says the check is informative:
+  // the cached items are offered and the count left is reported.
+  namespace providers = p64::content::providers;
+  providers::clear();
+  FakeProvider fake;
+  fake.unchecked = 3;
+  providers::add(&fake);
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::activate_transient(external_playset());
+  env.complete_scan({});
+  const core::State &st = core::state();
+  REQUIRE_EQ(st.channels.size(), 1u);
+  CHECK_EQ(st.channels[0].available, 3u);
+  CHECK(st.channels[0].status.empty());
+  CHECK_EQ(st.channels[0].unchecked, 3u);
+  cJSON *doc = core::channels_json();
+  cJSON *ch = cJSON_GetArrayItem(cJSON_GetObjectItem(doc, "channels"), 0);
+  CHECK(cJSON_GetObjectItem(ch, "unchecked")->valueint == 3);
+  CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(ch, "status"))).empty());
+  cJSON_Delete(doc);
+  env.complete_loads();
+  CHECK(st.current);  // an artwork went up while the check runs
+  // The check ends: the count drops to 0 and nothing else changes.
+  fake.unchecked = 0;
+  core::provider_changed();
+  CHECK_EQ(st.channels[0].unchecked, 0u);
+  CHECK_EQ(st.channels[0].available, 3u);
   providers::clear();
 }
 

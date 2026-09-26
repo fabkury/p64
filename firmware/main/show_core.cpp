@@ -106,6 +106,7 @@ std::string channel_status(const ChannelRuntime &ch) {
     f.refreshed = ch.last_refresh != 0;
     f.oversized = ch.oversized;
     f.max_side = settings().makapix_max_side;
+    f.unchecked = ch.unchecked;
   }
   return rules::channel_status(f);
 }
@@ -177,10 +178,12 @@ void snapshot_provider(ChannelRuntime &ch) {
   ch.listed = 0;
   ch.last_refresh = 0;
   ch.oversized = 0;
+  ch.unchecked = 0;
   if (ch.provider && ch.provider->snapshot(ref_of(ch.spec), snap)) {
     ch.listed = snap.listed;
     ch.last_refresh = snap.last_refresh;
     ch.oversized = snap.oversized;
+    ch.unchecked = snap.unchecked;
     const uint16_t max_side = settings().makapix_max_side;
     for (const content::ProviderItem &item : snap.items) {
       if (content::fits_side(item, max_side)) ch.items.push_back(item);
@@ -1260,6 +1263,7 @@ cJSON *channels_json() {
         cJSON_AddNumberToObject(o, "cached", static_cast<double>(snap.items.size()));
         cJSON_AddNumberToObject(o, "last_refresh", snap.last_refresh);
         cJSON_AddNumberToObject(o, "oversized", snap.oversized);
+        cJSON_AddNumberToObject(o, "unchecked", snap.unchecked);
         cJSON_AddBoolToObject(o, "refreshing", snap.refreshing);
         cJSON_AddStringToObject(o, "error", snap.error.c_str());
       }

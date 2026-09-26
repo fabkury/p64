@@ -7,6 +7,10 @@ std::string channel_status(const ChannelFacts &f) {
   if (f.local) return f.card_mounted ? "" : "no card";
   if (f.needs_pairing && !f.paired) return "needs pairing";
   if (f.cached == 0) {
+    // A provider that holds its entries back until their files are checked is checking,
+    // not downloading (the Divoom channel of 2026-09-26 read "downloading" for half an
+    // hour after a boot with every file already on the card).
+    if (f.unchecked > 0) return "checking files";
     if (f.index_entries > 0) return "downloading";
     if (!f.online) return "offline";
     if (!f.refreshed) return "no listing yet";

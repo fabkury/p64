@@ -57,7 +57,7 @@ second.
 | `/api/v1/action/play` | POST | `{"path":"animations/x.gif"}` | play-this from the card (422 when missing) |
 | `/api/v1/action/play_playset` | POST | `{"name":"..."}` | activate a playset (built-in or stored; 404 otherwise) |
 | `/api/v1/history` | GET | | `{count, position, items:[{index, kind, source, name, path, channel, channel_index, playset, shown_s_ago, current}]}` |
-| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (provider channels, Makapix and external, add `provider`, `cached`, `last_refresh`, `oversized`, `refreshing`, `error`) |
+| `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (provider channels, Makapix and external, add `provider`, `cached`, `last_refresh`, `oversized`, `unchecked`, `refreshing`, `error`) |
 | `/api/v1/folders` | GET | | folders that can be local channels: `[{folder, name, files}]` |
 
 ## Playsets (M5)
@@ -101,11 +101,14 @@ the public firmware lists nothing else.
 
 Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refresh`
 (epoch seconds), `oversized` (entries the last refresh listed but dropped for being over
-the size limit; kept in RAM only, 0 after a reboot until the next refresh), `refreshing`
-and `error`. A Makapix channel with nothing cached has the `status` "downloading" (its
-index has entries), "offline", "no listing yet" (no refresh has landed), "no artworks"
-(the refresh landed empty) or "nothing fits N px (M too large)" (everything listed was
-over the size limit); the same texts apply to external channels. History items and the
+the size limit; kept in RAM only, 0 after a reboot until the next refresh), `unchecked`
+(index entries a provider's post-load check of the cached files has not reached yet; the
+cached items play meanwhile, so the UI shows it as a hint, not a status), `refreshing`
+and `error`. A Makapix channel with nothing cached has the `status` "checking files" (a
+provider holding its entries back until they are checked), "downloading" (its index has
+entries), "offline", "no listing yet" (no refresh has landed), "no artworks" (the refresh
+landed empty) or "nothing fits N px (M too large)" (everything listed was over the size
+limit); the same texts apply to external channels. History items and the
 status artwork carry `provider` and `post_id` (the provider's item id) for provider
 artworks, and `sqid` for Makapix ones.
 

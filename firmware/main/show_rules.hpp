@@ -30,6 +30,7 @@ struct ChannelFacts {
   bool refreshed = false;    // Makapix: a listing has landed (last_refresh set)
   uint32_t oversized = 0;    // Makapix: listed at that refresh but over the size limit
   uint16_t max_side = 0;     // Makapix: the size limit, for the text
+  uint32_t unchecked = 0;    // providers: index entries a post-load file check has not reached
 };
 // Why a channel cannot supply artworks right now ("" when it can).
 std::string channel_status(const ChannelFacts &f);

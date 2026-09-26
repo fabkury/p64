@@ -679,6 +679,20 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   was. Spec 6.1 amended; the web UI's option reads "12 h (AM/PM)". Host tests in
   `widgets.cpp` (12 h differs from 24 h at every hour, the marker fits every overlay
   font and corner, the cached sprite matches the font drawing) and `decode_gfx.cpp`.
+- 2026-09-26, provider contract: a provider's post-load check of its cached files is
+  informative, not a gate. Found with the second provider (private area): after every
+  boot it offered only the entries its file check had passed, published nothing while
+  the check crawled, and a channel with every artwork on the card read "downloading"
+  with nothing available for half an hour (the show's copy was taken at the load and
+  never refreshed; the UI's "cached" count rose because the status document snapshots
+  the provider on every request). `ChannelSnapshot` carries `unchecked` (entries the
+  check has not reached), `/api/v1/channels` and the show's channel runtime carry it,
+  the UI shows "checking files (N left)" as a pulsing hint on a channel that keeps
+  playing, and `channel_status` says "checking files" (blue on the panel) for a
+  provider that does hold entries back, instead of "downloading". Host tests in
+  `show.cpp` (the rule and a core scenario: a channel with a check running is available
+  and plays; the count drops to 0 when it ends). Verified on the device: the channel is
+  available the instant its index loads, the check ends 30 s later in the background.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

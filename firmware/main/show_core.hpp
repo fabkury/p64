@@ -103,6 +103,7 @@ struct ChannelRuntime {
   uint32_t listed = 0;                    // provider channels: entries in the provider's index
   uint32_t last_refresh = 0;              // provider channels: epoch seconds of the last listing, 0 never
   uint32_t oversized = 0;                 // provider channels: listed then but over the size limit
+  uint32_t unchecked = 0;                 // provider channels: entries a post-load file check has not reached
   uint32_t available = 0;                 // entries neither missing nor rejected (local) or pickable (provider)
   std::string status;                     // "" when the channel can supply artworks, else why not
 };

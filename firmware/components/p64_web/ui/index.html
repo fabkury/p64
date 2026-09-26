@@ -260,14 +260,17 @@ function renderChannels() {
     var now = Date.now() / 1000;
     channels.forEach(function (ch) {
         var quiet = ch.status && !ch.refreshing;
-        var cls = 'ps-ch-row' + (ch.refreshing ? ' refreshing' : '') + (quiet ? (emptyStatus(ch.status) ? ' empty' : ' blocked') : '');
-        html += '<div class="' + cls + '" title="' + p64.esc(ch.status || '') + '">' +
+        // A provider checking its cached files after a boot keeps playing meanwhile: a pulse and a hint, not a block.
+        var checking = !ch.status && ch.unchecked > 0;
+        var hint = quiet ? ch.status : checking ? 'checking files (' + ch.unchecked + ' left)' : '';
+        var cls = 'ps-ch-row' + (ch.refreshing || checking ? ' refreshing' : '') + (quiet ? (emptyStatus(ch.status) ? ' empty' : ' blocked') : '');
+        html += '<div class="' + cls + '" title="' + p64.esc(hint) + '">' +
             '<span class="ps-badge ps-badge-type">' + kindLetter(ch.kind) + '</span>' +
             '<span class="ps-badge ps-badge-sub">' + p64.esc(kindName(ch.kind)) + '</span>' +
             '<span class="ps-ch-name">' + p64.esc(ch.display_name || ch.identifier || kindName(ch.kind)) + '</span>' +
             (ch.identifier && ch.kind !== 'local' ? '<span class="ps-ch-id">' + p64.esc(ch.identifier) + '</span>' : '') +
             '<span class="ps-ch-count">' + (ch.cached != null ? ch.cached : ch.available) + '/' + ch.entries + '</span>' +
-            (quiet ? '<span class="ps-ch-status">' + p64.esc(ch.status) + '</span>' : '') +
+            (hint ? '<span class="ps-ch-status">' + p64.esc(hint) + '</span>' : '') +
             (ch.last_refresh ? '<span class="ps-ch-time">' + p64.relative(now - ch.last_refresh) + '</span>' : '') +
             '</div>';
     });

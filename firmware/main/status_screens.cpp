@@ -143,7 +143,8 @@ void no_artwork(Frame &frame, const std::string &reason) {
   Rgb bar{70, 70, 70};
   if (reason == "no card") {
     bar = Rgb{160, 40, 40};
-  } else if (reason == "offline" || reason.rfind("Makapix", 0) == 0 || reason == "downloading") {
+  } else if (reason == "offline" || reason.rfind("Makapix", 0) == 0 || reason == "downloading" ||
+             reason == "checking files") {
     bar = Rgb{40, 80, 160};
   } else if (reason == "needs pairing") {
     bar = Rgb{140, 60, 160};

@@ -45,6 +45,10 @@ struct ChannelSnapshot {
   uint32_t listed = 0;        // entries the provider knows for the channel (its index)
   uint32_t last_refresh = 0;  // epoch seconds of the last listing, 0 never
   uint32_t oversized = 0;     // listed but over the size limit at the last refresh
+  // Index entries a post-load check of the cached files has not reached yet (0: none
+  // running). Informative: the items are offered while it runs; a provider that must
+  // hold some back until it is checked leaves them out of `items` instead.
+  uint32_t unchecked = 0;
   bool refreshing = false;
   std::string error;          // the last refresh failure ("" when fine)
 };
