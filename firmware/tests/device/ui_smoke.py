@@ -62,6 +62,13 @@ def main():
         check(not missing, "%s references only served assets%s" % (path, (": missing " + ", ".join(missing)) if missing else ""))
         check("p64.nav(" in html and "/static/app.js" in html, "%s uses the shared app script and navigation" % path)
         check(bodies[path].endswith(b"</html>\n") or bodies[path].endswith(b"</html>"), "%s ends cleanly (no embedded NUL)" % path)
+    settings = bodies["/settings"].decode("utf-8", "replace")
+    for face in ("digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"):
+        check('<option value="%s">' % face in settings, "the settings page offers the %s face" % face)
+    check('id="clock-preview"' in settings and 'id="clock-show"' in settings, "the Clock section has the live preview and the Show button")
+    cells = re.findall(r'data-for="([^"]+)"', settings)
+    check(len(cells) == 6 and "words" not in " ".join(cells), "the six clock controls declare their faces, none for the words (%d cells)" % len(cells))
+    check("faceControls(" in settings and "FACE_INFO" in settings, "the Clock section reacts to the face")
     m = json.loads(bodies["/manifest.json"].decode())
     check(m.get("name") == "p64" and len(m.get("icons", [])) == 2, "manifest is valid")
     check(bodies["/static/icon-192.png"][:8] == b"\x89PNG\r\n\x1a\n", "icon is a PNG")

@@ -47,6 +47,15 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-2); }
 .grid2 label, .grid3 label { display: block; font-size: 0.78rem; color: var(--c-text-light); margin-bottom: 2px; }
 .grid2 input, .grid2 select, .grid3 input, .grid3 select { width: 100%; box-sizing: border-box; }
+.clock-head { display: flex; gap: var(--sp-3); align-items: flex-start; margin-bottom: var(--sp-2); }
+.clock-preview-wrap { flex: 0 0 auto; width: 96px; text-align: center; }
+.clock-preview { display: block; width: 96px; height: 96px; border-radius: var(--r-sm); background: #000; image-rendering: pixelated; image-rendering: crisp-edges; }
+.clock-preview-tag { display: block; font-size: 0.7rem; color: var(--c-text-lighter); margin-top: 4px; line-height: 1.2; }
+.clock-head-controls { flex: 1; min-width: 0; }
+.clock-head-controls label { display: block; font-size: 0.78rem; color: var(--c-text-light); margin-bottom: 2px; }
+.clock-head-controls select { width: 100%; box-sizing: border-box; }
+.clock-head-controls .setting-hint { margin-top: 6px; }
+.clock-head-controls .btn { margin-top: 8px; }
 .credits-title { margin-top: var(--sp-4); margin-bottom: var(--sp-2); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-card-fg-muted); }
 .credits { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .credits th { text-align: left; font-weight: 500; font-size: 0.78rem; color: var(--c-card-fg-muted); padding: 0 var(--sp-2) var(--sp-1) 0; border-bottom: 1px solid var(--c-card-border); }
@@ -155,18 +164,24 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Clock</h3>
-        <div class="grid3" style="margin-bottom:8px"><div><label>Face</label><select class="sel" style="min-width:0" id="clock-face" onchange="save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option><option value="flip">Flip</option><option value="nixie">Nixie</option><option value="horizon">Horizon</option><option value="words">Words</option><option value="hourglass">Hourglass</option><option value="orrery">Orrery</option></select></div></div>
-        <div class="grid3">
-            <div><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"></select></div>
-            <div><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
-            <div><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h (AM/PM)</option></select></div>
+        <div class="clock-head">
+            <div class="clock-preview-wrap"><img id="clock-preview" class="clock-preview" alt="the panel" src="/api/v1/frame"><span class="clock-preview-tag" id="clock-preview-tag">the panel</span></div>
+            <div class="clock-head-controls">
+                <label for="clock-face">Face</label>
+                <select class="sel" id="clock-face" onchange="faceControls(this.value); save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option><option value="flip">Flip</option><option value="nixie">Nixie</option><option value="horizon">Horizon</option><option value="words">Words</option><option value="hourglass">Hourglass</option><option value="orrery">Orrery</option></select>
+                <div class="setting-hint" id="clock-face-hint"></div>
+                <button class="btn hidden" id="clock-show" onclick="showClock()">Show on the panel</button>
+            </div>
         </div>
-        <div class="grid3" style="margin-top:8px">
-            <div><label>Seconds</label><select class="sel" style="min-width:0" id="clock-seconds" onchange="save({clock:{seconds:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-            <div><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-            <div><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
+        <div class="grid3" id="clock-controls">
+            <div data-for="digital analogue"><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"></select></div>
+            <div data-for="digital"><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
+            <div data-for="digital flip nixie horizon hourglass orrery"><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h (AM/PM)</option></select></div>
+            <div data-for="digital analogue flip hourglass orrery"><label id="clock-seconds-label">Seconds</label><select class="sel" style="min-width:0" id="clock-seconds" onchange="save({clock:{seconds:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div data-for="digital nixie horizon orrery"><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div data-for="digital analogue flip nixie horizon hourglass"><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
         </div>
-        <div class="setting-hint">The font, scale and colours apply to the digital and analogue faces. The themed faces draw with their own pixel art: Flip (split-flap tiles that turn on the minute), Nixie (four tubes on a walnut base), Horizon (a landscape that follows the real sun and moon at the weather location, with the weather's clouds and rain), Words (the time spelled on a letter grid), Hourglass (the hour as sand) and Orrery (the Earth, the Moon and Mercury as the hands). The seconds setting adds the second hand, the flip's rail, the hourglass's stream and Mercury; the blinking colon applies where a face has a colon.</div>
+        <div class="setting-hint hidden" id="clock-none">This face has no settings of its own.</div>
     </div>
     <div class="section">
         <h3>Weather</h3>
@@ -431,7 +446,7 @@ function fill(s) {
     sv('auto-swap', s.show.auto_swap_seconds); sv('pick-mode', s.show.pick_mode); sv('channel-select', s.show.channel_select);
     ['animation_show', 'widget', 'stream'].forEach(function (m) { document.getElementById('ms-' + m).classList.toggle('active', s.show.main_state === m); });
     sv('widget', s.widgets.widget);
-    sv('clock-face', s.clock.face); setFont('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
+    sv('clock-face', s.clock.face); faceControls(s.clock.face); setFont('clock-font', s.clock.font); sv('clock-scale', s.clock.scale); sv('clock-h24', s.clock.h24 ? '24' : '12'); sv('clock-seconds', s.clock.seconds ? 'on' : 'off'); sv('clock-blink', s.clock.blink_colon ? 'on' : 'off'); sv('clock-date', s.clock.date_order);
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
@@ -521,6 +536,7 @@ function fmUpload() {
 // Live status.
 p64.onStatus(function (d) {
     D = d;
+    clockStatus(d);
     var n = d.network || {};
     var badge = document.getElementById('net-badge');
     badge.textContent = n.connected ? 'Connected' : (n.setup_mode ? 'Setup mode' : 'Disconnected');
@@ -589,6 +605,51 @@ p64.onStatus(function (d) {
     var we = d.weather || {};
     document.getElementById('weather-status').textContent = we.valid ? 'Now ' + Number(we.temperature).toFixed(1) + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
 });
+// ── The Clock section: only the controls the face reads, a line about it, the panel live ──
+var FACE_INFO = {
+    digital: 'Figures in the chosen font and scale, the date and the weekday under them.',
+    analogue: 'Ticks, the numerals 12, 3, 6 and 9 in the chosen font, crisp hands, the date under the centre; the seconds setting adds a second hand.',
+    flip: 'Split-flap tiles that turn on the minute; the seconds setting adds an amber rail under them.',
+    nixie: 'Four tubes with orange numerals on a walnut base, the date under it; the colon can blink.',
+    horizon: 'A landscape that follows the real sun and moon over the weather location, with the forecast\'s clouds, rain and snow; the time on top, the date on the ground.',
+    words: 'The time spelled on a letter grid, to the five minutes, with corner dots for the minutes past. Twelve-hour by nature: AM and PM are on the grid.',
+    hourglass: 'The hour as sand, the hour and the minute beside it; the seconds setting runs the stream grain by grain.',
+    orrery: 'The Earth, the Moon and Mercury as the hands of a brass orrery, the time on the plaque; the seconds setting adds Mercury.'
+};
+var SECONDS_LABEL = { analogue: 'Second hand', flip: 'Seconds rail', hourglass: 'Sand stream', orrery: 'Mercury (seconds)' };
+function faceControls(face) {
+    var any = false;
+    document.querySelectorAll('#clock-controls > div').forEach(function (c) {
+        var on = c.getAttribute('data-for').split(' ').indexOf(face) >= 0;
+        c.classList.toggle('hidden', !on);
+        any = any || on;
+    });
+    document.getElementById('clock-controls').classList.toggle('hidden', !any);
+    document.getElementById('clock-none').classList.toggle('hidden', any);
+    document.getElementById('clock-face-hint').textContent = FACE_INFO[face] || '';
+    document.getElementById('clock-seconds-label').textContent = SECONDS_LABEL[face] || 'Seconds';
+}
+function clockStatus(d) {
+    var p = d.playback || {};
+    var showing = p.state === 'widget' && p.widget === 'clock';
+    document.getElementById('clock-show').classList.toggle('hidden', showing);
+    document.getElementById('clock-preview-tag').textContent = showing ? 'on the panel now' : (p.state === 'widget' ? 'the panel shows the ' + (p.widget || 'widget') : p.state === 'stream' ? 'the panel shows a stream' : 'the panel plays artworks');
+}
+function showClock() { save({ show: { main_state: 'widget' }, widgets: { widget: 'clock' } }); }
+// The live preview: the panel's frame once a second while the Widgets tab is in view.
+(function () {
+    var img = document.getElementById('clock-preview'), busy = false;
+    function tick() {
+        if (document.hidden || busy || !document.getElementById('tab-widgets').classList.contains('active')) return;
+        busy = true;
+        var next = new Image();
+        next.onload = function () { img.src = next.src; busy = false; };
+        next.onerror = function () { busy = false; };
+        next.src = '/api/v1/frame?t=' + Date.now();
+    }
+    setInterval(tick, 1000);
+})();
+
 p64.get('/api/v1/fonts').then(function (fonts) {
     [['ov-font', true], ['clock-font', false]].forEach(function (m) {
         var sel = document.getElementById(m[0]);

@@ -759,6 +759,22 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   frames from a per-pixel function, the horizon from the sprites and floats on the
   stack). Note for the horizon: it shows the sky over the weather location in the
   device's local zone, so a location far from the device shows that place's day or night.
+- 2026-09-26, settings page, the Clock section (prompt p047): the section shows only the
+  controls the selected face reads (each control declares its faces in a `data-for`
+  attribute; the grid reflows; the words face, which has none, says so), the Seconds
+  label names what the setting adds on that face (second hand, seconds rail, sand
+  stream, Mercury), a one-line description of the face replaces the paragraph, and a
+  96 px live preview of the panel (refreshed once a second while the Widgets tab is in
+  view, the Home page's mechanism) sits beside the selector with a "Show on the panel"
+  button that appears whenever the panel is not on the clock widget. `ui_smoke.py`
+  checks the pieces. Device (flashed 2026-09-26 17:00, checked in Chrome on the device's
+  own page): each of the eight faces shows only its controls and its line (the words face
+  its "no settings" note, the orrery "Mercury (seconds)"), the thumbnail refreshes once a
+  second (it pauses while the tab is hidden, like the Home page), with an artwork playing
+  the section says so and offers "Show on the panel", and the button puts the clock on
+  the panel and disappears; at a 376 px viewport the section keeps the thumbnail beside
+  the selector and the controls in one row without horizontal overflow; `ui_smoke.py`
+  0 failures.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
