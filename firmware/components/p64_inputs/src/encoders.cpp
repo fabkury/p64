@@ -150,7 +150,7 @@ int present() {
   return n;
 }
 
-cJSON *json() {
+cJSON *json(bool scan) {
   cJSON *d = cJSON_CreateObject();
 #ifdef CONFIG_P64_ENCODERS
   cJSON_AddBoolToObject(d, "enabled", true);
@@ -160,6 +160,13 @@ cJSON *json() {
   cJSON_AddBoolToObject(d, "enabled", false);
 #endif
   cJSON_AddNumberToObject(d, "polls", g_poll);
+  if (scan) {
+    cJSON *found = cJSON_AddArrayToObject(d, "scan");
+    i2c_master_bus_handle_t bus = system::i2c_ext_bus();
+    for (uint16_t a = 0x08; bus && a <= 0x77; ++a) {
+      if (i2c_master_probe(bus, a, 5) == ESP_OK) cJSON_AddItemToArray(found, cJSON_CreateNumber(a));
+    }
+  }
   cJSON *knobs = cJSON_AddArrayToObject(d, "knobs");
   std::lock_guard<std::mutex> lock(g_mutex);
   for (const Knob &k : g_knobs) {

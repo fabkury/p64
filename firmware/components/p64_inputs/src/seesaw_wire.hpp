@@ -17,7 +17,9 @@ constexpr uint8_t kNeoPixel = 0x0E, kNeoPixelPin = 0x01, kNeoPixelSpeed = 0x02, 
                   kNeoPixelBuf = 0x04, kNeoPixelShow = 0x05;
 constexpr uint8_t kEncoder = 0x11, kEncoderPosition = 0x30, kEncoderDelta = 0x40;
 
-// Hardware IDs the STATUS/HW_ID register answers with (Adafruit_seesaw.h).
+// Hardware IDs the STATUS/HW_ID register answers with (Adafruit_seesaw.h). The 5880
+// on the bench answered 0x55 (2026-09-26), the SAMD09 code, although the board carries
+// an ATtiny817: the id is what its firmware says, not the chip.
 constexpr uint8_t kHwIdSamd09 = 0x55, kHwIdTiny807 = 0x84, kHwIdTiny817 = 0x87, kHwIdTiny816 = 0x86,
                   kHwIdTiny1616 = 0x88, kHwIdTiny1617 = 0x89;
 constexpr bool known_hw_id(uint8_t id) {

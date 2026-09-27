@@ -789,8 +789,12 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   Bench (2026-09-26): the A0 bridge soldered on board B, the two boards chained on the
   breadboard through the 4209 and 4397 with the 2.2 k pull-ups, no multimeter, so the
   probe is the check; the keyed plug lands the 4209 as yellow = IO45, blue = IO46,
-  red = 3V3, black = GND. Not yet powered: the first power-up, the flash with the chain
-  attached (the IO46 strapping question) and the identify are the next step.
+  red = 3V3, black = GND. First power-up (2026-09-26): `flash.ps1` enters download mode
+  with the chain attached and IO46 pulled high, so the strapping question is settled and
+  the chain stays connected for good; knob A answers at 0x36 (hardware id 0x55, not the
+  0x87 of Adafruit's header), its NeoPixel lights green at boot, 0 read errors; knob B
+  dark and absent from a bus scan (`?scan=1` added for this), so the 4399 between the
+  boards is the suspect; being chased on the bench.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

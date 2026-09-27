@@ -36,6 +36,6 @@ cJSON *imu_json();
 // positions, switch states and counters for /diag/encoders. Stage B (the probe): the
 // events are logged and counted, not yet acted on.
 int encoders_present();
-cJSON *encoders_json();
+cJSON *encoders_json(bool scan = false);
 
 }  // namespace p64::inputs

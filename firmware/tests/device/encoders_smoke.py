@@ -50,7 +50,7 @@ def main():
         len(present), len(d["knobs"]), expect, ", ".join("%s@0x%02x" % (k["name"], k["address"]) for k in present)))
     for k in d["knobs"]:
         if k["present"]:
-            check(k["hw_id"] in (0x55, 0x84, 0x86, 0x87, 0x88, 0x89), "%s: seesaw hardware id 0x%02x (0x87 = ATtiny817)" % (k["name"], k["hw_id"]))
+            check(k["hw_id"] in (0x55, 0x84, 0x86, 0x87, 0x88, 0x89), "%s: seesaw hardware id 0x%02x (the 5880 says 0x55)" % (k["name"], k["hw_id"]))
     check(d["polls"] > 50, "the poll task runs: %d polls" % d["polls"])
     st, j = request(base, "GET", "/api/v1/status")
     check(st == 200 and j["data"]["inputs"]["encoders_present"] == len(present), "status reports %d encoders" % len(present))

@@ -14,6 +14,8 @@ void start();
 // How many boards answer right now (0 to 2).
 int present();
 // Positions, switch states, counters and read errors per board, for /diag/encoders.
-cJSON *json();
+// With `scan`, also every 7-bit address on the external bus that acknowledges (about
+// 15 ms; the poller's transactions interleave, the driver serialises the bus).
+cJSON *json(bool scan = false);
 
 }  // namespace p64::inputs::encoders

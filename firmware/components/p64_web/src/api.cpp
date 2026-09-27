@@ -363,7 +363,15 @@ esp_err_t action_factory_reset(httpd_req_t *req) {
 }
 
 esp_err_t diag_imu(httpd_req_t *req) { return reply_ok(req, inputs::imu_json()); }
-esp_err_t diag_encoders(httpd_req_t *req) { return reply_ok(req, inputs::encoders_json()); }
+// ?scan=1 also lists every address that answers on the external bus (a board on the
+// wrong address after a jumper mistake shows up here).
+esp_err_t diag_encoders(httpd_req_t *req) {
+  char query[32] = {};
+  httpd_req_get_url_query_str(req, query, sizeof(query));
+  char v[4] = {};
+  const bool scan = httpd_query_key_value(query, "scan", v, sizeof(v)) == ESP_OK && v[0] == '1';
+  return reply_ok(req, inputs::encoders_json(scan));
+}
 
 // "The panel is upright now": {"rotation": 0|90|180|270} (default: the current display
 // rotation) becomes the reference for auto-rotation.

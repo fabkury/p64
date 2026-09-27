@@ -242,7 +242,8 @@ already there).
   address (module, register), a STOP, a pause of about 250 µs, then the read. That pause
   is the one thing that trips people using the new I2C driver; it belongs in the driver,
   not the callers. Registers used (from Adafruit's `Adafruit_seesaw.h`):
-  - STATUS 0x00 / HW_ID 0x01: expect 0x87 (ATtiny817); the probe logs what it reads.
+  - STATUS 0x00 / HW_ID 0x01: Adafruit's header says 0x87 for the ATtiny817; the 5880
+    on the bench answered 0x55 (2026-09-26); the probe logs what it reads.
   - STATUS 0x00 / SWRST 0x7F: software reset at start.
   - ENCODER 0x11 / POSITION 0x30 (int32, big-endian) and DELTA 0x40.
   - GPIO 0x01: DIRCLR_BULK 0x03, PULLENSET 0x0B, BULK_SET 0x05 with mask 1 << 24 to make

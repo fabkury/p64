@@ -58,7 +58,7 @@ bool Board::open(i2c_master_bus_handle_t bus, uint8_t address) {
     return false;
   }
   hw_id_ = id;
-  if (!known_hw_id(id)) ESP_LOGW(TAG, "0x%02x: unknown seesaw hardware id 0x%02x (expected 0x87)", address, id);
+  if (!known_hw_id(id)) ESP_LOGW(TAG, "0x%02x: unknown seesaw hardware id 0x%02x (the 5880 says 0x55)", address, id);
   // The switch: input with the pull-up (direction clear, pull enable, output high).
   const uint32_t mask = pin_mask(kSwitchPin);
   const auto dir = gpio_mask_command(kGpioDirClrBulk, mask);

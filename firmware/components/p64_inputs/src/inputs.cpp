@@ -157,7 +157,7 @@ bool calibrated() {
 
 int encoders_present() { return encoders::present(); }
 
-cJSON *encoders_json() { return encoders::json(); }
+cJSON *encoders_json(bool scan) { return encoders::json(scan); }
 
 cJSON *imu_json() {
   cJSON *d = cJSON_CreateObject();
