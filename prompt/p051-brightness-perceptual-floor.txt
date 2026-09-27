@@ -1,0 +1,1 @@
+I like your recommendations. Let's go with option 1 plus the rework of the knob rule so detents step in perceived brightness. Commit your work as you make progress, and at the end flash and test the new firmware using the connected p64 device.
