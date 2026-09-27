@@ -10,6 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
+#include "driver/gpio.h"
 #include "p64/system/i2c_bus.hpp"
 #include "sdkconfig.h"
 #include "seesaw.hpp"
@@ -156,6 +157,10 @@ cJSON *json(bool scan) {
   cJSON_AddBoolToObject(d, "enabled", true);
   cJSON_AddNumberToObject(d, "sda", CONFIG_P64_I2C_EXT_SDA);
   cJSON_AddNumberToObject(d, "scl", CONFIG_P64_I2C_EXT_SCL);
+  // The idle levels of the two lines (both 1 when the bus is free): a board or a cable
+  // holding one low shows here, which a scan alone cannot tell from an empty bus.
+  cJSON_AddNumberToObject(d, "sda_level", gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SDA)));
+  cJSON_AddNumberToObject(d, "scl_level", gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SCL)));
 #else
   cJSON_AddBoolToObject(d, "enabled", false);
 #endif
