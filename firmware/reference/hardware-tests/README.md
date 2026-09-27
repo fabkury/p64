@@ -475,13 +475,18 @@ The main loop presents one frame per panel refresh.
   `docs/hardware/encoders-*.md`.
 - Panel: 64x64, 1/32 scan, standard wiring, shift driver set to **FM6126A** (what
   Waveshare's Arduino demos use). Verified working on 2026-09-08: correct image with
-  this setting. The chip marking itself is still unread; GENERIC may work too.
+  this setting. The chips themselves are marked **FM6124HJ** (lot code C003173; read
+  by the user on the back of the panel, 2026-09-27): a plain 16-channel constant-current
+  shift register with no configuration registers, so the FM6126A init's two register
+  writes are shifted through and ignored (harmless, proven), GENERIC would be the honest
+  setting, and there is no current-gain register: the LED current is set by a resistor
+  beside each chip, so dimming is output-enable time or software only.
 - 10 bit planes (1024 codes per channel) with the five lowest sent once per frame,
   gamma 2.2, 20 MHz HUB75 clock: 271.3 Hz refresh (see "Tonal depth and refresh").
   History: 8 bits full BCM was 76 Hz; 7 bits (153 Hz) banded visibly and was reverted
   on 2026-09-12. 20 MHz is the fastest clock that coexists with hardware TLS crypto
   (32 MHz works with software crypto; no visible artefacts at 32 MHz on this panel
-  although the FM6126A-class drivers are specified around 25-30 MHz). Double buffering.
+  although the FM6124 is specified around 25-30 MHz). Double buffering.
 - Photographing the panel: it is multiplexed (two rows lit at a time), so a short
   exposure captures a stripe of rows. Use a manual exposure of 1/30 s or longer, or
   lower the brightness so the phone picks a longer one; a faster refresh only shrinks

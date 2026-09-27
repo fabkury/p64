@@ -38,6 +38,13 @@ Notes:
 - Not checked yet: pin and mic holes over the buttons and mics; the plug in the pocket and
   the cable in the groove to the back notch.
 
+## Panel driver chips (read 2026-09-27)
+
+The chips on the back of the RGB-Matrix-P2-64x64 are all the same, marked `FM6124HJ` and
+`C003173` (a lot code). The FM6124 is a plain constant-current shift register without
+configuration registers; the firmware's FM6126A setting works because its register writes
+pass through unread. Recorded here because Waveshare's page does not name the chip.
+
 ## 90-degree USB-C adapter (two, one per driver-board port)
 
 Small aluminium-shelled USB-C male-to-female right-angle adapter: the male plug leaves the

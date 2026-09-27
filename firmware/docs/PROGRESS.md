@@ -842,8 +842,10 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `encoders_smoke` reports only board B missing (known); internal heap 51 to 61 KB
   free, largest 32 to 35 KB, no new allocation (the plan lives on the stack). Not
   checked by hand: the knob's steps and the look of the bottom of the scale on the
-  panel in a dark room (the user's eye); the FM6126A current-gain register stays a
-  possible boot-time extension.
+  panel in a dark room (the user's eye). Later the same day the user read the panel's
+  chips: FM6124HJ, a register-less shift register, so the current-gain lever does not
+  exist and the FM6126A init sequence is merely ignored (hardware-tests README,
+  `enclosure/input/measurements.md`).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

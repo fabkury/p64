@@ -30,10 +30,10 @@ that for v1 and ruled software dimming out. The brightness knob of p64b (stage C
 2026-09-26) stepped 10 % of the value per detent and so walked seven detents through that
 dead zone. A review of the driver's tonal headroom (p050, 2026-09-27) found that dimming
 by shorter output-enable windows collapses the depth in the same proportion as scaling
-the LUT would, and only the FM6126A's current-gain register would dim without that cost;
-that register is written once by bit-banged GPIO before the DMA starts, a driver restart
-in place is on the list of things that did not work (the GDMA stall), and whether the
-panel's chips honour it is unverified, so it stays a possible boot-time extension.
+the LUT would, and only a driver chip's current-gain register would dim without that
+cost. The panel's chips turned out to be FM6124HJ (read on the back of the panel on
+2026-09-27, after this decision): a plain shift register with no registers at all, so
+that lever does not exist on this hardware and software dimming is the only route.
 
 ## Decision
 
