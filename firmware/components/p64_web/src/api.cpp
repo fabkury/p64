@@ -252,6 +252,7 @@ cJSON *build_status() {
     cJSON_AddBoolToObject(in, "auto_rotation_resolved", inputs::auto_rotation_resolved());
     cJSON_AddNumberToObject(in, "auto_rotation", inputs::auto_rotation());
     cJSON_AddBoolToObject(in, "calibrated", inputs::calibrated());
+    cJSON_AddNumberToObject(in, "encoders_present", inputs::encoders_present());
   }
   return d;
 }
@@ -362,6 +363,7 @@ esp_err_t action_factory_reset(httpd_req_t *req) {
 }
 
 esp_err_t diag_imu(httpd_req_t *req) { return reply_ok(req, inputs::imu_json()); }
+esp_err_t diag_encoders(httpd_req_t *req) { return reply_ok(req, inputs::encoders_json()); }
 
 // "The panel is upright now": {"rotation": 0|90|180|270} (default: the current display
 // rotation) becomes the reference for auto-rotation.
@@ -692,6 +694,7 @@ void init(const Hooks &hooks) {
       {"/api/v1/action/factory_reset", HTTP_POST, action_factory_reset, nullptr, false, false, nullptr},
       {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
       {"/api/v1/diag/imu", HTTP_GET, diag_imu, nullptr, false, false, nullptr},
+      {"/api/v1/diag/encoders", HTTP_GET, diag_encoders, nullptr, false, false, nullptr},
       {"/api/v1/update", HTTP_GET, update_get, nullptr, false, false, nullptr},
       {"/api/v1/update/check", HTTP_POST, update_check, nullptr, false, false, nullptr},
       {"/api/v1/update/install", HTTP_POST, update_install, nullptr, false, false, nullptr},

@@ -26,9 +26,9 @@ restarts the firmware.
 Host tests (`python tests/host/run.py`, gcc and the system Python with Pillow) build
 the ESP-IDF-free parts: decoders against Pillow pixel for pixel, the content model,
 fonts, widgets' pure parts, the stream protocol, the night rule, the time rules, taps and
-orientation, the version rule. Device tests under `tests/device/` run against the
+orientation, the encoders' wire format and detent tracker, the version rule. Device tests under `tests/device/` run against the
 live device: `api_smoke`, `content_smoke`, `makapix_smoke [--paired]`,
-`widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `pin_smoke`, `ota_smoke
+`widgets_smoke`, `stream_smoke`, `ops_smoke`, `imu_smoke`, `encoders_smoke [--watch S]`, `pin_smoke`, `ota_smoke
 [--no-install]`, `ui_smoke`, `cache_sweep_smoke [--delete]`, `panel_mode_smoke`,
 `timing_smoke` (playback cadence), `ws_smoke` (the WebSocket push held open), and
 `soak --minutes N` for an

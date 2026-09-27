@@ -28,7 +28,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
 | `p64_widgets` | clock (digital, analogue, six themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
-| `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; encoders later. The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`) |
+| `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
 | `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | partly (`show_core`: the whole show logic behind `ShowEnv`, driven through scenarios by a fake; `show_rules`, `status_screens`, `boot_animation`; `show.cpp` is the shell) |
 
@@ -51,7 +51,8 @@ review of 2026-09-22). Everything else is verified on the device through the API
 | `net` tasks | 0 | 3 to 8 | Wi-Fi, lwIP, mDNS, SNTP, HTTP server, MQTT, downloads, channel refresh | IDF's own tasks plus the fetcher, refresh and download workers. Every network and storage task is pinned to core 0 (p3a jitter lesson 7). |
 | `storage` | 0 | 4 | card I/O for the file manager, index and cache writes | Playback never reads the card: the player works from file bytes already in PSRAM. |
 | `stream` | 0 | 9 | UDP sockets | Assembles frames into the stream sink; the player picks them up. |
-| `inputs` | 0 | 6 | IMU polling, BOOT | 50 Hz poll. |
+| `inputs` | 0 | 6 | IMU polling, BOOT | 250 Hz poll. |
+| `encoders` | 0 | 5 | the external I2C bus (IO45 / IO46) | 50 Hz poll of the two seesaw boards; PSRAM stack; never touches flash (stage C hands its events to the show loop). |
 
 Rules: the two core-1 tasks never take a lock that a core-0 task can hold for long
 (frame handoff is a lock-free ring of ready slots; the per-frame readers of the settings,
@@ -485,6 +486,29 @@ degrees of a right angle, with at least 0.55 g in the plane (a panel lying flat 
 the last value). The display applies the resolved value while `rotation_auto` is on;
 the setting stays the fallback. On the development board gravity lies along +X with the
 panel upright at rotation 90.
+
+### 16.1 The p64b rotary encoders (stage B, the probe)
+
+Two Adafruit 5880 boards (an ATtiny817 running Adafruit's seesaw firmware, a rotary
+encoder, a push switch, a NeoPixel) chained on the controller's 4-pin JST-SH GPIO
+socket, the second I2C bus (`system::i2c_ext_bus()`, `I2C_NUM_1` on IO45 / IO46,
+internal pull-ups on top of the external 2.2 k; the wiring and the levels are in
+`docs/hardware/encoders-soldered.md`). `seesaw_wire.hpp` is the pure wire format
+(module + register addressing, big-endian 32-bit values, the switch on seesaw pin 24
+with its pull-up, the NeoPixel on pin 6, the reset), `seesaw.cpp` the traffic: a read is
+the register address with a STOP, a 250 us pause and a separate receive, because the
+board's firmware needs the pause to fetch the value (a repeated start returns stale
+bytes). `EncoderTracker` (`encoder_model.cpp`) turns the board's own detent counter into
+"turned N" events (wrap-safe, sign by invert), and the raw switch level into press,
+release and long press (700 ms) with a two-sample debounce. `encoders.cpp` polls both
+boards at 50 Hz from a task on core 0 (stack in PSRAM, no flash access), lights knob A's
+NeoPixel green and knob B's blue for two seconds at start so the boards identify
+themselves, logs every event, counts read errors, drops a board after ten consecutive
+failures and tries a missing board again every 5 s (a loose cable must not take the
+other knob down; p64a runs the same build with both boards missing). Diagnostics:
+`GET /api/v1/diag/encoders`; `tests/device/encoders_smoke.py`. Stage C (the roles:
+knob A brightness and pause, knob B next / previous and like, `encoders.swap` and
+`encoders.invert`) is next.
 
 ## 17. The PIN gate (M9)
 

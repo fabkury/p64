@@ -57,6 +57,35 @@ menu "p64"
                 the panel 90 degrees clockwise after calibrating upright: the picture
                 must stay upright. Flip the sign when it turns the other way.
 
+        config P64_ENCODERS
+            bool "Rotary encoders (p64b) on the GPIO socket"
+            default y
+            help
+                Two Adafruit 5880 seesaw rotary encoders chained on the controller's 4-pin
+                JST-SH GPIO socket (docs/hardware/encoders-soldered.md). A board that does
+                not answer is logged once and polled again every 5 s, so p64a (no encoders)
+                runs the same firmware.
+
+        config P64_I2C_EXT_SDA
+            int "External I2C SDA GPIO (the GPIO socket's pin 1)"
+            depends on P64_ENCODERS
+            default 45
+        config P64_I2C_EXT_SCL
+            int "External I2C SCL GPIO (the GPIO socket's pin 2)"
+            depends on P64_ENCODERS
+            default 46
+        config P64_ENCODER_A_ADDRESS
+            hex "Knob A seesaw address"
+            depends on P64_ENCODERS
+            default 0x36
+            help
+                The unmodified board. Knob B is the board with the A0 jumper bridged (0x37;
+                A1 gives 0x38, A2 0x3A).
+        config P64_ENCODER_B_ADDRESS
+            hex "Knob B seesaw address"
+            depends on P64_ENCODERS
+            default 0x37
+
     endmenu
 
     menu "Updates"

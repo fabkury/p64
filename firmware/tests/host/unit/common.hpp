@@ -32,6 +32,8 @@
 #include "p64/system/settings.hpp"
 #include "tap.hpp"
 #include "orientation.hpp"
+#include "encoder_model.hpp"
+#include "seesaw_wire.hpp"
 #include "version.hpp"
 #include "p64/gfx/png_encode.hpp"
 #include "p64/content/local_index.hpp"

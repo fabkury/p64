@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 
+#include "encoders.hpp"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -112,6 +113,7 @@ bool start(const Hooks &hooks) {
   g_hooks = hooks;
   apply_settings(system::settings());
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { apply_settings(system::settings()); });
+  encoders::start();
   if (!qmi8658::init()) return false;
   g_present = true;
   load_calibration();
@@ -152,6 +154,10 @@ bool calibrated() {
   std::lock_guard<std::mutex> lock(g_mutex);
   return g_orientation.calibrated();
 }
+
+int encoders_present() { return encoders::present(); }
+
+cJSON *encoders_json() { return encoders::json(); }
 
 cJSON *imu_json() {
   cJSON *d = cJSON_CreateObject();

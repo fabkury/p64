@@ -775,6 +775,22 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   the panel and disappears; at a 376 px viewport the section keeps the thumbnail beside
   the selector and the controls in one row without horizontal overflow; `ui_smoke.py`
   0 failures.
+- 2026-09-26, p64b rotary encoders, stage B, the probe (prompt p048; the project is
+  `docs/hardware/encoders-soldered.md`): the second I2C bus on the GPIO socket
+  (`system::i2c_ext_bus()`, IO45 / IO46, `I2C_NUM_1`), the seesaw wire format
+  (`seesaw_wire.hpp`, pure) and traffic (`seesaw.cpp`: address, STOP, 250 us, receive),
+  the detent and switch tracker (`encoder_model.cpp`, pure: wrap-safe deltas, invert,
+  two-sample debounce, 700 ms long press), the 50 Hz poller on core 0 with a PSRAM stack
+  (`encoders.cpp`: identify at start, green on knob A 0x36 and blue on knob B 0x37 for
+  two seconds; a board lost after ten failed reads, a missing board retried every 5 s),
+  `GET /api/v1/diag/encoders`, `inputs.encoders_present` in the status document,
+  `tests/device/encoders_smoke.py`, Kconfig `P64_ENCODERS` (on; p64a runs the same build
+  with no board answering). Host tests: the wire format and the tracker (`inputs.cpp`).
+  Bench (2026-09-26): the A0 bridge soldered on board B, the two boards chained on the
+  breadboard through the 4209 and 4397 with the 2.2 k pull-ups, no multimeter, so the
+  probe is the check; the keyed plug lands the 4209 as yellow = IO45, blue = IO46,
+  red = 3V3, black = GND. Not yet powered: the first power-up, the flash with the chain
+  attached (the IO46 strapping question) and the identify are the next step.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

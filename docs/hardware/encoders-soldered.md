@@ -191,7 +191,10 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   green and that of 0x37 blue for two seconds, so the boards identify themselves;
   `GET /api/v1/diag/encoders` and `tests/device/encoders_smoke.py` report both. A board
   that does not answer is logged once and polled again every 5 s (a loose cable must not
-  take the other knob down).
+  take the other knob down). Written 2026-09-26, before the first power-up
+  (`firmware/components/p64_inputs/src/seesaw_wire.hpp`, `seesaw.cpp`,
+  `encoder_model.cpp`, `encoders.cpp`; `firmware/docs/architecture.md` 16.1; Kconfig
+  `P64_ENCODERS`, `P64_I2C_EXT_SDA/SCL`, `P64_ENCODER_A/B_ADDRESS`).
 - **Roles (stage C):** knob A = 0x36: turn = brightness in the spec's curve steps (through
   the settings path, which wraps NVS on an internal stack; the poll task itself never
   touches flash), press = pause / resume. Knob B = 0x37: turn = next / previous, press =

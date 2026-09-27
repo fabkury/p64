@@ -121,4 +121,118 @@ TEST_CASE("orientation") {
   CHECK_EQ(o2.rotation(), 270);
 }
 
+// --- the p64b rotary encoders (docs/hardware/encoders-soldered.md, section 5) ---------
+
+TEST_CASE("seesaw wire format") {
+  using namespace p64::inputs::seesaw;
+  // Register addresses are two bytes, module then register (Adafruit_seesaw.h).
+  const auto a = reg_address(kEncoder, kEncoderPosition);
+  CHECK_EQ(a[0], 0x11); CHECK_EQ(a[1], 0x30);
+  CHECK_EQ(kStatus, 0x00); CHECK_EQ(kStatusHwId, 0x01); CHECK_EQ(kGpio, 0x01); CHECK_EQ(kGpioBulk, 0x04);
+  CHECK_EQ(kNeoPixel, 0x0E); CHECK_EQ(kEncoderDelta, 0x40);
+  // 32-bit values travel big-endian; the position is signed.
+  const auto be = be32(0x01020304u);
+  CHECK_EQ(be[0], 1); CHECK_EQ(be[3], 4);
+  const uint8_t minus_two[4] = {0xFF, 0xFF, 0xFF, 0xFE};
+  CHECK_EQ(from_be32_signed(minus_two), -2);
+  const uint8_t seven[4] = {0, 0, 0, 7};
+  CHECK_EQ(from_be32_signed(seven), 7);
+  // The switch is seesaw pin 24 with a pull-up: bit 24 of the bulk read, 0 = pressed.
+  CHECK_EQ(pin_mask(kSwitchPin), 0x01000000u);
+  CHECK(switch_pressed(0x00000000u));
+  CHECK(!switch_pressed(0x01000000u));
+  CHECK(switch_pressed(0xFEFFFFFFu));
+  const auto pull = gpio_mask_command(kGpioPullEnSet, pin_mask(kSwitchPin));
+  CHECK_EQ(pull[0], 0x01); CHECK_EQ(pull[1], 0x0B); CHECK_EQ(pull[2], 0x01); CHECK_EQ(pull[5], 0x00);
+  // The reset writes 0xFF to STATUS/SWRST.
+  const auto rst = reset_command();
+  CHECK_EQ(rst[0], 0x00); CHECK_EQ(rst[1], 0x7F); CHECK_EQ(rst[2], 0xFF);
+  // The NeoPixel: pin 6, one pixel of three bytes, GRB order after a 16-bit offset.
+  CHECK_EQ(neopixel_pin_command()[2], 6);
+  const auto len = neopixel_length_command();
+  CHECK_EQ(len[2], 0); CHECK_EQ(len[3], 3);
+  const auto colour = neopixel_colour_command(10, 20, 30);
+  CHECK_EQ(colour[1], kNeoPixelBuf); CHECK_EQ(colour[2], 0); CHECK_EQ(colour[3], 0);
+  CHECK_EQ(colour[4], 20); CHECK_EQ(colour[5], 10); CHECK_EQ(colour[6], 30);
+  CHECK(known_hw_id(0x87));
+  CHECK(!known_hw_id(0x00));
+}
+
+TEST_CASE("encoder tracker") {
+  using p64::inputs::EncoderTracker;
+  EncoderTracker t;
+  // The first poll only records the position.
+  auto ev = t.feed(0, 100, false);
+  CHECK(!ev.any());
+  CHECK_EQ(t.position(), 100);
+  // Detents are position differences; several between polls arrive together.
+  ev = t.feed(20, 101, false);
+  CHECK_EQ(ev.turned, 1);
+  ev = t.feed(40, 104, false);
+  CHECK_EQ(ev.turned, 3);
+  ev = t.feed(60, 102, false);
+  CHECK_EQ(ev.turned, -2);
+  CHECK_EQ(t.detents(), 2);
+  // Wrap-safe across the 32-bit boundary.
+  EncoderTracker w;
+  w.feed(0, INT32_MAX, false);
+  CHECK_EQ(w.feed(20, INT32_MIN, false).turned, 1);
+  CHECK_EQ(w.feed(40, INT32_MAX, false).turned, -1);
+  // Invert flips the sign of the turn and of the running count.
+  EncoderTracker inv;
+  inv.set_invert(true);
+  inv.feed(0, 0, false);
+  CHECK_EQ(inv.feed(20, 5, false).turned, -5);
+  CHECK_EQ(inv.detents(), -5);
+  // A resync after a board reset does not count the jump back to zero.
+  t.resync();
+  ev = t.feed(80, 0, false);
+  CHECK_EQ(ev.turned, 0);
+  CHECK_EQ(t.detents(), 2);
+  // The switch: one sample of a level is bounce, two make a press; the release the same.
+  EncoderTracker s;
+  s.feed(0, 0, false);
+  ev = s.feed(20, 0, true);
+  CHECK(!ev.pressed);
+  CHECK(!s.held());
+  ev = s.feed(40, 0, true);
+  CHECK(ev.pressed);
+  CHECK(s.held());
+  CHECK_EQ(s.presses(), 1);
+  ev = s.feed(60, 0, false);   // a bounce while held
+  CHECK(!ev.released);
+  ev = s.feed(80, 0, true);
+  CHECK(!ev.pressed);          // still the same press
+  ev = s.feed(100, 0, false);
+  ev = s.feed(120, 0, false);
+  CHECK(ev.released);
+  CHECK(!s.held());
+  CHECK_EQ(s.presses(), 1);
+  CHECK_EQ(s.long_presses(), 0);
+  // A hold of kLongPressMs reports a long press once, before the release.
+  uint32_t ms = 1000;
+  s.feed(ms, 0, true);
+  ev = s.feed(ms += 20, 0, true);
+  CHECK(ev.pressed);
+  int longs = 0;
+  for (int i = 0; i < 60; ++i) {  // 1.2 s held
+    ev = s.feed(ms += 20, 0, true);
+    if (ev.long_press) ++longs;
+  }
+  CHECK_EQ(longs, 1);
+  CHECK_EQ(s.long_presses(), 1);
+  ev = s.feed(ms += 20, 0, false);
+  ev = s.feed(ms += 20, 0, false);
+  CHECK(ev.released);
+  CHECK(!ev.long_press);
+  // A short press never becomes a long one.
+  s.feed(ms += 20, 0, true);
+  ev = s.feed(ms += 20, 0, true);
+  CHECK(ev.pressed);
+  s.feed(ms += 200, 0, false);
+  ev = s.feed(ms += 20, 0, false);
+  CHECK(ev.released);
+  CHECK_EQ(s.long_presses(), 1);
+}
+
 }  // namespace

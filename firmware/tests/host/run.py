@@ -97,6 +97,7 @@ CXX_SOURCES = [
     os.path.join(FIRMWARE, "main", "show_core.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "tap.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "orientation.cpp"),
+    os.path.join(COMPONENTS, "p64_inputs", "src", "encoder_model.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "version.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "release.cpp"),
 ]
