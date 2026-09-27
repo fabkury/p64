@@ -76,7 +76,7 @@ def main():
         print("brightness ceiling is %d: the ladder stops there" % ceiling)
     check("light" in p and "oe_level" in p and "lut_scale" in p, "status panel reports light, oe_level, lut_scale")
 
-    ladder = [v for v in (1, 2, 8, 32, 64, 128, 192, 255) if v <= ceiling]
+    ladder = [v for v in (1, 2, 8, 32, 64, 80, 128, 192, 255) if v <= ceiling]
     last_light = -1.0
     try:
         for v in ladder:
@@ -98,8 +98,10 @@ def main():
                       "brightness 1 is the floor level with a sixteenth of the LUT (level %d, scale %.4f)" % (level, scale))
             if v == 255:
                 check(level == 255 and scale == 1.0, "brightness 255 is the full level with no LUT scale")
-            if 32 <= v < 255:
+            if want >= FLOOR_LIGHT * 16 and v < 255:  # above the driver floor's own light (brightness 74 and up)
                 check(scale >= 0.74, "brightness %3d: above the floor the LUT scale stays near one (%.3f)" % (v, scale))
+            elif v < 255:
+                check(level == FLOOR_LEVEL, "brightness %3d: below the floor's light the level stays at the floor (%d)" % (v, level))
     finally:
         request(base, "PUT", "/api/v1/settings", {"display": {"brightness": original}})
         print("restored brightness %d" % original)
