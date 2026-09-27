@@ -793,8 +793,12 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   with the chain attached and IO46 pulled high, so the strapping question is settled and
   the chain stays connected for good; knob A answers at 0x36 (hardware id 0x55, not the
   0x87 of Adafruit's header), its NeoPixel lights green at boot, 0 read errors; knob B
-  dark and absent from a bus scan (`?scan=1` added for this), so the 4399 between the
-  boards is the suspect; being chased on the bench.
+  dark and absent from a bus scan (`?scan=1` added for this). Chased on the bench: B's
+  ON LED lights, and alone on the 4397 (on either of its sockets) it answers at no
+  address with both lines idle high (`sda_level`, `scl_level` added for this), while A
+  put back on the same plug answers at once; so the harness and the cables are good and
+  board B itself is silent after the A0 bridge; next: the A0 corner under magnification,
+  wick the bridge off, see whether B answers at 0x36 again.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

@@ -319,7 +319,8 @@ stands as p64a does, but laid on its back it rests on the knobs.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
-| Both boards answer at 0x36 (probe says "0x37 missing") | A0 bridge not conducting | continuity across the A0 pads |
+| Both boards answer at 0x36 (probe says "0x37 missing"; both NeoPixels green at boot) | A0 bridge not conducting | continuity across the A0 pads |
+| A board's ON LED lights but it answers at no address, alone on the harness that works with the other board, and `GET /api/v1/diag/encoders?scan=1` shows both lines idle at 1 | the board itself: solder beyond the A0 pads, a lifted pad, or a board that never ran | the A0 corner under magnification; wick the bridge off and see whether the board answers at 0x36 again (bench, 2026-09-26: board B) |
 | A board answers at 0x38 or 0x3A | the wrong jumper was bridged (A1 = 0x38, A2 = 0x3A) | fine, the firmware can take the address as a setting; or fix the bridge |
 | Rows read 2.2 V with both boards | a pull-up missing or in the wrong row | resistor legs in rows 5 / 10 and the + rail |
 | Knob B works, knob A does not, or vice versa | the 4399 / 4401 not seated | reseat; the probe re-polls a missing board every 5 s |
