@@ -1,0 +1,10 @@
+Today I want you to investigate something for me.
+
+p64 has two modes of operation of the LEDs: "Quality" and "Photo".
+ - Quality: Intended to maximize visual quality.
+ - Photo: Lowers quality in order to achieve higher frame rates, allowing photos of the device to be taken with success (full image appears on the LEDs with no banding).
+
+The topic to investigate is:
+ A. Can we increase the visual quality of the "Quality Mode" even further? If yes, how much further, and what would be its CONS, COSTS and RISKS?
+
+Don't implement anything, just report back to me and make recommendations.
