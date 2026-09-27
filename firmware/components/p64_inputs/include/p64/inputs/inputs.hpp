@@ -12,10 +12,17 @@
 namespace p64::inputs {
 
 struct Hooks {
-  std::function<void()> next;
-  std::function<void()> previous;
+  std::function<void()> next;      // a single tap, or the navigate knob clockwise
+  std::function<void()> previous;  // a double tap, or the navigate knob counter-clockwise
   // The auto-rotation resolved a new value (read it with auto_rotation()).
   std::function<void()> rotation_changed;
+  // The p64b knobs (knob_rules.hpp): the brightness knob turned `detents` (positive =
+  // up), its press toggles pause; the navigate knob's press likes the artwork on the
+  // panel. Called on the poll task, whose stack is in PSRAM: nothing here may touch the
+  // flash directly (settings go through the guarded settings path).
+  std::function<void(int32_t detents)> brightness_step;
+  std::function<void()> toggle_pause;
+  std::function<void()> like;
 };
 
 // Starts the encoder poller (when configured) and the IMU sampler task; false when no
@@ -33,8 +40,8 @@ bool calibrated();
 cJSON *imu_json();
 
 // The p64b rotary encoders (CONFIG_P64_ENCODERS): how many boards answer, and their
-// positions, switch states and counters for /diag/encoders. Stage B (the probe): the
-// events are logged and counted, not yet acted on.
+// positions, switch states and counters for /diag/encoders. Settings `encoders_enabled`,
+// `encoders_swap` and `encoders_invert` (group inputs) decide what the events do.
 int encoders_present();
 cJSON *encoders_json(bool scan = false);
 

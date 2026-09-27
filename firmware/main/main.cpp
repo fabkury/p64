@@ -4,6 +4,7 @@
 // layer and Makapix Club, mounts the card, restores the active playset and hands the
 // main task to the show loop (main/show.cpp, the state machine).
 
+#include <atomic>
 #include <cinttypes>
 #include <memory>
 #include <new>
@@ -17,6 +18,7 @@
 #include "esp_ota_ops.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
@@ -37,6 +39,7 @@
 #include "p64/system/settings.hpp"
 #include "p64/web/web.hpp"
 #include "p64/inputs/inputs.hpp"
+#include "p64/inputs/knob_rules.hpp"
 #include "p64/ota/ota.hpp"
 #ifdef CONFIG_P64_PRIVATE
 #include "p64/private/private.hpp"
@@ -70,6 +73,9 @@ void init_nvs() {
   ESP_ERROR_CHECK(err);
 }
 
+// The brightness the knob has reached but not yet written (-1: none pending).
+std::atomic<int> g_knob_brightness{-1};
+
 // The picture settings the display applies directly; the panel mode goes through the
 // renderer (switched between two frames).
 void apply_display_settings(const p64::system::Settings &s) {
@@ -77,9 +83,72 @@ void apply_display_settings(const p64::system::Settings &s) {
   const uint16_t rotation = s.rotation_auto && p64::inputs::auto_rotation_resolved() ? p64::inputs::auto_rotation() : s.rotation;
   g_display.set_rotation(static_cast<p64::gfx::Rotation>(rotation));
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
-  g_display.set_brightness(p64::ops::effective_brightness(s));
+  const int pending = g_knob_brightness.load();
+  if (pending >= 0) {
+    p64::system::Settings live = s;
+    live.brightness = static_cast<uint8_t>(pending);
+    g_display.set_brightness(p64::ops::effective_brightness(live));
+  } else {
+    g_display.set_brightness(p64::ops::effective_brightness(s));
+  }
   g_renderer.request_mode(s.panel_mode == p64::system::PanelMode::Photo ? p64::display::Mode::Photo
                                                                           : p64::display::Mode::Quality);
+}
+
+// The brightness knob (p64b): every detent goes to the panel at once, through the same
+// effective-brightness rule as the setting (ceiling, night window), and the setting is
+// written once, 800 ms after the last detent, so a spin of forty detents costs one NVS
+// write, not forty. The pending value is what apply_display_settings() shows meanwhile.
+esp_timer_handle_t g_knob_commit = nullptr;
+
+void knob_brightness_commit(void *) {
+  const int v = g_knob_brightness.load();
+  if (v < 0) return;
+  p64::system::settings_update([v](p64::system::Settings &s) { s.brightness = static_cast<uint8_t>(v); });
+  g_knob_brightness = -1;
+}
+
+void knob_brightness_step(int32_t detents) {
+  const auto s = p64::system::settings_view();
+  const int pending = g_knob_brightness.load();
+  const uint8_t current = pending >= 0 ? static_cast<uint8_t>(pending) : s->brightness;
+  const uint8_t next = p64::inputs::brightness_after(current, detents);
+  g_knob_brightness = next;
+  p64::system::Settings live = *s;
+  live.brightness = next;
+  g_display.set_brightness(p64::ops::effective_brightness(live));
+  if (!g_knob_commit) {
+    const esp_timer_create_args_t args = {knob_brightness_commit, nullptr, ESP_TIMER_TASK, "knob", false};
+    esp_timer_create(&args, &g_knob_commit);
+  }
+  esp_timer_stop(g_knob_commit);
+  esp_timer_start_once(g_knob_commit, 800 * 1000);
+}
+
+// The navigate knob's press: like the Makapix artwork on the panel. The call blocks up
+// to 20 s on the Makapix worker, so it runs on a short-lived task (stack in PSRAM: TLS
+// and JSON only, no flash) and never on the poll task; one at a time.
+std::atomic<bool> g_like_busy{false};
+
+void knob_like_task(void *arg) {
+  const auto post = static_cast<int32_t>(reinterpret_cast<intptr_t>(arg));
+  std::string error;
+  if (p64::makapix::like(post, true, error)) ESP_LOGI(TAG, "knob: liked post %ld", static_cast<long>(post));
+  else ESP_LOGW(TAG, "knob: like of post %ld failed: %s", static_cast<long>(post), error.c_str());
+  g_like_busy = false;
+  vTaskDelete(nullptr);
+}
+
+void knob_like() {
+  const int32_t post = p64::show::current_post_id();
+  if (post < 0) {
+    ESP_LOGI(TAG, "knob: nothing of Makapix on the panel to like");
+    return;
+  }
+  if (g_like_busy.exchange(true)) return;
+  if (xTaskCreatePinnedToCoreWithCaps(knob_like_task, "knob_like", 6144, reinterpret_cast<void *>(static_cast<intptr_t>(post)),
+                                      4, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS)
+    g_like_busy = false;
 }
 
 }  // namespace
@@ -216,6 +285,9 @@ extern "C" void app_main() {
   in.next = p64::show::next;
   in.previous = p64::show::previous;
   in.rotation_changed = [] { apply_display_settings(p64::system::settings()); };
+  in.brightness_step = knob_brightness_step;
+  in.toggle_pause = [] { p64::show::set_paused(!p64::show::is_paused()); };
+  in.like = knob_like;
   p64::inputs::start(in);
   p64::ota::start();
   p64::show::restore();

@@ -225,6 +225,9 @@ std::string Settings::to_json() const {
   cJSON *in = obj(root, "inputs");
   cJSON_AddBoolToObject(in, "tap_enabled", tap_enabled);
   cJSON_AddNumberToObject(in, "tap_sensitivity", tap_sensitivity);
+  cJSON_AddBoolToObject(in, "encoders_enabled", encoders_enabled);
+  cJSON_AddBoolToObject(in, "encoders_swap", encoders_swap);
+  cJSON_AddBoolToObject(in, "encoders_invert", encoders_invert);
 
   cJSON *net = obj(root, "network");
   cJSON_AddStringToObject(net, "device_name", device_name.c_str());
@@ -349,6 +352,9 @@ bool Settings::apply_json(const char *json, std::string &error) {
   const cJSON *in = sub(root, "inputs");
   get_bool(in, "tap_enabled", tap_enabled);
   get_num(in, "tap_sensitivity", tap_sensitivity);
+  get_bool(in, "encoders_enabled", encoders_enabled);
+  get_bool(in, "encoders_swap", encoders_swap);
+  get_bool(in, "encoders_invert", encoders_invert);
 
   const cJSON *net = sub(root, "network");
   get_str(net, "device_name", device_name, 16);

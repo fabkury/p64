@@ -45,6 +45,7 @@ std::string g_last_event;
 void apply_settings(const system::Settings &s) {
   g_tap_enabled = s.tap_enabled;
   g_auto = s.rotation_auto;
+  encoders::apply(s.encoders_enabled, s.encoders_swap, s.encoders_invert);
   std::lock_guard<std::mutex> lock(g_mutex);
   g_taps.set_sensitivity(s.tap_sensitivity);
 }
@@ -113,7 +114,7 @@ bool start(const Hooks &hooks) {
   g_hooks = hooks;
   apply_settings(system::settings());
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { apply_settings(system::settings()); });
-  encoders::start();
+  encoders::start(hooks);
   if (!qmi8658::init()) return false;
   g_present = true;
   load_calibration();

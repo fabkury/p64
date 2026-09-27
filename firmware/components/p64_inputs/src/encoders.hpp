@@ -5,12 +5,15 @@
 #pragma once
 
 #include "cJSON.h"
+#include "p64/inputs/inputs.hpp"
 
 namespace p64::inputs::encoders {
 
 // Starts the poll task when CONFIG_P64_ENCODERS is on. Boards that do not answer are
 // polled again every 5 s, so a knob plugged in later still appears.
-void start();
+void start(const Hooks &hooks);
+// The settings that shape the events: act at all, exchange the roles, count the other way.
+void apply(bool enabled, bool swap, bool invert);
 // How many boards answer right now (0 to 2).
 int present();
 // Positions, switch states, counters and read errors per board, for /diag/encoders.

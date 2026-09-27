@@ -70,11 +70,27 @@ def main():
         for k in d["knobs"]:
             if k["present"]:
                 check(k["read_errors"] == before[k["name"]]["read_errors"], "%s: no read errors while in use (%d)" % (k["name"], k["read_errors"]))
-                check(k["lost"] == 0, "%s: never lost the board (%d)" % (k["name"], k["lost"]))
+                check(k["lost"] == before[k["name"]]["lost"], "%s: the board stayed on the bus (lost %d times before)" % (k["name"], k["lost"]))
     else:
         for k in d["knobs"]:
             if k["present"]:
                 check(k["read_errors"] == 0, "%s: no read errors (%d)" % (k["name"], k["read_errors"]))
+
+    # The settings that shape the events reach the poller (roles swap, invert, acting).
+    st, j = request(base, "GET", "/api/v1/settings")
+    original = j["data"]["inputs"]
+    request(base, "PUT", "/api/v1/settings", {"inputs": {"encoders_enabled": False, "encoders_swap": True, "encoders_invert": True}})
+    time.sleep(0.5)
+    d = encoders(base)
+    roles = {k["name"]: k["role"] for k in d["knobs"]}
+    check(not d["acting"] and d["swap"] and d["invert"], "encoder settings applied: acting off, swap, invert")
+    check(roles.get("A") == "navigate" and roles.get("B") == "brightness", "swap exchanges the roles (A %s, B %s)" % (roles.get("A"), roles.get("B")))
+    request(base, "PUT", "/api/v1/settings", {"inputs": {"encoders_enabled": original["encoders_enabled"],
+                                                          "encoders_swap": original["encoders_swap"], "encoders_invert": original["encoders_invert"]}})
+    time.sleep(0.5)
+    d = encoders(base)
+    roles = {k["name"]: k["role"] for k in d["knobs"]}
+    check(d["acting"] == original["encoders_enabled"] and roles.get("A") == ("navigate" if original["encoders_swap"] else "brightness"), "encoder settings restored")
 
     from api_smoke import failures
     print("encoders smoke: %d failures" % failures)

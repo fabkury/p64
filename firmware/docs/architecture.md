@@ -28,7 +28,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
 | `p64_widgets` | clock (digital, analogue, six themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
-| `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `seesaw_wire.hpp`) |
+| `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack, roles through hooks). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `knob_rules.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
 | `main` | boot sequence and wiring (`main.cpp`), the show state machine (`show.cpp`: active playset, channel runtimes, scheduler, history, auto-swap, pause, play-this, activation), the loader task (`loader.cpp`: file reads and folder scans on core 0), status screens | all | partly (`show_core`: the whole show logic behind `ShowEnv`, driven through scenarios by a fake; `show_rules`, `status_screens`, `boot_animation`; `show.cpp` is the shell) |
 
@@ -506,9 +506,20 @@ NeoPixel green and knob B's blue for two seconds at start so the boards identify
 themselves, logs every event, counts read errors, drops a board after ten consecutive
 failures and tries a missing board again every 5 s (a loose cable must not take the
 other knob down; p64a runs the same build with both boards missing). Diagnostics:
-`GET /api/v1/diag/encoders`; `tests/device/encoders_smoke.py`. Stage C (the roles:
-knob A brightness and pause, knob B next / previous and like, `encoders.swap` and
-`encoders.invert`) is next.
+`GET /api/v1/diag/encoders`; `tests/device/encoders_smoke.py`. The roles (stage C,
+2026-09-26) are the pure `knob_rules.hpp` (`role_of(knob, swap)`, `brightness_after()`:
+about 10 % of the current value per detent, at least 1, 42 detents from 1 to 255) and
+three `inputs::Hooks` the poller calls on its own task: `brightness_step`, `toggle_pause`
+and `like`; `next` and `previous` are the tap hooks reused. `main.cpp` implements them:
+the brightness step goes to the display at once through `ops::effective_brightness()`
+(ceiling and night window as for the setting) and the setting is written by a one-shot
+esp_timer 800 ms after the last detent, so a spin costs one NVS write and the poll task
+never touches flash; `apply_display_settings()` shows the pending value until then. Pause
+is `show::set_paused()`. The like runs `makapix::like()` (blocks up to 20 s) on a
+short-lived task with a 6 KB PSRAM stack, one at a time, never on the poll task. Settings
+`inputs.encoders_enabled` (the events are logged and counted but not acted on),
+`encoders_swap` and `encoders_invert` reach the poller through `inputs::apply_settings()`.
+The settings page has an Inputs tab (taps, knobs, and which boards answer).
 
 ## 17. The PIN gate (M9)
 

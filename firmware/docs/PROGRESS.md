@@ -799,6 +799,25 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   put back on the same plug answers at once; so the harness and the cables are good and
   board B itself is silent after the A0 bridge; next: the A0 corner under magnification,
   wick the bridge off, see whether B answers at 0x36 again.
+- 2026-09-26/27, p64b rotary encoders, stage B accepted on knob A and stage C, the roles
+  (prompt p049; board B waits for the solder wick and the multimeter, the resume notes are
+  in `docs/hardware/encoders-soldered.md` 5.1). Stage B on knob A: 10 detents clockwise
+  counted +10 and 10 back landed on 0, two presses and a long press registered, 0 read
+  errors, clockwise positive. Stage C: `knob_rules.hpp` (pure: `role_of`,
+  `brightness_after`, about 10 % per detent, 42 detents from 1 to 255), the hooks
+  `brightness_step`, `toggle_pause` and `like` on `inputs::Hooks`, implemented in
+  `main.cpp` (the brightness to the display at once through the effective-brightness
+  rule, the setting written by a one-shot timer 800 ms after the last detent; pause is
+  `show::set_paused`; the like on a short-lived PSRAM-stack task), settings
+  `inputs.encoders_enabled`, `encoders_swap`, `encoders_invert`, the settings page's new
+  Inputs tab (taps and knobs, which boards answer), `ui_smoke.py` and `encoders_smoke.py`
+  check them, host tests for the rules and the settings round trip. Device: turning knob A
+  dims and brightens the panel at once and its press pauses and resumes (seen by the
+  user); a long counter-clockwise turn left the setting at 25 (read back through the API:
+  the delayed write works); `encoders_smoke.py` (settings applied and restored, roles
+  swapped), `ui_smoke.py` and `api_smoke.py` 0 failures; internal heap 55 to 60 KB free,
+  largest 32 KB, with the poll task and the timer. Knob B's roles (next, previous, like)
+  are coded and untested until board B answers.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

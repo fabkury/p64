@@ -98,6 +98,9 @@ struct Settings {
   // Inputs
   bool tap_enabled = true;
   uint8_t tap_sensitivity = 5;  // 1..10
+  bool encoders_enabled = true;  // the p64b knobs act (they are always polled)
+  bool encoders_swap = false;    // knob A takes knob B's role and vice versa
+  bool encoders_invert = false;  // clockwise counts down
 
   // Network
   std::string device_name;  // up to 16 chars [a-z0-9-]; "" = plain "p64"

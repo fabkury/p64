@@ -33,6 +33,7 @@
 #include "tap.hpp"
 #include "orientation.hpp"
 #include "encoder_model.hpp"
+#include "p64/inputs/knob_rules.hpp"
 #include "seesaw_wire.hpp"
 #include "version.hpp"
 #include "p64/gfx/png_encode.hpp"

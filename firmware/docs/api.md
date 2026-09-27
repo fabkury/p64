@@ -27,7 +27,7 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 | `/api/v1/action/factory_reset` | POST | `{"confirm": "ERASE"}` required; answers, then erases settings, state, Wi-Fi, Makapix credentials and the PIN and reboots into setup mode (the card is untouched) |
 | `/api/v1/diag/coredump/erase` | POST | erases the stored core dump |
 | `/api/v1/diag/imu` | GET | live accelerometer reading (g), gravity angle and in-plane magnitude, calibration and resolution state, the tap threshold, the peak impulse of the last 2 s, tap counters, samples and read errors |
-| `/api/v1/diag/encoders` | GET | the p64b rotary encoders: `enabled`, the bus pins, `polls`, and per knob (`A` 0x36, `B` 0x37) `present`, `hw_id`, `position` (the board's counter), `detents` (net, sign applied), `pressed`, `presses`, `long_presses`, `read_errors`, `lost`, `last_event` (`cw`, `ccw`, `press`, `long`, `release`) and its age; `sda_level` and `scl_level` are the lines' idle levels (both 1 on a free bus; a 0 is a board or cable holding the line down); `?scan=1` adds `scan`, every address that answers on the bus |
+| `/api/v1/diag/encoders` | GET | the p64b rotary encoders: `enabled` (built in), `acting`, `swap` and `invert` (the settings as the poller holds them), the bus pins, `polls`, and per knob (`A` 0x36, `B` 0x37) `role` (`brightness` or `navigate`), `present`, `hw_id`, `position` (the board's counter), `detents` (net, sign applied), `pressed`, `presses`, `long_presses`, `read_errors`, `lost`, `last_event` (`cw`, `ccw`, `press`, `long`, `release`) and its age; `sda_level` and `scl_level` are the lines' idle levels (both 1 on a free bus; a 0 is a board or cable holding the line down); `?scan=1` adds `scan`, every address that answers on the bus |
 | `/api/v1/action/calibrate_upright` | POST | `{"rotation": 0|90|180|270}` (default: the display's current rotation): "the panel is upright now" becomes auto-rotation's reference |
 
 `playback`: `state`, `paused`, `stream_up` (a stream holds the panel), `playset {name, builtin, channels, scanning, version}`, `artwork
@@ -198,7 +198,14 @@ NVS and reset when a new image is confirmed (30 s after boot). Settings group
 
 Inputs (spec 9): the status document carries `inputs {imu_present, auto_rotation_resolved,
 auto_rotation, calibrated, encoders_present}` (the last is how many of the two p64b
-rotary encoder boards answer). Settings `inputs.tap_enabled` and `inputs.tap_sensitivity`
+rotary encoder boards answer). The p64b knobs: settings `inputs.encoders_enabled` (the
+knobs act; they are always polled), `inputs.encoders_swap` (knob A takes knob B's role
+and vice versa) and `inputs.encoders_invert` (clockwise counts down). Knob A (0x36):
+turn = brightness, about 10 % of the current value per detent (`knob_rules.hpp`),
+applied to the panel at once and written to the setting 800 ms after the last detent;
+press = pause / resume. Knob B (0x37): turn clockwise = next, counter-clockwise =
+previous; press = like the Makapix artwork on the panel (nothing on a card artwork). A
+long press is reported in the diagnostics and does nothing. Settings `inputs.tap_enabled` and `inputs.tap_sensitivity`
 (1 firm knock .. 10 light touch: threshold 2.5 g .. 0.25 g above gravity), and
 `display.rotation_auto` (the IMU's resolved rotation drives the display once it has one;
 `display.rotation` is the fallback and the value shown before the first resolution). A

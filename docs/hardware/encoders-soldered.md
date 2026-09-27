@@ -195,14 +195,37 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   (`firmware/components/p64_inputs/src/seesaw_wire.hpp`, `seesaw.cpp`,
   `encoder_model.cpp`, `encoders.cpp`; `firmware/docs/architecture.md` 16.1; Kconfig
   `P64_ENCODERS`, `P64_I2C_EXT_SDA/SCL`, `P64_ENCODER_A/B_ADDRESS`).
-- **Roles (stage C):** knob A = 0x36: turn = brightness in the spec's curve steps (through
-  the settings path, which wraps NVS on an internal stack; the poll task itself never
-  touches flash), press = pause / resume. Knob B = 0x37: turn = next / previous, press =
-  like the current Makapix artwork (no-op on card artworks; the like call blocks up to
-  20 s, so it is queued to the Makapix task, never run from the show loop). Settings:
-  `encoders.enabled`, `encoders.swap` (A and B exchange roles), `encoders.invert`.
+- **Roles (stage C, built 2026-09-26):** knob A = 0x36: turn = brightness, about 10 % of
+  the current value per detent (42 detents from 1 to 255; `knob_rules.hpp`), shown at once
+  and written to the setting 800 ms after the last detent (one NVS write per spin, on an
+  internal stack; the poll task never touches flash), press = pause / resume. Knob B =
+  0x37: turn = next / previous, press = like the current Makapix artwork (no-op on card
+  artworks; the like call blocks up to 20 s, so it runs on its own short-lived task, never
+  on the poll task or the show loop). Settings, group `inputs`: `encoders_enabled`,
+  `encoders_swap` (A and B exchange roles), `encoders_invert`; the settings page's Inputs
+  tab has them and shows which boards answer.
 - **Acceptance:** as in A, on both knobs, plus: turning both at once loses no detents;
   unplugging the 4399 while running logs the loss and does not disturb knob A.
+
+### 5.1 Bench state and what to resume (2026-09-26)
+
+- Knob A: accepted on the bench. Stage B: 10 detents clockwise counted +10 and 10 back
+  landed on exactly 0, two presses and a long press registered, no read errors, clockwise
+  positive (so `encoders_invert` stays off). Stage C: see the progress log for what was
+  verified on the device.
+- Board B: silent after the A0 bridge. Its ON LED lights; alone on the 4397, on either of
+  its sockets, it answers at no address (`?scan=1` empty) with both bus lines idle high;
+  board A put back on the same plug answers at once. The photo of the back shows a small
+  blob on the A0 pads, A1 and A2 untouched, the 103 pull-up network and the NeoPixel pads
+  clean.
+- To resume, with the wick and the multimeter: (1) meter across the A0 pads (beep?) and
+  from each A0 pad to the neighbouring A1 pads and to the 103 network's ends (no beep);
+  (2) wick the bridge off, clean, plug B alone onto the 4397: a board that answers at
+  0x36 is alive and gets a new bridge with flux and a smaller bead; one that stays silent
+  with bare pads is dead and gets replaced (ask Adafruit or the reseller; a fresh 5880 is
+  the fallback, and the firmware runs with one knob meanwhile); (3) once B answers at
+  0x37, `encoders_smoke.py --watch 30` on both knobs, then stage C's knob B checks (next,
+  previous, like) and the "unplug the 4399 while running" check.
 
 ## 6. Soldering, tier 2: the permanent harness
 

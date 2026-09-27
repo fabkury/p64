@@ -74,6 +74,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     <button class="tab-item active" data-tab="display">Display</button>
     <button class="tab-item" data-tab="widgets">Widgets</button>
     <button class="tab-item" data-tab="stream">Stream</button>
+    <button class="tab-item" data-tab="inputs">Inputs</button>
     <button class="tab-item" data-tab="network">Network</button>
     <button class="tab-item" data-tab="storage">Storage</button>
     <button class="tab-item" data-tab="makapix">Makapix</button>
@@ -234,6 +235,28 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="toggle-row"><label class="toggle-label" for="st-raw">Listen</label><label class="toggle-switch"><input type="checkbox" id="st-raw" onchange="save({stream:{raw_udp_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
         <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">UDP port</label><input class="num-input" type="number" id="st-raw-port" min="1" max="65535" onchange="save({stream:{raw_udp_port:+this.value}})"></div>
         <div class="setting-hint">RGB888, RGB565 or indexed frames up to 128x128, chunked by offset. From a PC: <code>python tools/stream_send.py p64.local test</code>.</div>
+    </div>
+</div>
+
+<!-- Inputs -->
+<div class="tab-content" id="tab-inputs">
+    <div class="section">
+        <h3>Taps</h3>
+        <div class="toggle-row"><label class="toggle-label" for="tap-enabled">Tap gestures</label><label class="toggle-switch"><input type="checkbox" id="tap-enabled" onchange="save({inputs:{tap_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">A single firm tap on the shell is next, a double tap is previous.</div>
+        <div class="toggle-row" style="margin-top:10px;flex-wrap:wrap;gap:8px"><label class="toggle-label" for="tap-sens">Sensitivity</label></div>
+        <div class="brightness-row"><input type="range" id="tap-sens" min="1" max="10" value="5" oninput="document.getElementById('tap-sens-value').textContent=this.value" onchange="save({inputs:{tap_sensitivity:+this.value}})"><span class="brightness-value" id="tap-sens-value">5</span></div>
+        <div class="setting-hint">1 needs a firm knock, 10 a light touch.</div>
+    </div>
+    <div class="section">
+        <h3>Knobs (p64b)</h3>
+        <div class="setting-hint" id="enc-status"></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="enc-enabled">Knobs act</label><label class="toggle-switch"><input type="checkbox" id="enc-enabled" onchange="save({inputs:{encoders_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">Knob A: turn for brightness (about 10 % per detent), press to pause or resume. Knob B: turn for next and previous, press to like the Makapix artwork on the panel.</div>
+        <div class="toggle-row" style="margin-top:10px"><label class="toggle-label" for="enc-swap">Swap the knobs</label><label class="toggle-switch"><input type="checkbox" id="enc-swap" onchange="save({inputs:{encoders_swap:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">Knob A takes knob B's role and vice versa, for when the shell puts them the other way round.</div>
+        <div class="toggle-row" style="margin-top:10px"><label class="toggle-label" for="enc-invert">Invert the direction</label><label class="toggle-switch"><input type="checkbox" id="enc-invert" onchange="save({inputs:{encoders_invert:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">Clockwise counts down instead of up.</div>
     </div>
 </div>
 
@@ -428,6 +451,10 @@ function save(patch) { return p64.setting(patch).then(fill).catch(function () {}
 
 function fill(s) {
     S = s;
+    var inp = s.inputs || {};
+    sc('tap-enabled', inp.tap_enabled); sv('tap-sens', inp.tap_sensitivity); document.getElementById('tap-sens-value').textContent = inp.tap_sensitivity;
+    sc('enc-enabled', inp.encoders_enabled); sc('enc-swap', inp.encoders_swap); sc('enc-invert', inp.encoders_invert);
+    encStatus();
     var d = s.display;
     sv('brightness', d.brightness); document.getElementById('brightness-value').textContent = d.brightness;
     sv('ceiling', d.brightness_ceiling);
@@ -493,6 +520,15 @@ function saveDeviceName() { if (!hostPreview()) return; save({ network: { device
 function savePin() {
     var n = gv('pin-new'), c = gv('pin-current');
     p64.put('/api/v1/auth/pin', { pin: n, current: c }).then(function (d) { p64.toast(d.pin_set ? 'PIN set; sign in again' : 'PIN cleared'); sv('pin-new', ''); sv('pin-current', ''); if (d.pin_set) location.reload(); else pinStatus(); }).catch(function (e) { p64.toast(e.message, true); });
+}
+// The knobs found on the bus (p64b), from the diagnostics: name, role and address.
+function encStatus() {
+    var e = document.getElementById('enc-status');
+    p64.get('/api/v1/diag/encoders').then(function (d) {
+        if (!d.enabled) { e.textContent = 'The firmware was built without encoder support.'; return; }
+        var found = (d.knobs || []).filter(function (k) { return k.present; });
+        e.textContent = found.length ? found.map(function (k) { return 'Knob ' + k.name + ' (' + k.role + ', 0x' + k.address.toString(16) + ')'; }).join(', ') + ' answering.' : 'No knob answers on the GPIO socket (a p64a, or the boards are not connected).';
+    }).catch(function () { e.textContent = ''; });
 }
 function pinStatus() { fetch('/api/v1/auth').then(function (r) { return r.json(); }).then(function (j) { var d = j.data || {}; document.getElementById('pin-status').textContent = d.pin_set ? 'A PIN is set; this browser is ' + (d.authenticated ? 'signed in.' : 'not signed in.') : 'No PIN: every page and API route is open on the LAN.'; }).catch(function () {}); }
 function eraseWifi() { if (!p64.confirmWord('Forget the Wi-Fi network and restart in setup mode?', 'ERASE')) return; p64.post('/api/v1/wifi/erase').then(function () { p64.toast('Restarting in setup mode'); }).catch(function (e) { p64.toast(e.message, true); }); }

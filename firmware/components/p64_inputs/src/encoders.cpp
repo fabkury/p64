@@ -1,8 +1,10 @@
 #include "encoders.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 
+#include "driver/gpio.h"
 #include "encoder_model.hpp"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -10,7 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
+#include "p64/inputs/knob_rules.hpp"
 #include "p64/system/i2c_bus.hpp"
 #include "sdkconfig.h"
 #include "seesaw.hpp"
@@ -49,6 +51,12 @@ Knob g_knobs[2] = {{"A", 0x36, 0, 40, 0}, {"B", 0x37, 0, 0, 40}};  // never open
 std::mutex g_mutex;
 bool g_started = false;
 uint32_t g_poll = 0;
+Hooks g_hooks;
+std::atomic<bool> g_enabled{true};
+std::atomic<bool> g_swap{false};
+std::atomic<bool> g_invert{false};
+
+KnobRole role_of_knob(const Knob &k) { return role_of(static_cast<int>(&k - g_knobs), g_swap.load()); }
 
 // Opens a board that is not open and lights its identify colour; true when it answers.
 // The probe first, so an absent board costs one quiet NACK and not the driver's error
@@ -96,12 +104,25 @@ void poll_knob(Knob &k, uint32_t t_ms) {
       k.last_event = ev.turned > 0 ? "cw" : ev.turned < 0 ? "ccw" : ev.long_press ? "long" : ev.pressed ? "press" : "release";
     }
   }
-  // Stage B: log only. Stage C hands these to the show loop.
+  if (!ev.any()) return;
+  const bool enabled = g_enabled.load();
+  const KnobRole role = role_of_knob(k);
+  const char *what = role == KnobRole::Brightness ? "brightness" : "navigate";
   if (ev.turned != 0)
-    ESP_LOGI(TAG, "knob %s: %+ld (position %ld)", k.name, static_cast<long>(ev.turned), static_cast<long>(position));
-  if (ev.pressed) ESP_LOGI(TAG, "knob %s: pressed", k.name);
-  if (ev.long_press) ESP_LOGI(TAG, "knob %s: long press", k.name);
-  if (ev.released) ESP_LOGI(TAG, "knob %s: released", k.name);
+    ESP_LOGI(TAG, "knob %s (%s): %+ld (position %ld)%s", k.name, what, static_cast<long>(ev.turned),
+             static_cast<long>(position), enabled ? "" : " (knobs off)");
+  if (ev.pressed) ESP_LOGI(TAG, "knob %s (%s): pressed%s", k.name, what, enabled ? "" : " (knobs off)");
+  if (ev.long_press) ESP_LOGI(TAG, "knob %s: long press (unassigned)", k.name);
+  if (!enabled) return;
+  if (role == KnobRole::Brightness) {
+    if (ev.turned != 0 && g_hooks.brightness_step) g_hooks.brightness_step(ev.turned);
+    if (ev.pressed && g_hooks.toggle_pause) g_hooks.toggle_pause();
+  } else {
+    // Several detents between two polls are one step: a swap takes longer than a detent.
+    if (ev.turned > 0 && g_hooks.next) g_hooks.next();
+    if (ev.turned < 0 && g_hooks.previous) g_hooks.previous();
+    if (ev.pressed && g_hooks.like) g_hooks.like();
+  }
 }
 
 void task(void *) {
@@ -133,7 +154,8 @@ void task(void *) {
 
 }  // namespace
 
-void start() {
+void start(const Hooks &hooks) {
+  g_hooks = hooks;
 #ifdef CONFIG_P64_ENCODERS
   if (g_started) return;
   g_started = true;
@@ -142,6 +164,14 @@ void start() {
   // I2C reads and arithmetic only, never flash: the stack lives in PSRAM.
   xTaskCreatePinnedToCoreWithCaps(task, "encoders", 4096, nullptr, 5, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #endif
+}
+
+void apply(bool enabled, bool swap, bool invert) {
+  g_enabled = enabled;
+  g_swap = swap;
+  g_invert = invert;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  for (Knob &k : g_knobs) k.tracker.set_invert(invert);
 }
 
 int present() {
@@ -165,6 +195,9 @@ cJSON *json(bool scan) {
   cJSON_AddBoolToObject(d, "enabled", false);
 #endif
   cJSON_AddNumberToObject(d, "polls", g_poll);
+  cJSON_AddBoolToObject(d, "acting", g_enabled.load());
+  cJSON_AddBoolToObject(d, "swap", g_swap.load());
+  cJSON_AddBoolToObject(d, "invert", g_invert.load());
   if (scan) {
     cJSON *found = cJSON_AddArrayToObject(d, "scan");
     i2c_master_bus_handle_t bus = system::i2c_ext_bus();
@@ -177,6 +210,7 @@ cJSON *json(bool scan) {
   for (const Knob &k : g_knobs) {
     cJSON *j = cJSON_CreateObject();
     cJSON_AddStringToObject(j, "name", k.name);
+    cJSON_AddStringToObject(j, "role", role_of_knob(k) == KnobRole::Brightness ? "brightness" : "navigate");
     cJSON_AddNumberToObject(j, "address", k.address);
     cJSON_AddBoolToObject(j, "present", k.board.is_open());
     cJSON_AddNumberToObject(j, "hw_id", k.board.hw_id());

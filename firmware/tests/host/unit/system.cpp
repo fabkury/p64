@@ -71,7 +71,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
     "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
     "weather":20,"temperature":30}},"stream":{"takeover":false,"silence_ms":900},
-    "inputs":{"tap_enabled":false,"tap_sensitivity":9},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
+    "inputs":{"tap_enabled":false,"tap_sensitivity":9,"encoders_enabled":false,"encoders_swap":true,"encoders_invert":true},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
     "updates":{"auto_check":false}})");
   CHECK_EQ(a.brightness, 77);
@@ -93,6 +93,7 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK_EQ(a.makapix_max_side, 64);
   CHECK(a.hostname() == "p64-desk-1");
   CHECK(a.timezone == "America/Sao_Paulo");
+  CHECK((!a.encoders_enabled && a.encoders_swap && a.encoders_invert));
   Settings b;
   std::string error;
   CHECK(b.apply_json(a.to_json().c_str(), error));

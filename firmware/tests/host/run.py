@@ -98,6 +98,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_inputs", "src", "tap.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "orientation.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "encoder_model.cpp"),
+    os.path.join(COMPONENTS, "p64_inputs", "src", "knob_rules.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "version.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "release.cpp"),
 ]
@@ -130,6 +131,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
     os.path.join(COMPONENTS, "p64_system", "include"),
+    os.path.join(COMPONENTS, "p64_inputs", "include"),
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),
     CJSON,
@@ -158,6 +160,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
     os.path.join(COMPONENTS, "p64_system", "include"),
+    os.path.join(COMPONENTS, "p64_inputs", "include"),
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),
 ]

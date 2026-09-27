@@ -235,4 +235,41 @@ TEST_CASE("encoder tracker") {
   CHECK_EQ(s.long_presses(), 1);
 }
 
+TEST_CASE("knob rules: roles and brightness steps") {
+  using p64::inputs::brightness_after;
+  using p64::inputs::KnobRole;
+  using p64::inputs::role_of;
+  // Knob A (0) is brightness, B (1) navigates; swap exchanges them.
+  CHECK(role_of(0, false) == KnobRole::Brightness);
+  CHECK(role_of(1, false) == KnobRole::Navigate);
+  CHECK(role_of(0, true) == KnobRole::Navigate);
+  CHECK(role_of(1, true) == KnobRole::Brightness);
+  // About 10 % per detent, at least 1, clamped to 1..255.
+  CHECK_EQ(brightness_after(255, 1), 255);
+  CHECK_EQ(brightness_after(255, -1), 229);   // 255 - 26
+  CHECK_EQ(brightness_after(100, 1), 110);
+  CHECK_EQ(brightness_after(100, -1), 90);
+  CHECK_EQ(brightness_after(1, 1), 2);
+  CHECK_EQ(brightness_after(1, -1), 1);
+  CHECK_EQ(brightness_after(5, -3), 2);
+  CHECK_EQ(brightness_after(0, 1), 2);        // 0 is not a brightness: treated as 1
+  // Monotone, and the whole range is a few dozen detents each way.
+  int ups = 0;
+  for (uint8_t v = 1; v < 255; ++ups) {
+    const uint8_t n = brightness_after(v, 1);
+    CHECK(n > v);
+    v = n;
+  }
+  CHECK((ups >= 30 && ups <= 60));
+  int downs = 0;
+  for (uint8_t v = 255; v > 1; ++downs) {
+    const uint8_t n = brightness_after(v, -1);
+    CHECK(n < v);
+    v = n;
+  }
+  CHECK((downs >= 30 && downs <= 60));
+  // N detents at once equal N single detents.
+  CHECK_EQ(brightness_after(40, 5), brightness_after(brightness_after(40, 2), 3));
+}
+
 }  // namespace
