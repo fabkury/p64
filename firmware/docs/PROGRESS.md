@@ -855,6 +855,11 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   `docs/hardware/encoders-soldered.md` (5.1, 7, 8) and the measurements file: seat the
   cap with about 1 mm of shaft above the nut and check `presses` after fitting. The user
   reseated the cap that way and the click pauses and resumes the show.
+- 2026-09-27, board B with the multimeter and the wick (Klein MM325): the A0 bridge
+  conducted with no short (the jumpers' top pads are a shared rail, so A0-to-top-A1 beeps
+  by design), pull-ups 19.93 k, alone on the harness 3Vo 3.3 V and both lines 2.88 V,
+  scan empty; bridge wicked off cleanly, scan empty again three times with the ON LED lit.
+  Board B's chip is dead; a replacement 5880 is on the parts list. Knob A alone until then.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

@@ -36,7 +36,7 @@ Still needed:
 
 | Part | For | Note |
 |---|---|---|
-| Multimeter | continuity (A0 bridge, no A0/A1 short) and the bus voltages | any; the bench record stays blank without it, the firmware probe is the working substitute |
+| Replacement Adafruit 5880 for knob B | the first board B never answered (2026-09-27) | bridge A0 on the new board with a small bead, then the checks of section 3.3 |
 | 2 mm hex key | the knobs' set screws | not included with the knobs |
 | SH-SH cable, 200 mm (Adafruit 4401) | board to board inside the shell | the two knob positions are 94 mm apart and the sockets face up/down; the 50 mm 4399 is for the bench only |
 | Electrical tape or 3 mm heat-shrink | wrapping the cable joints | tape is fine |
@@ -235,8 +235,12 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   each jumper is a shared rail, so A0-to-top-A1 beeps by design), the pull-ups read
   19.93 k, the board alone powers up (3Vo 3.3 V, SDA and SCL 2.88 V) and still answers at
   no address. So the bridge is not visibly at fault and the chip is not running or not
-  talking; the board has no RST pad to read. Next: wick the bridge off anyway (the one
-  thing that changed) and scan; silent with bare pads = replace the board.
+  talking; the board has no RST pad to read. The bridge was then wicked off (A0 open on
+  the meter, pads intact) and the board plugged alone on the 4397 again: ON LED lit,
+  3Vo 3.3 V, three scans empty, both lines idle high. **Verdict, 2026-09-27: board B's
+  microcontroller is dead; replace the board** (a fresh 5880; ask Adafruit or the
+  reseller about the one that never answered). The dead board keeps its knob, nut and
+  washer for the replacement. Knob A runs alone meanwhile.
 - To resume, with the wick and the multimeter: (1) meter across the A0 pads (beep?) and
   from each A0 pad to the neighbouring A1 pads and to the 103 network's ends (no beep);
   (2) wick the bridge off, clean, plug B alone onto the 4397: a board that answers at
@@ -368,7 +372,7 @@ stands as p64a does, but laid on its back it rests on the knobs.
 | Symptom | Likely cause | Check |
 |---|---|---|
 | Both boards answer at 0x36 (probe says "0x37 missing"; both NeoPixels green at boot) | A0 bridge not conducting | continuity across the A0 pads |
-| A board's ON LED lights but it answers at no address, alone on the harness that works with the other board, and `GET /api/v1/diag/encoders?scan=1` shows both lines idle at 1 | the board itself: solder beyond the A0 pads, a lifted pad, or a board that never ran | the A0 corner under magnification; wick the bridge off and see whether the board answers at 0x36 again (bench, 2026-09-26: board B) |
+| A board's ON LED lights but it answers at no address, alone on the harness that works with the other board, and `GET /api/v1/diag/encoders?scan=1` shows both lines idle at 1 | the board itself: solder beyond the A0 pads, a lifted pad, or a board that never ran | meter it (A0 beep, chip-side A1/A2 pads clear, SDA to SCL ~20 k, powered 3Vo 3.3 V and lines ~2.9 V), wick the bridge off and scan at 0x36; still silent with bare pads = dead chip, replace (bench, 2026-09-27: board B, every reading normal, never answered) |
 | A board answers at 0x38 or 0x3A | the wrong jumper was bridged (A1 = 0x38, A2 = 0x3A) | fine, the firmware can take the address as a setting; or fix the bridge |
 | Rows read 2.2 V with both boards | a pull-up missing or in the wrong row | resistor legs in rows 5 / 10 and the + rail |
 | Knob B works, knob A does not, or vice versa | the 4399 / 4401 not seated | reseat; the probe re-polls a missing board every 5 s |
