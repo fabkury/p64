@@ -179,7 +179,12 @@ Bench record:
 | 3V3 / GND pin colours on the 4209 | red / black (keyed plug, 2026-09-26) | |
 | Rows 5 and 10, resistors only | ~2.7 V | |
 | Rows 5 and 10, both boards | ~2.86 V | |
-| A0 continuity on board 2 | beep | |
+| A0 continuity on board 2 | beep | beep (2026-09-27, Klein MM325) |
+| A0 to the A1 pads on board 2 | no beep | top A1 pad beeps, bottom does not; top A2 to top A1 beeps, bottom to bottom does not: the top row is the jumpers' shared rail, the chip-side pads are clear (2026-09-27) |
+| A1 pads on board 2 | no beep | no beep |
+| SDA to SCL on board 2, unpowered | ~20 k | 19.93 k (the two 10 k pull-ups in series); SDA or SCL to the VIN pad reads OL, as an unpowered regulator does |
+| SDA, SCL, VIN to GND on board 2 | no beep | no beep |
+| Board 2 alone on the 4397, powered | 3Vo 3.3 V, SDA and SCL ~2.86 V | 3Vo 3.3 V, SDA 2.88 V, SCL 2.88 V; `?scan=1` empty, both lines idle at 1 |
 | `flash.ps1` with IO46 pulled high | works | |
 | Free internal heap, largest block, before the probe | from `/diag/memory` | |
 
@@ -226,6 +231,12 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   board A put back on the same plug answers at once. The photo of the back shows a small
   blob on the A0 pads, A1 and A2 untouched, the 103 pull-up network and the NeoPixel pads
   clean.
+- 2026-09-27, with the meter: the bridge conducts, no short to A1 or A2 (the top pad of
+  each jumper is a shared rail, so A0-to-top-A1 beeps by design), the pull-ups read
+  19.93 k, the board alone powers up (3Vo 3.3 V, SDA and SCL 2.88 V) and still answers at
+  no address. So the bridge is not visibly at fault and the chip is not running or not
+  talking; the board has no RST pad to read. Next: wick the bridge off anyway (the one
+  thing that changed) and scan; silent with bare pads = replace the board.
 - To resume, with the wick and the multimeter: (1) meter across the A0 pads (beep?) and
   from each A0 pad to the neighbouring A1 pads and to the 103 network's ends (no beep);
   (2) wick the bridge off, clean, plug B alone onto the 4397: a board that answers at
