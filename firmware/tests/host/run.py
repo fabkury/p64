@@ -99,6 +99,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_inputs", "src", "orientation.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "encoder_model.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "knob_rules.cpp"),
+    os.path.join(COMPONENTS, "p64_display", "src", "light_curve.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "version.cpp"),
     os.path.join(COMPONENTS, "p64_ota", "src", "release.cpp"),
 ]
@@ -114,6 +115,7 @@ LIBWEBP_SOURCES = sorted(
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
     os.path.join(COMPONENTS, "p64_widgets", "include"),
+    os.path.join(COMPONENTS, "p64_display", "include"),  # light_curve.hpp (only that one)
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),
@@ -144,6 +146,7 @@ INCLUDES = [
 ]
 HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_widgets", "include"),
+    os.path.join(COMPONENTS, "p64_display", "include"),  # light_curve.hpp (only that one)
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
     os.path.join(COMPONENTS, "p64_makapix", "include"),

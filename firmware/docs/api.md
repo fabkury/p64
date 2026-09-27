@@ -18,7 +18,7 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/status` | GET | firmware, uptime, heap, network, time, card, panel health, `playback` (below), `makapix`, `providers` (below) |
+| `/api/v1/status` | GET | firmware, uptime, heap, network, time, card, panel health (`panel`: mode, refresh, planes, DMA counters, `brightness` in force, and its light plan since 2026-09-27: `light`, the share of the profile's full light, 0..1; `oe_level`, the driver's output-enable level, 17..255 on this panel; `lut_scale`, the software dimming below the driver floor, 0..1, 1 above it), `playback` (below), `makapix`, `providers` (below) |
 | `/api/v1/settings` | GET | the settings document (spec section 16 groups) |
 | `/api/v1/settings` | PUT | merge the keys present, clamped to their ranges; returns the document |
 | `/api/v1/ws` | WebSocket | `{"type":"status","data":...}` every 2 s and at once on events (Wi-Fi, a swap, a settings write, a channel list or count change, a playset saved or deleted, pairing, the card, the files) |

@@ -55,6 +55,10 @@ class Display {
     int restarts = 0;      // driver re-creations (mode switches)
     bool dma_sync = false;  // frame boundaries come from the DMA (else timed waits)
     bool dma_moving = false;  // the DMA descriptor pointer advanced since the previous health()
+    // The driver's light plan for the brightness in force (light_curve.hpp, spec 3.2):
+    double light = 0;      // share of the profile's full light, 0..1
+    int oe_level = 0;      // the output-enable level chosen, 0..255 (never below the driver floor, 17)
+    double lut_scale = 0;  // the scale on the LUT's targets, 0..1 (1 above the floor's light)
   };
 
   // Builds the driver from sdkconfig (pins, panel, timing) in Quality mode and starts
@@ -67,8 +71,9 @@ class Display {
   // Blocks until the DMA has certainly finished with the back buffer.
   void wait_for_back_buffer();
 
-  // 0 blanks the panel completely (pause, panel off), 1..255 is the panel brightness.
-  // Takes effect on the next refresh.
+  // 0 blanks the panel completely (pause, panel off), 1..255 is the panel brightness as
+  // perceived lightness (light_curve.hpp: a share of the full light for the driver's
+  // light plan, spec 3.2). Takes effect on the next refresh.
   void set_brightness(uint8_t value);
   uint8_t brightness() const { return brightness_; }
 

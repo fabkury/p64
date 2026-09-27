@@ -227,6 +227,9 @@ cJSON *build_status() {
     cJSON_AddBoolToObject(panel, "dma_sync", h.dma_sync);
     cJSON_AddBoolToObject(panel, "dma_moving", h.dma_moving);
     cJSON_AddNumberToObject(panel, "brightness", g_hooks.display()->brightness());
+    cJSON_AddNumberToObject(panel, "light", h.light);          // share of the full light (spec 3.2)
+    cJSON_AddNumberToObject(panel, "oe_level", h.oe_level);    // the driver's output-enable level
+    cJSON_AddNumberToObject(panel, "lut_scale", h.lut_scale);  // the software dimming below the floor
     cJSON_AddNumberToObject(panel, "rotation", static_cast<int>(g_hooks.display()->rotation()));
     cJSON_AddBoolToObject(panel, "night_active", g_hooks.night_active ? g_hooks.night_active() : false);
   }

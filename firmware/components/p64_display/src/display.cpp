@@ -1,4 +1,5 @@
 #include "p64/display/display.hpp"
+#include "p64/display/light_curve.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -198,7 +199,7 @@ bool Display::start_driver(unsigned min_refresh_hz) {
   if (lcd_dma_channel_ < 0) driver_->flip_buffer();
   driver_->clear();
 #endif
-  driver_->set_brightness(brightness_);
+  driver_->set_light(light::light_q16(brightness_));
   last_flip_us_ = esp_timer_get_time();
   flip_pending_ = false;
   const int transition = driver_->get_lsb_msb_transition_bit();
@@ -457,6 +458,12 @@ Display::Health Display::health() const {
     h.mode = mode_;
     h.restarts = restarts_;
     h.dma_sync = lcd_dma_channel_ >= 0;
+    if (driver_) {
+      const Hub75LightPlan plan = driver_->get_light_plan();
+      h.oe_level = plan.effective;
+      h.lut_scale = plan.scale_q16 / 65536.0;
+      h.light = plan.full_weight ? static_cast<double>(plan.weight) * plan.scale_q16 / 65536.0 / plan.full_weight : 0;
+    }
     ch = lcd_dma_channel_ >= 0 ? lcd_dma_channel_ : (driver_ ? driver_->get_dma_channel_id() : -1);
   }
   // A streaming DMA advances its descriptor pointer every few microseconds. The status
@@ -494,7 +501,7 @@ bool Display::set_dma_priority(int priority) {
 void Display::set_brightness(uint8_t value) {
   std::lock_guard<std::mutex> lock(driver_mutex_);
   brightness_ = value;
-  if (driver_) driver_->set_brightness(value);
+  if (driver_) driver_->set_light(light::light_q16(value));
 }
 
 void Display::set_gains(unsigned r_pct, unsigned g_pct, unsigned b_pct) {
