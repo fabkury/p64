@@ -9,7 +9,8 @@ that only v5 used is measured in `../archive/pre-v7/README.md`.)
 `output/v1/p64_enclosure_service.stl` (0.45 mm fit clearance), ordered from JLC3DP on
 2026-09-05 (order D2026090531500023, $18.83 including shipping), printed in black FDM
 PLA. Photos, all taken on
-2026-09-18:
+2026-09-18 (removed from `input/` on 2026-09-27; they stay in git history, added by
+commit f862e6e, `git show f862e6e:enclosure/input/<file>`):
 
 | File | Shows |
 |---|---|
