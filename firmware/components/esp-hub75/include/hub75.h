@@ -225,6 +225,15 @@ class Hub75Driver {
   bool set_refresh_profile(uint8_t planes, uint16_t min_hz);
   /** @brief p64 patch: bit planes currently sent (the compile-time depth until changed). */
   int get_bit_planes() const;
+  /**
+   * @brief p64 patch: sets the light as a share of the profile's full light (16.16,
+   * 0 = blank, 65536 = full), bypassing the brightness curve and its floor: the platform
+   * picks the output-enable level and scales the LUT's targets for the rest (see
+   * p64bcm::plan_light). set_brightness() returns to the curve.
+   */
+  void set_light(uint32_t light_q16);
+  /** @brief p64 patch: the plan in force (zeros before start or on other platforms). */
+  Hub75LightPlan get_light_plan() const;
 
   /**
    * @brief Get panel height in pixels

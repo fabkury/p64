@@ -9,6 +9,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// p64 patch: how the panel emits the light asked of it through Hub75Driver::set_light():
+// the output-enable level in force, its light and the profile's full light (pixel clocks
+// per frame), and the scale applied to the LUT's targets (16.16, 65536 = none).
+typedef struct {
+  uint8_t effective;
+  uint32_t weight;
+  uint32_t full_weight;
+  uint32_t scale_q16;
+} Hub75LightPlan;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

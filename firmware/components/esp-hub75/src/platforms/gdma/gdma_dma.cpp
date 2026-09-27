@@ -541,6 +541,7 @@ void GdmaDma::shutdown() {
 
 void GdmaDma::set_basis_brightness(uint8_t brightness) {
   basis_brightness_ = brightness;
+  light_mode_ = false;  // p64 patch: back to the curve
 
   if (brightness == 0) {
     ESP_LOGI(TAG, "Brightness set to 0 (display off)");
@@ -566,6 +567,24 @@ void GdmaDma::set_intensity(float intensity) {
 
   // Apply intensity change immediately by updating OE bits in DMA buffers
   set_brightness_oe();
+}
+
+// p64 patch: the light plan. The plan itself is recomputed inside set_brightness_oe()
+// so a refresh profile switch (other planes, other full light) replans the same share.
+void GdmaDma::set_light(uint32_t light_q16) {
+  light_mode_ = true;
+  light_q16_ = light_q16 > 65536u ? 65536u : light_q16;
+  set_brightness_oe();
+}
+
+Hub75LightPlan GdmaDma::get_light_plan() const {
+  Hub75LightPlan plan{};
+  plan.effective = effective_level_;
+  plan.scale_q16 = lut_scale_q16_;
+  for (int bit = 0; bit < active_planes_; bit++) plan.weight += plane_weight_[bit];
+  plan.full_weight =
+      p64bcm::weight_total(dma_width_ - config_.latch_blanking, 255, active_planes_, lsbMsbTransitionBit_);
+  return plan;
 }
 
 void GdmaDma::set_rotation(Hub75Rotation rotation) { rotation_ = rotation; }
@@ -972,15 +991,15 @@ void GdmaDma::initialize_blank_buffers() {
 //   2. Provides natural separation from the LAT pulse at the end
 //   3. Distributes any timing jitter symmetrically
 //
-void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t brightness) {
+void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t effective) {
   if (!buffers) {
     return;
   }
 
   const uint8_t latch_blanking = config_.latch_blanking;
 
-  // brightness=0 blanks the display entirely
-  if (brightness == 0) {
+  // effective=0 blanks the display entirely
+  if (effective == 0) {
     for (int row = 0; row < num_rows_; row++) {
       for (int bit = 0; bit < bit_depth_; bit++) {
         uint16_t *buf = (uint16_t *) (buffers[row].data + (bit * dma_width_ * 2));
@@ -992,15 +1011,10 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t bri
     return;
   }
 
-  // Remap user brightness through quadratic curve
-  //
-  // The curve passes through (1, min), (128, 128), (255, 255) ensuring:
-  // - Minimum floor for BCM color accuracy at low brightness
-  // - Brightness 128 remains the perceptual midpoint (unchanged from pre-floor behavior)
-  // - Maximum brightness unchanged
-  //
-  // See init_brightness_coeffs() for coefficient calculation.
-  const int effective_brightness = remap_brightness(brightness);
+  // p64 patch: `effective` is the level after the curve (set_brightness_oe remaps the
+  // user brightness through the quadratic curve floored at min_brightness_) or the level
+  // the light plan chose (set_light); this routine only lays out the windows.
+  const int effective_brightness = effective;
   const int max_pixels = dma_width_ - latch_blanking;
 
   // p64 patch: the output-enable window of each plane, computed once (every row gets the
@@ -1074,20 +1088,35 @@ void GdmaDma::set_brightness_oe() {
     return;
   }
 
-  // Calculate brightness scaling (0-255 maps to 0-255)
-  const uint8_t brightness = (uint8_t) ((float) basis_brightness_ * intensity_);
-
-  ESP_LOGD(TAG, "Setting brightness OE: brightness=%u, lsbMsbTransitionBit=%u", brightness, lsbMsbTransitionBit_);
+  // p64 patch: the level comes from the light plan (set_light) or from the curve over
+  // basis brightness times intensity (set_brightness / set_intensity, upstream's path).
+  uint8_t effective;
+  if (light_mode_) {
+    const p64bcm::LightPlan plan = p64bcm::plan_light(dma_width_ - config_.latch_blanking, active_planes_,
+                                                      lsbMsbTransitionBit_, min_brightness_, light_q16_);
+    effective = static_cast<uint8_t>(plan.effective);
+    lut_scale_q16_ = plan.scale_q16 ? plan.scale_q16 : 65536u;
+    ESP_LOGD(TAG, "light %lu/65536: OE level %u (%lu clocks), LUT scale %lu/65536",
+             static_cast<unsigned long>(light_q16_), effective, static_cast<unsigned long>(plan.weight),
+             static_cast<unsigned long>(lut_scale_q16_));
+  } else {
+    // Calculate brightness scaling (0-255 maps to 0-255)
+    const uint8_t brightness = (uint8_t) ((float) basis_brightness_ * intensity_);
+    effective = static_cast<uint8_t>(remap_brightness(brightness));
+    lut_scale_q16_ = 65536u;
+    ESP_LOGD(TAG, "Setting brightness OE: brightness=%u, lsbMsbTransitionBit=%u", brightness, lsbMsbTransitionBit_);
+  }
+  effective_level_ = effective;
 
   // Update OE bits in all allocated buffers
   for (auto &row_buffer : row_buffers_) {
     if (row_buffer) {
-      set_brightness_oe_internal(row_buffer, brightness);
+      set_brightness_oe_internal(row_buffer, effective);
     }
   }
 
   // p64 patch: the planes' on-times changed, so refit the LUT to them.
-  if (brightness > 0) fit_lut_to_weights();
+  if (effective > 0) fit_lut_to_weights();
 
   ESP_LOGD(TAG, "Brightness OE configuration complete");
 }
@@ -1110,7 +1139,7 @@ void GdmaDma::fit_lut_to_weights() {
   uint32_t weights[16] = {};
   for (int bit = 0; bit < active_planes_; bit++) weights[bit] = plane_weight_[bit];
   const unsigned fitted_distinct =
-      p64bcm::fit_lut(get_lut(), (1u << HUB75_BIT_DEPTH) - 1, weights, active_planes_, lut_);
+      p64bcm::fit_lut(get_lut(), (1u << HUB75_BIT_DEPTH) - 1, weights, active_planes_, lut_, lut_scale_q16_);
   if (log_windows_) {  // once per refresh profile, not on every brightness change
     log_windows_ = false;
     char text[128];

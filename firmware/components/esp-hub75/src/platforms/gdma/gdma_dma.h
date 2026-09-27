@@ -61,6 +61,11 @@ class GdmaDma : public PlatformDma {
    */
   void set_intensity(float intensity) override;
 
+  // p64 patch: the light as a share of full, planned as an output-enable level plus a
+  // LUT scale (p64_bcm.h plan_light); replaces the curve until set_basis_brightness().
+  void set_light(uint32_t light_q16) override;
+  Hub75LightPlan get_light_plan() const override;
+
   /**
    * @brief Set display rotation (override base class)
    */
@@ -133,7 +138,7 @@ class GdmaDma : public PlatformDma {
   void initialize_blank_buffers();    // Initialize DMA buffers with control bits only
   void initialize_buffer_internal(RowBitPlaneBuffer *buffers);                      // Helper: initialize one buffer set
   void set_brightness_oe();                                                         // Set OE bits for BCM control
-  void set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t brightness);  // Helper: set OE for one buffer
+  void set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t effective);  // Helper: set OE for one buffer (level after the curve or the plan)
   bool build_descriptor_chain();
   bool build_descriptor_chain_internal(RowBitPlaneBuffer *buffers,
                                        dma_descriptor_t *descriptors);  // Helper: build one chain
@@ -201,6 +206,12 @@ class GdmaDma : public PlatformDma {
   // Brightness control (implementation of base class interface)
   uint8_t basis_brightness_;  // 1-255
   float intensity_;           // 0.0-1.0
+  // p64 patch: the light plan (set_light) or the curve (set_basis_brightness), whichever
+  // was asked last; the level and the LUT scale that set_brightness_oe() last applied.
+  bool light_mode_ = false;
+  uint32_t light_q16_ = 0;
+  uint8_t effective_level_ = 0;
+  uint32_t lut_scale_q16_ = 65536u;
 };
 
 }  // namespace hub75

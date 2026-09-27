@@ -226,6 +226,10 @@ bool Hub75Driver::set_refresh_profile(uint8_t planes, uint16_t min_hz) {
   return true;
 }
 int Hub75Driver::get_bit_planes() const { return dma_ ? dma_->get_bit_planes() : 0; }
+void Hub75Driver::set_light(uint32_t light_q16) {
+  if (dma_) dma_->set_light(light_q16);
+}
+Hub75LightPlan Hub75Driver::get_light_plan() const { return dma_ ? dma_->get_light_plan() : Hub75LightPlan{}; }
 
 uint16_t Hub75Driver::get_width() const {
   // Return virtual width with rotation applied

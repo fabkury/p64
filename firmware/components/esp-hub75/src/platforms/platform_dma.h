@@ -290,6 +290,12 @@ class PlatformDma {
   virtual bool set_refresh_profile(uint8_t planes, uint16_t min_hz) { return false; }
   // p64 patch: bit planes currently in the chain (0 when the platform does not know).
   virtual int get_bit_planes() const { return 0; }
+  // p64 patch: the light as a share of full (16.16), bypassing the curve; platforms
+  // without the plan fall back to the curve.
+  virtual void set_light(uint32_t light_q16) {
+    set_basis_brightness(static_cast<uint8_t>((light_q16 > 65536u ? 65536u : light_q16) * 255u >> 16));
+  }
+  virtual Hub75LightPlan get_light_plan() const { return Hub75LightPlan{}; }
 };
 
 }  // namespace hub75

@@ -34,6 +34,24 @@ whose summed on-time is nearest the gamma table's target. This replaces upstream
 brightness shortens every window, so the low planes lose resolution first; run the panel
 near full brightness for the best gradation and dim in software if needed.
 
+## The light plan: set_light() below the brightness curve's floor (2026-09-27)
+
+`Hub75Driver::set_light(light_q16)` asks for a share of the profile's full light
+(16.16, 65536 = full) instead of a brightness, and `get_light_plan()` reports what was
+done. Upstream's `set_brightness()` runs the user value through a quadratic curve floored
+at `min_brightness_` (17 on a 64-wide panel: four clocks on the top plane) and the
+output-enable windows are whole pixel clocks, so the panel had 59 distinct levels, the
+lowest at 6.4 % of full light and the bottom ones 25 % apart. `p64bcm::plan_light()`
+(p64_bcm.h, host-tested) takes the smallest output-enable level at or above the floor
+whose light reaches the request and scales the LUT's targets down for the rest
+(`fit_lut()` gained a `scale_q16` argument): above the floor every request lands within a
+clock with the scale between about 0.75 and 1; below the floor the level stays at the
+floor and the scale alone dims, one bit of tonal depth per halving (the codes left are
+the low planes' short pulses). `set_brightness()` returns to the curve. The plan is
+recomputed inside `set_brightness_oe()`, so a refresh profile switch replans the same
+share of the new profile's full light. p64's `Display::set_brightness()` maps its 1..255
+(perceived lightness, spec 3.2) to a share of light and calls `set_light()`.
+
 ## HUB75_MIN_REFRESH_RATE range (Kconfig)
 
 Raised from 30-240 to 30-2000 Hz: with binary-weighted low planes a high minimum is a

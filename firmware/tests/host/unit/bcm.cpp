@@ -142,4 +142,116 @@ TEST_CASE("bcm: brightness 0 is dark, and the LUT fit says so") {
   CHECK_EQ(p.distinct, 0u);
 }
 
+// The light plan (spec 3.2, 2026-09-27): a share of the full light becomes an
+// output-enable level plus a LUT scale. The driver's floor on this panel is 17.
+constexpr int kFloor = 17;
+
+// The light a plan emits at input 255 of a fitted LUT, in clocks per frame.
+uint32_t top_light(const bcm::LightPlan &plan, int planes, int transition) {
+  int windows[16] = {};
+  uint32_t weights[16] = {};
+  uint16_t lut[256] = {};
+  bcm::plane_windows(kMaxPixels, plan.effective, planes, transition, windows);
+  for (int bit = 0; bit < planes; ++bit) weights[bit] = windows[bit] * bcm::plane_reps(bit, transition);
+  bcm::fit_lut(kGamma.v, kIdealMax, weights, planes, lut, plan.scale_q16);
+  uint32_t w = 0;
+  for (int bit = 0; bit < planes; ++bit) {
+    if (lut[255] & (1u << bit)) w += weights[bit];
+  }
+  return w;
+}
+
+TEST_CASE("bcm: the Quality profile's full light is the 1979 clocks the device logs") {
+  CHECK_EQ(bcm::weight_total(kMaxPixels, 255, 10, 4), 1979u);
+  CHECK_EQ(bcm::weight_total(kMaxPixels, kFloor, 10, 4), 127u);  // the driver floor: 6.4 % of full
+  CHECK_EQ(bcm::weight_total(kMaxPixels, 0, 10, 4), 0u);
+}
+
+TEST_CASE("bcm: the light plan lands every request within a clock and never drops below the floor level") {
+  uint32_t last = 0;
+  for (uint32_t light = 1; light <= 65536u; light += 37) {
+    const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 10, 4, kFloor, light);
+    CHECK(plan.effective >= kFloor);
+    CHECK(plan.effective <= 255);
+    CHECK(plan.scale_q16 >= 1u);
+    CHECK(plan.scale_q16 <= 65536u);
+    const double want = 1979.0 * light / 65536.0;
+    const double got = static_cast<double>(plan.weight) * plan.scale_q16 / 65536.0;
+    CHECK_MESSAGE(std::fabs(got - want) <= 1.0, "light ", light, " want ", want, " got ", got);
+    // The level's own light reaches the request (the scale only ever dims).
+    const bool reaches = static_cast<double>(plan.weight) + 0.5 >= want || plan.effective == 255;
+    CHECK(reaches);
+    CHECK(plan.weight >= last);  // levels only rise with the request
+    last = plan.weight;
+  }
+  const bcm::LightPlan full = bcm::plan_light(kMaxPixels, 10, 4, kFloor, 65536u);
+  CHECK_EQ(full.effective, 255);
+  CHECK_EQ(full.scale_q16, 65536u);
+  CHECK_EQ(bcm::plan_light(kMaxPixels, 10, 4, kFloor, 0).effective, 0);
+}
+
+TEST_CASE("bcm: above the floor the LUT scale stays near one (the levels are at most 25 % apart)") {
+  for (uint32_t light = 4300; light <= 65536u; light += 101) {  // 6.6 % and up
+    const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 10, 4, kFloor, light);
+    CHECK_MESSAGE(plan.scale_q16 >= 65536u * 3 / 4, "light ", light, " scale ", plan.scale_q16);
+  }
+}
+
+TEST_CASE("bcm: below the floor the level stays at the floor and the LUT scale dims, a bit of depth per halving") {
+  // A sixteenth of the floor: the new brightness 1 (spec 3.2), about 0.4 % of full.
+  const uint32_t sixteenth = static_cast<uint32_t>(65536.0 * 127 / 1979 / 16 + 0.5);
+  const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 10, 4, kFloor, sixteenth);
+  CHECK_EQ(plan.effective, kFloor);
+  CHECK_EQ(plan.weight, 127u);
+  CHECK(plan.scale_q16 > 65536u / 17);
+  CHECK(plan.scale_q16 < 65536u / 15);
+  const uint32_t top = top_light(plan, 10, 4);
+  CHECK(top >= 7u);
+  CHECK(top <= 9u);
+  // The fitted LUT is still monotonic in light and has a handful of distinct codes.
+  int windows[16] = {};
+  uint32_t weights[16] = {};
+  uint16_t lut[256] = {};
+  bcm::plane_windows(kMaxPixels, plan.effective, 10, 4, windows);
+  for (int bit = 0; bit < 10; ++bit) weights[bit] = windows[bit] * bcm::plane_reps(bit, 4);
+  const unsigned distinct = bcm::fit_lut(kGamma.v, kIdealMax, weights, 10, lut, plan.scale_q16);
+  CHECK(distinct >= 6u);
+  CHECK(distinct <= 10u);
+  uint32_t last = 0;
+  for (int i = 0; i < 256; ++i) {
+    uint32_t w = 0;
+    for (int bit = 0; bit < 10; ++bit) {
+      if (lut[i] & (1u << bit)) w += weights[bit];
+    }
+    CHECK(w >= last);
+    last = w;
+  }
+  CHECK_EQ(lut[0], 0u);
+  // Half the floor keeps twice the codes of a sixteenth, give or take the rounding.
+  const bcm::LightPlan half = bcm::plan_light(kMaxPixels, 10, 4, kFloor, sixteenth * 8);
+  CHECK_EQ(half.effective, kFloor);
+  CHECK(top_light(half, 10, 4) >= 60u);
+}
+
+TEST_CASE("bcm: the Photo profile plans the same share of its own full light") {
+  const uint32_t full8 = bcm::weight_total(kMaxPixels, 255, 8, 4);
+  CHECK(full8 < 1979u);
+  const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 8, 4, kFloor, 32768u);
+  const double got = static_cast<double>(plan.weight) * plan.scale_q16 / 65536.0;
+  CHECK(std::fabs(got - full8 / 2.0) <= 1.0);
+}
+
+TEST_CASE("bcm: a scaled fit at full level is the unscaled fit's light times the scale") {
+  const Profile p = fit(10, 4, 255);
+  uint16_t lut[256] = {};
+  bcm::fit_lut(kGamma.v, kIdealMax, p.weights, 10, lut, 32768u);
+  uint32_t w = 0;
+  for (int bit = 0; bit < 10; ++bit) {
+    if (lut[255] & (1u << bit)) w += p.weights[bit];
+  }
+  CHECK(w >= 1979u / 2 - 4);  // the nearest code: the codes are a few clocks apart
+  CHECK(w <= 1979u / 2 + 4);
+  for (int i = 1; i < 256; ++i) CHECK(lut[i] >= lut[i - 1]);
+}
+
 }  // namespace

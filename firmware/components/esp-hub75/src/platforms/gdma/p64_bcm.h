@@ -42,9 +42,62 @@ inline void plane_windows(int max_pixels, int effective_brightness, int planes, 
   }
 }
 
+// The light of a profile at `effective_brightness`: the sum over the planes of window
+// times repetitions, in pixel clocks per frame (1979 for Quality at 255).
+inline uint32_t weight_total(int max_pixels, int effective_brightness, int planes, int transition_bit) {
+  int windows[16] = {};
+  plane_windows(max_pixels, effective_brightness, planes, transition_bit, windows);
+  uint32_t total = 0;
+  for (int bit = 0; bit < planes; bit++) total += static_cast<uint32_t>(windows[bit]) * plane_reps(bit, transition_bit);
+  return total;
+}
+
+// How a profile emits a requested share of its full light (spec 3.2, 2026-09-27): the
+// output-enable level, and the LUT scale that closes the gap between that level's light
+// and the request. The output-enable windows are whole pixel clocks, so their levels are
+// coarse (59 on this panel, 25 % apart at the bottom) and stop at the driver's floor
+// (`min_effective`, 17 here: four clocks on the top plane). The plan takes the smallest
+// level whose light reaches the request and scales the LUT's targets down by the rest,
+// so every request lands exactly and the scale stays between about 0.75 and 1 above the
+// floor; below the floor the level stays at the floor and the scale alone dims, at the
+// cost of one bit of tonal depth per halving (the codes that remain are the low planes).
+struct LightPlan {
+  int effective = 0;        // the output-enable level, 0..255 (0 = blank)
+  uint32_t weight = 0;      // the light of that level, clocks per frame
+  uint32_t scale_q16 = 0;   // the LUT scale, 16.16 (65536 = none)
+};
+
+inline LightPlan plan_light(int max_pixels, int planes, int transition_bit, int min_effective, uint32_t light_q16) {
+  LightPlan plan;
+  if (light_q16 == 0) return plan;
+  if (light_q16 > 65536u) light_q16 = 65536u;
+  const uint32_t full = weight_total(max_pixels, 255, planes, transition_bit);
+  if (light_q16 == 65536u) {  // the top levels tie (their windows saturate): report 255
+    plan.effective = 255;
+    plan.weight = full;
+    plan.scale_q16 = 65536u;
+    return plan;
+  }
+  const double target = static_cast<double>(full) * light_q16 / 65536.0;
+  int level = min_effective < 1 ? 1 : min_effective;
+  uint32_t weight = weight_total(max_pixels, level, planes, transition_bit);
+  while (level < 255 && static_cast<double>(weight) < target) {
+    level++;
+    weight = weight_total(max_pixels, level, planes, transition_bit);
+  }
+  plan.effective = level;
+  plan.weight = weight;
+  double scale = weight ? target / static_cast<double>(weight) : 1.0;
+  if (scale > 1.0) scale = 1.0;
+  plan.scale_q16 = static_cast<uint32_t>(scale * 65536.0 + 0.5);
+  if (plan.scale_q16 == 0) plan.scale_q16 = 1;
+  return plan;
+}
+
 // Fits `lut_out[256]` to the plane weights: input i gets the code whose weight is nearest
-// ideal[i] scaled from 0..ideal_max to 0..total weight. Returns the number of distinct
-// codes (0 when every plane is dark).
+// ideal[i] scaled from 0..ideal_max to 0..total weight times `scale_q16` (16.16, 65536 =
+// the full light; a smaller scale is the software dimming of plan_light). Returns the
+// number of distinct codes (0 when every plane is dark).
 //
 // The walk goes through the codes built from the lit planes only, in order. With
 // superincreasing weights that order is the order of their light, so a walk that stops at
@@ -54,7 +107,7 @@ inline void plane_windows(int max_pixels, int effective_brightness, int planes, 
 // of 2026-09-22 found it (the blanking of 2026-09-20 had kept the weights in order but not
 // the walk). Profiles without a blanked plane walk exactly the codes they walked before.
 inline unsigned fit_lut(const uint16_t *ideal, uint32_t ideal_max, const uint32_t *weights, int planes,
-                        uint16_t *lut_out) {
+                        uint16_t *lut_out, uint32_t scale_q16 = 65536u) {
   uint32_t total = 0;
   int lit[16];
   int lit_count = 0;
@@ -81,7 +134,7 @@ inline unsigned fit_lut(const uint16_t *ideal, uint32_t ideal_max, const uint32_
   uint32_t step = 0;
   double w_step = 0;
   for (int i = 0; i < 256; i++) {
-    const double target = static_cast<double>(ideal[i]) * total / ideal_max;
+    const double target = static_cast<double>(ideal[i]) * total / ideal_max * scale_q16 / 65536.0;
     while (step < max_step) {
       const double w_next = weight_of(step + 1);
       if (std::fabs(w_next - target) > std::fabs(w_step - target)) break;
