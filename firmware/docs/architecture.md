@@ -17,7 +17,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `animatedgif` | vendored bitbank2/AnimatedGIF | none | yes |
 | `p64_gfx` | `Frame` (RGB888, panel-sized, logical orientation), `Rgb`, blending, rotation, `Scaler`, bitmap fonts and text | none | yes |
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
-| `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | no |
+| `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | partly (`light_curve.cpp`: the brightness scale) |
 | `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON) |
 | `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
@@ -110,8 +110,14 @@ Ported from the hardware tests (`reference/hardware-tests/main/display.*`) and e
 - Per-channel gains are applied in the same copy. Gamma stays in the driver's LUT (2.2,
   fixed by the p64 patch).
 - Brightness pipeline: effective = min(user, ceiling, schedule) computed by the main
-  task, applied through the driver's `set_brightness()`; 0 is only ever used for pause
-  and panel off.
+  task; `Display::set_brightness()` turns the number (perceived lightness, spec 3.2)
+  into a share of the full light through the pure `light_curve.hpp` (even lightness,
+  light its cube, 1 = a sixteenth of the driver floor) and hands it to the driver's
+  light plan, `set_light()` (p64 patch: the output-enable level at or above the
+  driver's floor of 17, plus a scale on the LUT's targets for the rest; below the
+  floor the scale alone dims, a bit of depth per halving). 0 is only ever used for
+  pause and panel off. The plan in force is in the status document's `panel`
+  (`light`, `oe_level`, `lut_scale`).
 - Panel modes are refresh profiles of the driver (p64 patch `set_refresh_profile`):
   Quality sends the ten compile-time planes at the sdkconfig minimum rate (transition
   bit 4, 271.3 Hz); Photo sends eight planes at 600 Hz minimum (transition bit 4,
@@ -508,7 +514,7 @@ failures and tries a missing board again every 5 s (a loose cable must not take 
 other knob down; p64a runs the same build with both boards missing). Diagnostics:
 `GET /api/v1/diag/encoders`; `tests/device/encoders_smoke.py`. The roles (stage C,
 2026-09-26) are the pure `knob_rules.hpp` (`role_of(knob, swap)`, `brightness_after()`:
-about 10 % of the current value per detent, at least 1, 42 detents from 1 to 255) and
+7 per detent, an even step of perceived lightness since 2026-09-27, 37 detents from 1 to 255) and
 three `inputs::Hooks` the poller calls on its own task: `brightness_step`, `toggle_pause`
 and `like`; `next` and `previous` are the tap hooks reused. `main.cpp` implements them:
 the brightness step goes to the display at once through `ops::effective_brightness()`

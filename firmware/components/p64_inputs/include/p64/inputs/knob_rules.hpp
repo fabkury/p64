@@ -16,10 +16,13 @@ constexpr KnobRole role_of(int knob, bool swap) {
   return (first != swap) ? KnobRole::Brightness : KnobRole::Navigate;
 }
 
-// The brightness after `detents` (positive = up). Each detent moves about 10 % of the
-// current value and at least 1, so the steps are even to the eye across 1..255 (the
-// driver's curve is floored near 17/255, spec 3.2): 42 detents from 1 to 255, 34 from
-// 255 down to 1.
+// The brightness after `detents` (positive = up). The brightness number is perceived
+// lightness (spec 3.2, since 2026-09-27: even in the number, the light its cube, 1 the
+// software floor), so each detent adds or removes a fixed kDetentStep, even to the eye:
+// 37 detents from 1 to 255 and 37 back, about a turn and a half of a 24-detent knob,
+// clamped to 1..255. (Until 2026-09-27 a detent was 10 % of the value, and the seven
+// lowest values were one picture on the driver's floored curve.)
+constexpr int kDetentStep = 7;
 uint8_t brightness_after(uint8_t current, int32_t detents);
 
 }  // namespace p64::inputs

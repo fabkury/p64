@@ -93,7 +93,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="brightness-row"><input type="range" id="brightness" min="1" max="255" value="255" oninput="document.getElementById('brightness-value').textContent=this.value" onchange="save({display:{brightness:+this.value}})"><span class="brightness-value" id="brightness-value">255</span></div>
         <div class="setting-hint">1 to 255. Full white at 255 needs the 27 W supply on the POWER port.</div>
         <div class="toggle-row" style="margin-top:10px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Ceiling (advanced)</label><input class="num-input" type="number" id="ceiling" min="1" max="255" onchange="save({display:{brightness_ceiling:+this.value}})"></div>
-        <div class="setting-hint">The effective brightness never exceeds the ceiling: schedules, Makapix commands and the API included.</div>
+        <div class="setting-hint">The number is perceived lightness: 128 looks about half as bright as 255, 1 is a night-light glow. The effective brightness never exceeds the ceiling: schedules, Makapix commands and the API included.</div>
     </div>
     <div class="section">
         <h3>Night schedule</h3>
@@ -101,7 +101,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="grid3" style="margin-top:8px">
             <div><label>From</label><input type="time" class="num-input" id="night-start" onchange="save({display:{night:{start_minutes:p64.minutes(this.value)}}})"></div>
             <div><label>To</label><input type="time" class="num-input" id="night-end" onchange="save({display:{night:{end_minutes:p64.minutes(this.value)}}})"></div>
-            <div><label>Brightness</label><select class="sel" id="night-brightness" style="min-width:0" onchange="save({display:{night:{brightness:+this.value}}})"><option value="0">panel off</option><option value="20">20</option><option value="40">40</option><option value="60">60</option><option value="90">90</option><option value="128">128</option><option value="180">180</option><option value="255">255</option></select></div>
+            <div><label>Brightness</label><select class="sel" id="night-brightness" style="min-width:0" onchange="save({display:{night:{brightness:+this.value}}})"><option value="0">panel off</option><option value="1">1 (dimmest)</option><option value="20">20</option><option value="40">40</option><option value="64">64</option><option value="90">90</option><option value="128">128</option><option value="180">180</option><option value="255">255</option></select></div>
         </div>
         <div class="setting-hint" id="night-hint">Inside the window the panel uses the night brightness (or turns off); a window may cross midnight.</div>
     </div>
@@ -252,7 +252,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <h3>Knobs (p64b)</h3>
         <div class="setting-hint" id="enc-status"></div>
         <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="enc-enabled">Knobs act</label><label class="toggle-switch"><input type="checkbox" id="enc-enabled" onchange="save({inputs:{encoders_enabled:this.checked}})"><span class="toggle-slider"></span></label></div>
-        <div class="setting-hint">Knob A: turn for brightness (about 10 % per detent), press to pause or resume. Knob B: turn for next and previous, press to like the Makapix artwork on the panel.</div>
+        <div class="setting-hint">Knob A: turn for brightness (7 per detent, even to the eye: about a turn and a half from darkest to full), press to pause or resume. Knob B: turn for next and previous, press to like the Makapix artwork on the panel.</div>
         <div class="toggle-row" style="margin-top:10px"><label class="toggle-label" for="enc-swap">Swap the knobs</label><label class="toggle-switch"><input type="checkbox" id="enc-swap" onchange="save({inputs:{encoders_swap:this.checked}})"><span class="toggle-slider"></span></label></div>
         <div class="setting-hint">Knob A takes knob B's role and vice versa, for when the shell puts them the other way round.</div>
         <div class="toggle-row" style="margin-top:10px"><label class="toggle-label" for="enc-invert">Invert the direction</label><label class="toggle-switch"><input type="checkbox" id="enc-invert" onchange="save({inputs:{encoders_invert:this.checked}})"><span class="toggle-slider"></span></label></div>

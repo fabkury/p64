@@ -201,7 +201,7 @@ auto_rotation, calibrated, encoders_present}` (the last is how many of the two p
 rotary encoder boards answer). The p64b knobs: settings `inputs.encoders_enabled` (the
 knobs act; they are always polled), `inputs.encoders_swap` (knob A takes knob B's role
 and vice versa) and `inputs.encoders_invert` (clockwise counts down). Knob A (0x36):
-turn = brightness, about 10 % of the current value per detent (`knob_rules.hpp`),
+turn = brightness, 7 per detent (an even step of perceived lightness, 37 detents from 1 to 255; `knob_rules.hpp`),
 applied to the panel at once and written to the setting 800 ms after the last detent;
 press = pause / resume. Knob B (0x37): turn clockwise = next, counter-clockwise =
 previous; press = like the Makapix artwork on the panel (nothing on a card artwork). A

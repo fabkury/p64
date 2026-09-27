@@ -244,32 +244,40 @@ TEST_CASE("knob rules: roles and brightness steps") {
   CHECK(role_of(1, false) == KnobRole::Navigate);
   CHECK(role_of(0, true) == KnobRole::Navigate);
   CHECK(role_of(1, true) == KnobRole::Brightness);
-  // About 10 % per detent, at least 1, clamped to 1..255.
+  // A fixed step of kDetentStep (7) per detent, even in perceived lightness (spec 3.2,
+  // 2026-09-27), clamped to 1..255.
+  CHECK_EQ(p64::inputs::kDetentStep, 7);
   CHECK_EQ(brightness_after(255, 1), 255);
-  CHECK_EQ(brightness_after(255, -1), 229);   // 255 - 26
-  CHECK_EQ(brightness_after(100, 1), 110);
-  CHECK_EQ(brightness_after(100, -1), 90);
-  CHECK_EQ(brightness_after(1, 1), 2);
+  CHECK_EQ(brightness_after(255, -1), 248);
+  CHECK_EQ(brightness_after(100, 1), 107);
+  CHECK_EQ(brightness_after(100, -1), 93);
+  CHECK_EQ(brightness_after(1, 1), 8);
   CHECK_EQ(brightness_after(1, -1), 1);
-  CHECK_EQ(brightness_after(5, -3), 2);
-  CHECK_EQ(brightness_after(0, 1), 2);        // 0 is not a brightness: treated as 1
-  // Monotone, and the whole range is a few dozen detents each way.
+  CHECK_EQ(brightness_after(5, -3), 1);
+  CHECK_EQ(brightness_after(0, 1), 8);        // 0 is not a brightness: treated as 1
+  CHECK_EQ(brightness_after(253, 1), 255);    // the last step is shorter
+  CHECK_EQ(brightness_after(3, -1), 1);
+  // Monotone, every detent visible, and the whole range is 37 detents each way (about
+  // a turn and a half of a 24-detent knob).
   int ups = 0;
   for (uint8_t v = 1; v < 255; ++ups) {
     const uint8_t n = brightness_after(v, 1);
     CHECK(n > v);
     v = n;
   }
-  CHECK((ups >= 30 && ups <= 60));
+  CHECK_EQ(ups, 37);
   int downs = 0;
   for (uint8_t v = 255; v > 1; ++downs) {
     const uint8_t n = brightness_after(v, -1);
     CHECK(n < v);
     v = n;
   }
-  CHECK((downs >= 30 && downs <= 60));
-  // N detents at once equal N single detents.
+  CHECK_EQ(downs, 37);
+  // N detents at once equal N single detents, and a spin down and back returns.
   CHECK_EQ(brightness_after(40, 5), brightness_after(brightness_after(40, 2), 3));
+  CHECK_EQ(brightness_after(brightness_after(100, -5), 5), 100);
+  CHECK_EQ(brightness_after(1, 1000), 255);
+  CHECK_EQ(brightness_after(255, -1000), 1);
 }
 
 }  // namespace

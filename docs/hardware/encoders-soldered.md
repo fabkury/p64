@@ -195,8 +195,9 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   (`firmware/components/p64_inputs/src/seesaw_wire.hpp`, `seesaw.cpp`,
   `encoder_model.cpp`, `encoders.cpp`; `firmware/docs/architecture.md` 16.1; Kconfig
   `P64_ENCODERS`, `P64_I2C_EXT_SDA/SCL`, `P64_ENCODER_A/B_ADDRESS`).
-- **Roles (stage C, built 2026-09-26):** knob A = 0x36: turn = brightness, about 10 % of
-  the current value per detent (42 detents from 1 to 255; `knob_rules.hpp`), shown at once
+- **Roles (stage C, built 2026-09-26):** knob A = 0x36: turn = brightness, 7 per detent
+  (an even step of perceived lightness since 2026-09-27, 37 detents from 1 to 255;
+  `knob_rules.hpp`), shown at once
   and written to the setting 800 ms after the last detent (one NVS write per spin, on an
   internal stack; the poll task never touches flash), press = pause / resume. Knob B =
   0x37: turn = next / previous, press = like the current Makapix artwork (no-op on card
