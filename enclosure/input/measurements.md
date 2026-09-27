@@ -96,3 +96,4 @@ on 2026-09-22. Measured with calipers on one of the user's two boards the same d
 | Mounting hole spacing | 20.32 | not measured (board file) | `enc_hole_p` |
 | Board width | 25.4 | 25.4 | `enc_board` |
 | Knob, diameter x height | 20 x 12.5 (mock-up) | 20.0 x 15.5 | `knob_d`, `knob_h`, mock-up only: the knob end is now 35.1 mm behind the frame's back face, 13 mm past the shell's bottom edge |
+| Cap seating | | about 1 mm of shaft left above the nut (2026-09-27) | not modelled; a cap pushed down onto the nut takes up the switch's push travel and the click never registers (`docs/hardware/encoders-soldered.md` section 8) |

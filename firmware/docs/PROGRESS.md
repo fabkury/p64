@@ -846,6 +846,14 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   chips: FM6124HJ, a register-less shift register, so the current-gain lever does not
   exist and the FM6126A init sequence is merely ignored (hardware-tests README,
   `enclosure/input/measurements.md`).
+- 2026-09-27, knob A's click "does nothing": diagnosed on the device with the user's
+  hands, no firmware fault. `GET /api/v1/diag/encoders` showed 15 detents and 0 presses
+  in the boot, no read errors, the switch pin steady at released; three clicks with the
+  knob cap fitted counted 0, three clicks with the cap off counted 3 and the status
+  document's `paused` toggled. The cap, fitted since yesterday's test, was seated on the
+  nut and took up the shaft's sub-millimetre push travel. Recorded in
+  `docs/hardware/encoders-soldered.md` (5.1, 7, 8) and the measurements file: seat the
+  cap with about 1 mm of shaft above the nut and check `presses` after fitting.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

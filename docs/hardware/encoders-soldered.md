@@ -214,6 +214,12 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   landed on exactly 0, two presses and a long press registered, no read errors, clockwise
   positive (so `encoders_invert` stays off). Stage C: see the progress log for what was
   verified on the device.
+- The knob cap (2026-09-27): with the cap pushed fully down the shaft, three clicks
+  registered nothing (`presses` stayed 0, no read errors, the switch pin steady at
+  released); with the cap off, three clicks counted 3 and toggled the pause. The shaft's
+  push travel is well under a millimetre and a cap seated on the nut takes it up. Seat
+  the cap with a visible gap, about 1 mm, above the nut, and check `presses` on
+  `GET /api/v1/diag/encoders` after fitting it (section 8).
 - Board B: silent after the A0 bridge. Its ON LED lights; alone on the 4397, on either of
   its sockets, it answers at no address (`?scan=1` empty) with both bus lines idle high;
   board A put back on the same plug answers at once. The photo of the back shows a small
@@ -336,6 +342,12 @@ closes the shell's open front.
 To take a board out: panel out, knob off, nut and washer off, then the board lifts off
 its pegs.
 
+Fitting the caps: push each cap on until about 1 mm of shaft shows above the nut, not
+all the way down. The push switch travels less than a millimetre, and a cap resting on
+the nut turns without ever pressing it (bench, 2026-09-27: three clicks counted 0 with
+the cap down, 3 with it off). Then click each knob and watch `presses` on
+`GET /api/v1/diag/encoders`.
+
 The knobs are the deepest point of the shell, 13 mm past its bottom edge: the display
 stands as p64a does, but laid on its back it rests on the knobs.
 
@@ -352,6 +364,7 @@ stands as p64a does, but laid on its back it rests on the knobs.
 | Solder bridge across A0 and A1 | too much solder | flux and drag the tip to pull the excess; if it stays, solder wick, then redo the bridge |
 | Device reboots when a knob is turned | the poll task touched flash (NVS) | brightness through the settings path from the show loop only |
 | Count runs backwards | sign convention | `encoders.invert` |
+| A knob turns (detents count) but its click does nothing: `presses` stays 0, no read errors | the cap is seated on the nut and takes up the shaft's push travel (2026-09-27, knob A) | lift the cap about 1 mm; click with the cap off to prove the switch |
 
 ## Sources
 
