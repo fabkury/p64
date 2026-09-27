@@ -818,6 +818,32 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   swapped), `ui_smoke.py` and `api_smoke.py` 0 failures; internal heap 55 to 60 KB free,
   largest 32 KB, with the poll task and the timer. Knob B's roles (next, previous, like)
   are coded and untested until board B answers.
+- 2026-09-27, the brightness scale (prompt p051, ADR 0013). The question was the lowest
+  brightness: the driver's curve is floored at 17 on this panel (four clocks on the top
+  plane, 6.4 % of the full light, about a third of full to the eye) and its windows are
+  whole clocks, so the panel had 59 levels, the bottom ones 25 % apart, and 1 to 7 were
+  one picture; the knob's 10 % rule walked seven detents through that. Decided with the
+  user: the number is perceived lightness (even in the number, light its cube), 1 is a
+  sixteenth of the driver floor (0.4 % of full, eight grey levels), the knob steps 7 per
+  detent (37 from dark to full), no migration of stored values, spec 3.2 amended and the
+  ADR written. Built: `p64bcm::plan_light` and a `scale_q16` on `fit_lut` (the driver
+  picks the smallest output-enable level at or above its floor that reaches the share
+  and scales the LUT's targets for the rest), `Hub75Driver::set_light` /
+  `get_light_plan`, the pure `p64_display/light_curve.hpp`, `Display::set_brightness`
+  through the plan, the plan in the status document's `panel` (`light`, `oe_level`,
+  `lut_scale`), `knob_rules.hpp` `kDetentStep = 7`, the settings page's texts and a
+  night preset "1 (dimmest)", host tests (`bcm.cpp`, `light.cpp`, `inputs.cpp`: 169
+  cases) and `tests/device/brightness_smoke.py`. Device (flashed, boot log clean, 229
+  codes at full as before): the ladder 1, 2, 8, 32, 64, 80, 128, 192, 255 lands on the
+  curve to five decimals; 1 is level 17 with LUT scale 0.0625, 64 is level 17 at 0.77,
+  80 is level 21 at 0.93, 128 is level 53 at 0.93, 192 is level 126 at 0.99, 255 is 255
+  at 1; the level never drops below 17; `api_smoke`, `panel_mode_smoke` (the plan
+  survives a profile switch, largest block unchanged), `ui_smoke` 0 failures;
+  `encoders_smoke` reports only board B missing (known); internal heap 51 to 61 KB
+  free, largest 32 to 35 KB, no new allocation (the plan lives on the stack). Not
+  checked by hand: the knob's steps and the look of the bottom of the scale on the
+  panel in a dark room (the user's eye); the FM6126A current-gain register stays a
+  possible boot-time extension.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

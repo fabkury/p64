@@ -126,7 +126,9 @@ firmware build too (`firmware/CMakeLists.txt`). Device tests:
 `python tests\device\panel_mode_smoke.py http://<ip>` and
 `python tests\device\timing_smoke.py http://<ip>` (playback cadence, spec 18.4) and
 `python tests\device\ws_smoke.py http://<ip>` (the WebSocket push held open) and
-`python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` against the live device, and
+`python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` and
+`python tests\device\brightness_smoke.py http://<ip>` (the brightness ladder against the
+light plan, spec 3.2) against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log; give the
 timing-sensitive tests the IP, since the first mDNS lookup of a process can take 3 s).
@@ -150,8 +152,9 @@ them and get host tests: the show is `main/show_core.cpp` behind the `ShowEnv` i
 (`show.cpp` is only the shell; scenario tests drive the core with a fake env), and the
 pure halves elsewhere are `p64/playback/timing.hpp`, `settings_model.cpp`,
 `p64_makapix/src/contract.cpp` and `policy.cpp`, `p64_web/src/auth_rules.cpp`,
-`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp` and the themed faces (`face_*.cpp`, `solar.cpp`, compared pixel for pixel with the mock's references), `p64_net/src/time_rules.cpp`, and the driver's
-`src/platforms/gdma/p64_bcm.h`. New logic goes into those, not into the shells. A task whose stack is in PSRAM
+`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp` and the themed faces (`face_*.cpp`, `solar.cpp`, compared pixel for pixel with the mock's references), `p64_net/src/time_rules.cpp`, `p64_display/src/light_curve.cpp` (the brightness
+scale: perceived lightness, ADR 0013), `p64_inputs/src/knob_rules.cpp`, and the driver's
+`src/platforms/gdma/p64_bcm.h` (the plane windows, the LUT fit and the light plan). New logic goes into those, not into the shells. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,
 OTA, core dump): the flash driver asserts and the device reboots. Every NVS access is
 wrapped in `system::on_internal_stack()` (`p64/system/flash_guard.hpp`); wrap any new

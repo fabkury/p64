@@ -74,15 +74,24 @@ reboot. The mode persists across reboots.
 
 - User brightness: integer 1 to 255, default 255, persisted. Never shown or accepted as a
   percentage. 0 is not a brightness; darkness is "panel off" or "pause".
+- The number is perceived lightness (ADR 0013, 2026-09-27): 255 is the panel's full
+  light, 128 looks about half as bright (about a fifth of the light), 1 is a night-light
+  glow (about 0.4 % of the full light, a sixteenth of what the driver's own floor allows).
+  Every value is a distinct level. The display maps the number to a share of the full
+  light (lightness even in the number, light its cube) and the driver emits it as an
+  output-enable level at or above its floor plus a scale on its tone table; below the
+  floor that scale alone dims, at one bit of tonal depth per halving (eight grey levels
+  per channel at 1).
 - Brightness ceiling: advanced setting, 1 to 255, default 255. The effective brightness is
   min(requested, ceiling) at all times, including schedules, Makapix commands and the API.
 - Night schedule: one daily window (start HH:MM, end HH:MM, may cross midnight), disabled
   by default, with a target brightness 1 to 255 or "panel off". Inside the window the
   effective brightness is the target (capped by the ceiling); outside it is the user
   brightness. Changing the user brightness inside the window applies after the window.
-- The driver's curve is floored at about 17/255 of output-enable time on this panel and any
-  value below 255 costs the low bit planes first (hardware tests); the spec accepts that
-  and does not add software dimming in v1.
+- The driver's own brightness curve (floored at about 17/255 of output-enable time on this
+  panel, 59 distinct levels, values 1 to 7 one picture) is no longer used by the product
+  firmware; v1 accepted it until 2026-09-27, when the software dimming above replaced it.
+  Any value below 255 still costs the low bit planes first.
 
 ### 3.3 Colour
 
@@ -726,7 +735,7 @@ All persisted unless noted. Ranges are inclusive.
 
 | Group | Setting | Type and range | Default |
 |---|---|---|---|
-| Display | brightness | 1 to 255 | 255 |
+| Display | brightness | 1 to 255 (perceived lightness, 3.2) | 255 |
 | Display | brightness ceiling | 1 to 255 | 255 |
 | Display | night schedule | enabled; start, end HH:MM; brightness 1 to 255 or off | disabled |
 | Display | panel mode | quality, photo | quality |

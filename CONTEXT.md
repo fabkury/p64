@@ -219,7 +219,13 @@ Quality mode (more tonal depth, lower refresh) or Photo mode (much higher refres
 cameras, fewer tones).
 
 **Brightness**:
-The user's panel brightness, 1 to 255. Never a percentage.
+The user's panel brightness, 1 to 255, an even scale of perceived lightness (255 full,
+128 about half as bright, 1 a night-light glow; ADR 0013). Never a percentage.
+
+**Light plan**:
+How the driver emits a brightness: the output-enable level (the driver's floor of 17 or
+above, so the bit planes keep their ratios) and the scale on its tone table that closes
+the gap; below the floor's light the scale alone dims.
 
 **Brightness ceiling**:
 An advanced upper bound (1 to 255) that no setting or schedule can exceed; protects rigs
