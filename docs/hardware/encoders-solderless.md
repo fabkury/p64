@@ -82,16 +82,20 @@ STEMMA QT / Qwiic cables are wired GND, V+, SDA, SCL (black, red, blue, yellow).
 Waveshare socket is signal, signal, 3V3, GND. A plain SH-to-SH cable between the two
 would put 3.3 V on the encoder's SDA pin and ground on its V+ pin. That is why the
 harness is made of the 4209 (SH plug to male pins) and the 4397 (SH plug to female
-sockets), joined by function. On the 4209, plugged into the controller, the colours lie:
+sockets), joined by function. The keyed SH plug of the 4209 fits the controller's socket
+one way only, and that way (found on 2026-09-26 by plugging it in; the schematic order
+was read the other way round when this was written) lands black on pin 4:
 
 | 4209 wire | Lands on socket pin | Is actually |
 |---|---|---|
-| black | 1 | IO45 = SDA |
-| red | 2 | IO46 = SCL |
-| blue | 3 | 3V3 |
-| yellow | 4 | GND |
+| yellow | 1 | IO45 = SDA |
+| blue | 2 | IO46 = SCL |
+| red | 3 | 3V3 |
+| black | 4 | GND |
 
-Only on the 4397 (plugged into the encoder board) do the colours mean what they say.
+So power and ground keep their colours, and only the two signal wires lie: yellow (SCL
+by convention) carries SDA and blue (SDA by convention) carries SCL. Only on the 4397
+(plugged into the encoder board) do all four colours mean what they say.
 
 The whole bus, as a schematic:
 
@@ -167,22 +171,22 @@ until step 5.
 
 ```
  Adafruit 4209 (controller)      breadboard             Adafruit 4397 (encoder board)
- black pin  = IO45 (SDA) ------> row 5  <--[2.2k]--> + rail       row 5  ------> blue socket   = SDA
- red pin    = IO46 (SCL) ------> row 10 <--[2.2k]--> + rail       row 10 ------> yellow socket = SCL
- blue pin   = 3V3        ------> + rail                           + rail ------> red socket    = V+
- yellow pin = GND        ------> - rail                           - rail ------> black socket  = GND
+ yellow pin = IO45 (SDA) ------> row 5  <--[2.2k]--> + rail       row 5  ------> blue socket   = SDA
+ blue pin   = IO46 (SCL) ------> row 10 <--[2.2k]--> + rail       row 10 ------> yellow socket = SCL
+ red pin    = 3V3        ------> + rail                           + rail ------> red socket    = V+
+ black pin  = GND        ------> - rail                           - rail ------> black socket  = GND
 ```
 
 1. **Board off.** Unplug the controller's USB and POWER.
 2. **Identify the socket pins.** Plug the 4209's SH plug into the GPIO socket. Power the
    controller from USB only. Multimeter on DC volts, black probe on the USB-C shell (a
-   ground). Touch each free header pin: one reads 3.3 V (expected: blue, socket pin 3);
+   ground). Touch each free header pin: one reads 3.3 V (expected: red, socket pin 3);
    the two IO pins read close to 0 V (their pull-downs); the GND pin reads 0 V and beeps
-   in continuity mode against the USB shell (expected: yellow). Write the four colours
-   down against their function. If blue is not the 3.3 V pin, the socket's pin order
+   in continuity mode against the USB shell (expected: black). Write the four colours
+   down against their function. If red is not the 3.3 V pin, the socket's pin order
    differs from the schematic reading; use what you measured from here on. Power off.
-3. **Plant the four pins.** Black (IO45) into row 5, red (IO46) into row 10, blue (3V3)
-   into the + rail, yellow (GND) into the - rail. Use the outer holes of the rows so the
+3. **Plant the four pins.** Yellow (IO45) into row 5, blue (IO46) into row 10, red (3V3)
+   into the + rail, black (GND) into the - rail. Use the outer holes of the rows so the
    inner holes stay free.
 4. **Pull-ups.** One 2.2 k from row 5 to the + rail, one from row 10 to the + rail. Bend
    the leads gently; the 1/2 W leads are stiff. Nothing else on the board yet.
@@ -213,7 +217,7 @@ Fill in when done; the numbers decide the in-shell path and are copied into the 
 | Item | Expected | Measured |
 |---|---|---|
 | 3V3 pin colour on the 4209 | blue | |
-| GND pin colour on the 4209 | yellow | |
+| GND pin colour on the 4209 | black | |
 | Row 5 / row 10 with resistors, no board | ~2.7 V | |
 | Row 5 / row 10 with the board | ~2.8 V | |
 | `flash.ps1` with IO46 pulled high | works | |
@@ -281,10 +285,10 @@ with a hair dryer). No tool, no solder.
 
 ```
  4209 (controller)            4397 (encoder board)
- black pin  (IO45 = SDA) --->  blue socket   (SDA)
- red pin    (IO46 = SCL) --->  yellow socket (SCL)
- blue pin   (3V3)        --->  red socket    (V+)
- yellow pin (GND)        --->  black socket  (GND)
+ yellow pin (IO45 = SDA) --->  blue socket   (SDA)
+ blue pin   (IO46 = SCL) --->  yellow socket (SCL)
+ red pin    (3V3)        --->  red socket    (V+)
+ black pin  (GND)        --->  black socket  (GND)
 ```
 
 The pull-ups are the remaining question, answered by the bench measurement of section 4,
@@ -360,7 +364,7 @@ display stands as p64a does, but laid on its back it rests on the knob.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
-| Probe logs "no seesaw at 0x36" | SDA/SCL swapped, a socket not seated, or idle level too low | rows read ~2.8 V; swap black/red pins |
+| Probe logs "no seesaw at 0x36" | SDA/SCL swapped, a socket not seated, or idle level too low | rows read ~2.8 V; swap yellow/blue pins |
 | Rows read 1.65 V with the board | a pull-up missing or in the wrong row | resistor legs in row 5 / row 10 and the + rail |
 | `flash.ps1` cannot enter download mode | IO46 high at reset | pull the four 4209 pins, flash, replace (section 3.4) |
 | Reads work, then errors under load | bus too fast for the cable | stay at 100 kHz |

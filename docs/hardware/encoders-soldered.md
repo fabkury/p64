@@ -137,18 +137,18 @@ step 5.
 
 ```
  Adafruit 4209 (controller)      breadboard             Adafruit 4397 (board 1)         4399 (board 1 to board 2)
- black pin  = IO45 (SDA) ------> row 5  <--[2.2k]--> + rail   row 5  ------> blue socket   = SDA   board 1 0x36 --50 mm--> board 2 0x37
- red pin    = IO46 (SCL) ------> row 10 <--[2.2k]--> + rail   row 10 ------> yellow socket = SCL
- blue pin   = 3V3        ------> + rail                       + rail ------> red socket    = V+
- yellow pin = GND        ------> - rail                       - rail ------> black socket  = GND
+ yellow pin = IO45 (SDA) ------> row 5  <--[2.2k]--> + rail   row 5  ------> blue socket   = SDA   board 1 0x36 --50 mm--> board 2 0x37
+ blue pin   = IO46 (SCL) ------> row 10 <--[2.2k]--> + rail   row 10 ------> yellow socket = SCL
+ red pin    = 3V3        ------> + rail                       + rail ------> red socket    = V+
+ black pin  = GND        ------> - rail                       - rail ------> black socket  = GND
 ```
 
 1. Board off (USB and POWER unplugged).
 2. Identify the socket pins with the 4209 plugged in and the controller on USB: the pin
-   at 3.3 V (expected blue), the pin with continuity to the USB-C shell (expected
-   yellow), the two IO pins near 0 V (black = IO45, red = IO46). Record the colours.
+   at 3.3 V (expected red), the pin with continuity to the USB-C shell (expected
+   black), the two IO pins near 0 V (yellow = IO45, blue = IO46). Record the colours.
    Power off.
-3. Plant the four pins: black in row 5, red in row 10, blue in the + rail, yellow in the
+3. Plant the four pins: yellow in row 5, blue in row 10, red in the + rail, black in the
    - rail.
 4. One 2.2 k from row 5 to the + rail, one from row 10 to the + rail.
 5. Power on, measure rows 5 and 10 against the - rail: about 2.7 V expected (3.3 V would
@@ -163,19 +163,20 @@ step 5.
    Pass: the chain stays connected for good. Fail: pull the four 4209 pins to flash.
 10. Note `GET /api/v1/diag/memory` once as the baseline.
 
-No multimeter: skip steps 2, 5 and 8. Identify the 4209's wires from Adafruit's page for
-the cable instead (JST SH pin 1 to 4 = black, red, blue, yellow on the 4209; the
-controller's socket is pin 1 IO45, 2 IO46, 3 3V3, 4 GND, so black = IO45, red = IO46,
-blue = 3V3, yellow = GND, and the schematic and the socket's pin-1 mark confirm it).
-Check the plug's orientation before power: pin 1 of the socket is on the side of the
-board marked on the silkscreen. The voltages are then inferred: if the probe firmware
-reads both boards without errors, the levels are high enough.
+No multimeter: skip steps 2, 5 and 8. The keyed plug settles the colours (found
+2026-09-26): yellow = IO45 (SDA), blue = IO46 (SCL), red = 3V3, black = GND, i.e. the
+4209 lands with black on socket pin 4, next to the board's GND label. Before the first
+power-up, read the silkscreen beside the socket once more and confirm that the black
+wire sits on the pin marked GND and the red one on 3V3: those two are the pair whose
+swap could damage a board; the two signal wires swapped only make the probe fail. The
+voltages are then inferred: if the probe firmware reads both boards without errors, the
+levels are high enough.
 
 Bench record:
 
 | Item | Expected | Measured |
 |---|---|---|
-| 3V3 / GND pin colours on the 4209 | blue / yellow | |
+| 3V3 / GND pin colours on the 4209 | red / black (keyed plug, 2026-09-26) | |
 | Rows 5 and 10, resistors only | ~2.7 V | |
 | Rows 5 and 10, both boards | ~2.86 V | |
 | A0 continuity on board 2 | beep | |
@@ -242,17 +243,17 @@ recommends for a first project.
 
 ```
  4209 (controller)            4397 (board 1)
- black pin  (IO45 = SDA) --->  blue socket   (SDA)
- red pin    (IO46 = SCL) --->  yellow socket (SCL)
- blue pin   (3V3)        --->  red socket    (V+)
- yellow pin (GND)        --->  black socket  (GND)
+ yellow pin (IO45 = SDA) --->  blue socket   (SDA)
+ blue pin   (IO46 = SCL) --->  yellow socket (SCL)
+ red pin    (3V3)        --->  red socket    (V+)
+ black pin  (GND)        --->  black socket  (GND)
 ```
 
 **Spliced (solder).** Cut the header end off the 4209 and the socket end off the 4397,
 leaving the lengths the shell needs (about 60 mm each is plenty: the GPIO socket is
 20 mm from the right-hand board). Strip 5 mm of each wire, slide a 20 mm piece of 2 mm
-heat-shrink onto one side, twist the pairs by function (black-4209 to blue-4397,
-red to yellow, blue to red, yellow to black), tin each twist with the iron, slide the
+heat-shrink onto one side, twist the pairs by function (yellow-4209 to blue-4397,
+blue to yellow, red to red, black to black), tin each twist with the iron, slide the
 heat-shrink over it and shrink. Then a larger piece over all four. Do one pair at a
 time; the colours cross, so label the 4209 side first.
 

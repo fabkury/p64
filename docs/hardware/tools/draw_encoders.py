@@ -116,16 +116,16 @@ def bench_map(name: str, second_board: bool) -> None:
     with schemdraw.Drawing(show=False) as d:
         d.config(unit=2, fontsize=10)
         left = d.add(ic([], [
-            ("black pin  = IO45 (SDA)", "p1"),
-            ("red pin    = IO46 (SCL)", "p2"),
-            ("blue pin   = 3V3", "p3"),
-            ("yellow pin = GND", "p4")],
-            "Adafruit 4209\nSH plug in the controller's\nGPIO socket (pins 1..4),\nmale pins into the breadboard", edgepadW=2.6))
+            ("yellow pin = IO45 (SDA)", "p1"),
+            ("blue pin   = IO46 (SCL)", "p2"),
+            ("red pin    = 3V3", "p3"),
+            ("black pin  = GND", "p4")],
+            "Adafruit 4209\nSH plug in the controller's\nGPIO socket (pins 4..1),\nmale pins into the breadboard", edgepadW=2.6))
         bb = d.add(ic(
             [("row 5", "r5"), ("row 10", "r10"), ("+ rail", "vp"), ("- rail", "vm")],
             [("row 5", "r5b"), ("row 10", "r10b"), ("+ rail", "vpb"), ("- rail", "vmb")],
             "breadboard").at((left.p1[0] + 3.2, left.p1[1])).anchor("r5"))
-        for a, b, colour in (("p1", "r5", BLACK), ("p2", "r10", RED), ("p3", "vp", BLUE), ("p4", "vm", YELLOW)):
+        for a, b, colour in (("p1", "r5", YELLOW), ("p2", "r10", BLUE), ("p3", "vp", RED), ("p4", "vm", BLACK)):
             d.add(elm.Line().at(getattr(left, a)).to(getattr(bb, b)).color(colour))
         # Pull-ups: row 5 -> + rail and row 10 -> + rail, drawn above the breadboard box.
         top = bb.r5[1] + 1.2
@@ -153,8 +153,8 @@ def harness_map(name: str) -> None:
     with schemdraw.Drawing(show=False) as d:
         d.config(unit=2, fontsize=10)
         left = d.add(ic([], [
-            ("black pin  (IO45 = SDA)", "p1"), ("red pin    (IO46 = SCL)", "p2"),
-            ("blue pin   (3V3)", "p3"), ("yellow pin (GND)", "p4")],
+            ("yellow pin (IO45 = SDA)", "p1"), ("blue pin   (IO46 = SCL)", "p2"),
+            ("red pin    (3V3)", "p3"), ("black pin  (GND)", "p4")],
             "Adafruit 4209\n(from the controller)", edgepadW=1.6))
         right = d.add(ic([
             ("blue socket   (SDA)", "sda"), ("yellow socket (SCL)", "scl"),
