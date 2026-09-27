@@ -219,7 +219,8 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   released); with the cap off, three clicks counted 3 and toggled the pause. The shaft's
   push travel is well under a millimetre and a cap seated on the nut takes it up. Seat
   the cap with a visible gap, about 1 mm, above the nut, and check `presses` on
-  `GET /api/v1/diag/encoders` after fitting it (section 8).
+  `GET /api/v1/diag/encoders` after fitting it (section 8). Reseated that way the same
+  day, the click pauses and resumes the show with the cap on.
 - Board B: silent after the A0 bridge. Its ON LED lights; alone on the 4397, on either of
   its sockets, it answers at no address (`?scan=1` empty) with both bus lines idle high;
   board A put back on the same plug answers at once. The photo of the back shows a small

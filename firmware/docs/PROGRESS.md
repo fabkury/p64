@@ -853,7 +853,8 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   document's `paused` toggled. The cap, fitted since yesterday's test, was seated on the
   nut and took up the shaft's sub-millimetre push travel. Recorded in
   `docs/hardware/encoders-soldered.md` (5.1, 7, 8) and the measurements file: seat the
-  cap with about 1 mm of shaft above the nut and check `presses` after fitting.
+  cap with about 1 mm of shaft above the nut and check `presses` after fitting. The user
+  reseated the cap that way and the click pauses and resumes the show.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
