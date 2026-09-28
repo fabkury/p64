@@ -434,9 +434,10 @@ void resolve_connected();
 
 // A widget takes the panel: the Widget state, an interlude, or an interlude revisited
 // through history (spec 6.1, 6.2).
-void play_widget(system::WidgetKind kind, bool interlude) {
-  st.widget = g_env->widget(kind);
+void play_widget(system::WidgetKind kind, bool interlude, int face = -1) {
+  st.widget = g_env->widget(kind, face);
   st.widget_kind = kind;
+  st.widget_face = face;
   present(st.widget);
   st.current.reset();
   g_artwork_up = false;
@@ -453,11 +454,13 @@ void play_widget(system::WidgetKind kind, bool interlude) {
     item.name = g_env->widget_name(kind);
     item.playset = st.playset.name;
     item.widget = static_cast<uint8_t>(kind);
+    item.face = face < 0 ? 255 : static_cast<uint8_t>(face);
     item.shown_at_us = st.swap_at_us;
     st.history.push(std::move(item));
   }
   report_hidden();
-  LOGI("widget %s%s", g_env->widget_name(kind), interlude ? " (interlude)" : "");
+  LOGI("widget %s%s%s%s", g_env->widget_name(kind), interlude ? " (interlude)" : "", face < 0 ? "" : ", face ",
+       face < 0 ? "" : system::clock_face_name(static_cast<system::ClockFace>(face)));
   g_env->playback_swapped(static_cast<int32_t>(st.history.position()));
 }
 
@@ -471,12 +474,23 @@ rules::InterludePlan interlude_plan(const system::Settings &s) {
 const system::WidgetKind kWidgetKinds[3] = {system::WidgetKind::Clock, system::WidgetKind::Weather,
                                             system::WidgetKind::Temperature};
 
+// A new interlude of `kind`: a clock interlude draws a random face when the option is
+// on (p057), never the previous random face again.
+void start_interlude(system::WidgetKind kind) {
+  int face = -1;
+  if (kind == system::WidgetKind::Clock && settings().interlude_random_clock_face) {
+    face = rules::random_face(st.last_interlude_face, g_env->random(), system::kClockFaceCount);
+    st.last_interlude_face = static_cast<uint8_t>(face);
+  }
+  play_widget(kind, true, face);
+}
+
 // At an auto-swap the plan is rolled, the largest median first; the first that wins
 // takes the slot (spec 6.1, ADR 0014).
 bool roll_interlude() {
   const int winner = rules::roll_interlude(interlude_plan(settings()), [] { return g_env->random(); });
   if (winner < 0) return false;
-  play_widget(kWidgetKinds[winner], true);
+  start_interlude(kWidgetKinds[winner]);
   return true;
 }
 
@@ -584,7 +598,7 @@ void load_current_history_item(Pending::Purpose purpose, int direction) {
   const content::HistoryItem *item = st.history.current();
   if (!item) return;
   if (item->kind == content::ItemKind::Interlude) {
-    play_widget(static_cast<system::WidgetKind>(item->widget), false);
+    play_widget(static_cast<system::WidgetKind>(item->widget), false, item->face == 255 ? -1 : item->face);
     if (content::HistoryItem *cur = st.history.current()) cur->shown_at_us = now_us();
     return;
   }
@@ -1073,7 +1087,10 @@ cJSON *item_json(const content::HistoryItem &item, size_t index, bool current) {
   cJSON *o = cJSON_CreateObject();
   cJSON_AddNumberToObject(o, "index", static_cast<double>(index));
   cJSON_AddStringToObject(o, "kind", item.kind == content::ItemKind::Interlude ? "interlude" : "artwork");
-  if (item.kind == content::ItemKind::Interlude) cJSON_AddStringToObject(o, "widget", g_env->widget_name(static_cast<system::WidgetKind>(item.widget)));
+  if (item.kind == content::ItemKind::Interlude) {
+    cJSON_AddStringToObject(o, "widget", g_env->widget_name(static_cast<system::WidgetKind>(item.widget)));
+    if (item.face != 255) cJSON_AddStringToObject(o, "face", system::clock_face_name(static_cast<system::ClockFace>(item.face)));
+  }
   const char *source = "channel";
   switch (item.source) {
     case content::Source::Channel: source = "channel"; break;
@@ -1182,7 +1199,7 @@ void interlude(system::WidgetKind kind) {
   // Only inside the show: the Widget state keeps its own widget, a stream its frames.
   if (!show_active() || g_stream_up) return;
   if (st.screen != Screen::None) end_screen();
-  play_widget(kind, true);
+  start_interlude(kind);
 }
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
   do_play_file(path, provider, item_id, name);
@@ -1244,7 +1261,14 @@ cJSON *status_json() {
   cJSON_AddStringToObject(p, "state", g_main_state == system::MainState::Widget ? "widget" : g_main_state == system::MainState::Stream ? "stream" : "animation_show");
   cJSON_AddBoolToObject(p, "paused", st.paused);
   cJSON_AddBoolToObject(p, "stream_up", g_stream_up.load());
-  if (st.widget_up) cJSON_AddStringToObject(p, "widget", g_env->widget_name(st.widget_kind));
+  if (st.widget_up) {
+    cJSON_AddStringToObject(p, "widget", g_env->widget_name(st.widget_kind));
+    // The clock face on the panel: an interlude's random face, else the setting's.
+    if (st.widget_kind == system::WidgetKind::Clock) {
+      const system::ClockFace face = st.widget_face < 0 ? s.clock.face : static_cast<system::ClockFace>(st.widget_face);
+      cJSON_AddStringToObject(p, "widget_face", system::clock_face_name(face));
+    }
+  }
   cJSON *ps = cJSON_AddObjectToObject(p, "playset");
   cJSON_AddStringToObject(ps, "name", st.playset.name.c_str());
   cJSON_AddBoolToObject(ps, "builtin", st.playset.builtin);

@@ -49,7 +49,8 @@ class ShowEnv {
   // The panel.
   virtual void play(std::shared_ptr<playback::FrameSource> source) = 0;
   virtual std::shared_ptr<playback::FrameSource> static_frame(const char *name, const gfx::Frame &frame) = 0;
-  virtual std::shared_ptr<playback::FrameSource> widget(system::WidgetKind kind) = 0;
+  // `face` overrides the clock's configured face for this source (-1 = the setting).
+  virtual std::shared_ptr<playback::FrameSource> widget(system::WidgetKind kind, int face) = 0;
   virtual const char *widget_name(system::WidgetKind kind) = 0;
   virtual std::shared_ptr<playback::FrameSource> stream_source() = 0;
   virtual void stream_wake() = 0;
@@ -165,6 +166,8 @@ struct State {
   std::shared_ptr<playback::FrameSource> widget;  // the widget on the panel (Widget state or an interlude)
   bool widget_up = false;
   system::WidgetKind widget_kind = system::WidgetKind::Clock;
+  int widget_face = -1;                // the clock face on the panel when overridden (an interlude)
+  uint8_t last_interlude_face = 255;   // the last random face drawn, never drawn twice running
   bool want_widget = false;  // the Widget state waits for the boot animation
   rules::Stage<std::shared_ptr<playback::FrameSource>> stage;  // on the panel, and behind a stream
   bool stream_active = false;  // stream frames are arriving (StreamStarted .. StreamEnded)

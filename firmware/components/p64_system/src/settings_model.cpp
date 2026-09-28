@@ -149,6 +149,11 @@ void Settings::clamp() {
   cache_retention_days = clamp_to<uint16_t>(cache_retention_days, 1, 365);
 }
 
+const char *clock_face_name(ClockFace face) {
+  const int i = static_cast<int>(face);
+  return (i >= 0 && i < kClockFaceCount) ? kClockFaces[i] : kClockFaces[0];
+}
+
 std::string Settings::hostname() const { return device_name.empty() ? "p64" : "p64-" + device_name; }
 
 std::string Settings::to_json() const {
@@ -192,6 +197,7 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(ip, "clock", interlude_clock);
   cJSON_AddNumberToObject(ip, "weather", interlude_weather);
   cJSON_AddNumberToObject(ip, "temperature", interlude_temperature);
+  cJSON_AddBoolToObject(w, "interlude_random_clock_face", interlude_random_clock_face);
 
   cJSON *ck = obj(root, "clock");
   cJSON_AddStringToObject(ck, "face", kClockFaces[static_cast<int>(clock.face)]);
@@ -307,6 +313,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   get_num(ip, "clock", interlude_clock);
   get_num(ip, "weather", interlude_weather);
   get_num(ip, "temperature", interlude_temperature);
+  get_bool(w, "interlude_random_clock_face", interlude_random_clock_face);
 
   const cJSON *ck = sub(root, "clock");
   {

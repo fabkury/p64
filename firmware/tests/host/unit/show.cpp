@@ -111,6 +111,26 @@ TEST_CASE("show: the interlude roll takes the first winner in priority order") {
   CHECK_EQ(rules::roll_interlude(plan, [] { return 0xffffffffu; }), -1);
 }
 
+TEST_CASE("show: a random clock face is uniform over the others and never the previous one (p057)") {
+  // No previous face: all nine, each from its own residue.
+  for (uint32_t r = 0; r < 9; ++r) CHECK_EQ(rules::random_face(255, r, 9), r);
+  CHECK_EQ(rules::random_face(255, 9, 9), 0);
+  // Previous face 4: the eight others, each exactly once over the eight residues.
+  int seen[9] = {0};
+  for (uint32_t r = 0; r < 8; ++r) ++seen[rules::random_face(4, r, 9)];
+  CHECK_EQ(seen[4], 0);
+  for (int f = 0; f < 9; ++f) {
+    if (f != 4) CHECK_EQ(seen[f], 1);
+  }
+  // The ends: previous 0 never gives 0, previous 8 never gives 8.
+  for (uint32_t r = 0; r < 16; ++r) {
+    CHECK_NE(rules::random_face(0, r, 9), 0);
+    CHECK_NE(rules::random_face(8, r, 9), 8);
+    CHECK_LT(rules::random_face(8, r, 9), 9);
+  }
+  CHECK_EQ(rules::random_face(0, 7, 1), 0);  // one face: always it
+}
+
 TEST_CASE("show: over many swaps every kind's realised rate and median gap match its setting") {
   // A seeded generator (the 64-bit LCG of Knuth's MMIX, upper 32 bits) drives the same
   // roll the device makes; the maths is the one tools/interlude_sim.py checked offline.
@@ -304,8 +324,9 @@ class FakeEnv : public p64::show::ShowEnv {
   std::shared_ptr<FrameSource> static_frame(const char *name, const Frame &frame) override {
     return std::make_shared<p64::playback::StaticSource>(name, frame);
   }
-  std::shared_ptr<FrameSource> widget(p64::system::WidgetKind kind) override {
-    return std::make_shared<p64::playback::StaticSource>(std::string("widget:") + widget_name(kind), Frame());
+  std::shared_ptr<FrameSource> widget(p64::system::WidgetKind kind, int face) override {
+    return std::make_shared<p64::playback::StaticSource>(
+        std::string("widget:") + widget_name(kind) + (face < 0 ? "" : ":" + std::to_string(face)), Frame());
   }
   const char *widget_name(p64::system::WidgetKind kind) override {
     return kind == p64::system::WidgetKind::Weather ? "weather"

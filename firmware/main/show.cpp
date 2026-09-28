@@ -136,7 +136,9 @@ class DeviceEnv : public ShowEnv {
   std::shared_ptr<playback::FrameSource> static_frame(const char *name, const gfx::Frame &frame) override {
     return psram_shared<playback::StaticSource>(name, frame);
   }
-  std::shared_ptr<playback::FrameSource> widget(system::WidgetKind kind) override { return widgets::make(kind); }
+  std::shared_ptr<playback::FrameSource> widget(system::WidgetKind kind, int face) override {
+    return widgets::make(kind, face);
+  }
   const char *widget_name(system::WidgetKind kind) override { return widgets::widget_name(kind); }
   std::shared_ptr<playback::FrameSource> stream_source() override { return stream::source(); }
   void stream_wake() override { stream::wake(); }

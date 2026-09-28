@@ -6,6 +6,7 @@
 #include <deque>
 #include <mutex>
 #include <new>
+#include <utility>
 #include <sys/time.h>
 
 #include "analogue.hpp"
@@ -159,11 +160,19 @@ bool local_time_at(int64_t due_us, tm &out, int *millis = nullptr, float *tz_hou
 
 class ClockSource : public playback::FrameSource {
  public:
+  explicit ClockSource(int face) : face_(face) {}
   const std::string &name() const override { return name_; }
   bool is_static() const override { return false; }
   bool next_frame(Frame &out, uint32_t &delay_ms, int64_t due_us) override {
     const std::shared_ptr<const system::Settings> view = system::settings_view();
-    const system::Settings &s = *view;
+    // An overridden face (a random interlude): the settings with that face, copied per
+    // frame (a few strings; the faces draw at most 25 frames a second).
+    system::Settings overridden;
+    if (face_ >= 0 && face_ < system::kClockFaceCount) {
+      overridden = *view;
+      overridden.clock.face = static_cast<system::ClockFace>(face_);
+    }
+    const system::Settings &s = face_ >= 0 && face_ < system::kClockFaceCount ? overridden : *view;
     tm t;
     faces::ClockContext ctx;
     float tz_hours = 0;
@@ -187,6 +196,7 @@ class ClockSource : public playback::FrameSource {
 
  private:
   std::string name_ = "clock";
+  int face_ = -1;
   faces::ClockState state_;  // the flip's animation
 };
 
@@ -229,9 +239,9 @@ class TemperatureSource : public playback::FrameSource {
   std::string name_ = "temperature";
 };
 
-template <typename T>
-std::shared_ptr<T> psram_shared() {
-  return std::allocate_shared<T>(content::PsramAllocator<T>());
+template <typename T, typename... Args>
+std::shared_ptr<T> psram_shared(Args &&...args) {
+  return std::allocate_shared<T>(content::PsramAllocator<T>(), std::forward<Args>(args)...);
 }
 
 }  // namespace
@@ -253,12 +263,12 @@ bool start() {
   return true;
 }
 
-std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind) {
+std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind, int face) {
   switch (kind) {
     case system::WidgetKind::Weather: return psram_shared<WeatherSource>();
     case system::WidgetKind::Temperature: return psram_shared<TemperatureSource>();
     case system::WidgetKind::Clock:
-    default: return psram_shared<ClockSource>();
+    default: return psram_shared<ClockSource>(face);
   }
 }
 

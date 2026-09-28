@@ -208,6 +208,24 @@ def main():
     check(seen, "the clock is on the panel as an interlude, still in the animation show")
     st, j = request(base, "GET", "/api/v1/history")
     check(any(i["kind"] == "interlude" and i.get("widget") == "clock" for i in j["data"]["items"]), "the interlude entered history")
+    # A random clock face (p057): with the option on, consecutive clock interludes never
+    # show the same face, and the face is recorded in history; off, the configured face.
+    settings(base, {"clock": {"face": "digital"}, "widgets": {"interlude_random_clock_face": True}})
+    faces = []
+    for _ in range(4):
+        st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "clock"})
+        assert st == 200, j
+        time.sleep(1.0)
+        faces.append(status(base)["playback"].get("widget_face"))
+    check(all(f for f in faces) and all(a != b for a, b in zip(faces, faces[1:])), "random faces, never the same twice running: %s" % faces)
+    st, j = request(base, "GET", "/api/v1/history")
+    recorded = [i.get("face") for i in j["data"]["items"] if i["kind"] == "interlude" and i.get("widget") == "clock" and i.get("face")]
+    check(recorded[-4:] == faces, "history records the face drawn: %s" % recorded[-4:])
+    settings(base, {"widgets": {"interlude_random_clock_face": False}})
+    st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "clock"})
+    time.sleep(1.0)
+    check(status(base)["playback"].get("widget_face") == "digital", "off: the configured face")
+    settings(base, {"clock": {"face": original["clock"]["face"]}})
     settings(base, {"show": {"main_state": "widget"}})
     st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "clock"})
     check(st == 409, "outside the show the action is refused: %d" % st)
@@ -215,7 +233,8 @@ def main():
     # Back to what it was.
     settings(base, {"show": {"main_state": original["show"]["main_state"], "auto_swap_seconds": original["show"]["auto_swap_seconds"],
                              "clock_overlay": {"enabled": original["show"]["clock_overlay"]["enabled"]}},
-                    "widgets": {"widget": original["widgets"]["widget"], "interlude_minutes": original["widgets"]["interlude_minutes"]}})
+                    "widgets": {"widget": original["widgets"]["widget"], "interlude_minutes": original["widgets"]["interlude_minutes"],
+                                "interlude_random_clock_face": original["widgets"]["interlude_random_clock_face"]}})
     from api_smoke import failures
     print("widgets smoke: %d failures" % failures)
     return 1 if failures else 0

@@ -368,7 +368,11 @@ Plays the active playset as in section 4, with:
   is shown for one auto-swap interval, seamlessly, and enters history. Manual next and
   previous never trigger an interlude; next during an interlude ends it;
   `action/interlude` plays a widget as an interlude now. Until 2026-09-28 the setting
-  was a per-swap percentage, default 0.
+  was a per-swap percentage, default 0. Random clock face (off by default; p057,
+  2026-09-28): every clock interlude, rolled or asked for, draws one of the nine faces
+  at random, never the previous interlude's face twice running, with the configured LED
+  style; the Clock widget keeps its configured face; a revisit through history shows
+  the face the interlude had.
 
 ### 6.2 Widget state
 
@@ -767,6 +771,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0 |
+| Widgets | random clock face at clock interludes | on/off | off |
 | Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |

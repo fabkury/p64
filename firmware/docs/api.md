@@ -143,7 +143,11 @@ refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) 
 `bottom_left`, `bottom_center` or `bottom_right`, h24, colour, border, border_colour,
 border_opacity 1..255) and `widgets` (widget,
 interlude_minutes {clock, weather, temperature}: the median gap in minutes between
-interludes of that kind, 0 = never, else 5..1440; ADR 0014). `GET /api/v1/fonts` lists the bundled fonts in table order, the
+interludes of that kind, 0 = never, else 5..1440; ADR 0014; interlude_random_clock_face:
+every clock interlude draws one of the nine faces at random, never the previous one
+again). With the clock on the panel, `playback.widget_face` names the face shown (an
+interlude's random face, else the setting's), and history items of kind `interlude`
+carry `face` when one was drawn. `GET /api/v1/fonts` lists the bundled fonts in table order, the
 first being the default: `[{name, label, size, overlay}]`; `name` is the value of the
 `font` settings, and the clock overlay draws only the fonts with `overlay` true (any
 other name, or an unknown one, draws the default). History items of kind

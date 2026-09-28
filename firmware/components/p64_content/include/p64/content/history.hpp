@@ -28,6 +28,7 @@ struct HistoryItem {
   int32_t item_id = -1;     // the provider's item id (Makapix: the post id), -1 for anything else
   std::string sqid;         // Makapix public sqid when known
   uint8_t widget = 0;       // interludes: which widget
+  uint8_t face = 255;       // clock interludes: the face drawn (255 = the configured one)
   int64_t shown_at_us = 0;  // when it went up (monotonic)
 };
 

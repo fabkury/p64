@@ -99,6 +99,13 @@ int roll_interlude(const InterludePlan &plan, const std::function<uint32_t()> &r
   return -1;
 }
 
+uint8_t random_face(uint8_t previous, uint32_t roll, uint8_t count) {
+  if (count <= 1) return 0;
+  if (previous >= count) return static_cast<uint8_t>(roll % count);
+  const uint8_t pick = static_cast<uint8_t>(roll % (count - 1));
+  return pick >= previous ? static_cast<uint8_t>(pick + 1) : pick;
+}
+
 bool replace_prepared_pick(int32_t prepared_post, uint32_t pool_at_pick, uint32_t pool_now, bool artwork_up,
                            int32_t current_post) {
   const bool repeat = artwork_up && current_post == prepared_post;

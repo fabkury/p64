@@ -18,7 +18,9 @@ namespace p64::widgets {
 bool start();
 
 // A fresh source for a widget (allocated in PSRAM). Each renders its first frame at once.
-std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind);
+// `face` overrides the clock's configured face (system::ClockFace as int; -1 = the
+// setting): a clock interlude with a random face (p057).
+std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind, int face = -1);
 const char *widget_name(system::WidgetKind kind);
 
 // The clock overlay (spec 6.1): `overlay_key()` changes whenever the drawing would (the

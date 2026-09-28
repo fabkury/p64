@@ -70,7 +70,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
     "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_minutes":{"clock":10,
-    "weather":20,"temperature":0}},"stream":{"takeover":false,"silence_ms":900},
+    "weather":20,"temperature":0},"interlude_random_clock_face":true},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9,"encoders_enabled":false,"encoders_swap":true,"encoders_invert":true},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
     "updates":{"auto_check":false}})");
@@ -93,6 +93,8 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK_EQ(a.interlude_clock, 10);
   CHECK_EQ(a.interlude_weather, 20);
   CHECK_EQ(a.interlude_temperature, 0);
+  CHECK(a.interlude_random_clock_face);
+  CHECK(!Settings().interlude_random_clock_face);
   CHECK_EQ(a.makapix_max_side, 64);
   CHECK(a.hostname() == "p64-desk-1");
   CHECK(a.timezone == "America/Sao_Paulo");
@@ -143,6 +145,8 @@ TEST_CASE("settings: interlude gaps default to 30, 180 and never, and clamp to 0
   // The old percent key is gone: it is ignored, the defaults stand.
   const Settings old = applied(R"({"widgets":{"interlude_percent":{"clock":100}}})");
   CHECK_EQ(old.interlude_clock, 30);
+  CHECK(std::string(p64::system::clock_face_name(p64::system::ClockFace::Led)) == "led");
+  CHECK(std::string(p64::system::clock_face_name(static_cast<p64::system::ClockFace>(200))) == "digital");
   CHECK(old.to_json().find("interlude_percent") == std::string::npos);
   CHECK(old.to_json().find("\"interlude_minutes\":{\"clock\":30,\"weather\":180,\"temperature\":0}") != std::string::npos);
 }

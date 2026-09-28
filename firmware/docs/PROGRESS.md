@@ -912,6 +912,16 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   flashed 2026-09-28): `widgets_smoke` 0 failures (the plan's numbers, the clamps, the
   off states, the action, history, the 409), `ui_smoke` 0 failures, internal heap 70 KB
   free (largest 34.8 KB) after the run. The old `interlude_percent` key is ignored.
+- 2026-09-28, random clock face at clock interludes (prompt p057): the option
+  `widgets.interlude_random_clock_face` (off by default) makes every clock interlude,
+  rolled or asked for, draw one of the nine faces at random, never the previous
+  interlude's face twice running (`rules::random_face`, host-tested: uniform over the
+  others), with the configured LED style; the face travels with the widget source
+  (`widgets::make(kind, face)`, a copy of the settings with that face) and with the
+  history item, so a revisit shows the face it had; `playback.widget_face` names the face
+  on the panel. Device: `widgets_smoke` 0 failures (four consecutive interludes with four
+  different faces, history recording them, the configured face again with the option
+  off), `ui_smoke` 0 failures.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

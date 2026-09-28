@@ -82,6 +82,11 @@ InterludePlan interlude_plan(const uint16_t (&median_minutes)[3], uint32_t inter
 // index of the winner (0 clock, 1 weather, 2 temperature) or -1.
 int roll_interlude(const InterludePlan &plan, const std::function<uint32_t()> &roll);
 
+// A random clock face for a clock interlude (p057, 2026-09-28): uniform over the `count`
+// faces except `previous` (255 = none yet), so the same face never comes twice running.
+// `roll` is a uniform 32-bit number.
+uint8_t random_face(uint8_t previous, uint32_t roll, uint8_t count);
+
 // --- the prepared pick ------------------------------------------------------------------
 
 // A Makapix pick prepared while its channel's cache was tiny is thrown away once the

@@ -68,6 +68,8 @@ struct Settings {
   // Interludes (ADR 0014): the median gap in minutes between interludes of each kind,
   // 0 = never, else 5..1440; the per-swap probability follows from the auto-swap interval.
   uint16_t interlude_clock = 30, interlude_weather = 180, interlude_temperature = 0;
+  // A clock interlude draws a random face (p057): all nine, never the previous one again.
+  bool interlude_random_clock_face = false;
   struct Clock {
     ClockFace face = ClockFace::Digital;
     LedStyle led_style = LedStyle::Red;  // the LED face only
@@ -134,6 +136,10 @@ struct Settings {
   // "p64" or "p64-<device name>".
   std::string hostname() const;
 };
+
+// The JSON names of the clock faces ("digital", "analogue", ...).
+const char *clock_face_name(ClockFace face);
+constexpr int kClockFaceCount = 9;
 
 // Loads the document from NVS (defaults for anything missing) at boot.
 bool settings_init();

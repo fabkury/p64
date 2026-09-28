@@ -214,6 +214,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div><label>Weather, every (min)</label><input class="num-input" type="number" id="il-weather" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{weather:+this.value}}})"><div class="setting-hint" id="il-weather-hint" style="margin-top:4px"></div></div>
             <div><label>Temperature, every (min)</label><input class="num-input" type="number" id="il-temp" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{temperature:+this.value}}})"><div class="setting-hint" id="il-temp-hint" style="margin-top:4px"></div></div>
         </div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="il-random">Random clock face</label><label class="toggle-switch"><input type="checkbox" id="il-random" onchange="save({widgets:{interlude_random_clock_face:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">Each clock interlude draws one of the nine faces at random, never the same one twice running; the Clock widget itself keeps the face set above.</div>
         <div style="margin-top:8px"><button class="btn" onclick="interludeNow('clock')">Clock now</button> <button class="btn" onclick="interludeNow('weather')">Weather now</button> <button class="btn" onclick="interludeNow('temperature')">Temperature now</button><span class="setting-hint" style="margin:0 0 0 8px">one slot, in the Animation show</span></div>
     </div>
 </div>
@@ -479,7 +481,7 @@ function fill(s) {
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
-    sv('il-clock', s.widgets.interlude_minutes.clock); sv('il-weather', s.widgets.interlude_minutes.weather); sv('il-temp', s.widgets.interlude_minutes.temperature);
+    sc('il-random', s.widgets.interlude_random_clock_face); sv('il-clock', s.widgets.interlude_minutes.clock); sv('il-weather', s.widgets.interlude_minutes.weather); sv('il-temp', s.widgets.interlude_minutes.temperature);
     sc('st-takeover', s.stream.takeover); sv('st-silence', s.stream.silence_ms); sc('st-ddp', s.stream.ddp_enabled); sv('st-ddp-port', s.stream.ddp_port); sc('st-raw', s.stream.raw_udp_enabled); sv('st-raw-port', s.stream.raw_udp_port);
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
