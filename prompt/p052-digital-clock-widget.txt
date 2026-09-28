@@ -1,0 +1,11 @@
+Folder "C:\Users\fab\F\Estudo\Tecnologia\assets\pixel-fonts\vexed\Digital-Display-All" contains a pixel-art font. As such, it only looks as intended at integer multiples of its native size.
+
+What I want you to do is create a new clock widget for p64. I want it to be a digital-clock inspired widget.
+
+Please do:
+ 0. Copy Digital Display files to their in-project location inside C:\Users\fab\F\Estudo\Tecnologia\p64\firmware\assets\fonts, thereby bringing it into the p64 project.
+ 1. Have a visual look at that Digital Display font, particularly how it renders digits and colon.
+ 2. Draw pixel art assets to compose the digital clock widget. I mean corners, tiles, highlights, lines, dividers, anything you may want for composing a digital clock widget.
+ 3. Animate at least some of the pixel art assets you created. Make the clock widget come to life.
+ 4. Once in possession of the widgets, compose "test" PNGs and/or GIFs showing how the widget is going to look like.
+ 5. Present the tests to me, so I can approve the widget before its implementation begins for real. By that I just mean report back to me and halt so I can open the PNG/GIF files.
