@@ -1,0 +1,1 @@
+Thanks, but we overshot: now the ghost areas are too dim and hard to notice. Please raise their brightness back up a notch or two. This is a difficult thing to get just right. Once done, reflash the firmware so I can see the end result.
