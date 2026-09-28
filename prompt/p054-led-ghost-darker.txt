@@ -1,0 +1,7 @@
+Thanks.
+
+The new "LED" clockfaces are nice, but they carry one issue:
+ - On LCD screens, dark colors appear dark. On LEDs, dark colors appear less dark.
+ - Therefore the problem is that the unlit digits, in the LED clockface, are still too bright on the actual LED matrix. They're making it hard to read the lit digits.
+
+Please make the unlit digits darker so they're more easily distinguished from the lit digits, and reflash the new firmware so I can see the end result.
