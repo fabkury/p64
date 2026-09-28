@@ -1,0 +1,1 @@
+Thanks. Now implement one more option for the clock interludes only: Randomize clock face. When turned on, a random clockface is chosen at each successful interlude.
