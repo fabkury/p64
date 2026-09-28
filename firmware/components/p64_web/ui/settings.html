@@ -208,12 +208,13 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Interludes</h3>
-        <div class="setting-hint">At each auto-swap, the chance that a widget shows for one slot instead of an artwork.</div>
+        <div class="setting-hint">Now and then a widget takes one auto-swap slot instead of an artwork. Enter, per widget, how many minutes typically pass between its interludes (the median gap; 5 to 1440, 0 = never); the chance at each swap follows from the auto-swap interval. When two kinds land on the same swap, the rarer one shows.</div>
         <div class="grid3" style="margin-top:8px">
-            <div><label>Clock %</label><input class="num-input" type="number" id="il-clock" min="0" max="100" onchange="save({widgets:{interlude_percent:{clock:+this.value}}})"></div>
-            <div><label>Weather %</label><input class="num-input" type="number" id="il-weather" min="0" max="100" onchange="save({widgets:{interlude_percent:{weather:+this.value}}})"></div>
-            <div><label>Temperature %</label><input class="num-input" type="number" id="il-temp" min="0" max="100" onchange="save({widgets:{interlude_percent:{temperature:+this.value}}})"></div>
+            <div><label>Clock, every (min)</label><input class="num-input" type="number" id="il-clock" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{clock:+this.value}}})"><div class="setting-hint" id="il-clock-hint" style="margin-top:4px"></div></div>
+            <div><label>Weather, every (min)</label><input class="num-input" type="number" id="il-weather" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{weather:+this.value}}})"><div class="setting-hint" id="il-weather-hint" style="margin-top:4px"></div></div>
+            <div><label>Temperature, every (min)</label><input class="num-input" type="number" id="il-temp" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{temperature:+this.value}}})"><div class="setting-hint" id="il-temp-hint" style="margin-top:4px"></div></div>
         </div>
+        <div style="margin-top:8px"><button class="btn" onclick="interludeNow('clock')">Clock now</button> <button class="btn" onclick="interludeNow('weather')">Weather now</button> <button class="btn" onclick="interludeNow('temperature')">Temperature now</button><span class="setting-hint" style="margin:0 0 0 8px">one slot, in the Animation show</span></div>
     </div>
 </div>
 
@@ -478,7 +479,7 @@ function fill(s) {
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
-    sv('il-clock', s.widgets.interlude_percent.clock); sv('il-weather', s.widgets.interlude_percent.weather); sv('il-temp', s.widgets.interlude_percent.temperature);
+    sv('il-clock', s.widgets.interlude_minutes.clock); sv('il-weather', s.widgets.interlude_minutes.weather); sv('il-temp', s.widgets.interlude_minutes.temperature);
     sc('st-takeover', s.stream.takeover); sv('st-silence', s.stream.silence_ms); sc('st-ddp', s.stream.ddp_enabled); sv('st-ddp-port', s.stream.ddp_port); sc('st-raw', s.stream.raw_udp_enabled); sv('st-raw-port', s.stream.raw_udp_port);
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
@@ -639,6 +640,15 @@ p64.onStatus(function (d) {
     document.getElementById('sensor-status').textContent = sn.valid ? 'Reading now: ' + sn.temperature_c.toFixed(1) + ' C, ' + sn.humidity.toFixed(0) + ' % RH (offsets applied).' : 'No sensor reading.';
     var inp = d.inputs || {};
     document.getElementById('diag-imu').textContent = inp.imu_present ? ('present, ' + (inp.calibrated ? 'calibrated' : 'not calibrated') + (inp.auto_rotation_resolved ? ', auto rotation ' + inp.auto_rotation : '')) : 'absent';
+    var il = (d.playback || {}).interludes || {};
+    [['clock', 'il-clock-hint'], ['weather', 'il-weather-hint'], ['temperature', 'il-temp-hint']].forEach(function (k) {
+        var x = il[k[0]] || {}, t = '';
+        if (x.state === 'rolled') t = 'about ' + x.per_swap_percent + ' % of swaps';
+        else if (x.state === 'never') t = 'off';
+        else if (x.state === 'no_auto_swap') t = 'off: auto-swap is off';
+        else if (x.state === 'interval_longer') t = 'off: the auto-swap interval is longer than this';
+        document.getElementById(k[1]).textContent = t;
+    });
     var we = d.weather || {};
     document.getElementById('weather-status').textContent = we.valid ? 'Now ' + Number(we.temperature).toFixed(1) + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
 });
@@ -674,6 +684,9 @@ function clockStatus(d) {
     document.getElementById('clock-preview-tag').textContent = showing ? 'on the panel now' : (p.state === 'widget' ? 'the panel shows the ' + (p.widget || 'widget') : p.state === 'stream' ? 'the panel shows a stream' : 'the panel plays artworks');
 }
 function showClock() { save({ show: { main_state: 'widget' }, widgets: { widget: 'clock' } }); }
+function interludeNow(widget) {
+    p64.post('/api/v1/action/interlude', { widget: widget }).then(function () { p64.toast('Interlude: ' + widget); }).catch(function (e) { p64.toast(e.message || 'Not in the Animation show', true); });
+}
 // The live preview: the panel's frame once a second while the Widgets tab is in view.
 (function () {
     var img = document.getElementById('clock-preview'), busy = false;

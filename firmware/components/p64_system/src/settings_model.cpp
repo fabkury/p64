@@ -129,9 +129,10 @@ void Settings::clamp() {
   }
   temperature.offset_temperature = clamp_to<int8_t>(temperature.offset_temperature, -10, 10);
   temperature.offset_humidity = clamp_to<int8_t>(temperature.offset_humidity, -10, 10);
-  interlude_clock = clamp_to<uint8_t>(interlude_clock, 0, 100);
-  interlude_weather = clamp_to<uint8_t>(interlude_weather, 0, 100);
-  interlude_temperature = clamp_to<uint8_t>(interlude_temperature, 0, 100);
+  // 0 is never; anything else is a median gap of 5 min to a day (ADR 0014).
+  if (interlude_clock != 0) interlude_clock = clamp_to<uint16_t>(interlude_clock, 5, 1440);
+  if (interlude_weather != 0) interlude_weather = clamp_to<uint16_t>(interlude_weather, 5, 1440);
+  if (interlude_temperature != 0) interlude_temperature = clamp_to<uint16_t>(interlude_temperature, 5, 1440);
   stream_silence_ms = clamp_to<uint32_t>(stream_silence_ms, 500, 60000);
   if (ddp_port == 0) ddp_port = 4048;
   if (raw_udp_port == 0) raw_udp_port = 4064;
@@ -187,7 +188,7 @@ std::string Settings::to_json() const {
 
   cJSON *w = obj(root, "widgets");
   cJSON_AddStringToObject(w, "widget", kWidgets[static_cast<int>(widget)]);
-  cJSON *ip = obj(w, "interlude_percent");
+  cJSON *ip = obj(w, "interlude_minutes");
   cJSON_AddNumberToObject(ip, "clock", interlude_clock);
   cJSON_AddNumberToObject(ip, "weather", interlude_weather);
   cJSON_AddNumberToObject(ip, "temperature", interlude_temperature);
@@ -302,7 +303,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
 
   const cJSON *w = sub(root, "widgets");
   get_enum(w, "widget", widget, kWidgets, 3);
-  const cJSON *ip = sub(w, "interlude_percent");
+  const cJSON *ip = sub(w, "interlude_minutes");
   get_num(ip, "clock", interlude_clock);
   get_num(ip, "weather", interlude_weather);
   get_num(ip, "temperature", interlude_temperature);

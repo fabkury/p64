@@ -6,8 +6,8 @@ r"""Device smoke test of the widgets (M7) over the HTTP API.
 Checks the sensor reading in the status, the Widget state with each widget (the panel
 frame changes and is not black), the clock overlay on an artwork (a new font shows at
 once, not at the next minute), the font list, the weather fetch
-after setting a location (needs internet), an interlude at auto-swap, and puts the
-settings back. Exit code 1 on any failure.
+after setting a location (needs internet), the interlude plan in the status document
+and an interlude on demand, and puts the settings back. Exit code 1 on any failure.
 """
 
 import io
@@ -177,22 +177,45 @@ def main():
         nums = [we["temperature"], we["today_max"], we["today_min"]] + [d[k] for d in we["days"] for k in ("max", "min")]
         check(all(abs(v * 10 - round(v * 10)) < 1e-6 for v in nums), "weather numbers carry at most one decimal: %s" % nums)
 
-    # An interlude: 100 % clock at a 5 s auto-swap in the Animation show.
-    settings(base, {"show": {"main_state": "animation_show", "auto_swap_seconds": 5}, "widgets": {"interlude_percent": {"clock": 100}}})
-    deadline = time.time() + 20
+    # The interlude plan (ADR 0014): median gaps in minutes become per-swap chances in
+    # the status document, derived from the auto-swap interval.
+    s = settings(base, {"show": {"main_state": "animation_show", "auto_swap_seconds": 30},
+                        "widgets": {"interlude_minutes": {"clock": 30, "weather": 180, "temperature": 0}}})
+    check(s["widgets"]["interlude_minutes"] == {"clock": 30, "weather": 180, "temperature": 0}, "interlude minutes stored: %s" % s["widgets"].get("interlude_minutes"))
+    il = status(base)["playback"]["interludes"]
+    check(il["clock"]["state"] == "rolled" and abs(il["clock"]["per_swap_percent"] - 1.1) < 0.06, "clock every 30 min on 30 s swaps = 1.1 %% per swap: %s" % il["clock"])
+    check(il["weather"]["state"] == "rolled" and abs(il["weather"]["per_swap_percent"] - 0.2) < 0.06, "weather every 3 h = 0.2 %% per swap: %s" % il["weather"])
+    check(il["temperature"]["state"] == "never" and il["temperature"]["per_swap_percent"] == 0, "temperature at 0 = never: %s" % il["temperature"])
+    s = settings(base, {"widgets": {"interlude_minutes": {"clock": 3, "weather": 5000}}})
+    check(s["widgets"]["interlude_minutes"]["clock"] == 5 and s["widgets"]["interlude_minutes"]["weather"] == 1440, "minutes clamp to 5..1440: %s" % s["widgets"]["interlude_minutes"])
+    settings(base, {"show": {"auto_swap_seconds": 600}})
+    il = status(base)["playback"]["interludes"]
+    check(il["clock"]["state"] == "interval_longer" and il["clock"]["per_swap_percent"] == 0, "a 10 min interval is longer than a 5 min gap: off: %s" % il["clock"])
+    settings(base, {"show": {"auto_swap_seconds": 0}})
+    check(status(base)["playback"]["interludes"]["weather"]["state"] == "no_auto_swap", "no auto-swap: no interludes")
+    # An interlude on demand: the action plays the widget for one slot and it enters history.
+    settings(base, {"show": {"auto_swap_seconds": 5}})
+    st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "nothing"})
+    check(st == 400, "an unknown widget is refused: %d" % st)
+    st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "clock"})
+    check(st == 200 and j["data"]["widget"] == "clock", "the interlude action answers: %d %s" % (st, j))
+    deadline = time.time() + 5
     seen = False
     while time.time() < deadline and not seen:
-        st, j = request(base, "GET", "/api/v1/history")
-        seen = any(i["kind"] == "interlude" for i in j["data"]["items"])
-        time.sleep(1)
-    check(seen, "an interlude entered history at auto-swap")
-    d = status(base)
-    check(d["playback"]["state"] == "animation_show", "still in the animation show")
+        d = status(base)
+        seen = d["playback"]["state"] == "animation_show" and d["playback"].get("widget") == "clock"
+        time.sleep(0.5)
+    check(seen, "the clock is on the panel as an interlude, still in the animation show")
+    st, j = request(base, "GET", "/api/v1/history")
+    check(any(i["kind"] == "interlude" and i.get("widget") == "clock" for i in j["data"]["items"]), "the interlude entered history")
+    settings(base, {"show": {"main_state": "widget"}})
+    st, j = request(base, "POST", "/api/v1/action/interlude", {"widget": "clock"})
+    check(st == 409, "outside the show the action is refused: %d" % st)
 
     # Back to what it was.
     settings(base, {"show": {"main_state": original["show"]["main_state"], "auto_swap_seconds": original["show"]["auto_swap_seconds"],
                              "clock_overlay": {"enabled": original["show"]["clock_overlay"]["enabled"]}},
-                    "widgets": {"widget": original["widgets"]["widget"], "interlude_percent": original["widgets"]["interlude_percent"]}})
+                    "widgets": {"widget": original["widgets"]["widget"], "interlude_minutes": original["widgets"]["interlude_minutes"]}})
     from api_smoke import failures
     print("widgets smoke: %d failures" % failures)
     return 1 if failures else 0

@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -893,6 +893,25 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   pixel art: the matrix lifts the dark end, so a dark value that looks right in a PNG is
   about twice too bright on the panel, and the eye's window is narrow; judge it on the
   panel. Still for the eye: the filter tints of the four colours and the meter.
+- 2026-09-28, interludes as a median gap (prompt p056, ADR 0014). The per-swap
+  percentages went: the user now enters, per widget, the median minutes between its
+  interludes (`widgets.interlude_minutes`, 0 = never, else 5..1440; defaults clock 30,
+  weather 180, temperature 0) and the firmware derives the per-swap chance from the
+  auto-swap interval, p = 1 - 2^(-T / 60M), in `rules::interlude_plan`
+  (`main/show_rules.cpp`): the largest gap is rolled first and wins a coincidence (ties
+  clock, weather, temperature), the lower kinds are rolled above their target by the
+  chance that a higher one took the slot, so every kind's realised rate is its target;
+  an interval longer than the gap, or no auto-swap, is off with the reason in
+  `playback.interludes` of the status document and under the fields of the Widgets tab
+  (decided with the user: never rather than a cap). The maths was checked offline first
+  (`tools/interlude_sim.py`, three million swaps: rates within 1.5 sigma for every corner,
+  the naive roll 87 sigma slow for a pre-empted kind), then on the host with a seeded
+  generator (174 cases pass). `POST /api/v1/action/interlude {"widget"}` plays a widget as
+  an interlude now (409 outside the show), with a button per widget on the page, since no
+  setting can force one any more; the device smoke test uses it. Device (192.168.4.44,
+  flashed 2026-09-28): `widgets_smoke` 0 failures (the plan's numbers, the clamps, the
+  off states, the action, history, the 409), `ui_smoke` 0 failures, internal heap 70 KB
+  free (largest 34.8 KB) after the run. The old `interlude_percent` key is ignored.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

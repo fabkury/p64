@@ -1,5 +1,8 @@
 #include "show_rules.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 namespace p64::show::rules {
 
 std::string channel_status(const ChannelFacts &f) {
@@ -47,10 +50,51 @@ bool auto_swap_due(bool timer_runs, uint32_t interval_s, int64_t now_us, int64_t
   return timer_runs && interval_s > 0 && now_us - swapped_at_us >= static_cast<int64_t>(interval_s) * 1000000;
 }
 
-int roll_interlude(const uint8_t (&percent)[3], const std::function<uint32_t()> &roll) {
-  for (int i = 0; i < 3; ++i) {
-    if (percent[i] == 0) continue;
-    if (roll() % 100 < percent[i]) return i;
+InterludePlan interlude_plan(const uint16_t (&median_minutes)[3], uint32_t interval_s) {
+  InterludePlan plan;
+  // Priority: the largest median first, ties in the fixed order clock, weather, temperature.
+  for (uint8_t i = 0; i < 3; ++i) {
+    if (median_minutes[i] == 0) continue;
+    uint8_t at = plan.count;
+    while (at > 0 && median_minutes[plan.order[at - 1]] < median_minutes[i]) {
+      plan.order[at] = plan.order[at - 1];
+      --at;
+    }
+    plan.order[at] = i;
+    ++plan.count;
+  }
+  if (interval_s == 0) {
+    for (uint8_t k = 0; k < plan.count; ++k) plan.state[plan.order[k]] = InterludeState::NoAutoSwap;
+    plan.count = 0;
+    return plan;
+  }
+  double surviving = 1.0;  // the chance that no higher-priority kind has won this swap
+  uint8_t rolled = 0;
+  for (uint8_t k = 0; k < plan.count; ++k) {
+    const uint8_t i = plan.order[k];
+    const double gap_s = 60.0 * median_minutes[i];
+    if (static_cast<double>(interval_s) > gap_s) {
+      plan.state[i] = InterludeState::IntervalLonger;
+      continue;
+    }
+    const double p = 1.0 - std::exp2(-static_cast<double>(interval_s) / gap_s);
+    plan.state[i] = InterludeState::Rolled;
+    plan.per_swap[i] = p;
+    plan.rolled[i] = surviving <= 0.0 ? 1.0 : std::min(1.0, p / surviving);
+    surviving *= 1.0 - plan.rolled[i];
+    plan.order[rolled++] = i;
+  }
+  plan.count = rolled;
+  return plan;
+}
+
+int roll_interlude(const InterludePlan &plan, const std::function<uint32_t()> &roll) {
+  for (uint8_t k = 0; k < plan.count; ++k) {
+    const uint8_t i = plan.order[k];
+    if (plan.rolled[i] >= 1.0) return i;
+    // The threshold is exact to 2^-32; a probability that small is never asked for.
+    const uint64_t threshold = static_cast<uint64_t>(plan.rolled[i] * 4294967296.0);
+    if (static_cast<uint64_t>(roll()) < threshold) return i;
   }
   return -1;
 }

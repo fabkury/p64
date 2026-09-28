@@ -35,7 +35,9 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 channel_index, source}` (absent on a status screen or pause), `screen` (the status
 screen holding the panel: `pairing`, `paired`, `connected`, `setup`, `update`, or ""),
 `no_artwork` (reason or ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
-{interval_s, remaining_s}`, `prepared`, `boot {animation_end_ms, first_artwork_ms}` (ms since
+{interval_s, remaining_s}`, `interludes {clock, weather, temperature: {median_minutes,
+per_swap_percent, state}}` (the plan of ADR 0014: the per-swap chance in percent to a
+tenth, and `state` `rolled`, `never`, `no_auto_swap` or `interval_longer`), `prepared`, `boot {animation_end_ms, first_artwork_ms}` (ms since
 the app started, about 0.7 s after reset; the first artwork of this boot, -1 until one has
 played: spec 15.1, acceptance 18.8),
 `swaps`, `load_failures`, `frames`, `late`,
@@ -54,6 +56,7 @@ second.
 | `/api/v1/action/next` | POST | | forward in history, or a fresh pick at its end |
 | `/api/v1/action/previous` | POST | | back in history (no-op at the start) |
 | `/api/v1/action/history_go` | POST | `{"position":n}` | show that history item |
+| `/api/v1/action/interlude` | POST | `{"widget":"clock"|"weather"|"temperature"}` | that widget as an interlude now: one auto-swap slot, into history (409 outside the Animation show, 400 for an unknown widget) |
 | `/api/v1/action/pause` | POST | | panel dark, timer stopped |
 | `/api/v1/action/resume` | POST | | the same artwork again, timer restarted |
 | `/api/v1/action/reset_timer` | POST | | restart the auto-swap interval |
@@ -139,7 +142,8 @@ refresh_minutes) and `temperature` (offset_temperature, offset_humidity, trend) 
 `show.clock_overlay` (enabled, font, corner: `top_left`, `top_center`, `top_right`,
 `bottom_left`, `bottom_center` or `bottom_right`, h24, colour, border, border_colour,
 border_opacity 1..255) and `widgets` (widget,
-interlude_percent). `GET /api/v1/fonts` lists the bundled fonts in table order, the
+interlude_minutes {clock, weather, temperature}: the median gap in minutes between
+interludes of that kind, 0 = never, else 5..1440; ADR 0014). `GET /api/v1/fonts` lists the bundled fonts in table order, the
 first being the default: `[{name, label, size, overlay}]`; `name` is the value of the
 `font` settings, and the clock overlay draws only the fonts with `overlay` true (any
 other name, or an unknown one, draws the default). History items of kind

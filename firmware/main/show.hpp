@@ -34,6 +34,10 @@ void resume();
 void set_paused(bool paused);
 void reset_timer();
 void refresh();
+// Play a widget ("clock", "weather", "temperature") as an interlude now: one auto-swap
+// slot inside the Animation show, into history. False with a reason when the name is
+// unknown or the main state is not the show.
+bool interlude(const std::string &widget, std::string &error);
 // Play this file now (play-this, spec 5.5). Checked here for existence and extension;
 // the load happens on the loader and a failure is reported in status.
 bool play_file(const std::string &absolute_path, std::string &error);

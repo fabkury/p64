@@ -357,11 +357,18 @@ Plays the active playset as in section 4, with:
   exactly as the user wants), in one of six positions (the four corners, or centred at
   the top or the bottom; default top-left) with a 1 px margin, no seconds. Not shown
   in the other states.
-- Interludes: at every auto-swap, each widget that has an interlude probability above 0
-  is rolled (independently, in a fixed order: Clock, Weather, Temperature); the first that
-  wins takes the slot: the widget is shown for one auto-swap interval, seamlessly, and
-  enters history. Manual next and previous never trigger an interlude; next during an
-  interlude ends it. Default probability 0 for every widget.
+- Interludes (ADR 0014, 2026-09-28): per widget the user sets the median gap in minutes
+  between its interludes (0 = never, else 5 to 1440; defaults clock 30, weather 180,
+  temperature 0). At every auto-swap the firmware rolls each widget with the per-swap
+  probability that gives that median at the current auto-swap interval
+  (p = 1 - 2^(-T / 60M)); a gap shorter than the interval cannot be met and that widget
+  is off. When two widgets win the same swap the one with the larger gap shows (ties in
+  the fixed order Clock, Weather, Temperature), and the compensation for the slots lost
+  that way keeps every widget's realised per-swap probability at its target. The winner
+  is shown for one auto-swap interval, seamlessly, and enters history. Manual next and
+  previous never trigger an interlude; next during an interlude ends it;
+  `action/interlude` plays a widget as an interlude now. Until 2026-09-28 the setting
+  was a per-swap percentage, default 0.
 
 ### 6.2 Widget state
 
@@ -593,7 +600,7 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
     corner, 12/24 h, colour), boot animation length.
   - Widgets: main state selector (Animation show, Widget: which, Stream), per-widget
     settings (clock face and font, weather location and units, temperature offsets) and
-    each widget's interlude probability.
+    each widget's interlude gap.
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
   - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
     server with the NTP status, PIN, erase Wi-Fi and restart in setup mode.
@@ -759,7 +766,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | channel selection | stochastic, swrr | stochastic |
 | Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
-| Widgets | interlude probability, per widget | 0 to 100 % | 0 |
+| Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0 |
 | Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |

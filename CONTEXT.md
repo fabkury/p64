@@ -183,11 +183,14 @@ _Avoid_: app, screen, mode (for a widget)
 The main state in which one chosen widget stays on the panel indefinitely.
 
 **Interlude**:
-A widget taking one auto-swap slot inside the Animation show, chosen by probability at an
-auto-swap. Enters history like an artwork.
+A widget taking one auto-swap slot inside the Animation show, chosen by chance at an
+auto-swap (or asked for now). Enters history like an artwork.
 
-**Interlude probability**:
-Per widget, the chance (0 to 100 %) that the widget wins the next auto-swap slot.
+**Interlude gap**:
+Per widget, the median number of minutes between its interludes (0 = never, else 5 to
+1440); the setting the user enters. The per-swap probability follows from it and the
+auto-swap interval (ADR 0014). The rarer widget (the larger gap) wins a coincidence.
+_Avoid_: interlude probability, interlude percent (the setting until 2026-09-28)
 
 **Clock overlay**:
 The small time display drawn in a corner over artworks in the Animation show. Not a

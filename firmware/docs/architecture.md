@@ -391,10 +391,11 @@ a Makapix cache change) only put an artwork up when `show_active()`. The swap ti
 (`swap_timer_runs()`) runs whenever an artwork is up, whatever the state says, and for a
 widget only inside the show (an interlude); the overlay hook checks the state too. Before
 2026-09-21 the artwork paths ignored the state while the timer keyed on it, so a playset
-pill or a tap in Widget state left an artwork frozen on the panel. Interludes are rolled at auto-swap in the fixed order Clock,
-Weather, Temperature with the settings' percentages; a winner enters history as an
-`Interlude` item and revisiting it replays the widget. Manual next and previous never
-roll one. Frames with minute-long delays taught two rules: the player announces a new
+pill or a tap in Widget state left an artwork frozen on the panel. Interludes are rolled at auto-swap from the plan of ADR 0014
+(`rules::interlude_plan`: the settings' median gaps in minutes against the auto-swap
+interval, the largest gap rolled first, the lower ones compensated for the slots they
+lose); a winner enters history as an `Interlude` item and revisiting it replays the
+widget. Manual next and previous never roll one; `action/interlude` plays one now. Frames with minute-long delays taught two rules: the player announces a new
 generation before its first frame so the render task frees the old slots at once, and
 the render task sleeps towards a far target in 10 ms steps, checking for a newer
 generation each time.

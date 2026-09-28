@@ -206,6 +206,9 @@ void pause();
 void resume();
 void reset_timer();
 void refresh();
+// Play this widget as an interlude now (one auto-swap slot, enters history); ignored
+// outside the Animation show and under a stream.
+void interlude(system::WidgetKind kind);
 // Play-this: a file on the card ("" provider), or a download of a provider (its id and
 // the item's id, -1 for a plain URL).
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name);

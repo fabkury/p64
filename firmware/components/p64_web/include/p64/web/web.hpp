@@ -25,6 +25,7 @@ struct Hooks {
   std::function<void()> reset_timer;
   std::function<void()> refresh;
   std::function<void(size_t history_index)> go_to;
+  std::function<bool(const std::string &widget, std::string &error)> interlude;  // a widget for one slot, now
   std::function<bool(const std::string &absolute_path, std::string &error)> play_file;
   std::function<bool(const std::string &sqid_or_url, std::string &error)> play_post;  // Makapix post
   std::function<bool(const std::string &url, std::string &error)> play_url;           // arbitrary URL

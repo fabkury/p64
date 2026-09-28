@@ -69,8 +69,8 @@ TEST_CASE("settings: every field survives a round trip") {
     "rotation_auto":true,"background":{"r":1,"g":2,"b":3},"gains":{"r":60,"g":70,"b":80},"boot_animation_ms":0},
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
-    "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_percent":{"clock":10,
-    "weather":20,"temperature":30}},"stream":{"takeover":false,"silence_ms":900},
+    "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_minutes":{"clock":10,
+    "weather":20,"temperature":0}},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9,"encoders_enabled":false,"encoders_swap":true,"encoders_invert":true},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
     "updates":{"auto_check":false}})");
@@ -90,6 +90,9 @@ TEST_CASE("settings: every field survives a round trip") {
   }
   CHECK_EQ(a.clock_overlay.border_opacity, 40);
   CHECK(a.widget == p64::system::WidgetKind::Temperature);
+  CHECK_EQ(a.interlude_clock, 10);
+  CHECK_EQ(a.interlude_weather, 20);
+  CHECK_EQ(a.interlude_temperature, 0);
   CHECK_EQ(a.makapix_max_side, 64);
   CHECK(a.hostname() == "p64-desk-1");
   CHECK(a.timezone == "America/Sao_Paulo");
@@ -124,6 +127,24 @@ TEST_CASE("settings: out-of-range numbers clamp, never wrap (the M4 bug)") {
   CHECK_EQ(a.makapix_refresh_seconds, 60u);
   CHECK_EQ(a.channel_cache_size, 4096);
   CHECK_EQ(a.cache_retention_days, 1);
+}
+
+TEST_CASE("settings: interlude gaps default to 30, 180 and never, and clamp to 0 or 5..1440 (ADR 0014)") {
+  const Settings d;
+  CHECK_EQ(d.interlude_clock, 30);
+  CHECK_EQ(d.interlude_weather, 180);
+  CHECK_EQ(d.interlude_temperature, 0);
+  const Settings a = applied(R"({"widgets":{"interlude_minutes":{"clock":3,"weather":100000,"temperature":-4}}})");
+  CHECK_EQ(a.interlude_clock, 5);        // below the floor: the floor, not never
+  CHECK_EQ(a.interlude_weather, 1440);   // a day at most
+  CHECK_EQ(a.interlude_temperature, 0);  // a negative number never wraps: it reads as never
+  const Settings z = applied(R"({"widgets":{"interlude_minutes":{"clock":0}}})");
+  CHECK_EQ(z.interlude_clock, 0);  // 0 = never
+  // The old percent key is gone: it is ignored, the defaults stand.
+  const Settings old = applied(R"({"widgets":{"interlude_percent":{"clock":100}}})");
+  CHECK_EQ(old.interlude_clock, 30);
+  CHECK(old.to_json().find("interlude_percent") == std::string::npos);
+  CHECK(old.to_json().find("\"interlude_minutes\":{\"clock\":30,\"weather\":180,\"temperature\":0}") != std::string::npos);
 }
 
 TEST_CASE("settings: the maximum artwork size snaps up to 32, 64, 128 or 256") {

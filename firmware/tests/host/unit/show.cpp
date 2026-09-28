@@ -5,8 +5,9 @@
 #include "show_core.hpp"
 #include "show_rules.hpp"
 
-#include <cstdarg>
 #include <algorithm>
+#include <cmath>
+#include <cstdarg>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -38,20 +39,113 @@ TEST_CASE("show: the auto-swap falls due after the interval, never with an inter
   CHECK(!rules::auto_swap_due(true, 0, 99000000, 0));  // 0 = no auto-swap (spec 16)
 }
 
-TEST_CASE("show: interludes roll in the order clock, weather, temperature") {
-  const uint8_t none[3] = {0, 0, 0};
+TEST_CASE("show: the interlude plan turns median gaps into per-swap probabilities (ADR 0014)") {
+  using rules::InterludeState;
+  // The defaults on 30 s swaps: clock every 30 min, weather every 3 h, temperature never.
+  const uint16_t defaults[3] = {30, 180, 0};
+  rules::InterludePlan p = rules::interlude_plan(defaults, 30);
+  CHECK_EQ(p.count, 2);
+  CHECK_EQ(p.order[0], 1);  // the larger median rolls first
+  CHECK_EQ(p.order[1], 0);
+  CHECK(p.state[0] == InterludeState::Rolled);
+  CHECK(p.state[1] == InterludeState::Rolled);
+  CHECK(p.state[2] == InterludeState::Never);
+  CHECK(p.per_swap[0] == doctest::Approx(1.0 - std::exp2(-30.0 / 1800.0)).epsilon(1e-9));  // 1.149 %
+  CHECK(p.per_swap[1] == doctest::Approx(1.0 - std::exp2(-30.0 / 10800.0)).epsilon(1e-9));  // 0.192 %
+  CHECK_EQ(p.per_swap[2], 0.0);
+  // The clock is rolled a little above its target: it loses the swaps the weather takes.
+  CHECK(p.rolled[0] == doctest::Approx(p.per_swap[0] / (1.0 - p.per_swap[1])).epsilon(1e-9));
+  CHECK(p.rolled[1] == doctest::Approx(p.per_swap[1]).epsilon(1e-9));
+  // An hour on 30 s swaps: no interlude in 120 swaps with probability one half.
+  const uint16_t hour[3] = {60, 0, 0};
+  p = rules::interlude_plan(hour, 30);
+  CHECK(std::pow(1.0 - p.per_swap[0], 120.0) == doctest::Approx(0.5).epsilon(1e-9));
+  // The interval equal to the gap: a coin toss.
+  const uint16_t five[3] = {5, 0, 0};
+  CHECK(rules::interlude_plan(five, 300).per_swap[0] == doctest::Approx(0.5).epsilon(1e-9));
+  // Longer than the gap: unsatisfiable, off; the other kinds unaffected.
+  const uint16_t mixed[3] = {5, 180, 0};
+  p = rules::interlude_plan(mixed, 600);
+  CHECK(p.state[0] == InterludeState::IntervalLonger);
+  CHECK_EQ(p.per_swap[0], 0.0);
+  CHECK(p.state[1] == InterludeState::Rolled);
+  CHECK_EQ(p.count, 1);
+  CHECK_EQ(p.order[0], 1);
+  // No auto-swap: nothing rolls, and the status says why.
+  p = rules::interlude_plan(defaults, 0);
+  CHECK_EQ(p.count, 0);
+  CHECK(p.state[0] == InterludeState::NoAutoSwap);
+  CHECK(p.state[2] == InterludeState::Never);
+  // Ties keep the fixed order clock, weather, temperature.
+  const uint16_t tied[3] = {5, 5, 5};
+  p = rules::interlude_plan(tied, 60);
+  CHECK_EQ(p.order[0], 0);
+  CHECK_EQ(p.order[1], 1);
+  CHECK_EQ(p.order[2], 2);
+  CHECK(p.rolled[0] < p.rolled[1]);
+  CHECK(p.rolled[1] < p.rolled[2]);
+  // Three coin tosses: the third kind can get nothing, its roll caps at one.
+  p = rules::interlude_plan(tied, 300);
+  CHECK_EQ(p.rolled[0], 0.5);
+  CHECK_EQ(p.rolled[1], 1.0);
+  CHECK_EQ(p.rolled[2], 1.0);
+}
+
+TEST_CASE("show: the interlude roll takes the first winner in priority order") {
+  const uint16_t none[3] = {0, 0, 0};
   int calls = 0;
-  CHECK_EQ(rules::roll_interlude(none, [&] { ++calls; return 0u; }), -1);
-  CHECK_EQ(calls, 0);  // a 0 % widget is never rolled
-  const uint8_t all[3] = {100, 100, 100};
-  CHECK_EQ(rules::roll_interlude(all, [] { return 99u; }), 0);  // the clock wins first
-  const uint8_t weather_only[3] = {0, 50, 0};
-  CHECK_EQ(rules::roll_interlude(weather_only, [] { return 49u; }), 1);
-  CHECK_EQ(rules::roll_interlude(weather_only, [] { return 50u; }), -1);
-  const uint8_t two[3] = {10, 0, 10};
-  uint32_t seq[] = {50, 5};
+  CHECK_EQ(rules::roll_interlude(rules::interlude_plan(none, 30), [&] { ++calls; return 0u; }), -1);
+  CHECK_EQ(calls, 0);  // a kind that is off is never rolled
+  const uint16_t five[3] = {5, 0, 0};
+  const rules::InterludePlan coin = rules::interlude_plan(five, 300);  // 50 %
+  CHECK_EQ(rules::roll_interlude(coin, [] { return 0x7fffffffu; }), 0);
+  CHECK_EQ(rules::roll_interlude(coin, [] { return 0x80000000u; }), -1);
+  // Clock 5 min and weather 180 min on 60 s swaps: the weather is asked first and wins
+  // a coincidence; the clock gets the slot only when the weather lost.
+  const uint16_t two[3] = {5, 180, 0};
+  const rules::InterludePlan plan = rules::interlude_plan(two, 60);
+  CHECK_EQ(rules::roll_interlude(plan, [] { return 0u; }), 1);
+  uint32_t seq[] = {0xffffffffu, 0u};
   int i = 0;
-  CHECK_EQ(rules::roll_interlude(two, [&] { return seq[i++]; }), 2);  // clock loses, temperature wins
+  CHECK_EQ(rules::roll_interlude(plan, [&] { return seq[i++]; }), 0);
+  CHECK_EQ(rules::roll_interlude(plan, [] { return 0xffffffffu; }), -1);
+}
+
+TEST_CASE("show: over many swaps every kind's realised rate and median gap match its setting") {
+  // A seeded generator (the 64-bit LCG of Knuth's MMIX, upper 32 bits) drives the same
+  // roll the device makes; the maths is the one tools/interlude_sim.py checked offline.
+  uint64_t x = 20260928;
+  auto rnd = [&] {
+    x = x * 6364136223846793005ull + 1442695040888963407ull;
+    return static_cast<uint32_t>(x >> 32);
+  };
+  const uint16_t minutes[3] = {5, 5, 20};
+  const uint32_t interval_s = 60;
+  const rules::InterludePlan plan = rules::interlude_plan(minutes, interval_s);
+  const int swaps = 400000;
+  int count[3] = {0, 0, 0}, last[3] = {-1, -1, -1};
+  std::vector<int> gaps[3];
+  for (int n = 0; n < swaps; ++n) {
+    const int w = rules::roll_interlude(plan, rnd);
+    if (w < 0) continue;
+    ++count[w];
+    if (last[w] >= 0) gaps[w].push_back(n - last[w]);
+    last[w] = n;
+  }
+  for (int k = 0; k < 3; ++k) {
+    // The realised rate is the target within four binomial sigmas: the compensation
+    // for the slots the higher kinds take is exact (without it the 5-min kind rolled
+    // second ran 13 % slow in the offline check).
+    const double p = 1.0 - std::exp2(-static_cast<double>(interval_s) / (60.0 * minutes[k]));
+    const double sigma = std::sqrt(p * (1 - p) / swaps);
+    CHECK(std::fabs(count[k] / static_cast<double>(swaps) - p) < 4 * sigma);
+    // The sample median gap is the setting, within one interval (the discrete median
+    // sits between M/T and M/T + 1 swaps).
+    std::sort(gaps[k].begin(), gaps[k].end());
+    const double median_min = gaps[k][gaps[k].size() / 2] * interval_s / 60.0;
+    CHECK(median_min >= minutes[k]);
+    CHECK(median_min <= minutes[k] + interval_s / 60.0);
+  }
 }
 
 TEST_CASE("show: a pick prepared from a tiny cache is replaced as the cache grows (the one-file replay, M6)") {

@@ -51,10 +51,36 @@ std::string no_artwork_reason(const std::vector<ChannelSummary> &channels);
 bool swap_timer_runs(bool paused, bool artwork_up, bool widget_up, bool show_active);
 bool auto_swap_due(bool timer_runs, uint32_t interval_s, int64_t now_us, int64_t swapped_at_us);
 
-// At an auto-swap each widget with an interlude probability is rolled in the fixed order
-// clock, weather, temperature; the first that wins takes the slot. `roll` returns
-// 0..99. Returns the index of the winner (0, 1, 2) or -1.
-int roll_interlude(const uint8_t (&percent)[3], const std::function<uint32_t()> &roll);
+// --- interludes (spec 6.1, ADR 0014) ---------------------------------------------------
+//
+// The user enters, per widget, the median gap in minutes between interludes of that kind
+// (0 = never, else 5..1440); the per-swap probability follows from the auto-swap
+// interval. The gap in swaps is geometric, so the gap has median M when the chance of no
+// win in M/T swaps is a half: p = 1 - 2^(-T / 60M). An interval longer than the gap is
+// unsatisfiable (the gap can never be shorter than one interval): that kind is off. The
+// kinds are rolled in priority order, the largest median first (ties: clock, weather,
+// temperature), and the first to win takes the slot, which is "each rolled
+// independently, the larger median wins a coincidence"; a lower kind loses the slots a
+// higher one takes, so its rolled probability is p over the chance that no higher kind
+// won, and its realised per-swap probability is exactly p again (capped at 1 when the
+// higher kinds leave nothing). Checked offline by tools/interlude_sim.py first.
+enum class InterludeState : uint8_t {
+  Never = 0,           // the median is 0
+  NoAutoSwap = 1,      // the auto-swap interval is 0: nothing swaps
+  IntervalLonger = 2,  // the interval is longer than the median: off
+  Rolled = 3,
+};
+struct InterludePlan {
+  InterludeState state[3] = {InterludeState::Never, InterludeState::Never, InterludeState::Never};
+  double per_swap[3] = {0, 0, 0};  // the realised per-swap probability p of each kind (0 unless Rolled)
+  double rolled[3] = {0, 0, 0};    // what each kind is rolled with (>= per_swap: the compensation)
+  uint8_t order[3] = {0, 1, 2};    // the roll order (indexes into the kinds), the first `count` used
+  uint8_t count = 0;
+};
+InterludePlan interlude_plan(const uint16_t (&median_minutes)[3], uint32_t interval_s);
+// Rolls the plan at an auto-swap; `roll` returns a uniform 32-bit number. Returns the
+// index of the winner (0 clock, 1 weather, 2 temperature) or -1.
+int roll_interlude(const InterludePlan &plan, const std::function<uint32_t()> &roll);
 
 // --- the prepared pick ------------------------------------------------------------------
 

@@ -156,6 +156,28 @@ esp_err_t action_play_playset(httpd_req_t *req) {
   return reply_ok(req, d);
 }
 
+// A widget as an interlude now: `{"widget":"clock"}` (spec 6.1, ADR 0014); 409 outside
+// the Animation show.
+esp_err_t action_interlude(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *w = cJSON_GetObjectItemCaseSensitive(body, "widget");
+  const std::string widget = (w && cJSON_IsString(w) && w->valuestring) ? w->valuestring : "";
+  cJSON_Delete(body);
+  if (widget.empty()) return reply_error(req, "400 Bad Request", "INVALID_WIDGET", "widget required");
+  if (!hooks().interlude) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
+  std::string error;
+  if (!hooks().interlude(widget, error)) {
+    const bool unknown = error.find("must be") != std::string::npos;
+    return reply_error(req, unknown ? "400 Bad Request" : "409 Conflict", unknown ? "INVALID_WIDGET" : "NOT_IN_SHOW",
+                       error);
+  }
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddStringToObject(d, "action", "interlude");
+  cJSON_AddStringToObject(d, "widget", widget.c_str());
+  return reply_ok(req, d);
+}
+
 esp_err_t action_history_go(httpd_req_t *req) {
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
@@ -188,6 +210,7 @@ void register_routes() {
       {"/api/v1/action/refresh", HTTP_POST, action_refresh, nullptr, false, false, nullptr},
       {"/api/v1/action/play_playset", HTTP_POST, action_play_playset, nullptr, false, false, nullptr},
       {"/api/v1/action/history_go", HTTP_POST, action_history_go, nullptr, false, false, nullptr},
+      {"/api/v1/action/interlude", HTTP_POST, action_interlude, nullptr, false, false, nullptr},
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
   ESP_LOGD(TAG, "content routes registered");

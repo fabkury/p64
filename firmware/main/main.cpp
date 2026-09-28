@@ -224,6 +224,7 @@ extern "C" void app_main() {
   hooks.resume = p64::show::resume;
   hooks.reset_timer = p64::show::reset_timer;
   hooks.refresh = p64::show::refresh;
+  hooks.interlude = p64::show::interlude;
   hooks.go_to = p64::show::go_to;
   hooks.play_file = p64::show::play_file;
   hooks.play_post = p64::makapix::play_post;

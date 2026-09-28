@@ -65,7 +65,9 @@ struct Settings {
 
   // Widgets
   WidgetKind widget = WidgetKind::Clock;
-  uint8_t interlude_clock = 0, interlude_weather = 0, interlude_temperature = 0;  // 0..100 %
+  // Interludes (ADR 0014): the median gap in minutes between interludes of each kind,
+  // 0 = never, else 5..1440; the per-swap probability follows from the auto-swap interval.
+  uint16_t interlude_clock = 30, interlude_weather = 180, interlude_temperature = 0;
   struct Clock {
     ClockFace face = ClockFace::Digital;
     LedStyle led_style = LedStyle::Red;  // the LED face only

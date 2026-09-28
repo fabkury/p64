@@ -53,6 +53,7 @@ enum class Cmd : uint8_t {
   Resume,
   ResetTimer,
   Refresh,
+  Interlude,
   PlayFile,
   PlayDownloaded,
   Activate,
@@ -218,6 +219,7 @@ void handle(Command &c) {
     case Cmd::Resume: core::resume(); break;
     case Cmd::ResetTimer: core::reset_timer(); break;
     case Cmd::Refresh: core::refresh(); break;
+    case Cmd::Interlude: core::interlude(static_cast<system::WidgetKind>(c.number)); break;
     case Cmd::PlayFile:
       if (c.text) core::play_file(*c.text, "", -1, "");
       break;
@@ -323,6 +325,24 @@ void resume() { send(Cmd::Resume); }
 void set_paused(bool paused) { send(paused ? Cmd::Pause : Cmd::Resume); }
 void reset_timer() { send(Cmd::ResetTimer); }
 void refresh() { send(Cmd::Refresh); }
+
+bool interlude(const std::string &widget, std::string &error) {
+  static const char *const kNames[] = {"clock", "weather", "temperature"};
+  int kind = -1;
+  for (int i = 0; i < 3; ++i) {
+    if (widget == kNames[i]) kind = i;
+  }
+  if (kind < 0) {
+    error = "widget must be clock, weather or temperature";
+    return false;
+  }
+  if (system::settings().main_state != system::MainState::AnimationShow) {
+    error = "interludes happen inside the Animation show";
+    return false;
+  }
+  send(Cmd::Interlude, static_cast<uint32_t>(kind));
+  return true;
+}
 
 bool play_file(const std::string &absolute_path, std::string &error) {
   if (!storage::exists(absolute_path) || storage::is_directory(absolute_path)) {

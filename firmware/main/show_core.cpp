@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -460,16 +461,22 @@ void play_widget(system::WidgetKind kind, bool interlude) {
   g_env->playback_swapped(static_cast<int32_t>(st.history.position()));
 }
 
-// At an auto-swap, each widget with an interlude probability is rolled in a fixed order;
-// the first that wins takes the slot (spec 6.1).
+// The interlude plan of the moment (ADR 0014): the settings' median gaps against the
+// auto-swap interval.
+rules::InterludePlan interlude_plan(const system::Settings &s) {
+  const uint16_t minutes[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
+  return rules::interlude_plan(minutes, s.auto_swap_seconds);
+}
+
+const system::WidgetKind kWidgetKinds[3] = {system::WidgetKind::Clock, system::WidgetKind::Weather,
+                                            system::WidgetKind::Temperature};
+
+// At an auto-swap the plan is rolled, the largest median first; the first that wins
+// takes the slot (spec 6.1, ADR 0014).
 bool roll_interlude() {
-  const system::Settings s = settings();
-  const uint8_t percent[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
-  const system::WidgetKind kinds[3] = {system::WidgetKind::Clock, system::WidgetKind::Weather,
-                                       system::WidgetKind::Temperature};
-  const int winner = rules::roll_interlude(percent, [] { return g_env->random(); });
+  const int winner = rules::roll_interlude(interlude_plan(settings()), [] { return g_env->random(); });
   if (winner < 0) return false;
-  play_widget(kinds[winner], true);
+  play_widget(kWidgetKinds[winner], true);
   return true;
 }
 
@@ -1171,6 +1178,12 @@ void pause() { do_pause(); }
 void resume() { do_resume(); }
 void reset_timer() { st.swap_at_us = now_us(); }
 void refresh() { st.rescan_due_us = now_us(); }
+void interlude(system::WidgetKind kind) {
+  // Only inside the show: the Widget state keeps its own widget, a stream its frames.
+  if (!show_active() || g_stream_up) return;
+  if (st.screen != Screen::None) end_screen();
+  play_widget(kind, true);
+}
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
   do_play_file(path, provider, item_id, name);
 }
@@ -1279,6 +1292,18 @@ cJSON *status_json() {
   const int64_t remaining =
       (!st.paused && st.current && s.auto_swap_seconds) ? st.swap_at_us + s.auto_swap_seconds * kSecond - now : -kSecond;
   cJSON_AddNumberToObject(as, "remaining_s", remaining < 0 ? -1 : static_cast<double>(remaining / kSecond));
+  // The interludes as planned from the settings (ADR 0014): each kind's median gap, its
+  // per-swap chance in percent (a tenth's resolution) and why it is off, if it is.
+  const rules::InterludePlan plan = interlude_plan(s);
+  const uint16_t minutes[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
+  static const char *const kStates[] = {"never", "no_auto_swap", "interval_longer", "rolled"};
+  cJSON *il = cJSON_AddObjectToObject(p, "interludes");
+  for (int i = 0; i < 3; ++i) {
+    cJSON *k = cJSON_AddObjectToObject(il, g_env->widget_name(kWidgetKinds[i]));
+    cJSON_AddNumberToObject(k, "median_minutes", minutes[i]);
+    cJSON_AddNumberToObject(k, "per_swap_percent", std::round(plan.per_swap[i] * 1000.0) / 10.0);
+    cJSON_AddStringToObject(k, "state", kStates[static_cast<int>(plan.state[i])]);
+  }
   cJSON_AddBoolToObject(p, "prepared", static_cast<bool>(st.prepared));
   // Time-to-first-artwork (spec 15.1, 18.8): both in ms of the clock now_us() counts (on
   // the device esp_timer, which starts with the app, about 0.7 s after reset since
