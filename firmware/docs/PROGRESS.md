@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -860,6 +860,29 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   by design), pull-ups 19.93 k, alone on the harness 3Vo 3.3 V and both lines 2.88 V,
   scan empty; bridge wicked off cleanly, scan empty again three times with the ON LED lit.
   Board B's chip is dead; a replacement 5880 is on the parts list. Knob A alone until then.
+- 2026-09-28, the LED clock face (prompts p052 and p053): a seven-segment clock in VEXED's
+  Digital Display font at its native 19 px (`assets/fonts/digital-display`, CC BY 4.0;
+  the digits and colon rasterised once into `assets/clock/led/`), hours upper left and
+  minutes lower right because HH:MM in one row is 67 px, 5x9 seconds digits, AM/PM/ALM
+  indicators, a ghost 8 behind every digit; `clock.led_style` = red, green, amber, blue
+  or vfd (the VFD was mocked as a second face and folded in as a style at the user's
+  request; the highlight sweeping along the frame was dropped as artificial). Alive all
+  the time (decided with the user): a frame every 200 ms for the breathing glow, five
+  frames of 40 ms cross-fading every digit change. `face_led.cpp` builds its intensity
+  and ghost maps inside the output frame and composes in place behind a three-row
+  window, so it allocates nothing. Host: 17 `led-*` references pixel-exact (styles, 12 h,
+  blink, fade frames), `themed.cpp` tests for the state machine, the hold times and the
+  settings round trip; 171 cases pass. Device (192.168.4.44, flashed 11:14): `faces_smoke`
+  0 failures (the LED frame is one of the host's ten frames for the two seconds around
+  the capture, the glow breathes, the five styles draw and differ), `ui_smoke` 0
+  failures; with the face up, internal heap 65.4 KB free, largest 34.8 KB, core 1 13.1 %
+  busy and core 0 1.6 % (`cpu_sample.py`, 20 s), 0 late flips. Sizes: the public image
+  2,320,192 bytes, 47 KB more for the baked assets (two 64x64 RGBA frames and the digit
+  sheets), so `image_bytes_max` was raised from 2.3 MB to 2.4 MB in `budgets.json`
+  (the app partition is 8 MB); the private build is 2,716,368 bytes and has been over
+  the public budget since the Divoom provider, `check_size.py` is CI's check on the
+  public build. Not checked: the user's eye on the panel (the glow's strength, the
+  colours of the filters, the meter).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

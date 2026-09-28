@@ -92,10 +92,11 @@ gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, roll
 are done, and M10 delivered the web UI in p3a's layout and five themes
 (`components/p64_web/ui/`: four pages, the shared static files, the setup portal on the
 same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
-the analogue clock face followed on 2026-09-20 and six themed clock faces on 2026-09-26
-(flip, nixie, horizon, words, hourglass, orrery: `tools/mock_clock_faces.py` is the design
-reference and writes the pixel-exact test references, `tools/gen_clock_assets.py` bakes
-`assets/clock/` into the firmware); open: the acceptance measurements that
+the analogue clock face followed on 2026-09-20, six themed clock faces on 2026-09-26
+(flip, nixie, horizon, words, hourglass, orrery) and the LED face (seven-segment, five
+styles including a VFD, `face_led.cpp`) on 2026-09-28; `tools/mock_clock_faces.py` is the
+design reference of the themed faces and writes the pixel-exact test references,
+`tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.

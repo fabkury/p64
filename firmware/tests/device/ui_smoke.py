@@ -63,13 +63,13 @@ def main():
         check("p64.nav(" in html and "/static/app.js" in html, "%s uses the shared app script and navigation" % path)
         check(bodies[path].endswith(b"</html>\n") or bodies[path].endswith(b"</html>"), "%s ends cleanly (no embedded NUL)" % path)
     settings = bodies["/settings"].decode("utf-8", "replace")
-    for face in ("digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"):
+    for face in ("digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"):
         check('<option value="%s">' % face in settings, "the settings page offers the %s face" % face)
     check('id="clock-preview"' in settings and 'id="clock-show"' in settings, "the Clock section has the live preview and the Show button")
     check('data-tab="inputs"' in settings and 'id="tab-inputs"' in settings, "the settings page has the Inputs tab")
     check(all(('id="%s"' % i) in settings for i in ("tap-enabled", "tap-sens", "enc-enabled", "enc-swap", "enc-invert", "enc-status")), "the Inputs tab has the tap and knob controls")
     cells = re.findall(r'data-for="([^"]+)"', settings)
-    check(len(cells) == 6 and "words" not in " ".join(cells), "the six clock controls declare their faces, none for the words (%d cells)" % len(cells))
+    check(len(cells) == 7 and "words" not in " ".join(cells), "the seven clock controls declare their faces, none for the words (%d cells)" % len(cells))
     check("faceControls(" in settings and "FACE_INFO" in settings, "the Clock section reacts to the face")
     m = json.loads(bodies["/manifest.json"].decode())
     check(m.get("name") == "p64" and len(m.get("icons", [])) == 2, "manifest is valid")

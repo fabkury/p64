@@ -22,6 +22,11 @@ extern const Sprite kHorizonSun;  // horizon/sun.png, 11x11
 extern const Sprite kHorizonTree;  // horizon/tree.png, 5x8
 extern const Sprite kHourglassFrame;  // hourglass/frame.png, 26x52
 extern const Sprite kHourglassSand;  // hourglass/sand.png, 4x4
+extern const Sprite kLedBezel;  // led/bezel.png, 64x64
+extern const Sprite kLedColon;  // led/colon.png, 3x19
+extern const Sprite kLedDigits;  // led/digits.png, 159x19
+extern const Sprite kLedMini;  // led/mini.png, 59x9
+extern const Sprite kLedVfdFrame;  // led/vfd-frame.png, 64x64
 extern const Sprite kNixieBase;  // nixie/base.png, 64x4
 extern const Sprite kNixieDigits;  // nixie/digits.png, 79x11
 extern const Sprite kNixieTube;  // nixie/tube.png, 13x38

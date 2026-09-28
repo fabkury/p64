@@ -12,6 +12,7 @@ idf_component_register(
         "src/solar.cpp"
         "src/themed_common.cpp"
         "src/face_flip.cpp"
+        "src/face_led.cpp"
         "src/face_nixie.cpp"
         "src/face_horizon.cpp"
         "src/face_words.cpp"

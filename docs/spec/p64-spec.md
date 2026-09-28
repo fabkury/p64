@@ -439,9 +439,19 @@ refresh of being asked so it can be shown seamlessly.
   - Orrery: on a star chart with brass rings, the Earth goes round the Sun once in twelve
     hours, its Moon round the Earth once an hour and Mercury round the Sun once a minute
     (with the seconds setting); the time in figures on a brass plaque.
+  - LED (designed 2026-09-28, prompts p052 and p053, from VEXED's Digital Display font at
+    its native 19 px): a seven-segment clock, the hours at the upper left and the minutes
+    at the lower right (HH:MM in one row would be 67 px), the seconds in small
+    seven-segment digits at the lower left (with the seconds setting), AM, PM and a
+    decorative ALM indicator at the upper right, a ghost "8" behind every digit; a style
+    setting picks a red, green, amber or blue LED behind a tinted filter in a plastic
+    bezel, or a cyan vacuum fluorescent display in a chrome frame whose indicator words
+    light up, with a bell and a little six-bar meter. Alive all the time: the glow around
+    the lit segments breathes over four seconds (a frame every 200 ms), and every digit
+    change cross-fades in five frames of 40 ms; the colon blinks with its setting.
   In 12 h mode the themed faces blank the leading zero of the hour and show AM or PM
   where each has room. They redraw once a minute unless a setting gives them a
-  per-second element.
+  per-second element (the LED's breathing excepted).
 - Face choice, font, scale and colours are settings.
 
 ### 7.2 Weather
@@ -750,7 +760,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude probability, per widget | 0 to 100 % | 0 |
-| Clock | face; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery; the rest as listed | digital; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
 | Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; on, 4064 |
@@ -787,7 +797,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | PIN | 4 to 8 digits |
 | Downloads folder | capped by setting, default 64 MB |
 | Fonts bundled | 6 (5 offered for the clock overlay) |
-| Clock faces | 8 (digital, analogue and six themed) |
+| Clock faces | 9 (digital, analogue and seven themed; the LED in five styles) |
 
 ## 18. Acceptance criteria
 

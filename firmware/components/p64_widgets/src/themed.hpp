@@ -1,5 +1,5 @@
 // The themed clock faces (spec 7.1, approved 2026-09-26): flip, nixie, horizon, words,
-// hourglass and orrery, each drawn from pixel-art assets (clock_assets, baked from
+// hourglass, orrery and, since 2026-09-28, the LED, each drawn from pixel-art assets (clock_assets, baked from
 // assets/clock/) onto a Frame. Pure and host-tested: tools/mock_clock_faces.py draws the
 // same faces on the host with the same arithmetic, and tests/host/run.py compares the
 // firmware's pixels with its references (tests/host/corpus/clock/).
@@ -73,5 +73,19 @@ void draw_hourglass(gfx::Frame &frame, const Moment &m, const Options &o);
 void draw_orrery(gfx::Frame &frame, const Moment &m, const Options &o);
 // The bodies' pixel centres (for the tests).
 void orrery_positions(const Moment &m, int &ex, int &ey, int &mx, int &my, int &qx, int &qy);
+
+// 7. LED: a seven-segment clock in five styles (the same order as system::LedStyle).
+// `millis` is the milliseconds into the second (the face's clock is the time of day in
+// milliseconds: the glow's pulse and the VFD's meter follow it, a frame every
+// kLedPulseStepMs); `phase` 1..kLedFadeFrames draws that frame of the cross-fade from
+// `from` (every digit that differs), each held kLedFadeMs.
+enum class LedStyle : uint8_t { Red = 0, Green = 1, Amber = 2, Blue = 3, Vfd = 4 };
+constexpr int kLedFadeFrames = 5;
+constexpr uint32_t kLedFadeMs = 40, kLedPulseStepMs = 200;
+void draw_led(gfx::Frame &frame, const Moment &m, const Options &o, LedStyle style, int millis = 0, int phase = 0,
+              const Moment *from = nullptr);
+// The face's clock and the glow's pulse (255 at 0, 140 two seconds later, a triangle).
+int led_ms(const Moment &m, int millis);
+int led_pulse(int ms);
 
 }  // namespace p64::widgets::themed

@@ -1115,32 +1115,36 @@ def draw_orrery(m, o):
     return frame
 
 
-# ---------------------------------------------------------------- 7. LED and 8. VFD (the segment faces)
+# ---------------------------------------------------------------- 7. LED (the seven-segment face, five styles)
 
-# Two seven-segment clocks (prompt p052, 2026-09-28): a red LED bedside clock behind a dark
-# plastic bezel and a cyan-green vacuum fluorescent display in a chrome frame. Both show the
-# time in VEXED's Digital Display (assets/fonts/digital-display: 15x19 seven-segment digits
-# with bevelled ends, a 3x19 colon), rasterised once from the TTF at its native 19 px into
-# assets/clock/led/digits.png and colon.png and shared by the two faces; the font is only
-# right at integer multiples of 19 px, and HH:MM in one row is 67 px, so the hours sit at the
-# upper left and the minutes at the lower right (a staircase), the seconds in two 5x9
-# seven-segment digits of the same style at the lower left, the indicators (AM, PM, ALM) at
-# the upper right. Everything lit is first written into a 0..255 intensity map over a ghost
-# map (the unlit segments, an "8" behind every digit, as on a real display); the face is then
-# coloured from them: a lit pixel between the ghost and the lit colour by its intensity, and
-# around the lit pixels a one-pixel glow (the brightest of the eight neighbours, scaled by a
-# slow pulse). A digit change cross-fades the segments: FADE_FRAMES frames of FADE_MS in
-# which the segments that go out fall from lit to ghost and the ones that come in rise, the
-# shared ones staying lit. Every SHIMMER_MS a highlight sweeps along the top of the frame.
-# The VFD also has a little six-bar meter dancing in the band between the rows, for life.
-# Integer arithmetic throughout; `ms` is the face's own millisecond clock (0 in the references).
+# A seven-segment clock (prompts p052 and p053, 2026-09-28) in VEXED's Digital Display
+# (assets/fonts/digital-display: 15x19 seven-segment digits with bevelled ends, a 3x19
+# colon), rasterised once from the TTF at its native 19 px into assets/clock/led/digits.png
+# and colon.png; the font is only right at integer multiples of 19 px, and HH:MM in one row
+# is 67 px, so the hours sit at the upper left and the minutes at the lower right (a
+# staircase), the seconds in two 5x9 seven-segment digits of the same style at the lower
+# left, the indicators (AM, PM, ALM) at the upper right. Five styles (the `led_style`
+# setting): red, green, amber and blue LEDs behind a tinted filter in a dark plastic bezel
+# with the labels printed on the filter and a lit dot beside each; and vfd, a cyan-green
+# vacuum fluorescent display on dark glass with a faint mesh in a chrome frame, where the
+# indicator words themselves light up, a bell marks ALM and a six-bar meter dances in the
+# band between the rows. Everything lit is first written into a 0..255 intensity map over a
+# ghost map (the unlit segments, an "8" behind every digit, as on a real display); the face
+# is then coloured from them: a lit pixel between the ghost and the lit colour by its
+# intensity, and around the lit pixels a one-pixel glow (the brightest of the eight
+# neighbours, scaled by a slow pulse). A digit change cross-fades the segments: FADE_FRAMES
+# frames of FADE_MS in which the segments that go out fall from lit to ghost and the ones
+# that come in rise, the shared ones staying lit. The face's own clock is the local time of
+# day in milliseconds (`seg_ms`), so the pulse and the meter are functions of the moment
+# and every frame is reproducible; the firmware redraws every PULSE_STEP_MS. Integer
+# arithmetic throughout.
 
 DD_FONT = os.path.join(FIRMWARE, "assets", "fonts", "digital-display", "Digital_Display.ttf")
 DW, DH = 15, 19  # a Digital Display digit
 CW = 3  # its colon
 MW, MH = 5, 9  # a mini digit
 FADE_FRAMES, FADE_MS = 5, 40
-PULSE_MS, SHIMMER_MS, SWEEP_MS = 4000, 8000, 1200
+PULSE_MS, PULSE_STEP_MS = 4000, 200
 WIN = (3, 3, 61, 61)  # the window inside the 3 px frame, [x0, y0, x1, y1)
 SEG_HOURS = (6, 7)  # the hours' first digit
 SEG_MINUTES = (27, 38)  # the minutes' first digit (right-aligned to x 57)
@@ -1149,6 +1153,7 @@ SEG_SECONDS = (7, 48)  # the mini digits, bottom-aligned with the minutes
 SEG_ROWS = (8, 15, 22)  # the indicator rows (AM, PM, ALM), 3x5 letters at x 47
 SEG_LABEL_X, SEG_DOT_X = 47, 43
 VU_X, VU_Y, VU_BARS, VU_H = 6, 35, 6, 6  # the VFD's meter: bottom row, six 2 px bars, 6 rows
+LED_STYLES = ["red", "green", "amber", "blue", "vfd"]
 
 # The mini seven-segment digits: segment a..g as (rows, cols) of a 5x9 cell.
 MINI_SEGMENTS = {"a": ((0,), (1, 2, 3)), "b": ((1, 2, 3), (4,)), "c": ((5, 6, 7), (4,)), "d": ((8,), (1, 2, 3)),
@@ -1157,19 +1162,27 @@ MINI_DIGITS = ["abcdef", "bc", "abdeg", "abcdg", "bcfg", "acdfg", "acdefg", "abc
 BELL = ["..#..", ".###.", ".###.", "#####", "..#.."]
 
 
-class SegTheme:
-    def __init__(self, name, window, window_alt, ghost, lit, glow, dots, vu):
-        self.name, self.window, self.window_alt = name, window, window_alt
-        self.ghost, self.lit, self.glow, self.dots, self.vu = ghost, lit, glow, dots, vu
+class SegStyle:
+    """window: the filter or glass; window_alt: the glass's other rows (the VFD mesh);
+    ghost, lit, glow: the segments; label: the printed labels' colour (None: the words light
+    up, VFD)."""
+
+    def __init__(self, window, window_alt, ghost, lit, glow, label):
+        self.window, self.window_alt, self.ghost, self.lit, self.glow, self.label = window, window_alt, ghost, lit, glow, label
+
+    @property
+    def vfd(self):
+        return self.label is None
 
 
-# The LED: a red filter over black, segments (255, 48, 24), printed labels with lit dots.
-LED = SegTheme("led", (10, 2, 2), None, (46, 8, 6), (255, 48, 24), (80, 14, 6), True, False)
+STYLES = {
+    "red": SegStyle((10, 2, 2), None, (46, 8, 6), (255, 48, 24), (80, 14, 6), (128, 78, 72)),
+    "green": SegStyle((2, 8, 3), None, (8, 40, 12), (60, 255, 70), (12, 80, 18), (76, 120, 84)),
+    "amber": SegStyle((10, 6, 1), None, (48, 28, 4), (255, 160, 24), (84, 52, 6), (128, 104, 70)),
+    "blue": SegStyle((2, 3, 12), None, (8, 14, 52), (60, 120, 255), (10, 26, 96), (80, 90, 130)),
+    "vfd": SegStyle((5, 11, 11), (3, 8, 8), (10, 34, 30), (150, 255, 225), (20, 66, 58), None),
+}
 LED_PLASTIC, LED_LIGHT, LED_DARK, LED_INNER = (46, 46, 52), (92, 92, 100), (14, 14, 16), (24, 24, 28)
-LED_PRINT = (128, 78, 72)  # silkscreen seen through the red filter
-# The VFD: dark glass with a faint mesh (alternate rows), phosphor (150, 255, 225), the
-# indicator words themselves light up, a bell for the alarm, the meter in the band.
-VFD = SegTheme("vfd", (5, 11, 11), (3, 8, 8), (10, 34, 30), (150, 255, 225), (20, 66, 58), False, True)
 CHROME_HI, CHROME, CHROME_LO, CHROME_EDGE = (236, 240, 244), (168, 174, 182), (96, 102, 110), (38, 42, 48)
 
 
@@ -1207,58 +1220,53 @@ def mini_rows(segments):
     return ["".join(r) for r in rows]
 
 
+def words_letters():
+    """The words face's 3x5 alphabet, shared by the LED face's indicator words."""
+    return dict(zip(sorted(ALPHABET), cells(asset("words", "alphabet", lambda: sheet_from([ALPHABET[k] for k in sorted(ALPHABET)])), 26)))
+
+
 def seg_assets():
     """digits (ten 15x19 masks), colon (3x19), mini (ten 5x9), letters (the words face's 3x5)."""
     digits = cells(asset("led", "digits", lambda: sheet_from([mask_rows(d) for d in dd_masks()[0]])), 10)
     colon = asset("led", "colon", lambda: dd_masks()[1]).split()[3].point(lambda v: 255 if v >= 128 else 0)
     mini = cells(asset("led", "mini", lambda: sheet_from([mini_rows(s) for s in MINI_DIGITS])), 10)
-    letters = words_letters()
-    return digits, colon, mini, letters
+    return digits, colon, mini, words_letters()
+
+
+def frame_outline(img, hi, body, lo, inner_top, inner_bottom):
+    """A 3 px frame with rounded corners and the window clear: the outer edge lit at the
+    top and left (hi) and dark at the bottom and right (lo), the body, the inner edge."""
+    d = ImageDraw.Draw(img)
+    d.rectangle((0, 0, W - 1, H - 1), fill=body + (255,))
+    d.line((0, 0, W - 1, 0), fill=hi + (255,))
+    d.line((0, 0, 0, H - 1), fill=hi + (255,))
+    d.line((0, H - 1, W - 1, H - 1), fill=lo + (255,))
+    d.line((W - 1, 0, W - 1, H - 1), fill=lo + (255,))
+    d.line((2, 2, W - 3, 2), fill=inner_top + (255,))
+    d.line((2, 2, 2, H - 3), fill=inner_top + (255,))
+    d.line((2, H - 3, W - 3, H - 3), fill=inner_bottom + (255,))
+    d.line((W - 3, 2, W - 3, H - 3), fill=inner_bottom + (255,))
+    d.rectangle((WIN[0], WIN[1], WIN[2] - 1, WIN[3] - 1), fill=(0, 0, 0, 0))
+    for x, y in ((0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)):
+        img.putpixel((x, y), (0, 0, 0, 0))
 
 
 def draw_led_bezel():
-    """The LED's housing, 64x64 RGBA with the window clear: dark plastic, 3 px, the light on
-    the top and left edges, the inner edge of the recess dark above and light below, rounded
-    corners; the AM, PM and ALM labels printed on the filter."""
+    """The LEDs' housing, 64x64 RGBA with the window clear: dark plastic, the light on the
+    top and left edges, the inner edge of the recess dark above and light below."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rectangle((0, 0, W - 1, H - 1), fill=LED_PLASTIC + (255,))
-    d.line((0, 0, W - 1, 0), fill=LED_LIGHT + (255,))
-    d.line((0, 0, 0, H - 1), fill=LED_LIGHT + (255,))
-    d.line((0, H - 1, W - 1, H - 1), fill=LED_DARK + (255,))
-    d.line((W - 1, 0, W - 1, H - 1), fill=LED_DARK + (255,))
-    d.line((2, 2, W - 3, 2), fill=LED_INNER + (255,))
-    d.line((2, 2, 2, H - 3), fill=LED_INNER + (255,))
-    d.line((2, H - 3, W - 3, H - 3), fill=(60, 60, 68, 255))
-    d.line((W - 3, 2, W - 3, H - 3), fill=(60, 60, 68, 255))
-    d.rectangle(tuple(v - (1 if i > 1 else 0) for i, v in enumerate(WIN)), fill=(0, 0, 0, 0))
-    for x, y in ((0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)):
-        img.putpixel((x, y), (0, 0, 0, 0))
-    letters = words_letters()
-    for y, word in zip(SEG_ROWS, ("AM", "PM", "ALM")):
-        x = SEG_LABEL_X
-        for ch in word:
-            img.paste(Image.new("RGBA", (3, 5), LED_PRINT + (255,)), (x, y), letters[ch])
-            x += 4
+    frame_outline(img, LED_LIGHT, LED_PLASTIC, LED_DARK, LED_INNER, (60, 60, 68))
     return img
 
 
 def draw_vfd_frame():
-    """The VFD's chrome frame, 3 px: a bright top-left edge, the body, a darker bottom-right,
-    a dark line where the glass meets it, rounded corners."""
+    """The VFD's chrome frame: a bright top-left edge, the body, a darker bottom-right, a
+    dark line where the glass meets it."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    frame_outline(img, CHROME_HI, CHROME, CHROME_LO, CHROME_EDGE, CHROME_EDGE)
     d = ImageDraw.Draw(img)
-    d.rectangle((0, 0, W - 1, H - 1), fill=CHROME + (255,))
-    d.line((0, 0, W - 1, 0), fill=CHROME_HI + (255,))
-    d.line((0, 0, 0, H - 1), fill=CHROME_HI + (255,))
-    d.line((0, H - 1, W - 1, H - 1), fill=CHROME_LO + (255,))
-    d.line((W - 1, 0, W - 1, H - 1), fill=CHROME_LO + (255,))
     d.line((1, H - 2, W - 2, H - 2), fill=(130, 136, 144, 255))
     d.line((W - 2, 1, W - 2, H - 2), fill=(130, 136, 144, 255))
-    d.rectangle((2, 2, W - 3, H - 3), outline=CHROME_EDGE + (255,))
-    d.rectangle(tuple(v - (1 if i > 1 else 0) for i, v in enumerate(WIN)), fill=(0, 0, 0, 0))
-    for x, y in ((0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)):
-        img.putpixel((x, y), (0, 0, 0, 0))
     return img
 
 
@@ -1306,6 +1314,11 @@ def seg_dot(lit, ghost, x, y, on):
                 lit[y + yy][x + xx] = 255
 
 
+def seg_ms(m, millis=0):
+    """The face's clock: the local time of day in milliseconds."""
+    return ((m.hour * 60 + m.minute) * 60 + m.second) * 1000 + millis
+
+
 def pulse(ms):
     """The glow's breathing: 255 at 0, 140 at PULSE_MS / 2, back, a triangle."""
     ph = ms % PULSE_MS
@@ -1323,16 +1336,7 @@ def vu_height(ms, i):
     return 1 + ((VU_H - 1) * (tri255(ms, 900 + 170 * i) + tri255(ms, 1300 + 230 * i))) // 510
 
 
-def shimmer_span(ms):
-    """The x range of the highlight sweeping along the top edge, or None."""
-    ph = ms % SHIMMER_MS
-    if ph >= SWEEP_MS:
-        return None
-    x0 = -8 + ((W + 16) * ph) // SWEEP_MS
-    return x0, x0 + 7
-
-
-def seg_compose(theme, lit, ghost, ms):
+def seg_compose(style, lit, ghost, ms):
     """The window coloured from the maps: base (glass, ghost), lit by intensity, the glow of
     the eight neighbours scaled by the pulse."""
     frame = Frame((0, 0, 0))
@@ -1340,39 +1344,26 @@ def seg_compose(theme, lit, ghost, ms):
     x0, y0, x1, y1 = WIN
     for y in range(y0, y1):
         for x in range(x0, x1):
-            base = theme.window if theme.window_alt is None or y % 2 == 0 else theme.window_alt
+            base = style.window if style.window_alt is None or y % 2 == 0 else style.window_alt
             if ghost[y][x]:
-                base = theme.ghost
+                base = style.ghost
             v = lit[y][x]
             if v:
-                frame.set(x, y, mix(base, theme.lit, v))
+                frame.set(x, y, mix(base, style.lit, v))
                 continue
             n = 0
             for dy in (-1, 0, 1):
                 for dx in (-1, 0, 1):
                     if 0 <= y + dy < H and 0 <= x + dx < W:
                         n = max(n, lit[y + dy][x + dx])
-            frame.set(x, y, mix(base, theme.glow, (n * p) // 255) if n else base)
+            frame.set(x, y, mix(base, style.glow, (n * p) // 255) if n else base)
     return frame
 
 
-def seg_shimmer(frame, theme, ms):
-    span = shimmer_span(ms)
-    if not span:
-        return
-    hi = (200, 200, 210) if theme.name == "led" else (255, 255, 255)
-    mid = (130, 130, 140) if theme.name == "led" else (220, 226, 232)
-    for x in range(span[0], span[1] + 1):
-        if 1 <= x < W - 1:
-            edge = x == span[0] or x == span[1]
-            frame.set(x, 0, mid if edge else hi)
-            if not edge:
-                frame.set(x, 1, mid)
-
-
-def draw_segment_face(theme, m, o, ms=0, prev=None, k=0):
-    """The face at `m`; `k` 1..FADE_FRAMES draws that frame of the change from `prev` (every
-    digit that differs cross-fades); `ms` drives the pulse, the shimmer and the meter."""
+def draw_led(m, o, millis=0, prev=None, k=0, style="red"):
+    """The face at `m` and `millis` into its second; `k` 1..FADE_FRAMES draws that frame of
+    the change from `prev` (every digit that differs cross-fades)."""
+    st = STYLES[style]
     digits, colon, mini, letters = seg_assets()
     lit = [[0] * W for _ in range(H)]
     ghost = [[0] * W for _ in range(H)]
@@ -1391,15 +1382,12 @@ def draw_segment_face(theme, m, o, ms=0, prev=None, k=0):
         for i in range(2):
             seg_digit(lit, ghost, mini, SEG_SECONDS[0] + i * (MW + 1), SEG_SECONDS[1], ss[i], ps[i], t)
     am, pm_on = (not o.h24 and m.hour < 12), (not o.h24 and m.hour >= 12)
-    if theme.dots:
-        for y, on in zip(SEG_ROWS, (am, pm_on, True)):
-            seg_dot(lit, ghost, SEG_DOT_X, y + 1, on)
-    else:
+    ms = seg_ms(m, millis)
+    if st.vfd:
         for y, word, on in zip(SEG_ROWS, ("AM", "PM", "ALM"), (am, pm_on, True)):
             seg_word(lit, ghost, letters, SEG_LABEL_X, y, word, on)
         seg_stamp(ghost, bitmap(BELL), SEG_DOT_X - 2, SEG_ROWS[2], 1)
         seg_stamp(lit, bitmap(BELL), SEG_DOT_X - 2, SEG_ROWS[2], 255)
-    if theme.vu:
         for i in range(VU_BARS):
             h = vu_height(ms, i)
             for r in range(VU_H):
@@ -1407,18 +1395,18 @@ def draw_segment_face(theme, m, o, ms=0, prev=None, k=0):
                     ghost[VU_Y - r][VU_X + 3 * i + xx] = 1
                     if r < h:
                         lit[VU_Y - r][VU_X + 3 * i + xx] = 255
-    frame = seg_compose(theme, lit, ghost, ms)
-    blit(frame, asset("led", "bezel", draw_led_bezel) if theme.name == "led" else asset("vfd", "frame", draw_vfd_frame), 0, 0)
-    seg_shimmer(frame, theme, ms)
+    else:
+        for y, on in zip(SEG_ROWS, (am, pm_on, True)):
+            seg_dot(lit, ghost, SEG_DOT_X, y + 1, on)
+    frame = seg_compose(st, lit, ghost, ms)
+    if st.vfd:
+        blit(frame, asset("led", "vfd-frame", draw_vfd_frame), 0, 0)
+    else:
+        blit(frame, asset("led", "bezel", draw_led_bezel), 0, 0)
+        for y, word in zip(SEG_ROWS, ("AM", "PM", "ALM")):  # printed on the filter
+            for i, ch in enumerate(word):
+                stamp_mask(frame, letters[ch], SEG_LABEL_X + 4 * i, y, st.label)
     return frame
-
-
-def draw_led(m, o, ms=0, prev=None, k=0):
-    return draw_segment_face(LED, m, o, ms, prev, k)
-
-
-def draw_vfd(m, o, ms=0, prev=None, k=0):
-    return draw_segment_face(VFD, m, o, ms, prev, k)
 
 
 def plus_seconds(m, s):
@@ -1426,34 +1414,30 @@ def plus_seconds(m, s):
     return Moment(total // 3600, total // 60 % 60, total % 60, m.wday, m.mday, m.mon, m.yday)
 
 
-def segment_animation(draw, m0, o, seconds=8, ms0=0):
-    """(frame, duration ms) for `seconds` seconds from m0: every second the FADE_FRAMES frames
-    of the change, then four frames of 200 ms in which the pulse, the shimmer and the meter move."""
+def led_animation(m0, o, style="red", seconds=8):
+    """(frame, duration ms) for `seconds` seconds from m0, as the firmware draws them: at
+    every second the FADE_FRAMES frames of the change 40 ms apart, then a frame every
+    PULSE_STEP_MS in which the pulse and the meter move."""
     seq = []
-    ms = ms0
     prev = None
     for s in range(seconds):
         m = plus_seconds(m0, s)
+        millis = 0
         if prev:
             for k in range(1, FADE_FRAMES + 1):
-                seq.append((draw(m, o, ms, prev, k), FADE_MS))
-                ms += FADE_MS
-        for _ in range(4):
-            seq.append((draw(m, o, ms), 200))
-            ms += 200
+                seq.append((draw_led(m, o, millis, prev, k, style), FADE_MS))
+                millis += FADE_MS
+        while millis < 1000:
+            seq.append((draw_led(m, o, millis, None, 0, style), PULSE_STEP_MS))
+            millis += PULSE_STEP_MS
         prev = m
     return seq
-
-
-def words_letters():
-    """The words face's 3x5 alphabet, shared by the segment faces' indicator words."""
-    return dict(zip(sorted(ALPHABET), cells(asset("words", "alphabet", lambda: sheet_from([ALPHABET[k] for k in sorted(ALPHABET)])), 26)))
 
 
 # ---------------------------------------------------------------- output
 
 FACES = {"flip": draw_flip, "nixie": draw_nixie, "horizon": draw_horizon, "words": draw_words,
-         "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led, "vfd": draw_vfd}
+         "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led}
 
 
 def contact_sheet(items, scale=6, gap=12, columns=None):
@@ -1493,6 +1477,15 @@ REFERENCES = [
     ("hourglass", Moment(19, 58, 5), "s"), ("hourglass", Moment(7, 15, 12), "hs"),
     ("orrery", Moment(10, 32, 37), "s"), ("orrery", Moment(10, 32, 37), ""), ("orrery", Moment(0, 0, 0), "s"),
     ("orrery", Moment(14, 45, 50), "s"), ("orrery", Moment(19, 32, 5), "hs"), ("orrery", Moment(10, 32, 37), "b"),
+    # the LED face: flags g/a/u/v pick the green, amber, blue and vfd styles (red without),
+    # pN frame N of the cross-fade from the second before
+    ("led", Moment(10, 32, 37), "s"), ("led", Moment(10, 32, 37), ""), ("led", Moment(10, 32, 37), "sb"),
+    ("led", Moment(19, 32, 5), "hs"), ("led", Moment(9, 5, 0), "h"), ("led", Moment(0, 0, 0), "s"),
+    ("led", Moment(10, 33, 0), "sp3"), ("led", Moment(10, 32, 38), "sp1"), ("led", Moment(10, 32, 38), "sp4"),
+    ("led", Moment(11, 0, 0), "p2"),
+    ("led", Moment(10, 32, 37), "sv"), ("led", Moment(21, 5, 9), "hsv"), ("led", Moment(10, 32, 37), "bv"),
+    ("led", Moment(10, 33, 0), "svp2"),
+    ("led", Moment(10, 32, 37), "sg"), ("led", Moment(10, 32, 37), "sa"), ("led", Moment(10, 32, 37), "su"),
 ]
 
 
@@ -1503,6 +1496,10 @@ def render_reference(face, m, flags):
         k = int(p.group(1))
         prev = Moment(m.hour if m.minute else (m.hour - 1) % 24, (m.minute - 1) % 60, 59)
         return draw_flip(m, o, k, prev)
+    if face == "led":
+        style = {"g": "green", "a": "amber", "u": "blue", "v": "vfd"}
+        st = next((style[c] for c in flags if c in style), "red")
+        return draw_led(m, o, 0, plus_seconds(m, -1) if p else None, int(p.group(1)) if p else 0, st)
     return FACES[face](m, o)
 
 
@@ -1525,8 +1522,7 @@ def write_design():
              ("words", draw_words(Moment(10, 32))),
              ("hourglass", draw_hourglass(Moment(10, 32, 37), Options(seconds=True))),
              ("orrery", draw_orrery(Moment(10, 32, 37), Options(seconds=True))),
-             ("led", draw_led(Moment(10, 32, 37), Options(seconds=True), ms=1500)),
-             ("vfd", draw_vfd(Moment(10, 32, 37), Options(seconds=True), ms=1500))]
+             ("led", draw_led(Moment(10, 32, 37), Options(seconds=True)))]
     for name, fr in faces:
         fr.img.save(os.path.join(DESIGN, name + ".png"))
         upscale(fr.img, 8).save(os.path.join(DESIGN, name + "@8x.png"))
@@ -1556,20 +1552,20 @@ def write_design():
             os.path.join(DESIGN, name + "-moments.png"))
     save_gif(os.path.join(DESIGN, "hourglass@8x.gif"), [(draw_hourglass(Moment(10, 32, s), Options(seconds=True)), 500) for s in range(6)], 8)
     save_gif(os.path.join(DESIGN, "orrery@8x.gif"), [(draw_orrery(Moment(10, 32, s), Options(seconds=True)), 500) for s in range(30, 42)], 8)
-    # The segment faces (p052): six moments in 12 h with seconds, the two-mode sheet, and eight
-    # seconds across a minute change with the fades, the pulse, the shimmer and the meter.
+    # The LED face (p052, p053): the five styles, six moments in 12 h with seconds, and eight
+    # seconds across a minute change with the fades, the pulse and the meter, red and vfd.
     seg_o = Options(seconds=True, blink=True)
-    for name, fn in (("led", draw_led), ("vfd", draw_vfd)):
-        contact_sheet([(f"{h:02d}:{m:02d}", fn(Moment(h, m, s), Options(seconds=True, h24=False), ms=1500)) for h, m, s in times], scale=4, columns=6).save(
-            os.path.join(DESIGN, name + "-moments.png"))
-        seq = segment_animation(fn, Moment(10, 31, 57), seg_o)
+    contact_sheet([(st, draw_led(Moment(10, 32, 37), Options(seconds=True), 0, None, 0, st)) for st in LED_STYLES], scale=4, columns=5).save(
+        os.path.join(DESIGN, "led-styles.png"))
+    contact_sheet([(f"{h:02d}:{m:02d}", draw_led(Moment(h, m, s), Options(seconds=True, h24=False))) for h, m, s in times], scale=4, columns=6).save(
+        os.path.join(DESIGN, "led-moments.png"))
+    vfd = draw_led(Moment(10, 32, 37), Options(seconds=True), 0, None, 0, "vfd")
+    vfd.img.save(os.path.join(DESIGN, "led-vfd.png"))
+    upscale(vfd.img, 8).save(os.path.join(DESIGN, "led-vfd@8x.png"))
+    for name, st in (("led", "red"), ("led-vfd", "vfd")):
+        seq = led_animation(Moment(10, 31, 57), seg_o, st)
         save_gif(os.path.join(DESIGN, name + ".gif"), seq)
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8)
-    contact_sheet([("led 24 h", draw_led(Moment(10, 32, 37), Options(), ms=1500)),
-                   ("led 12 h seconds", draw_led(Moment(21, 5, 9), Options(seconds=True, h24=False), ms=1500)),
-                   ("vfd 24 h", draw_vfd(Moment(10, 32, 37), Options(), ms=1500)),
-                   ("vfd 12 h seconds", draw_vfd(Moment(21, 5, 9), Options(seconds=True, h24=False), ms=1500))], scale=5, columns=4).save(
-        os.path.join(DESIGN, "segment-faces.png"))
 
 
 def main():

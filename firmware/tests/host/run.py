@@ -71,6 +71,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "solar.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "themed_common.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_flip.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_led.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_nixie.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_horizon.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_words.cpp"),

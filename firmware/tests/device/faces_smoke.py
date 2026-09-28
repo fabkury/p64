@@ -3,12 +3,14 @@ r"""Device smoke test of the clock faces (spec 7.1) over the HTTP API.
 
     python tests\device\faces_smoke.py [http://p64.local] [--keep FACE]
 
-Puts the device in the Widget state with the clock, sets each of the eight faces in
+Puts the device in the Widget state with the clock, sets each of the nine faces in
 turn and checks that the panel draws it (the frame is lit and differs from the other
 faces), that the settings document echoes the face, and, for the five themed faces whose
 drawing is exact (flip, nixie, words, hourglass, orrery), that the device's frame is pixel
 for pixel what tools/mock_clock_faces.py draws for the same minute on the host (seconds and
-the blinking colon off, so the frame does not depend on the second). The horizon depends
+the blinking colon off, so the frame does not depend on the second). The LED face breathes
+(its glow follows the time of day in 200 ms steps), so its frame must be one of the ten the
+host draws for the two seconds around the capture. The horizon depends
 on the location, the zone and the weather, so it is only checked for a sky. Needs the
 system Python with Pillow and a synced clock on the device. Puts the settings back, or
 leaves the device on `--keep FACE` in the Widget state. Exit code 1 on any failure.
@@ -25,7 +27,7 @@ import api_smoke
 from api_smoke import check, request
 import mock_clock_faces as mock
 
-FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"]
+FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"]
 EXACT = {"flip": mock.draw_flip, "nixie": mock.draw_nixie, "words": mock.draw_words,
          "hourglass": mock.draw_hourglass, "orrery": mock.draw_orrery}
 
@@ -95,6 +97,10 @@ def main():
                 px = frame(base)
             diff = sum(1 for i in range(0, len(px), 3) if px[i:i + 3] != expected[i:i + 3])
             check(diff == 0, "%s on the device is the host render for %02d:%02d (%d pixels differ)" % (face, before.hour, before.minute, diff))
+        if face == "led" and before and after:
+            style = clock.get("led_style", "red")
+            wanted = [mock.draw_led(mo, opts, ms, None, 0, style).img.tobytes() for mo in (before, after) for ms in range(0, 1000, 200)]
+            check(px in wanted, "led (%s) on the device is one of the host's frames of %02d:%02d:%02d" % (style, before.hour, before.minute, before.second))
         if face == "horizon":
             # a sky: the top rows are not black and vary down the frame
             top = px[0:64 * 3]
@@ -102,7 +108,7 @@ def main():
             check(lit(top) > 40 and top != mid, "the horizon draws a sky")
     names = list(frames)
     distinct = all(frames[a] != frames[b] for i, a in enumerate(names) for b in names[i + 1:])
-    check(distinct, "the eight faces all differ")
+    check(distinct, "the nine faces all differ")
     # the flip's minute change: with the seconds on, the rail ticks; the frame keeps changing
     settings(base, {"clock": {"face": "flip", "seconds": True}})
     time.sleep(2.5)
@@ -122,6 +128,22 @@ def main():
     time.sleep(1.2)
     b = frame(base)
     check(a != b, "the orrery redraws every second with Mercury and the blinking colon")
+    # the LED breathes (the glow) even with the seconds off, and every style draws
+    settings(base, {"clock": {"face": "led", "seconds": False, "blink_colon": False}})
+    time.sleep(1.5)
+    a = frame(base)
+    time.sleep(0.7)
+    b = frame(base)
+    check(a != b, "the LED's glow breathes between two frames 0.7 s apart")
+    styled = {}
+    for style in ("red", "green", "amber", "blue", "vfd"):
+        s = settings(base, {"clock": {"led_style": style}})
+        check(s["clock"]["led_style"] == style, "settings echo the LED style " + style)
+        time.sleep(1.0)
+        styled[style] = frame(base)
+        check(lit(styled[style]) > 20, "the %s style draws" % style)
+    check(len(set(styled.values())) == 5, "the five LED styles all differ")
+    settings(base, {"clock": {"led_style": clock.get("led_style", "red")}})
     # memory after all the faces
     st, mem = request(base, "GET", "/api/v1/diag/memory")
     if st == 200:

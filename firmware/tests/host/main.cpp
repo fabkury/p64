@@ -134,7 +134,7 @@ int run_faces(int argc, char **argv) {
     std::fprintf(stderr, "usage: p64_hosttest faces <out_dir> <ref.png>...\n");
     return 2;
   }
-  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"};
+  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
   const std::string out_dir = argv[2];
   int failures = 0;
   for (int i = 3; i < argc; ++i) {
@@ -151,7 +151,7 @@ int run_faces(int argc, char **argv) {
     const std::string flags = d2 == std::string::npos ? "" : name.substr(d2 + 1);
     p64::system::Settings s;
     bool known = false;
-    for (int k = 0; k < 8; ++k)
+    for (int k = 0; k < 9; ++k)
       if (face == kFaces[k]) s.clock.face = static_cast<p64::system::ClockFace>(k), known = true;
     if (!known) {
       std::fprintf(stderr, "%s: unknown face\n", name.c_str());
@@ -161,6 +161,11 @@ int run_faces(int argc, char **argv) {
     s.clock.seconds = flags.find('s') != std::string::npos;
     s.clock.blink_colon = flags.find('b') != std::string::npos;
     s.clock.h24 = flags.find('h') == std::string::npos;
+    // the LED face's style: g green, a amber, u blue, v vfd (red without)
+    if (flags.find('g') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Green;
+    if (flags.find('a') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Amber;
+    if (flags.find('u') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Blue;
+    if (flags.find('v') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Vfd;
     tm t{};
     t.tm_year = 126, t.tm_mon = 8, t.tm_mday = 26, t.tm_wday = 6, t.tm_yday = 268;
     t.tm_hour = std::atoi(hms.substr(0, 2).c_str());
@@ -171,11 +176,17 @@ int run_faces(int argc, char **argv) {
     p64::widgets::faces::ClockState state;
     p64::gfx::Frame frame;
     const size_t p = flags.find('p');
-    if (p != std::string::npos) {  // frame N of the flip's change from the minute before
+    if (p != std::string::npos) {  // frame N of the change: the flip's from the minute before, the LED's from the second before
       const int n = std::atoi(flags.c_str() + p + 1);
       state.shown = true;
-      state.shown_minute = (t.tm_min + 59) % 60;
-      state.shown_hour = t.tm_min ? t.tm_hour : (t.tm_hour + 23) % 24;
+      if (s.clock.face == p64::system::ClockFace::Led) {
+        state.shown_second = (t.tm_sec + 59) % 60;
+        state.shown_minute = t.tm_sec ? t.tm_min : (t.tm_min + 59) % 60;
+        state.shown_hour = (t.tm_sec || t.tm_min) ? t.tm_hour : (t.tm_hour + 23) % 24;
+      } else {
+        state.shown_minute = (t.tm_min + 59) % 60;
+        state.shown_hour = t.tm_min ? t.tm_hour : (t.tm_hour + 23) % 24;
+      }
       for (int k = 0; k < n; ++k) p64::widgets::faces::draw_clock(frame, s, ctx, state);
     } else {
       p64::widgets::faces::draw_clock(frame, s, ctx, state);

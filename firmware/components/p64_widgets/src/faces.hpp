@@ -31,12 +31,12 @@ struct ClockContext {
   int millis = 0;
   themed::Sky sky;  // 40 N and solar time until a location is set; the weather when fetched
 };
-// The flip's animation state, kept by the clock source between frames.
+// The flip's and the LED's animation state, kept by the clock source between frames.
 struct ClockState {
-  bool shown = false;  // shown_hour and shown_minute hold what the flip last drew at rest
-  int shown_hour = 0, shown_minute = 0;
-  int phase = 0;        // 1..themed::kFlipFrames while a change animates
-  themed::Moment from;  // the tiles before the change
+  bool shown = false;  // shown_* hold what the face last drew at rest
+  int shown_hour = 0, shown_minute = 0, shown_second = 0;
+  int phase = 0;        // 1..themed::kFlipFrames (or kLedFadeFrames) while a change animates
+  themed::Moment from;  // the digits before the change
 };
 // The weather's WMO code as the horizon's cloud cover and precipitation.
 void weather_to_sky(int wmo_code, themed::Sky &sky);

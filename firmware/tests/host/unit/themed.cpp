@@ -220,6 +220,12 @@ TEST_CASE("themed: the hold times follow the seconds and blink settings, minus t
   CHECK_EQ(hold(), 39750u);
   s.clock.face = ClockFace::Analogue;
   CHECK_EQ(hold(), 39750u);
+  // the LED is alive all the time: a pulse step, never past the second
+  s.clock.face = ClockFace::Led;
+  CHECK_EQ(hold(), 200u);
+  ctx.millis = 900;
+  CHECK_EQ(hold(), 100u);
+  ctx.millis = 250;
   // never less than a millisecond, never more than a minute
   ctx.millis = 999;
   s.clock.face = ClockFace::Orrery;
@@ -229,7 +235,7 @@ TEST_CASE("themed: the hold times follow the seconds and blink settings, minus t
 
 TEST_CASE("themed: every face says so when the time is unknown") {
   p64::system::Settings s;
-  for (int face = 0; face < 8; ++face) {
+  for (int face = 0; face < 9; ++face) {
     s.clock.face = static_cast<ClockFace>(face);
     faces::ClockState state;
     state.phase = 5;
@@ -314,6 +320,9 @@ TEST_CASE("themed: 12-hour mode blanks the leading zero and shows AM or PM on ev
   themed::draw_horizon(a, m, themed::Options{}, themed::Sky{});
   themed::draw_horizon(b, m, h12, themed::Sky{});
   CHECK_FALSE(same(a, b));
+  themed::draw_led(a, m, themed::Options{}, themed::LedStyle::Red);
+  themed::draw_led(b, m, h12, themed::LedStyle::Red);
+  CHECK_FALSE(same(a, b));
 }
 
 TEST_CASE("themed: the horizon is dark at night and bright by day, and the weather greys it") {
@@ -352,8 +361,8 @@ TEST_CASE("themed: the horizon is dark at night and bright by day, and the weath
 }
 
 TEST_CASE("themed: settings JSON round-trips every face name") {
-  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"};
-  for (int i = 0; i < 8; ++i) {
+  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
+  for (int i = 0; i < 9; ++i) {
     p64::system::Settings s;
     std::string error;
     const std::string json = std::string("{\"clock\":{\"face\":\"") + kNames[i] + "\"}}";
@@ -367,6 +376,73 @@ TEST_CASE("themed: settings JSON round-trips every face name") {
   s.clock.face = ClockFace::Nixie;
   s.apply_json("{\"clock\":{\"face\":\"sundial\"}}", error);
   CHECK(s.clock.face == ClockFace::Nixie);
+}
+
+TEST_CASE("themed: the LED style round-trips and an unknown one is ignored") {
+  static const char *const kStyles[] = {"red", "green", "amber", "blue", "vfd"};
+  for (int i = 0; i < 5; ++i) {
+    p64::system::Settings s;
+    std::string error;
+    const std::string json = std::string("{\"clock\":{\"led_style\":\"") + kStyles[i] + "\"}}";
+    CHECK(s.apply_json(json.c_str(), error));
+    CHECK_EQ(static_cast<int>(s.clock.led_style), i);
+    CHECK(s.to_json().find(std::string("\"led_style\":\"") + kStyles[i] + "\"") != std::string::npos);
+  }
+  p64::system::Settings s;
+  std::string error;
+  s.clock.led_style = p64::system::LedStyle::Amber;
+  s.apply_json("{\"clock\":{\"led_style\":\"pink\"}}", error);
+  CHECK(s.clock.led_style == p64::system::LedStyle::Amber);
+}
+
+TEST_CASE("themed: the LED cross-fades a second change in five frames of 40 ms, then breathes") {
+  p64::system::Settings s;
+  s.clock.face = ClockFace::Led;
+  s.clock.seconds = true;
+  faces::ClockState state;
+  Frame rest;
+  tm t = moment(10, 32, 20);
+  faces::ClockContext ctx;
+  ctx.time = &t;
+  CHECK_EQ(faces::draw_clock(rest, s, ctx, state), themed::kLedPulseStepMs);
+  CHECK_EQ(state.phase, 0);
+  CHECK_EQ(state.shown_second, 20);
+  // the same second again: no change, another pulse step, the frame moves with the millis
+  Frame later;
+  ctx.millis = 600;
+  CHECK_EQ(faces::draw_clock(later, s, ctx, state), 200u);
+  CHECK_FALSE(same(later, rest));
+  ctx.millis = 0;
+  t = moment(10, 32, 21);
+  Frame frames[themed::kLedFadeFrames];
+  for (int i = 0; i < themed::kLedFadeFrames; ++i) {
+    CHECK_EQ(faces::draw_clock(frames[i], s, ctx, state), themed::kLedFadeMs);
+    ctx.millis += themed::kLedFadeMs;
+  }
+  CHECK_EQ(state.phase, 0);
+  CHECK_EQ(state.shown_second, 21);
+  for (int i = 0; i + 1 < themed::kLedFadeFrames; ++i) CHECK_FALSE(same(frames[i], frames[i + 1]));
+  // the last frame is the new second at rest (the fade is complete at 255)
+  Frame direct;
+  themed::draw_led(direct, themed::Moment::from(t), themed::Options{true, false, true, false}, themed::LedStyle::Red, ctx.millis - themed::kLedFadeMs);
+  CHECK(same(direct, frames[themed::kLedFadeFrames - 1]));
+  CHECK_EQ(faces::draw_clock(direct, s, ctx, state), 200u);
+  // with the seconds off, a new second is no change: no fade
+  s.clock.seconds = false;
+  t = moment(10, 32, 22);
+  ctx.millis = 0;
+  CHECK_EQ(faces::draw_clock(direct, s, ctx, state), 200u);
+  CHECK_EQ(state.phase, 0);
+  // the pulse: brightest on the four-second beat, dimmest two seconds later
+  CHECK_EQ(themed::led_pulse(0), 255);
+  CHECK_EQ(themed::led_pulse(2000), 140);
+  CHECK_EQ(themed::led_pulse(4000), 255);
+  CHECK_EQ(themed::led_ms(themed::Moment::from(moment(0, 0, 3)), 250), 3250);
+  // the five styles all differ
+  Frame styles[5];
+  for (int i = 0; i < 5; ++i) themed::draw_led(styles[i], themed::Moment::from(t), themed::Options{}, static_cast<themed::LedStyle>(i));
+  for (int i = 0; i < 5; ++i)
+    for (int j = i + 1; j < 5; ++j) CHECK_FALSE(same(styles[i], styles[j]));
 }
 
 }  // namespace

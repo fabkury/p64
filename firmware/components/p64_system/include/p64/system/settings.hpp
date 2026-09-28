@@ -24,7 +24,9 @@ enum class Corner : uint8_t { TopLeft = 0, TopRight = 1, BottomLeft = 2, BottomR
 enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2 };
 // The clock widget's face (spec 7.1): the digital and analogue ones honour the font and
 // colour settings; the six themed ones (approved 2026-09-26) draw with their own assets.
-enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7 };
+enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7, Led = 8 };
+// The LED face's look (p053): four LED colours behind a filter, or a vacuum fluorescent display.
+enum class LedStyle : uint8_t { Red = 0, Green = 1, Amber = 2, Blue = 3, Vfd = 4 };
 
 struct Settings {
   // Display
@@ -66,6 +68,7 @@ struct Settings {
   uint8_t interlude_clock = 0, interlude_weather = 0, interlude_temperature = 0;  // 0..100 %
   struct Clock {
     ClockFace face = ClockFace::Digital;
+    LedStyle led_style = LedStyle::Red;  // the LED face only
     std::string font = "capital-hill";
     uint8_t scale = 2;      // 1..3
     bool seconds = false;

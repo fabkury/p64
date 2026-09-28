@@ -264,6 +264,40 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
     case ClockFace::Hourglass:
       themed::draw_hourglass(out, m, o);
       return o.seconds ? to_next_second(ctx) : to_next_minute(t, ctx);
+    case ClockFace::Led: {
+      // Alive all the time (decided 2026-09-28): a frame every kLedPulseStepMs for the glow's
+      // pulse (and the VFD's meter), never past the next second; a change of a digit (the
+      // minute, or the second with the seconds setting) cross-fades in kLedFadeFrames frames.
+      static_assert(static_cast<int>(themed::LedStyle::Vfd) == static_cast<int>(system::LedStyle::Vfd));
+      const themed::LedStyle style = static_cast<themed::LedStyle>(s.clock.led_style);
+      const auto remember = [&] {
+        state.shown = true;
+        state.shown_hour = m.hour;
+        state.shown_minute = m.minute;
+        state.shown_second = m.second;
+      };
+      if (state.phase > 0) {
+        themed::draw_led(out, m, o, style, ctx.millis, state.phase, &state.from);
+        if (++state.phase > themed::kLedFadeFrames) {
+          state.phase = 0;
+          remember();
+        }
+        return themed::kLedFadeMs;
+      }
+      if (state.shown && (m.hour != state.shown_hour || m.minute != state.shown_minute ||
+                          (o.seconds && m.second != state.shown_second))) {
+        state.from = m;
+        state.from.hour = state.shown_hour;
+        state.from.minute = state.shown_minute;
+        state.from.second = state.shown_second;
+        themed::draw_led(out, m, o, style, ctx.millis, 1, &state.from);
+        state.phase = 2;
+        return themed::kLedFadeMs;
+      }
+      remember();
+      themed::draw_led(out, m, o, style, ctx.millis);
+      return std::min<uint32_t>(themed::kLedPulseStepMs, to_next_second(ctx));
+    }
     case ClockFace::Orrery:
     default:
       themed::draw_orrery(out, m, o);

@@ -26,7 +26,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
-| `p64_widgets` | clock (digital, analogue, six themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
+| `p64_widgets` | clock (digital, analogue, seven themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack, roles through hooks). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `knob_rules.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
@@ -351,8 +351,11 @@ show; it asks for the next frame at the next minute (or second when seconds or t
 blinking colon show). Its analogue face (`analogue.cpp`, pure and host-tested) draws
 into the frame with integer Bresenham lines around a centre at 31.5 (a nudge keeps the
 axis-aligned hands on one column); the digital face and the analogue one share the
-colour, font, seconds and date-order settings. The six themed faces (2026-09-26: flip,
-nixie, horizon, words, hourglass, orrery; `face_*.cpp` behind `themed.hpp`) draw from
+colour, font, seconds and date-order settings. The seven themed faces (2026-09-26: flip,
+nixie, horizon, words, hourglass, orrery; 2026-09-28: the LED, a seven-segment clock in
+five styles that redraws every 200 ms for its breathing glow and cross-fades its digits,
+building its intensity and ghost maps inside the output frame so it needs no scratch
+buffer; `face_*.cpp` behind `themed.hpp`) draw from
 pixel-art sprites: the PNGs under `assets/clock/<face>/` are baked by
 `tools/gen_clock_assets.py` into `clock_assets.cpp` (about 68 KB of flash, RGBA, plus a
 Q14 sine table so the orrery needs no floating-point trigonometry), and `sprite.hpp`

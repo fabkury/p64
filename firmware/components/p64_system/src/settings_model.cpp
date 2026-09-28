@@ -103,7 +103,8 @@ const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
 const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right", "top_center", "bottom_center"};
 const char *const kWidgets[] = {"clock", "weather", "temperature"};
-const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery"};
+const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
+const char *const kLedStyles[] = {"red", "green", "amber", "blue", "vfd"};
 
 }  // namespace
 
@@ -193,6 +194,7 @@ std::string Settings::to_json() const {
 
   cJSON *ck = obj(root, "clock");
   cJSON_AddStringToObject(ck, "face", kClockFaces[static_cast<int>(clock.face)]);
+  cJSON_AddStringToObject(ck, "led_style", kLedStyles[static_cast<int>(clock.led_style)]);
   cJSON_AddStringToObject(ck, "font", clock.font.c_str());
   cJSON_AddNumberToObject(ck, "scale", clock.scale);
   cJSON_AddBoolToObject(ck, "seconds", clock.seconds);
@@ -308,6 +310,7 @@ bool Settings::apply_json(const char *json, std::string &error) {
   const cJSON *ck = sub(root, "clock");
   {
     get_enum(ck, "face", clock.face, kClockFaces, sizeof(kClockFaces) / sizeof(kClockFaces[0]));
+    get_enum(ck, "led_style", clock.led_style, kLedStyles, sizeof(kLedStyles) / sizeof(kLedStyles[0]));
     get_str(ck, "font", clock.font, 32);
     get_num(ck, "scale", clock.scale);
     get_bool(ck, "seconds", clock.seconds);

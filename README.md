@@ -19,7 +19,7 @@ off-the-shelf Waveshare boards, no soldering.
 - **Runs on its own.** Put files on a microSD card, or pair it with Makapix Club and it
   plays channels of community pixel art, refreshing its cache over Wi-Fi. Playsets group
   channels; a scheduler picks what plays when. Offline, it keeps playing what it has.
-- **Is a clock too.** A time overlay on artworks, eight clock faces (digital, analogue, and six themed ones: split-flap, nixie tubes, a landscape that follows the real sun, a word clock, an hourglass and an orrery),
+- **Is a clock too.** A time overlay on artworks, nine clock faces (digital, analogue, and seven themed ones: split-flap, nixie tubes, a landscape that follows the real sun, a word clock, an hourglass, an orrery and a seven-segment LED or VFD clock),
   weather from Open-Meteo, the room temperature from the board's own sensor, and a night
   schedule that dims or blanks the panel.
 - **Takes a live feed.** Send pixels over UDP with DDP (LedFx, xLights, WLED tooling) or
