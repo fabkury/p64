@@ -1,0 +1,10 @@
+In http://p64.local/settings#widgets, the user can configure the probability of an interlude (of each kind) at each swap. Let's deeply refactor how the user enters such probability.
+
+Let Pi be the per-swap probability of an interlude of kind i. The user should be able to enter Mi, which is the median number of minutes between interludes of kind i. The firmware then calculates Pi based on its current settings (namely, the auto-swap interval) to approximate Mi. Mi must be an integer greater than or equal to 5 minutes (if equal to zero, it means "never"). For example, if the user enters Mi = 60 minutes (e.g. for i = clock interlude), then the calculated Pi should yield a median of 60 minutes between stochastic interludes of that kind (of the clock kind). If two interludes i1 and i2 happen to coincide on the same swap, the one with larger Mi wins (if still tied, then a trivial hardcoded order defines which interlude wins).
+
+The defaults should be:
+ - Clock: Mi = 30
+ - Weather: Mi = 180
+ - Temperature: Mi = 0 (never show; turned off)
+
+Please go ahead and implement the refactored interlude probability engine and settings configuration. Make sure to test the probability engine offline first, to confirm your assumptions/math is correct, before committing to implementing it on the firmware (where things are a bit harder to test).
