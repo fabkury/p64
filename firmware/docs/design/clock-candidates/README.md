@@ -85,3 +85,36 @@ Settings each would honour when implemented: 12/24 h (AM/PM as a small mark), se
 (rail, colon blink), date order, and the accent colour where a face has one (the flip's
 rail, the nixie's glow); the face colour settings of the digital face do not apply to the
 themed faces.
+
+## The segment faces (prompt p052, 2026-09-28): proposed, awaiting approval
+
+Two seven-segment clocks drawn from VEXED's **Digital Display** (`assets/fonts/digital-display`,
+CC BY 4.0), a 15x19 pixel font that only looks right at multiples of 19 px: the digits and
+the colon are rasterised once from the TTF at 19 px into `assets/clock/led/digits.png` and
+`colon.png` (shared by both faces; `gen_fonts.py` does not bundle this font, it is too tall
+for the overlay). HH:MM in one row would be 67 px, so the hours sit at the upper left and the
+minutes at the lower right, a staircase, with the seconds at the lower left in two 5x9
+seven-segment digits of the same style (`mini.png`) and the indicators AM, PM and ALM at
+the upper right (the words face's 3x5 alphabet). Every digit position keeps its unlit "8"
+as a faint ghost, as on the real displays; the leading zero of the hour is blank in 12 h.
+
+| Face | Idea | Assets | Moves |
+|---|---|---|---|
+| `led` | A red LED bedside clock: segments (255, 48, 24) behind a red filter, a dark plastic bezel with the light on its top and left edges and a recessed inner edge; the AM, PM and ALM labels printed on the filter with a lit square dot beside each (AM or PM in 12 h; ALM lit for decoration, an alarm has no meaning yet). | `led/bezel.png` (64x64 with the window clear and the printed labels), `led/digits.png`, `led/colon.png`, `led/mini.png` | below |
+| `vfd` | A vacuum fluorescent display: cyan-green phosphor (150, 255, 225) on dark glass with a faint mesh (alternate rows), in a chrome frame with a bright top-left edge; the indicator words themselves light up, a bell beside ALM; a six-bar meter dances in the band between the rows, purely for life. | `vfd/frame.png` (64x64), the `led/` digits, colon and mini digits | below |
+
+What moves, in both: every digit change (the seconds every second, the minutes every
+minute) cross-fades over five frames of 40 ms, the segments that go out falling from lit to
+ghost while the ones that come in rise, the shared ones staying lit, the way a display with
+a slow response changes; the colon blinks with the blinking-colon setting; a one-pixel glow
+around every lit pixel breathes over four seconds (255 down to 140 of its colour and back);
+a highlight sweeps along the top edge of the frame for 1.2 s every 8 s; the VFD's meter bars
+move on two unrelated triangle waves each. Everything is integer arithmetic over a 0..255
+intensity map and a ghost map, so the firmware can draw it the same way and the test
+references can be pixel-exact.
+
+`led.png`/`vfd.png` are the 64x64 frames (10:32:37, 24 h, seconds on), `@8x` enlarged;
+`led-moments.png`/`vfd-moments.png` six times of day in 12 h; `segment-faces.png` both faces
+in 24 h without seconds and in 12 h with seconds; `led.gif`/`vfd.gif` (and `@8x`) eight
+seconds from 10:31:57 across the minute change with every animation running. The test
+references for these two faces are not written yet; they come with the implementation.
