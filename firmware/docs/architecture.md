@@ -265,11 +265,12 @@ one artwork download, then a short sleep.
 - Listings: the anonymous promoted feed (`GET /api/feed/promoted`) before pairing, the
   player RPC `query_posts` over HTTPS with the bearer token after it (the same contract
   the MQTT request topics offer; HTTPS spares the 128 KB fragment reassembly the MQTT
-  path needs), with the maximum artwork size as `width`/`height` `lte` criteria; the
-  promoted feed takes no size filter, so the fetcher drops oversized entries from every
-  page (`content::fits_side`) and the show skips them when it builds a channel's pickable
-  list, which also covers indexes walked before the setting changed (a change refreshes
-  every channel). A refresh walks pages of 50 newest-first up to the channel cache size,
+  path needs), with the minimum and maximum artwork sizes as `width`/`height` `gte` and
+  `lte` criteria; the promoted feed takes no size filter, so the fetcher drops the entries
+  outside the limits from every page (`content::fits_size`) and the show skips them when
+  it builds a channel's pickable list, which also covers indexes walked before a setting
+  changed (a change refreshes every channel). A refresh walks pages of 50 newest-first up
+  to the channel cache size,
   one page per worker step over a kept-alive connection (a walk whose last page is more
   than 60 s old starts over: its channel left the playset mid-walk and the connection
   has died meanwhile), and installs the first pages

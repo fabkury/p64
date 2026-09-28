@@ -922,6 +922,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   on the panel. Device: `widgets_smoke` 0 failures (four consecutive interludes with four
   different faces, history recording them, the configured face again with the option
   off), `ui_smoke` 0 failures.
+- 2026-09-28, the minimum artwork size: `makapix.min_size` (16, 32, 64 or 128, default
+  16) beside `max_size`, both sides of a listed artwork at least the one and at most the
+  other; the paired Makapix listing asks the server with `gte` criteria next to the `lte`
+  ones (the anonymous `/api/post` was tested live with `width_min`/`height_min` and the
+  server source read for `query_posts`; the promoted feed has no bounds and keeps the
+  local drop, now against both limits), a change of either refreshes every channel, and a
+  minimum above the maximum is refused (400 `INVALID_SETTINGS`, nothing of the document
+  stored: `apply_json` reads into a copy). The settings page greys out the crossing
+  options. The empty-channel text became "nothing fits N to M px (K outside)". Host tests
+  cover the snapping, the refusal, the drop and the show's pickable list;
+  `makapix_smoke.py` the API. External providers apply the same pair (the Divoom listing
+  asks its server with a size bitmask built from both, private area).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

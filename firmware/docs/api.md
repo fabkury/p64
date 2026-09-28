@@ -114,16 +114,21 @@ cached items play meanwhile, so the UI shows it as a hint, not a status), `refre
 and `error`. A Makapix channel with nothing cached has the `status` "checking files" (a
 provider holding its entries back until they are checked), "downloading" (its index has
 entries), "offline", "no listing yet" (no refresh has landed), "no artworks" (the refresh
-landed empty) or "nothing fits N px (M too large)" (everything listed was over the size
-limit); the same texts apply to external channels. History items and the
+landed empty) or "nothing fits N to M px (K outside)" (everything listed was outside the
+size limits); the same texts apply to external channels. History items and the
 status artwork carry `provider` and `post_id` (the provider's item id) for provider
 artworks, and `sqid` for Makapix ones.
 
+`settings.makapix.min_size` (16, 32, 64 or 128; default 16) and
 `settings.makapix.max_size` (32, 64, 128 or 256; default 128; other numbers snap up to the
-next step) is the maximum artwork size of the Makapix channels: the paired listings carry
-it as `width`/`height` `lte` criteria, the promoted feed is filtered on the device, and
-entries over it are never picked. Writing a different value refreshes every channel.
-Play-this and the site's commands are not limited by it (only by the 256x256 canvas).
+next step of each) are the artwork size limits of the provider channels, both sides at
+least the minimum and at most the maximum: the paired listings carry them as
+`width`/`height` `gte` and `lte` criteria, the promoted feed is filtered on the device, and
+entries outside them are never picked. Writing a different value refreshes every channel.
+A minimum above the maximum (after snapping) is refused with 400 `INVALID_SETTINGS`
+("minimum artwork size N above the maximum M") and nothing of that document is stored;
+malformed JSON stays 400 `INVALID_JSON`. Play-this and the site's commands are not
+limited by them (only by the 256x256 canvas).
 
 ## Widgets (M7)
 

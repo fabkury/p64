@@ -66,6 +66,20 @@ def run(base, paired):
     check(st == 200 and j["data"]["makapix"]["max_size"] == 256, "max_size 1000 snaps to 256")
     st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": max_size}})
     check(st == 200 and j["data"]["makapix"]["max_size"] == max_size, "max_size restored to %d" % max_size)
+    # The minimum (2026-09-28): its own steps, and a pair that crosses is refused whole.
+    min_size = j["data"]["makapix"]["min_size"]
+    check(min_size in (16, 32, 64, 128), "makapix.min_size is one of the four steps (%s)" % min_size)
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"min_size": 17, "max_size": 256}})
+    check(st == 200 and j["data"]["makapix"]["min_size"] == 32, "min_size 17 snaps up to 32")
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"min_size": 128, "max_size": 64}})
+    check(st == 400 and j.get("code") == "INVALID_SETTINGS",
+          "a minimum above the maximum is refused with INVALID_SETTINGS (%s %s)" % (st, j))
+    st, j = request(base, "GET", "/api/v1/settings")
+    check(j["data"]["makapix"]["min_size"] == 32 and j["data"]["makapix"]["max_size"] == 256,
+          "the refused document changed nothing (%s/%s)" % (j["data"]["makapix"]["min_size"], j["data"]["makapix"]["max_size"]))
+    st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"min_size": min_size, "max_size": max_size}})
+    check(st == 200 and j["data"]["makapix"]["min_size"] == min_size and j["data"]["makapix"]["max_size"] == max_size,
+          "size limits restored to %d..%d" % (min_size, max_size))
     check(b["All"]["enabled"] == paired, "All built-in enabled only when paired")
     check(b["Followed"]["enabled"] == paired, "Followed built-in enabled only when paired")
 
