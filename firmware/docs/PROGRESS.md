@@ -881,8 +881,13 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   sheets), so `image_bytes_max` was raised from 2.3 MB to 2.4 MB in `budgets.json`
   (the app partition is 8 MB); the private build is 2,716,368 bytes and has been over
   the public budget since the Divoom provider, `check_size.py` is CI's check on the
-  public build. Not checked: the user's eye on the panel (the glow's strength, the
-  colours of the filters, the meter).
+  public build. The user's eye on the panel (p054, the same day): the unlit segments
+  were too bright on the matrix, whose dark end is lifted, and competed with the lit
+  ones; the ghost and the glow of every style are now a third of the first values (red
+  ghost (46, 8, 6) -> (16, 3, 2), glow (80, 14, 6) -> (27, 5, 2); the VFD's ghost kept
+  just above its glass at (5, 15, 13)), references regenerated and exact, reflashed,
+  `faces_smoke` 0 failures again (the LED frame is the host's), heap 66 KB free. Still
+  for the eye: the filter tints of the four colours and the meter.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
