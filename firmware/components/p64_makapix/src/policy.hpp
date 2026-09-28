@@ -25,6 +25,19 @@ constexpr int64_t kRetryBaseUs = 30 * kSecond;
 constexpr int64_t kRetryMaxUs = 15 * 60 * kSecond;
 constexpr int64_t kWalkIdleUs = 60 * kSecond;  // a walk paused longer (its channel left the playset) restarts
 
+// Walks paused because their channel left the playset (2026-09-28): such a walk keeps
+// its keep-alive listing session, and with it the TLS slot, for as long as the channel
+// stays out, since only active channels are served. The worker closes their sessions.
+// Fields: active, refreshing, walk_session (a pointer-like, true while a session exists).
+template <class Channel>
+std::vector<Channel *> paused_walks(const std::vector<std::unique_ptr<Channel>> &channels) {
+  std::vector<Channel *> out;
+  for (const auto &ch : channels) {
+    if (!ch->active && ch->refreshing && ch->walk_session) out.push_back(ch.get());
+  }
+  return out;
+}
+
 // The channel the worker serves next: a walk in progress first (one page per step), then
 // a channel whose index was never loaded, then one whose refresh is due and not waiting
 // out a failure. Fields: active, refreshing, loaded, retry_at_us, next_refresh_us.

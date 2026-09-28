@@ -60,9 +60,26 @@ class Session {
 };
 
 // The one-TLS-session-at-a-time slot (ADR 0009), for code that runs its own HTTPS
-// client (the updater): hold it for the whole transfer. Recursive.
+// client (the updater): hold it for the whole transfer. Recursive, and handed to its
+// waiters first come, first served (src/tls_slot.hpp, 2026-09-28).
 void tls_lock();
 void tls_unlock();
+// True while another task waits for the slot: a holder with a keep-alive session and
+// nothing in flight closes it, so the other gets its turn (a page walk yields between
+// pages, an idle download session at once instead of after its idle time).
+bool tls_waiting();
+// For the status document: who holds the slot and how the queue has behaved.
+struct SlotStatus {
+  bool held = false;
+  const char *holder = "";  // the holding task's name ("" when free)
+  uint32_t depth = 0;
+  uint32_t waiters = 0;
+  uint32_t grants = 0;
+  uint32_t waits = 0;
+  uint32_t handoffs = 0;
+  uint32_t max_wait_ms = 0;
+};
+SlotStatus tls_status();
 
 // "p64/<firmware version>" (spec 13).
 const char *user_agent();

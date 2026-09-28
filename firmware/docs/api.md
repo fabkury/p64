@@ -119,6 +119,12 @@ size limits); the same texts apply to external channels. History items and the
 status artwork carry `provider` and `post_id` (the provider's item id) for provider
 artworks, and `sqid` for Makapix ones.
 
+`network.tls_slot` in the status document is the one-TLS-session slot (ADR 0009):
+`held`, `holder` (the task's name), `depth` (nested holds), `waiters`, and the counters
+`grants`, `waits`, `handoffs` and `max_wait_ms` since boot. A holder that keeps a
+keep-alive session gives the slot up when a waiter appears, and the waiters are served in
+the order they asked (2026-09-28).
+
 `settings.makapix.min_size` (16, 32, 64 or 128; default 16) and
 `settings.makapix.max_size` (32, 64, 128 or 256; default 128; other numbers snap up to the
 next step of each) are the artwork size limits of the provider channels, both sides at

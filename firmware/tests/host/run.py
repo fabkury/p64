@@ -89,6 +89,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_playback", "src", "artwork.cpp"),
     os.path.join(COMPONENTS, "p64_net", "src", "tz.cpp"),
     os.path.join(COMPONENTS, "p64_net", "src", "time_rules.cpp"),
+    os.path.join(COMPONENTS, "p64_net", "src", "tls_slot.cpp"),
     os.path.join(COMPONENTS, "p64_makapix", "src", "contract.cpp"),
     os.path.join(COMPONENTS, "p64_makapix", "src", "policy.cpp"),
     os.path.join(COMPONENTS, "p64_web", "src", "auth_rules.cpp"),

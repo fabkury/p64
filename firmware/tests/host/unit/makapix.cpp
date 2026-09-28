@@ -178,6 +178,22 @@ TEST_CASE("makapix policy: the first pages of an empty channel install at once (
   CHECK(!policy::after_page(50, 2048, false, false, true).install_now);  // done: finish_walk installs
 }
 
+TEST_CASE("makapix policy: a walk paused out of the playset gives its session back (2026-09-28)") {
+  struct Ch {
+    bool active;
+    bool refreshing;
+    std::unique_ptr<int> walk_session;
+  };
+  std::vector<std::unique_ptr<Ch>> chans;
+  chans.push_back(std::make_unique<Ch>(Ch{false, true, std::make_unique<int>(1)}));   // paused mid-walk: release
+  chans.push_back(std::make_unique<Ch>(Ch{true, true, std::make_unique<int>(2)}));    // walking: keep
+  chans.push_back(std::make_unique<Ch>(Ch{false, false, nullptr}));                   // idle and out: nothing
+  chans.push_back(std::make_unique<Ch>(Ch{false, true, nullptr}));                    // already released
+  const auto paused = policy::paused_walks(chans);
+  REQUIRE_EQ(paused.size(), 1u);
+  CHECK(paused[0] == chans[0].get());
+}
+
 TEST_CASE("makapix policy: entries outside the size limits are dropped from a page") {
   MakapixEntries page{entry(1, 0, 64), entry(2, 0, 256), entry(3, 0, 128)};
   CHECK_EQ(policy::drop_oversized(page, 16, 128), 1u);

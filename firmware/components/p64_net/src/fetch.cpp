@@ -1,13 +1,16 @@
 #include "p64/net/fetch.hpp"
 
+#include <condition_variable>
 #include <cstring>
+#include <mutex>
 
 #include "esp_app_desc.h"
 #include "esp_crt_bundle.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "tls_slot.hpp"
 
 namespace p64::net::fetch {
 namespace {
@@ -18,18 +21,33 @@ char g_user_agent[48] = {};
 
 // One transient TLS session at a time (ADR 0009): HTTPS requests queue here; a Session
 // on HTTPS holds the slot from its first request until it closes. Recursive, so a task
-// that keeps a session open can still make one-shot requests.
-SemaphoreHandle_t g_tls_slot = nullptr;
+// that keeps a session open can still make one-shot requests, and first come, first
+// served (tls_slot.hpp): the FreeRTOS mutex it replaced woke the highest-priority waiter,
+// which starved the lower-priority provider for whole walks (2026-09-28).
+std::mutex g_slot_mutex;
+std::condition_variable g_slot_cv;
+tls_slot::Queue g_slot;
 
 bool is_https(const std::string &url) { return url.rfind("https://", 0) == 0; }
 
+tls_slot::Id self() { return static_cast<tls_slot::Id>(xTaskGetCurrentTaskHandle()); }
+
 void tls_take() {
-  if (!g_tls_slot) g_tls_slot = xSemaphoreCreateRecursiveMutex();
-  xSemaphoreTakeRecursive(g_tls_slot, portMAX_DELAY);
+  const tls_slot::Id me = self();
+  std::unique_lock<std::mutex> lock(g_slot_mutex);
+  if (g_slot.request(me)) return;
+  const int64_t t0 = esp_timer_get_time();
+  g_slot_cv.wait(lock, [&] { return g_slot.holder() == me; });
+  g_slot.note_wait_ms(static_cast<uint32_t>((esp_timer_get_time() - t0) / 1000));
 }
 
 void tls_give() {
-  if (g_tls_slot) xSemaphoreGiveRecursive(g_tls_slot);
+  bool handed = false;
+  {
+    std::lock_guard<std::mutex> lock(g_slot_mutex);
+    handed = g_slot.release(self()) != nullptr;
+  }
+  if (handed) g_slot_cv.notify_all();
 }
 
 std::string scheme_and_host(const std::string &url) {
@@ -146,6 +164,26 @@ bool run(esp_http_client_handle_t client, const Request &request, Result &out, b
 
 void tls_lock() { tls_take(); }
 void tls_unlock() { tls_give(); }
+
+bool tls_waiting() {
+  std::lock_guard<std::mutex> lock(g_slot_mutex);
+  return g_slot.waiters() > 0;
+}
+
+SlotStatus tls_status() {
+  SlotStatus s;
+  std::lock_guard<std::mutex> lock(g_slot_mutex);
+  s.held = g_slot.holder() != nullptr;
+  s.holder = s.held ? pcTaskGetName(static_cast<TaskHandle_t>(const_cast<void *>(g_slot.holder()))) : "";
+  s.depth = g_slot.depth();
+  s.waiters = static_cast<uint32_t>(g_slot.waiters());
+  const tls_slot::Stats &st = g_slot.stats();
+  s.grants = st.grants;
+  s.waits = st.waits;
+  s.handoffs = st.handoffs;
+  s.max_wait_ms = st.max_wait_ms;
+  return s;
+}
 
 const char *user_agent() {
   if (!g_user_agent[0]) {

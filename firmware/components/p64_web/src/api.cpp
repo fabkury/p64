@@ -20,6 +20,7 @@
 #include "p64/gfx/fonts.hpp"
 #include "p64/gfx/png_encode.hpp"
 #include "p64/net/clock.hpp"
+#include "p64/net/fetch.hpp"
 #include "p64/net/http_server.hpp"
 #include "p64/net/tz.hpp"
 #include "p64/net/wifi.hpp"
@@ -175,6 +176,18 @@ cJSON *build_status() {
   cJSON_AddStringToObject(net, "netmask", w.netmask.c_str());
   cJSON_AddNumberToObject(net, "rssi", w.rssi);
   cJSON_AddStringToObject(net, "hostname", w.hostname.c_str());
+  {
+    const net::fetch::SlotStatus ts = net::fetch::tls_status();
+    cJSON *tls = cJSON_AddObjectToObject(net, "tls_slot");
+    cJSON_AddBoolToObject(tls, "held", ts.held);
+    cJSON_AddStringToObject(tls, "holder", ts.holder);
+    cJSON_AddNumberToObject(tls, "depth", ts.depth);
+    cJSON_AddNumberToObject(tls, "waiters", ts.waiters);
+    cJSON_AddNumberToObject(tls, "grants", ts.grants);
+    cJSON_AddNumberToObject(tls, "waits", ts.waits);
+    cJSON_AddNumberToObject(tls, "handoffs", ts.handoffs);
+    cJSON_AddNumberToObject(tls, "max_wait_ms", ts.max_wait_ms);
+  }
 
   cJSON *tm = cJSON_AddObjectToObject(d, "time");
   struct tm t;

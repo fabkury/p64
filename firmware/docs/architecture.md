@@ -257,7 +257,17 @@ Followed playset. Tests: `tests/host/unit/show.cpp` drives the core with a fake 
 key, the three PEMs, the API token, the broker), the channel indexes and the artwork
 cache, and the MQTT session. One worker task on core 0 (`fetcher.cpp`, internal 10 KB
 stack because TLS runs on it) performs every outbound HTTPS request in turn, so at most
-one transient TLS session exists next to the persistent MQTT one (ADR 0009). Its loop:
+one transient TLS session exists next to the persistent MQTT one (ADR 0009); the slot is
+handed to its waiters first come, first served (`p64_net/src/tls_slot.cpp`, pure,
+host-tested; fetch.cpp blocks on it with a condition variable), and a holder yields it
+when someone waits (`net::fetch::tls_waiting()`): a walk closes its keep-alive listing
+session between two pages and reconnects for the next, an idle download session closes
+at once instead of after its 20 s, and a walk paused because its channel left the playset
+closes its session rather than holding the slot until the channel returns
+(`policy::paused_walks`; before 2026-09-28 such a walk held the slot for minutes, and
+the FreeRTOS mutex woke the highest-priority waiter, so the Divoom provider at priority
+3 lost every contest to the fetcher at 4). `network.tls_slot` in the status document
+shows the holder, the waiters and the queue's counters. Its loop:
 a queued job (pairing, play-this, likes, views over HTTPS, the Followed playset,
 certificate renewal), else the pairing poll, else one page of a channel refresh, then
 one artwork download, then a short sleep.

@@ -157,6 +157,25 @@ Channel *next_unloaded_channel() {
   return policy::next_unloaded_channel(g_channels);
 }
 
+// A walk whose channel left the playset gives its session (and the TLS slot) back; the
+// walk itself resumes, or starts over, when the channel is active again.
+void release_paused_walks() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  for (Channel *ch : policy::paused_walks(g_channels)) {
+    ESP_LOGI(TAG, "channel %s: walk paused (out of the playset); its session closes", ch->id.c_str());
+    ch->walk_session.reset();
+  }
+}
+
+// The slot is contended: a keep-alive session with nothing in flight closes now rather
+// than at its idle time, and a walk closes its listing session between two pages (the
+// next page reconnects and queues behind the waiter).
+void yield_slot_if_waiting(Channel *walking) {
+  if (!net::fetch::tls_waiting()) return;
+  if (walking && walking->walk_session && walking->walk_session->open()) walking->walk_session->close();
+  if (g_vault.open()) g_vault.close();
+}
+
 // The index from the card, read as soon as the channel is active: before the network
 // and the time (2026-09-26), so the cache plays from the boot animation's end and plays
 // offline. The age of the index, and so its next refresh, waits for a trusted clock
@@ -751,11 +770,15 @@ void task(void *) {
         continue;
       }
     }
-    if (Channel *ch = next_channel_needing_service()) {
-      refresh_step(ch);  // one page; downloads get their turn below (the index is loaded above)
+    release_paused_walks();
+    Channel *walking = next_channel_needing_service();
+    if (walking) {
+      refresh_step(walking);  // one page; downloads get their turn below (the index is loaded above)
+      yield_slot_if_waiting(walking);
     }
     const bool downloaded = download_step();
     if (g_vault.open() && esp_timer_get_time() - g_vault_used_us > kVaultIdleUs) g_vault.close();
+    yield_slot_if_waiting(walking);
     if (!downloaded) vTaskDelay(pdMS_TO_TICKS(500));
   }
 }

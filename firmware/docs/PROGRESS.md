@@ -934,6 +934,26 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   cover the snapping, the refusal, the drop and the show's pickable list;
   `makapix_smoke.py` the API. External providers apply the same pair (the Divoom listing
   asks its server with a size bitmask built from both, private area).
+- 2026-09-28, the TLS slot's contention. Seen after the minimum-size flash: the Divoom
+  channel sat on "page 1" for over ten minutes while the Makapix fetcher held the slot.
+  Three holding habits, not capacity: a walk paused because its channel left the playset
+  (what `makapix_smoke.py` does with All and Followed, then the restore) kept its
+  keep-alive session, and only active channels are served, so the slot stayed held until
+  the reboot; listing sessions were held across whole walks, sleeps and downloads
+  included; the vault and file-host sessions stayed open 20 s idle; and the FreeRTOS
+  mutex woke the highest-priority waiter, so the Divoom worker (priority 3) lost every
+  contest to the fetcher (4). Measured first: one active transient session costs about
+  12 to 13 KB internal (60 to 47 KB free at the lowest 200 ms sample, largest block 32 to
+  24.5 KB), so a second slot would spend the review's margin; decided with the user to
+  keep one slot and fix the holding. Done: `p64_net/src/tls_slot.cpp` (pure, host-tested:
+  a recursive lock handed first come, first served; fetch.cpp blocks on it with a
+  condition variable and exposes `tls_waiting()` and `tls_status()`), the fetcher yields
+  between pages and closes an idle vault session when a waiter exists
+  (`yield_slot_if_waiting`) and closes the sessions of paused walks
+  (`policy::paused_walks`, host-tested), the Divoom worker follows the same rules
+  (private), `network.tls_slot` in the status document, and
+  `tests/device/tls_slot_smoke.py` reproduces the paused walk and checks the slot is free
+  within seconds. The cost is one handshake per hand-off, only under contention.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
