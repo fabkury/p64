@@ -43,14 +43,15 @@ struct Style {
   Rgb label;  // the printed labels (LEDs)
   bool vfd;
 };
-// The ghost and the glow are a third of the first design (p054, 2026-09-28): the matrix
-// lifts the dark end and the unlit segments competed with the lit ones on the panel.
+// The ghost and the glow are half the first design (p054 and p055, 2026-09-28, tuned on
+// the panel: the matrix lifts the dark end, so the first values competed with the lit
+// segments and a third of them was too faint to notice).
 constexpr Style kStyles[5] = {
-    {{10, 2, 2}, {10, 2, 2}, {16, 3, 2}, {255, 48, 24}, {27, 5, 2}, {128, 78, 72}, false},
-    {{2, 8, 3}, {2, 8, 3}, {3, 14, 4}, {60, 255, 70}, {4, 27, 6}, {76, 120, 84}, false},
-    {{10, 6, 1}, {10, 6, 1}, {16, 10, 2}, {255, 160, 24}, {28, 18, 2}, {128, 104, 70}, false},
-    {{2, 3, 12}, {2, 3, 12}, {3, 5, 18}, {60, 120, 255}, {4, 9, 32}, {80, 90, 130}, false},
-    {{5, 11, 11}, {3, 8, 8}, {5, 15, 13}, {150, 255, 225}, {7, 22, 20}, {0, 0, 0}, true},
+    {{10, 2, 2}, {10, 2, 2}, {23, 4, 3}, {255, 48, 24}, {40, 7, 3}, {128, 78, 72}, false},
+    {{2, 8, 3}, {2, 8, 3}, {4, 20, 6}, {60, 255, 70}, {6, 40, 9}, {76, 120, 84}, false},
+    {{10, 6, 1}, {10, 6, 1}, {24, 14, 2}, {255, 160, 24}, {42, 26, 3}, {128, 104, 70}, false},
+    {{2, 3, 12}, {2, 3, 12}, {4, 7, 26}, {60, 120, 255}, {5, 13, 48}, {80, 90, 130}, false},
+    {{5, 11, 11}, {3, 8, 8}, {5, 17, 15}, {150, 255, 225}, {10, 33, 29}, {0, 0, 0}, true},
 };
 
 // a towards b by v/255.

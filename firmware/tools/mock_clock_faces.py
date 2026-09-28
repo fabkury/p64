@@ -1176,13 +1176,14 @@ class SegStyle:
 
 
 STYLES = {
-    # The ghost and the glow are a third of the first design (p054, 2026-09-28): on the LED
-    # matrix the dark end is lifted and the unlit segments competed with the lit ones.
-    "red": SegStyle((10, 2, 2), None, (16, 3, 2), (255, 48, 24), (27, 5, 2), (128, 78, 72)),
-    "green": SegStyle((2, 8, 3), None, (3, 14, 4), (60, 255, 70), (4, 27, 6), (76, 120, 84)),
-    "amber": SegStyle((10, 6, 1), None, (16, 10, 2), (255, 160, 24), (28, 18, 2), (128, 104, 70)),
-    "blue": SegStyle((2, 3, 12), None, (3, 5, 18), (60, 120, 255), (4, 9, 32), (80, 90, 130)),
-    "vfd": SegStyle((5, 11, 11), (3, 8, 8), (5, 15, 13), (150, 255, 225), (7, 22, 20), None),
+    # The ghost and the glow are half the first design (p054 and p055, 2026-09-28, tuned on
+    # the panel: on the LED matrix the dark end is lifted, so the first values competed with
+    # the lit segments and a third of them was too faint to notice).
+    "red": SegStyle((10, 2, 2), None, (23, 4, 3), (255, 48, 24), (40, 7, 3), (128, 78, 72)),
+    "green": SegStyle((2, 8, 3), None, (4, 20, 6), (60, 255, 70), (6, 40, 9), (76, 120, 84)),
+    "amber": SegStyle((10, 6, 1), None, (24, 14, 2), (255, 160, 24), (42, 26, 3), (128, 104, 70)),
+    "blue": SegStyle((2, 3, 12), None, (4, 7, 26), (60, 120, 255), (5, 13, 48), (80, 90, 130)),
+    "vfd": SegStyle((5, 11, 11), (3, 8, 8), (5, 17, 15), (150, 255, 225), (10, 33, 29), None),
 }
 LED_PLASTIC, LED_LIGHT, LED_DARK, LED_INNER = (46, 46, 52), (92, 92, 100), (14, 14, 16), (24, 24, 28)
 CHROME_HI, CHROME, CHROME_LO, CHROME_EDGE = (236, 240, 244), (168, 174, 182), (96, 102, 110), (38, 42, 48)

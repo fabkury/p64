@@ -886,8 +886,13 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   ones; the ghost and the glow of every style are now a third of the first values (red
   ghost (46, 8, 6) -> (16, 3, 2), glow (80, 14, 6) -> (27, 5, 2); the VFD's ghost kept
   just above its glass at (5, 15, 13)), references regenerated and exact, reflashed,
-  `faces_smoke` 0 failures again (the LED frame is the host's), heap 66 KB free. Still
-  for the eye: the filter tints of the four colours and the meter.
+  `faces_smoke` 0 failures again (the LED frame is the host's), heap 66 KB free. A third
+  overshot (p055): the ghost was too faint to notice, so the final values are half the
+  first ones (red ghost (23, 4, 3), glow (40, 7, 3); VFD ghost (5, 17, 15)), references
+  regenerated and exact, reflashed and checked the same way. Lesson for dark-on-dark
+  pixel art: the matrix lifts the dark end, so a dark value that looks right in a PNG is
+  about twice too bright on the panel, and the eye's window is narrow; judge it on the
+  panel. Still for the eye: the filter tints of the four colours and the meter.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

@@ -103,7 +103,8 @@ Mocked up as two faces (LED and VFD) and approved on 2026-09-28 with two changes
 became a style of the one face, and the highlight that swept along the top of the frame
 every eight seconds was dropped as artificial; after the first look at the panel (p054)
 the ghost and the glow of every style were cut to a third, because the matrix lifts the
-dark end and the unlit segments competed with the lit ones (the review images show the
+dark end and the unlit segments competed with the lit ones; that overshot (too faint to
+notice, p055) and half the first values is where they settled (the review images show the
 final values). The `led_style` setting picks one of five:
 
 | Style | Look | Assets |
