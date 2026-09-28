@@ -36,22 +36,34 @@ def run(base):
     before = j["data"]["playset"]
     check(bool(before), "the active playset is known (%s)" % before)
 
-    # A walk of All starts: up to 41 pages on one keep-alive session.
+    # A walk of All starts: up to 41 pages on one keep-alive session. A fresh index would
+    # not walk (the refresh interval is hours), so a changed size limit forces it: every
+    # active channel refreshes on that change (spec 5.3).
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "All"})
     check(st == 200, "activate All")
-    deadline = time.time() + 60
-    walking = False
-    while time.time() < deadline and not walking:
-        ch = [c for c in channels(base) if c.get("provider") == "makapix" and c.get("kind") == "all"]
-        walking = bool(ch) and ch[0].get("refreshing")
-        time.sleep(1)
-    check(walking, "the All channel is walking (refreshing)")
-    held_by = slot(base)
-    check(held_by["held"] and held_by["holder"] == "makapix", "the fetcher holds the slot during the walk (%s)" % held_by)
+    st, j = request(base, "GET", "/api/v1/settings")
+    max_size = j["data"]["makapix"]["max_size"]
+    other = 256 if max_size != 256 else 128
+    try:
+        st, j = request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": other}})
+        check(st == 200, "size limit changed to %d so every active channel walks" % other)
+        deadline = time.time() + 60
+        walking = False
+        while time.time() < deadline and not walking:
+            ch = [c for c in channels(base) if c.get("provider") == "makapix" and c.get("kind") == "all"]
+            walking = bool(ch) and ch[0].get("refreshing")
+            time.sleep(0.5)
+        check(walking, "the All channel is walking (refreshing)")
+        held_by = slot(base)
+        check(held_by["held"] and held_by["holder"] == "makapix", "the fetcher holds the slot during the walk (%s)" % held_by)
+    finally:
+        request(base, "PUT", "/api/v1/settings", {"makapix": {"max_size": max_size}})
 
     # The channel leaves the playset mid-walk: the paused walk must give the slot back.
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": before})
     check(st == 200, "restored the playset %s" % before)
+    # (The size limit went back just above, which is itself a change: the restored
+    # playset's channels refresh too, on their own turns.)
     freed = False
     t0 = time.time()
     while time.time() - t0 < 15 and not freed:
@@ -59,15 +71,17 @@ def run(base):
         freed = not s["held"] or s["holder"] != "makapix" or s["depth"] < held_by["depth"]
         time.sleep(0.5)
     check(freed, "the paused walk released the slot within %.1f s (%s)" % (time.time() - t0, s))
-    # Held again later only for the fetcher's own short work (a view, a download), never
-    # for the paused walk: over 20 s the slot must be seen free at least once.
-    seen_free = False
+    # From here the slot is free or someone else's turn (the restored playset's provider
+    # channels walk after the size-limit change above): over 20 s it must be seen free or
+    # held by another task at least once, never by the fetcher for the paused walk.
+    seen = None
     for _ in range(40):
-        if not slot(base)["held"]:
-            seen_free = True
+        s = slot(base)
+        if not s["held"] or s["holder"] != "makapix":
+            seen = s
             break
         time.sleep(0.5)
-    check(seen_free, "the slot is seen free within 20 s of the restore")
+    check(seen is not None, "the slot is free or another task's within 20 s of the restore (%s)" % seen)
     s = slot(base)
     check(s["grants"] > 0, "grants counted (%d)" % s["grants"])
     check(s["max_wait_ms"] < 5 * 60 * 1000, "no wait longer than five minutes since boot (%d ms)" % s["max_wait_ms"])

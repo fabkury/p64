@@ -954,6 +954,11 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   (private), `network.tls_slot` in the status document, and
   `tests/device/tls_slot_smoke.py` reproduces the paused walk and checks the slot is free
   within seconds. The cost is one handshake per hand-off, only under contention.
+  Verified on the device: `tls_slot_smoke` 0 failures (the paused walk's slot went to
+  the Divoom worker within 2.4 s), `makapix_smoke --paired` 0 failures, and a Divoom
+  walk started during a Makapix walk alternated with it page by page (22 hand-offs,
+  the longest wait 1.3 s, never more than one waiter) and finished its 64 pages in
+  about 60 s, with 54 KB of internal heap free afterwards.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
