@@ -144,8 +144,11 @@ void Settings::clamp() {
   downloads_cap_mb = clamp_to<uint16_t>(downloads_cap_mb, 16, 1024);
   makapix_refresh_seconds = clamp_to<uint32_t>(makapix_refresh_seconds, 60, 86400);
   channel_cache_size = clamp_to<uint16_t>(channel_cache_size, 32, 4096);
-  // The four steps; anything else snaps up to the next one (256 is the canvas limit).
-  makapix_max_side = makapix_max_side <= 32 ? 32 : makapix_max_side <= 64 ? 64 : makapix_max_side <= 128 ? 128 : 256;
+  makapix_min_side = snap_min_side(makapix_min_side);
+  makapix_max_side = snap_max_side(makapix_max_side);
+  // apply_json refuses a minimum above the maximum; a stored pair can only conflict
+  // through a hand-edited document, and then the maximum wins.
+  if (makapix_min_side > makapix_max_side) makapix_min_side = makapix_max_side;
   cache_retention_days = clamp_to<uint16_t>(cache_retention_days, 1, 365);
 }
 
@@ -250,6 +253,7 @@ std::string Settings::to_json() const {
   cJSON *mk = obj(root, "makapix");
   cJSON_AddNumberToObject(mk, "refresh_seconds", makapix_refresh_seconds);
   cJSON_AddNumberToObject(mk, "channel_cache_size", channel_cache_size);
+  cJSON_AddNumberToObject(mk, "min_size", makapix_min_side);
   cJSON_AddNumberToObject(mk, "max_size", makapix_max_side);
   cJSON_AddNumberToObject(mk, "cache_retention_days", cache_retention_days);
 
@@ -263,7 +267,8 @@ std::string Settings::to_json() const {
   return out;
 }
 
-bool Settings::apply_json(const char *json, std::string &error) {
+bool Settings::apply_json(const char *json, std::string &error, const char **code) {
+  if (code) *code = "INVALID_JSON";
   cJSON *root = cJSON_Parse(json);
   if (!root) {
     error = "invalid JSON";
@@ -274,6 +279,22 @@ bool Settings::apply_json(const char *json, std::string &error) {
     error = "expected an object";
     return false;
   }
+  // Read into a copy: a refused document leaves the settings as they were.
+  Settings next = *this;
+  const bool ordered = next.read_json(root);
+  cJSON_Delete(root);
+  if (!ordered) {
+    if (code) *code = "INVALID_SETTINGS";
+    error = "minimum artwork size " + std::to_string(snap_min_side(next.makapix_min_side)) + " above the maximum " +
+            std::to_string(snap_max_side(next.makapix_max_side));
+    return false;
+  }
+  *this = next;
+  clamp();
+  return true;
+}
+
+bool Settings::read_json(const cJSON *root) {
   const cJSON *d = sub(root, "display");
   get_num(d, "brightness", brightness);
   get_num(d, "brightness_ceiling", brightness_ceiling);
@@ -379,15 +400,16 @@ bool Settings::apply_json(const char *json, std::string &error) {
   const cJSON *mk = sub(root, "makapix");
   get_num(mk, "refresh_seconds", makapix_refresh_seconds);
   get_num(mk, "channel_cache_size", channel_cache_size);
+  get_num(mk, "min_size", makapix_min_side);
   get_num(mk, "max_size", makapix_max_side);
   get_num(mk, "cache_retention_days", cache_retention_days);
 
   const cJSON *up = sub(root, "updates");
   get_bool(up, "auto_check", auto_update_check);
 
-  cJSON_Delete(root);
-  clamp();
-  return true;
+  // The one pair that can conflict: both sides of an artwork must be at least the
+  // minimum and at most the maximum, so the steps must be ordered.
+  return snap_min_side(makapix_min_side) <= snap_max_side(makapix_max_side);
 }
 
 }  // namespace p64::system

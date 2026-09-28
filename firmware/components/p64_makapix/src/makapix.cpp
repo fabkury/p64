@@ -81,17 +81,21 @@ void set_activity(const std::string &activity) {
 
 void publish_channel_changed() { system::publish(system::Event::ProviderChannelChanged); }
 
-uint16_t g_max_side = 0;  // the size limit the channel indexes were walked with
+uint16_t g_min_side = 0;  // the size limits the channel indexes were walked with
+uint16_t g_max_side = 0;
 
 // A changed size limit walks every channel again so the indexes hold only what plays
-// (the show skips oversized entries meanwhile, and in indexes older than the change).
+// (the show skips the entries outside the limits meanwhile, and in indexes older than
+// the change).
 void on_settings_changed() {
+  const uint16_t min_side = system::settings().makapix_min_side;
   const uint16_t side = system::settings().makapix_max_side;
   bool changed;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    changed = side != g_max_side;
+    changed = side != g_max_side || min_side != g_min_side;
     g_max_side = side;
+    g_min_side = min_side;
     if (changed) {
       for (auto &ch : g_channels) {
         if (ch->refreshing) {
@@ -104,7 +108,7 @@ void on_settings_changed() {
     }
   }
   if (changed) {
-    ESP_LOGI(TAG, "size limit %ux%u: every channel refreshes", side, side);
+    ESP_LOGI(TAG, "size limits %u to %u px: every channel refreshes", min_side, side);
     publish_channel_changed();
   }
 }
@@ -319,6 +323,7 @@ bool start(const Hooks &hooks) {
   fetcher_start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { on_network_change(true); });
   system::subscribe(system::Event::TimeSynced, [](const system::Message &) { on_network_change(true); });
+  g_min_side = system::settings().makapix_min_side;
   g_max_side = system::settings().makapix_max_side;
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) {
     on_settings_changed();

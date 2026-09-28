@@ -178,11 +178,21 @@ TEST_CASE("makapix policy: the first pages of an empty channel install at once (
   CHECK(!policy::after_page(50, 2048, false, false, true).install_now);  // done: finish_walk installs
 }
 
-TEST_CASE("makapix policy: oversized entries are dropped from a page") {
+TEST_CASE("makapix policy: entries outside the size limits are dropped from a page") {
   MakapixEntries page{entry(1, 0, 64), entry(2, 0, 256), entry(3, 0, 128)};
-  CHECK_EQ(policy::drop_oversized(page, 128), 1u);
+  CHECK_EQ(policy::drop_oversized(page, 16, 128), 1u);
   REQUIRE_EQ(page.size(), 2u);
   CHECK_EQ(page[1].post_id, 3);
+  // The minimum (2026-09-28): both sides at least the step; an unknown size (0) passes.
+  MakapixEntries small{entry(4, 0, 32), entry(5, 0, 64), entry(6, 0, 0)};
+  CHECK_EQ(policy::drop_oversized(small, 64, 128), 1u);
+  REQUIRE_EQ(small.size(), 2u);
+  CHECK_EQ(small[0].post_id, 5);
+  CHECK_EQ(small[1].post_id, 6);
+  MakapixEntry tall = entry(7, 0, 64);
+  tall.height = 128;
+  MakapixEntries rect{tall};
+  CHECK_EQ(policy::drop_oversized(rect, 128, 128), 1u);  // 64x128 is below a minimum of 128
 }
 
 TEST_CASE("makapix policy: a failed refresh backs off from 30 s to 15 min") {

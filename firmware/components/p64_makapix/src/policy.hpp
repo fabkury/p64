@@ -70,9 +70,9 @@ struct StepStart {
 };
 StepStart begin_step(bool refreshing, int64_t walk_last_us, int64_t now_us);
 
-// Drops the entries over the size limit (the promoted feed has no size filter).
+// Drops the entries outside the size limits (the promoted feed has no size filter).
 // Returns how many were dropped.
-size_t drop_oversized(content::MakapixEntries &page, uint16_t max_side);
+size_t drop_oversized(content::MakapixEntries &page, uint16_t min_side, uint16_t max_side);
 
 // After a page is appended to the walk: whether the walk is done, and whether the pages
 // so far should be installed at once because the index is empty (downloads and playback

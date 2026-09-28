@@ -276,8 +276,10 @@ esp_err_t settings_put(httpd_req_t *req) {
   std::string error;
   const system::Settings before = system::settings();
   bool parsed = true;
-  const bool saved = system::settings_update([&](system::Settings &s) { parsed = s.apply_json(body.c_str(), error); });
-  if (!parsed) return reply_error(req, "400 Bad Request", "INVALID_JSON", error);
+  const char *code = "INVALID_JSON";
+  const bool saved =
+      system::settings_update([&](system::Settings &s) { parsed = s.apply_json(body.c_str(), error, &code); });
+  if (!parsed) return reply_error(req, "400 Bad Request", code, error);
   if (!saved) return reply_error(req, "500 Internal Server Error", "SAVE_FAILED", "settings could not be stored");
   const system::Settings after = system::settings();
   if (after.panel_mode != before.panel_mode && g_hooks.request_mode) {

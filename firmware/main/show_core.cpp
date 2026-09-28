@@ -108,6 +108,7 @@ std::string channel_status(const ChannelRuntime &ch) {
     f.cached = ch.items.size();
     f.refreshed = ch.last_refresh != 0;
     f.oversized = ch.oversized;
+    f.min_side = settings().makapix_min_side;
     f.max_side = settings().makapix_max_side;
     f.unchecked = ch.unchecked;
   }
@@ -187,9 +188,10 @@ void snapshot_provider(ChannelRuntime &ch) {
     ch.last_refresh = snap.last_refresh;
     ch.oversized = snap.oversized;
     ch.unchecked = snap.unchecked;
+    const uint16_t min_side = settings().makapix_min_side;
     const uint16_t max_side = settings().makapix_max_side;
     for (const content::ProviderItem &item : snap.items) {
-      if (content::fits_side(item, max_side)) ch.items.push_back(item);
+      if (content::fits_size(item, min_side, max_side)) ch.items.push_back(item);
     }
   }
   ch.available = static_cast<uint32_t>(ch.items.size());

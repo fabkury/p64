@@ -204,8 +204,9 @@ TEST_CASE("show: channel status texts (spec 6.4)") {
   mk.refreshed = true;
   CHECK(rules::channel_status(mk) == "no artworks");
   mk.oversized = 3;
+  mk.min_side = 16;
   mk.max_side = 128;
-  CHECK(rules::channel_status(mk) == "nothing fits 128 px (3 too large)");
+  CHECK(rules::channel_status(mk) == "nothing fits 16 to 128 px (3 outside)");
   mk.online = false;
   CHECK(rules::channel_status(mk) == "offline");
   mk.refreshed = false;
@@ -742,6 +743,14 @@ TEST_CASE("show core: a provider channel plays its items and hears what happened
   core::provider_changed();
   CHECK_EQ(st.channels[0].available, 0u);
   CHECK(st.channels[0].status == "downloading");
+  // And the minimum (2026-09-28): the items are 32 px, a minimum of 64 leaves none.
+  env.cfg->makapix_max_side = 256;
+  env.cfg->makapix_min_side = 64;
+  core::provider_changed();
+  CHECK_EQ(st.channels[0].available, 0u);
+  env.cfg->makapix_min_side = 32;
+  core::provider_changed();
+  CHECK(st.channels[0].available > 0u);
   providers::clear();
 }
 

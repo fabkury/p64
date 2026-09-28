@@ -13,10 +13,12 @@ StepStart begin_step(bool refreshing, int64_t walk_last_us, int64_t now_us) {
   return s;
 }
 
-size_t drop_oversized(content::MakapixEntries &page, uint16_t max_side) {
+size_t drop_oversized(content::MakapixEntries &page, uint16_t min_side, uint16_t max_side) {
   const size_t before = page.size();
   page.erase(std::remove_if(page.begin(), page.end(),
-                            [max_side](const content::MakapixEntry &e) { return !content::fits_side(e, max_side); }),
+                            [min_side, max_side](const content::MakapixEntry &e) {
+                              return !content::fits_size(e, min_side, max_side);
+                            }),
              page.end());
   return before - page.size();
 }

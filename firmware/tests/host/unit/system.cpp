@@ -72,7 +72,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_minutes":{"clock":10,
     "weather":20,"temperature":0},"interlude_random_clock_face":true},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9,"encoders_enabled":false,"encoders_swap":true,"encoders_invert":true},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
-    "makapix":{"refresh_seconds":600,"channel_cache_size":512,"max_size":64,"cache_retention_days":7},
+    "makapix":{"refresh_seconds":600,"channel_cache_size":512,"min_size":32,"max_size":64,"cache_retention_days":7},
     "updates":{"auto_check":false}})");
   CHECK_EQ(a.brightness, 77);
   CHECK(a.night.enabled);
@@ -96,6 +96,7 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK(a.interlude_random_clock_face);
   CHECK(!Settings().interlude_random_clock_face);
   CHECK_EQ(a.makapix_max_side, 64);
+  CHECK_EQ(a.makapix_min_side, 32);
   CHECK(a.hostname() == "p64-desk-1");
   CHECK(a.timezone == "America/Sao_Paulo");
   CHECK((!a.encoders_enabled && a.encoders_swap && a.encoders_invert));
@@ -157,6 +158,47 @@ TEST_CASE("settings: the maximum artwork size snaps up to 32, 64, 128 or 256") {
   CHECK_EQ(applied(R"({"makapix":{"max_size":100}})").makapix_max_side, 128);
   CHECK_EQ(applied(R"({"makapix":{"max_size":129}})").makapix_max_side, 256);
   CHECK_EQ(applied(R"({"makapix":{"max_size":5000}})").makapix_max_side, 256);
+}
+
+TEST_CASE("settings: the minimum artwork size snaps up to 16, 32, 64 or 128 and defaults to 16") {
+  CHECK_EQ(Settings().makapix_min_side, 16);
+  CHECK(Settings().to_json().find("\"min_size\":16") != std::string::npos);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":0}})").makapix_min_side, 16);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":17}})").makapix_min_side, 32);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":33}})").makapix_min_side, 64);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":65}})").makapix_min_side, 128);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":5000}})").makapix_min_side, 128);
+  CHECK_EQ(applied(R"({"makapix":{"min_size":128,"max_size":128}})").makapix_min_side, 128);  // equal is allowed
+  CHECK_EQ(applied(R"({"makapix":{"min_size":100,"max_size":100}})").makapix_min_side, 128);  // both snap to 128
+}
+
+TEST_CASE("settings: a minimum artwork size above the maximum is refused and nothing changes") {
+  Settings s;
+  std::string error;
+  const char *code = nullptr;
+  REQUIRE(s.apply_json(R"({"makapix":{"min_size":64,"max_size":64},"display":{"brightness":100}})", error, &code));
+  CHECK_EQ(s.brightness, 100);
+  // The minimum alone, above the stored maximum.
+  CHECK(!s.apply_json(R"({"makapix":{"min_size":128},"display":{"brightness":50}})", error, &code));
+  CHECK(std::string(code) == "INVALID_SETTINGS");
+  CHECK(error == "minimum artwork size 128 above the maximum 64");
+  CHECK_EQ(s.makapix_min_side, 64);
+  CHECK_EQ(s.makapix_max_side, 64);
+  CHECK_EQ(s.brightness, 100);  // the rest of the refused document did not land either
+  // The maximum alone, below the stored minimum; and both in one document.
+  CHECK(!s.apply_json(R"({"makapix":{"max_size":32}})", error, &code));
+  CHECK(std::string(code) == "INVALID_SETTINGS");
+  CHECK(!s.apply_json(R"({"makapix":{"min_size":65,"max_size":64}})", error, &code));
+  CHECK_EQ(s.makapix_min_side, 64);
+  // Malformed JSON keeps its own code.
+  CHECK(!s.apply_json("{not json", error, &code));
+  CHECK(std::string(code) == "INVALID_JSON");
+  // A conflicting pair in a stored document (hand-edited) is not refused by clamp: the
+  // maximum wins.
+  s.makapix_min_side = 128;
+  s.makapix_max_side = 32;
+  s.clamp();
+  CHECK_EQ(s.makapix_min_side, 32);
 }
 
 TEST_CASE("settings: invalid values fall back, unknown enum names leave the value alone") {

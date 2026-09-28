@@ -152,7 +152,8 @@ bool promoted_page(const std::string &cursor, content::MakapixEntries &out, std:
 
 const char *server_channel(const ChannelRef &ref) { return server_channel_name(ref.kind); }
 
-bool query_page(const std::string &token, const ChannelRef &ref, uint16_t max_side, const std::string &cursor,
+bool query_page(const std::string &token, const ChannelRef &ref, uint16_t min_side, uint16_t max_side,
+                const std::string &cursor,
                 content::MakapixEntries &out, std::string &next_cursor, bool &has_more, std::string &error,
                 net::fetch::Session *session) {
   cJSON *body = cJSON_CreateObject();
@@ -172,14 +173,21 @@ bool query_page(const std::string &token, const ChannelRef &ref, uint16_t max_si
   cJSON_AddNumberToObject(body, "limit", kPageLimit);
   cJSON *fields = cJSON_AddArrayToObject(body, "include_fields");
   for (const char *f : {"width", "height", "frame_count", "artwork_modified_at"}) cJSON_AddItemToArray(fields, cJSON_CreateString(f));
-  // AMP criteria (docs/player/querying-artwork.md): only artworks that fit the size limit.
+  // AMP criteria (docs/player/querying-artwork.md), AND-ed: only artworks whose both
+  // sides are within the size limits (`gte` and `lte` verified server-side on 2026-09-28).
   cJSON *criteria = cJSON_AddArrayToObject(body, "criteria");
   for (const char *side : {"width", "height"}) {
-    cJSON *c = cJSON_CreateObject();
-    cJSON_AddStringToObject(c, "field", side);
-    cJSON_AddStringToObject(c, "op", "lte");
-    cJSON_AddNumberToObject(c, "value", max_side);
-    cJSON_AddItemToArray(criteria, c);
+    const struct {
+      const char *op;
+      uint16_t value;
+    } bounds[] = {{"gte", min_side}, {"lte", max_side}};
+    for (const auto &b : bounds) {
+      cJSON *c = cJSON_CreateObject();
+      cJSON_AddStringToObject(c, "field", side);
+      cJSON_AddStringToObject(c, "op", b.op);
+      cJSON_AddNumberToObject(c, "value", b.value);
+      cJSON_AddItemToArray(criteria, c);
+    }
   }
   net::fetch::Result r;
   cJSON *reply = nullptr;

@@ -40,9 +40,13 @@ static_assert(sizeof(MakapixEntry) == 64, "MakapixEntry is the on-card record; k
 
 using MakapixEntries = std::vector<MakapixEntry, PsramAllocator<MakapixEntry>>;
 
-// The size limit (setting "maximum artwork size"): both sides within `max_side`. An
-// entry whose size the listing did not carry (0) passes; the decoder judges it later.
-inline bool fits_side(const MakapixEntry &e, uint16_t max_side) { return e.width <= max_side && e.height <= max_side; }
+// The size limits (settings "minimum" and "maximum artwork size"): both sides at least
+// `min_side` and at most `max_side`. An entry whose size the listing did not carry (0)
+// passes; the decoder judges it later.
+inline bool fits_size(const MakapixEntry &e, uint16_t min_side, uint16_t max_side) {
+  return (e.width == 0 || e.width >= min_side) && e.width <= max_side && (e.height == 0 || e.height >= min_side) &&
+         e.height <= max_side;
+}
 
 // --- helpers ------------------------------------------------------------------------
 bool parse_uuid(const char *text, uint8_t out[16]);  // "8-4-4-4-12" hex, case-insensitive

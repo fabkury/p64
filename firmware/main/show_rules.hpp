@@ -28,8 +28,9 @@ struct ChannelFacts {
   size_t index_entries = 0;  // Makapix: entries in the index
   size_t cached = 0;         // Makapix: entries cached and within the size limit
   bool refreshed = false;    // Makapix: a listing has landed (last_refresh set)
-  uint32_t oversized = 0;    // Makapix: listed at that refresh but over the size limit
-  uint16_t max_side = 0;     // Makapix: the size limit, for the text
+  uint32_t oversized = 0;    // Makapix: listed at that refresh but outside the size limits
+  uint16_t min_side = 0;     // Makapix: the size limits, for the text
+  uint16_t max_side = 0;
   uint32_t unchecked = 0;    // providers: index entries a post-load file check has not reached
 };
 // Why a channel cannot supply artworks right now ("" when it can).

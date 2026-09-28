@@ -296,21 +296,23 @@ void refresh_step(Channel *ch) {
     return;
   }
   const size_t cap = system::settings().channel_cache_size;
+  const uint16_t min_side = system::settings().makapix_min_side;
   const uint16_t max_side = system::settings().makapix_max_side;
   set_activity("refreshing " + ch->id + " (page " + std::to_string(ch->walk_pages + 1) + ")");
   content::MakapixEntries page;
   std::string next, error;
   bool more = false;
-  const bool ok = paired ? api::query_page(token, ref, max_side, cursor, page, next, more, error, ch->walk_session.get())
+  const bool ok = paired ? api::query_page(token, ref, min_side, max_side, cursor, page, next, more, error,
+                                           ch->walk_session.get())
                          : api::promoted_page(cursor, page, next, more, error, ch->walk_session.get());
   if (!ok) {
     finish_walk(ch, false, error);
     return;
   }
-  // The size limit, on the device as well: the promoted feed has no size filter, and a
+  // The size limits, on the device as well: the promoted feed has no size filter, and a
   // listing that ignored the criteria must not fill the index with what cannot play.
   const bool listed_none = page.empty();
-  const size_t oversized = policy::drop_oversized(page, max_side);
+  const size_t oversized = policy::drop_oversized(page, min_side, max_side);
   bool done;
   bool cold;
   {

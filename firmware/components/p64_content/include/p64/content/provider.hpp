@@ -37,14 +37,18 @@ struct ProviderItem {
 };
 using ProviderItems = std::vector<ProviderItem, PsramAllocator<ProviderItem>>;
 
-// The size limit (setting "maximum artwork size"): both sides within `max_side`.
-inline bool fits_side(const ProviderItem &e, uint16_t max_side) { return e.width <= max_side && e.height <= max_side; }
+// The size limits (settings "minimum" and "maximum artwork size"): both sides at least
+// `min_side` and at most `max_side`. A side the listing did not carry (0) passes.
+inline bool fits_size(const ProviderItem &e, uint16_t min_side, uint16_t max_side) {
+  return (e.width == 0 || e.width >= min_side) && e.width <= max_side && (e.height == 0 || e.height >= min_side) &&
+         e.height <= max_side;
+}
 
 struct ChannelSnapshot {
   ProviderItems items;        // playable now (their files are at hand), before the size limit
   uint32_t listed = 0;        // entries the provider knows for the channel (its index)
   uint32_t last_refresh = 0;  // epoch seconds of the last listing, 0 never
-  uint32_t oversized = 0;     // listed but over the size limit at the last refresh
+  uint32_t oversized = 0;     // listed but outside the size limits at the last refresh
   // Index entries a post-load check of the cached files has not reached yet (0: none
   // running). Informative: the items are offered while it runs; a provider that must
   // hold some back until it is checked leaves them out of `items` instead.

@@ -13,6 +13,8 @@
 
 #include "p64/gfx/frame.hpp"
 
+struct cJSON;  // apply_json's reader takes a parsed document
+
 namespace p64::system {
 
 enum class PanelMode : uint8_t { Quality = 0, Photo = 1 };
@@ -121,6 +123,7 @@ struct Settings {
   // Makapix
   uint32_t makapix_refresh_seconds = 14400;  // 60..86400
   uint16_t channel_cache_size = 2048;        // 32..4096
+  uint16_t makapix_min_side = 16;            // 16, 32, 64 or 128: channels leave out narrower or shorter artworks
   uint16_t makapix_max_side = 128;           // 32, 64, 128 or 256: channels leave out wider or taller artworks
   uint16_t cache_retention_days = 30;        // 1..365: the nightly cache sweep deletes files not played for longer
 
@@ -128,10 +131,20 @@ struct Settings {
   bool auto_update_check = true;
 
   // Serialisation (the API's JSON shape). apply_json merges the keys present and
-  // clamps every value into its range; unknown keys are ignored and reported.
+  // clamps every value into its range; unknown keys are ignored and reported. It refuses
+  // (false, nothing changed) malformed JSON and a minimum artwork size above the maximum;
+  // `code` names which ("INVALID_JSON" or "INVALID_SETTINGS") for the API's reply.
   std::string to_json() const;
-  bool apply_json(const char *json, std::string &error);
+  bool apply_json(const char *json, std::string &error, const char **code = nullptr);
   void clamp();
+
+  // The artwork size steps: any number snaps up to the next step (the maximum's 256 is
+  // the canvas limit; the minimum's 128 the largest step below it).
+  static uint16_t snap_min_side(uint16_t v) { return v <= 16 ? 16 : v <= 32 ? 32 : v <= 64 ? 64 : 128; }
+  static uint16_t snap_max_side(uint16_t v) { return v <= 32 ? 32 : v <= 64 ? 64 : v <= 128 ? 128 : 256; }
+
+  // apply_json's reader: merges a parsed document, false when the size steps conflict.
+  bool read_json(const cJSON *root);
 
   // "p64" or "p64-<device name>".
   std::string hostname() const;
