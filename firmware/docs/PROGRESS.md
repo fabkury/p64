@@ -959,6 +959,37 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   walk started during a Makapix walk alternated with it page by page (22 hand-offs,
   the longest wait 1.3 s, never more than one waiter) and finished its 64 pages in
   about 60 s, with 54 KB of internal heap free afterwards.
+- 2026-09-29, a bench session (prompt p058: two hours with the device on USB and the
+  LAN, no knob attached). Boot time re-measured over the console after a software reset:
+  bootloader done 0.71 s, card 0.94 s, playset 1.05 s, Promoted index from the card
+  1.51 s, IP 2.53 s, NTP 3.82 s, first artwork 3.83 s, unchanged from 2026-09-26 (the
+  status document's `playback.boot` counts from the app's start, so it reads 3.10 s, the
+  artwork 1 ms after the animation's end). The full smoke battery on the 2026-09-28
+  firmware: 14 of 18 green. `encoders_smoke` wanted a board that was not attached
+  (`--expect 0` passes); `content_smoke` demanded the first artwork from the local
+  channel, a stochastic 3:1 pick, relaxed to either channel of the playset;
+  `cache_sweep_smoke` and `tls_slot_smoke` timed out because the sweep dry run of 8158
+  cached files (247 MB) took 230 s on the httpd task and no request was answered
+  meanwhile (open, below); `timing_smoke` got 55.2 fps and 14 late frames on the 16 ms
+  APNG while the private Divoom worker transcoded galleries on core 0 (decode 15.6 ms per
+  frame, max 27), and 60.05 fps with 0 late with the walk idle an hour later, so the
+  cadence loss is contention from the transcode (open, below). Found and fixed: with the
+  GPIO socket empty the encoder task's 5 s re-probe timed out instead of NACKing (the
+  controller's 10 k pull-downs hold both lines low) and the I2C driver printed two error
+  lines every 5 s, a p64a's console forever; the poll task now reads the two levels first
+  and probes only while both idle high (pure `socket_idle_high`, host-tested; the diag
+  scan skips a low bus too). Verified after the flash: 0 probe lines in 80 minutes of
+  console, `encoders_smoke --expect 0` green. Soak of 55 minutes on the new firmware
+  with the browser poll: 659 swaps, 39 609 frames, 0 late flips, 0 timeouts, no reboot,
+  heap floor 52 035 B (budget 32 768), core 0 busy 8.5 % (budget 10 %); the console over
+  the run carried one warning (no GitHub release yet) and no error. Open from this
+  session: (1) the cache sweep's cost, `for_each_swept_file` does a `stat()` per file
+  after `storage::list` and FatFs's stat is a linear directory search, quadratic in a big
+  shard (about 1900 Divoom files in one), and the API route runs it on the httpd task;
+  carry mtime and size out of the directory read (FatFs `f_readdir` has them, the VFS
+  drops them) and answer the route at once with the sweep on a worker; (2) the 60 fps
+  budget under a concurrent transcode, a private-provider matter first (its worker's
+  priority or a pause while an animation above 30 fps plays).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
