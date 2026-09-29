@@ -71,7 +71,12 @@ def run(base):
     # the first artwork waits for it; hence the longer wait (2026-09-22).
     p = wait_for(base, lambda p: p["playset"]["name"] == "smoke_test" and p.get("artwork"), "smoke_test plays an artwork",
                  30)
-    check(p.get("artwork", {}).get("channel") == "animations", "artwork came from the local channel")
+    # The channel pick is stochastic (weights 3:1 with credits, scheduler.cpp), so the
+    # first artwork is the local channel's three times in four; what must hold is that
+    # it came from one of the playset's two channels (2026-09-29: the check used to
+    # demand the local one and failed one run in four).
+    channel = p.get("artwork", {}).get("channel")
+    check(channel in ("animations", "Promoted"), "artwork came from a channel of the playset (" + str(channel) + ")")
 
     st, j = request(base, "GET", "/api/v1/channels")
     check(st == 200 and j["data"]["playset"] == "smoke_test" and len(j["data"]["channels"]) == 2, "GET /api/v1/channels")
