@@ -1,0 +1,1 @@
+I have a p64 connected to this computer via USB-C, and connected to the same LAN as this computer (the p64 responds at mDNS p64.local). I have this laptop available for at least 2 hours. Could you use those two hours for something useful? If yes, what? Don't do anything yet, just give me suggestions first.
