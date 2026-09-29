@@ -55,13 +55,34 @@ Hooks g_hooks;
 std::atomic<bool> g_enabled{true};
 std::atomic<bool> g_swap{false};
 std::atomic<bool> g_invert{false};
+bool g_socket_low_warned = false;  // poll task only
 
 KnobRole role_of_knob(const Knob &k) { return role_of(static_cast<int>(&k - g_knobs), g_swap.load()); }
 
+// The idle levels of the socket's two lines: both 1 only while a board's pull-ups are
+// there (an empty socket sits low under the controller's pull-downs, knob_rules.hpp).
+bool lines_idle_high() {
+#ifdef CONFIG_P64_ENCODERS
+  return socket_idle_high(gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SDA)),
+                          gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SCL)));
+#else
+  return true;
+#endif
+}
+
 // Opens a board that is not open and lights its identify colour; true when it answers.
-// The probe first, so an absent board costs one quiet NACK and not the driver's error
-// line every 5 s on a p64a.
+// The levels first, then the probe: on a live bus an absent board costs one quiet NACK,
+// while a probe of an empty socket (p64a) times out and the I2C driver logs an error
+// line each time, so the lines are only read there, every 5 s, with no bus traffic.
 bool try_open(Knob &k, i2c_master_bus_handle_t bus, uint32_t poll) {
+  if (!lines_idle_high()) {
+    if (!g_socket_low_warned) {
+      ESP_LOGW(TAG, "GPIO socket lines idle low: nothing attached, not probing (looked at again every 5 s)");
+      g_socket_low_warned = true;
+    }
+    return false;
+  }
+  g_socket_low_warned = false;
   if (i2c_master_probe(bus, k.address, 20) != ESP_OK || !k.board.open(bus, k.address)) {
     if (!k.warned_missing) {
       ESP_LOGW(TAG, "knob %s: no seesaw at 0x%02x (polled again every 5 s)", k.name, k.address);
@@ -201,7 +222,10 @@ cJSON *json(bool scan) {
   if (scan) {
     cJSON *found = cJSON_AddArrayToObject(d, "scan");
     i2c_master_bus_handle_t bus = system::i2c_ext_bus();
-    for (uint16_t a = 0x08; bus && a <= 0x77; ++a) {
+    // No scan of a low bus: 112 probes of an empty socket would each time out with an
+    // error line (the levels above say why the list is empty).
+    const bool idle = lines_idle_high();
+    for (uint16_t a = 0x08; bus && idle && a <= 0x77; ++a) {
       if (i2c_master_probe(bus, a, 5) == ESP_OK) cJSON_AddItemToArray(found, cJSON_CreateNumber(a));
     }
   }

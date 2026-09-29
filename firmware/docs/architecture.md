@@ -526,7 +526,12 @@ boards at 50 Hz from a task on core 0 (stack in PSRAM, no flash access), lights 
 NeoPixel green and knob B's blue for two seconds at start so the boards identify
 themselves, logs every event, counts read errors, drops a board after ten consecutive
 failures and tries a missing board again every 5 s (a loose cable must not take the
-other knob down; p64a runs the same build with both boards missing). Diagnostics:
+other knob down; p64a runs the same build with both boards missing). While the socket's
+two lines idle low (an empty socket: the controller's 10 k pull-downs win, only a board's
+pull-ups raise them) it reads the levels instead of probing, because a probe of a low bus
+does not NACK, it times out and the I2C driver logs an error line each time (pure
+`socket_idle_high`, found on the bench 2026-09-29; the on-demand address scan skips a
+low bus for the same reason). Diagnostics:
 `GET /api/v1/diag/encoders`; `tests/device/encoders_smoke.py`. The roles (stage C,
 2026-09-26) are the pure `knob_rules.hpp` (`role_of(knob, swap)`, `brightness_after()`:
 7 per detent, an even step of perceived lightness since 2026-09-27, 37 detents from 1 to 255) and

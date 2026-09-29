@@ -273,6 +273,14 @@ TEST_CASE("knob rules: roles and brightness steps") {
     v = n;
   }
   CHECK_EQ(downs, 37);
+  // A probe is only worth making while both socket lines idle high: the controller's
+  // 10 k pull-downs hold an empty socket low, and a probe there times out with an error
+  // line from the I2C driver instead of a quiet NACK (seen 2026-09-29, a p64a's console).
+  using p64::inputs::socket_idle_high;
+  CHECK(socket_idle_high(1, 1));
+  CHECK_FALSE(socket_idle_high(0, 0));  // an empty socket
+  CHECK_FALSE(socket_idle_high(0, 1));  // one line held low
+  CHECK_FALSE(socket_idle_high(1, 0));
   // N detents at once equal N single detents, and a spin down and back returns.
   CHECK_EQ(brightness_after(40, 5), brightness_after(brightness_after(40, 2), 3));
   CHECK_EQ(brightness_after(brightness_after(100, -5), 5), 100);

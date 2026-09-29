@@ -25,4 +25,11 @@ constexpr KnobRole role_of(int knob, bool swap) {
 constexpr int kDetentStep = 7;
 uint8_t brightness_after(uint8_t current, int32_t detents);
 
+// Whether a probe of the GPIO socket can find anything. The controller pulls IO45 and
+// IO46 down with 10 k (R59/R60, docs/hardware); only a board's pull-ups raise them, so
+// with the socket empty (every p64a) both lines idle low, and a probe there does not end
+// in a quiet NACK: it times out, and the I2C driver prints an error line for each one
+// (seen 2026-09-29, two lines every 5 s). Probe only while both lines idle high.
+constexpr bool socket_idle_high(int sda_level, int scl_level) { return sda_level == 1 && scl_level == 1; }
+
 }  // namespace p64::inputs
