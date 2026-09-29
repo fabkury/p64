@@ -708,6 +708,15 @@ void run_job(Job *job) {
     case JobType::View: run_view(job); break;
     case JobType::Followed: run_followed(job); break;
     case JobType::Renew: run_renew(job); break;
+    case JobType::Sweep: {
+      // The result and any refusal land in the sweep state (status document), not in
+      // the Makapix error line: a refused dry run is not a fault of the integration.
+      SweepResult r;
+      std::string error;
+      cache_sweep(job->age_s, job->flag, r, error);
+      finish(job, true, "");
+      break;
+    }
   }
 }
 

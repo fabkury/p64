@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <cstring>
+#include <mutex>
 #include <ctime>
 
 #include "cJSON.h"
@@ -545,11 +546,25 @@ bool like(int32_t post_id, bool liked, std::string &error) {
   return job.ok;
 }
 
-bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::string &error) {
-  static std::atomic<bool> busy{false};
-  out = SweepResult{};
-  out.dry_run = dry_run;
-  out.older_than_s = older_than_s;
+namespace {
+
+std::mutex g_sweep_mutex;
+SweepState g_sweep;
+
+// Records how a sweep ended (or why it was refused) for the status document.
+void note_sweep_end(bool ok, const SweepResult &r, const std::string &error) {
+  std::lock_guard<std::mutex> lock(g_sweep_mutex);
+  g_sweep.running = false;
+  g_sweep.has_last = true;
+  g_sweep.last_ok = ok;
+  g_sweep.last_error = ok ? "" : error;
+  g_sweep.last = r;
+  g_sweep.last_finished = epoch_now();
+}
+
+}  // namespace
+
+bool cache_sweep_request(uint32_t older_than_s, bool dry_run, std::string &error) {
   if (!cache::has_card()) {
     error = "no card";
     return false;
@@ -558,9 +573,58 @@ bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::str
     error = "the time is not trusted yet (no NTP answer since boot)";
     return false;
   }
+  {
+    std::lock_guard<std::mutex> lock(g_sweep_mutex);
+    if (g_sweep.queued || g_sweep.running) {
+      error = "a sweep is already running";
+      return false;
+    }
+    g_sweep.queued = true;
+  }
+  auto *job = new Job{JobType::Sweep};
+  job->age_s = older_than_s;
+  job->flag = dry_run;
+  if (!submit(job)) {
+    delete job;
+    std::lock_guard<std::mutex> lock(g_sweep_mutex);
+    g_sweep.queued = false;
+    error = "the worker queue is full";
+    return false;
+  }
+  return true;
+}
+
+SweepState sweep_state() {
+  std::lock_guard<std::mutex> lock(g_sweep_mutex);
+  return g_sweep;
+}
+
+bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::string &error) {
+  static std::atomic<bool> busy{false};
+  out = SweepResult{};
+  out.dry_run = dry_run;
+  out.older_than_s = older_than_s;
+  {
+    std::lock_guard<std::mutex> lock(g_sweep_mutex);
+    g_sweep.queued = false;
+  }
+  if (!cache::has_card()) {
+    error = "no card";
+    note_sweep_end(false, out, error);
+    return false;
+  }
+  if (!net::clock::synced()) {
+    error = "the time is not trusted yet (no NTP answer since boot)";
+    note_sweep_end(false, out, error);
+    return false;
+  }
   if (busy.exchange(true)) {
     error = "a sweep is already running";
-    return false;
+    return false;  // the running one reports; this refusal must not overwrite its state
+  }
+  {
+    std::lock_guard<std::mutex> lock(g_sweep_mutex);
+    g_sweep.running = true;
   }
   const int64_t t0 = esp_timer_get_time();
   const uint32_t now = epoch_now();
@@ -582,6 +646,7 @@ bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::str
     busy = false;
     error = suspect.empty() ? "no card" : "the clock or the card is suspect: " + suspect;
     ESP_LOGW(TAG, "cache sweep refused: %s", error.c_str());
+    note_sweep_end(false, out, error);
     return false;
   }
   uint32_t unflagged = 0;
@@ -630,6 +695,7 @@ bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::str
            static_cast<unsigned long long>(st.freed / 1024), static_cast<unsigned>(st.indexes_deleted),
            static_cast<unsigned>(st.downloads_deleted), static_cast<unsigned>(unflagged), static_cast<unsigned long>(out.took_ms));
   busy = false;
+  note_sweep_end(true, out, "");
   if (unflagged) publish_channel_changed();
   return true;
 }

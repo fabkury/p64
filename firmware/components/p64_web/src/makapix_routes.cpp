@@ -22,6 +22,20 @@ const char *state_name(makapix::State s) {
   return "unknown";
 }
 
+cJSON *sweep_result_json(const makapix::SweepResult &r) {
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddBoolToObject(d, "dry_run", r.dry_run);
+  cJSON_AddNumberToObject(d, "older_than_s", r.older_than_s);
+  cJSON_AddNumberToObject(d, "examined", r.examined);
+  cJSON_AddNumberToObject(d, "bytes", static_cast<double>(r.bytes));
+  cJSON_AddNumberToObject(d, "deleted", r.deleted);
+  cJSON_AddNumberToObject(d, "freed_bytes", static_cast<double>(r.freed));
+  cJSON_AddNumberToObject(d, "indexes_deleted", r.indexes_deleted);
+  cJSON_AddNumberToObject(d, "downloads_deleted", r.downloads_deleted);
+  cJSON_AddNumberToObject(d, "took_ms", r.took_ms);
+  return d;
+}
+
 cJSON *status_json() {
   const makapix::Status s = makapix::status();
   cJSON *o = cJSON_CreateObject();
@@ -47,11 +61,27 @@ cJSON *status_json() {
   cJSON_AddNumberToObject(c, "last_sweep", s.last_sweep);
   cJSON_AddNumberToObject(c, "last_deleted", s.last_sweep_deleted);
   cJSON_AddNumberToObject(c, "last_freed_bytes", static_cast<double>(s.last_sweep_freed));
+  const makapix::SweepState sw = makapix::sweep_state();
+  cJSON *j = cJSON_AddObjectToObject(c, "sweep");
+  cJSON_AddBoolToObject(j, "queued", sw.queued);
+  cJSON_AddBoolToObject(j, "running", sw.running);
+  if (sw.has_last) {
+    cJSON *l = cJSON_AddObjectToObject(j, "last");
+    cJSON_AddBoolToObject(l, "ok", sw.last_ok);
+    cJSON_AddStringToObject(l, "error", sw.last_error.c_str());
+    cJSON_AddNumberToObject(l, "finished", sw.last_finished);
+    cJSON_AddItemToObject(l, "result", sweep_result_json(sw.last));
+  } else {
+    cJSON_AddNullToObject(j, "last");
+  }
   return o;
 }
 
 // The cache sweep now (spec 5.4), for tests and for "what would go": older_than_s
-// defaults to the cache retention, dry_run to true.
+// defaults to the cache retention, dry_run to true. Queued for the fetcher task and
+// answered 202 at once; the result arrives in the status document's
+// makapix.cache.sweep (2026-09-29: run on this task, 8158 files held every request for
+// 230 s).
 esp_err_t sweep_handler(httpd_req_t *req) {
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
@@ -61,20 +91,20 @@ esp_err_t sweep_handler(httpd_req_t *req) {
   const bool dry_run = dry ? cJSON_IsTrue(dry) : true;
   cJSON_Delete(body);
   if (age_s < 0 || age_s > 4294967295.0) return reply_error(req, "400 Bad Request", "INVALID_ARG", "older_than_s out of range");
-  makapix::SweepResult r;
   std::string error;
-  if (!makapix::cache_sweep(static_cast<uint32_t>(age_s), dry_run, r, error)) return reply_error(req, "409 Conflict", "SWEEP_UNAVAILABLE", error);
-  cJSON *d = cJSON_CreateObject();
-  cJSON_AddBoolToObject(d, "dry_run", r.dry_run);
-  cJSON_AddNumberToObject(d, "older_than_s", r.older_than_s);
-  cJSON_AddNumberToObject(d, "examined", r.examined);
-  cJSON_AddNumberToObject(d, "bytes", static_cast<double>(r.bytes));
-  cJSON_AddNumberToObject(d, "deleted", r.deleted);
-  cJSON_AddNumberToObject(d, "freed_bytes", static_cast<double>(r.freed));
-  cJSON_AddNumberToObject(d, "indexes_deleted", r.indexes_deleted);
-  cJSON_AddNumberToObject(d, "downloads_deleted", r.downloads_deleted);
-  cJSON_AddNumberToObject(d, "took_ms", r.took_ms);
-  return reply_ok(req, d);
+  if (!makapix::cache_sweep_request(static_cast<uint32_t>(age_s), dry_run, error)) return reply_error(req, "409 Conflict", "SWEEP_UNAVAILABLE", error);
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddBoolToObject(root, "ok", true);
+  cJSON *d = cJSON_AddObjectToObject(root, "data");
+  cJSON_AddBoolToObject(d, "queued", true);
+  cJSON_AddBoolToObject(d, "dry_run", dry_run);
+  cJSON_AddNumberToObject(d, "older_than_s", age_s);
+  char *text = cJSON_PrintUnformatted(root);
+  httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+  const esp_err_t r = net::http::send(req, "202 Accepted", "application/json", text ? text : "{\"ok\":true}");
+  cJSON_free(text);
+  cJSON_Delete(root);
+  return r;
 }
 
 esp_err_t get_handler(httpd_req_t *req) { return reply_ok(req, status_json()); }

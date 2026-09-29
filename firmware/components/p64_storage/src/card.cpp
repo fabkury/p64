@@ -15,6 +15,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
+#include "ff.h"
 #include "sdkconfig.h"
 #include "sdmmc_cmd.h"
 
@@ -171,9 +172,36 @@ std::string extension_of(const std::string &name) {
   return ext;
 }
 
-std::vector<FileInfo> list(const std::string &dir) {
+namespace {
+
+// The FAT time stamp as a time_t, the way the VFS layer's stat() resolves it (a local
+// time; the C library decides the DST flag), so callers see the same mtime either way.
+int64_t fat_mtime(const FILINFO &fno) {
+  struct tm tm = {};
+  tm.tm_mday = fno.fdate & 0x1F;
+  tm.tm_mon = ((fno.fdate >> 5) & 0x0F) - 1;
+  tm.tm_year = (fno.fdate >> 9) + 80;
+  tm.tm_sec = (fno.ftime & 0x1F) * 2;
+  tm.tm_min = (fno.ftime >> 5) & 0x3F;
+  tm.tm_hour = fno.ftime >> 11;
+  tm.tm_isdst = -1;
+  return static_cast<int64_t>(mktime(&tm));
+}
+
+// The card is the only FAT volume (esp_vfs_fat_sdmmc_mount takes drive 0), so a VFS path
+// under the mount point is "0:" plus the rest for FatFs's own API. FatFs is built
+// re-entrant (FF_FS_REENTRANT), so these calls may run beside the VFS ones.
+std::string fat_path(const std::string &dir) {
+  const std::string mp = kMountPoint;
+  if (dir.compare(0, mp.size(), mp) != 0) return "";
+  std::string rest = dir.substr(mp.size());
+  if (rest.empty()) rest = "/";
+  return "0:" + rest;
+}
+
+// The old way, one stat() per entry: the fallback when FatFs will not open the folder.
+std::vector<FileInfo> list_posix(const std::string &dir) {
   std::vector<FileInfo> out;
-  if (!mounted()) return out;
   DIR *d = opendir(dir.c_str());
   if (!d) return out;
   while (dirent *e = readdir(d)) {
@@ -185,9 +213,35 @@ std::vector<FileInfo> list(const std::string &dir) {
     fi.name = name;
     fi.directory = S_ISDIR(st.st_mode);
     fi.size = fi.directory ? 0 : static_cast<size_t>(st.st_size);
+    fi.mtime = static_cast<int64_t>(st.st_mtime);
     out.push_back(std::move(fi));
   }
   closedir(d);
+  return out;
+}
+
+}  // namespace
+
+std::vector<FileInfo> list(const std::string &dir) {
+  std::vector<FileInfo> out;
+  if (!mounted()) return out;
+  const std::string fpath = fat_path(dir);
+  FF_DIR d;
+  if (fpath.empty() || f_opendir(&d, fpath.c_str()) != FR_OK) {
+    out = list_posix(dir);
+  } else {
+    FILINFO fno;
+    while (f_readdir(&d, &fno) == FR_OK && fno.fname[0] != 0) {
+      if (fno.fname[0] == '.') continue;
+      FileInfo fi;
+      fi.name = fno.fname;
+      fi.directory = (fno.fattrib & AM_DIR) != 0;
+      fi.size = fi.directory ? 0 : static_cast<size_t>(fno.fsize);
+      fi.mtime = fat_mtime(fno);
+      out.push_back(std::move(fi));
+    }
+    f_closedir(&d);
+  }
   std::sort(out.begin(), out.end(), [](const FileInfo &a, const FileInfo &b) { return a.name < b.name; });
   return out;
 }

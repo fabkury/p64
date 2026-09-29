@@ -296,10 +296,11 @@ one artwork download, then a short sleep.
   (atomic write); 404s and undecodable files are flagged in the index and not retried
   until the entry changes. Without a card a PSRAM memory cache (48 files, 6 MB) takes
   their place and the loader reads `mem:` paths from it.
-- The cache sweep (spec 5.4, ADR 0010): `cache_sweep()` walks the 256 shards of `cache/`,
-  then `downloads/` and `channels/` twice (ADR 0011): the first pass only reads dates and
-  refuses the whole sweep if any file is dated more than a day in the future (the card or
-  the clock is suspect); the second deletes every file whose mtime is older than the cache
+- The cache sweep (spec 5.4, ADR 0010): `cache_sweep()` reads the 256 shards of `cache/`,
+  then `downloads/` and `channels/` once into a PSRAM vector (name, size, mtime from the
+  directory entries), then judges the dates (ADR 0011): it refuses the whole sweep if any
+  file is dated more than a day in the future (the card or
+  the clock is suspect), else deletes every file whose mtime is older than the cache
   retention or before the file date floor (`net::clock::file_date_floor()`: the build date
   minus a day minus 366 days; FAT stamps 1980 under an untrusted clock), collecting the
   storage keys of the artworks that went in a PSRAM vector
@@ -309,7 +310,13 @@ one artwork download, then a short sleep.
   polls the local time every 10 s and fires the sweep when the clock crosses into the
   night window (`system::night::in_window`) while the schedule is enabled and the clock
   synced; booting or enabling the schedule inside the window only arms the detector.
-  `POST /api/v1/diag/cache_sweep` runs it on the HTTP task with any age, dry by default.
+  `POST /api/v1/diag/cache_sweep` queues it as a fetcher job with any age, dry by default,
+  and answers 202; `makapix.cache.sweep` in the status document carries the running flag
+  and the last outcome (2026-09-29: on the HTTP task, 8158 files held every request for
+  230 s). The walk takes size and mtime from the directory entries (`storage::list`
+  through FatFs's `f_readdir`), never a `stat()` per file, which on FAT is a search of
+  the directory each time and made a shard of 1900 files quadratic; `budgets.json`
+  caps the cost per file examined.
 - The show treats a Makapix channel like a local one whose pickable entries are the
   cached ones, through the provider interface (`src/provider.cpp`, ADR 0012: items are
   post ids, resolved to the cached file at pick time); `ProviderChannelChanged` events

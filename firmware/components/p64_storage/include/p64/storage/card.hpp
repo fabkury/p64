@@ -15,6 +15,7 @@ struct FileInfo {
   std::string name;  // file name without the directory
   size_t size = 0;
   bool directory = false;
+  int64_t mtime = 0;  // modification time as stat() reports it (FAT local time), 0 when unknown
 };
 
 struct CardInfo {
@@ -50,7 +51,11 @@ bool valid_name(const std::string &name);
 // Lower-cased extension of a name, including the dot ("" when none).
 std::string extension_of(const std::string &name);
 
-// Entries of a directory (files and folders, hidden entries skipped), sorted by name.
+// Entries of a directory (files and folders, hidden entries skipped), sorted by name,
+// with size and mtime from the directory entries themselves: one pass over the
+// directory, where a stat() per entry is a search of the directory each time (a FAT
+// directory has no index), quadratic in a folder of thousands (2026-09-29: 8158 cached
+// files cost 230 s that way).
 std::vector<FileInfo> list(const std::string &dir);
 bool exists(const std::string &path);
 // Reads a whole file into `out` (cleared first); refuses files above `max_bytes`.

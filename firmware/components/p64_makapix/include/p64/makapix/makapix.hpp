@@ -126,6 +126,25 @@ struct SweepResult {
   uint64_t bytes = 0, freed = 0;
   uint32_t took_ms = 0;
 };
+// Runs a sweep on the calling task (the fetcher: the nightly sweep and the queued
+// requests). Refuses (false, error) without a card, without a trusted clock, while a
+// sweep runs, or when a file is dated in the future.
 bool cache_sweep(uint32_t older_than_s, bool dry_run, SweepResult &out, std::string &error);
+// What the status document says about sweeps: whether one is queued or running, and the
+// last one that ran or was refused (2026-09-29: the API route no longer runs the sweep on
+// the HTTP task, where a walk of 8158 files held every request for 230 s).
+struct SweepState {
+  bool queued = false;
+  bool running = false;
+  bool has_last = false;
+  bool last_ok = false;
+  std::string last_error;
+  uint32_t last_finished = 0;  // epoch seconds
+  SweepResult last;
+};
+// Queues a sweep for the fetcher task; false (with the reason) without a card, without a
+// trusted clock, or while one is queued or running.
+bool cache_sweep_request(uint32_t older_than_s, bool dry_run, std::string &error);
+SweepState sweep_state();
 
 }  // namespace p64::makapix

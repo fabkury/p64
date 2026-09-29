@@ -10,6 +10,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "p64/content/psram.hpp"
 #include "p64/storage/card.hpp"
 
 namespace p64::makapix::cache {
@@ -166,32 +167,34 @@ namespace {
 enum class Folder : uint8_t { Cache, Downloads, Channels };
 
 struct SweptFile {
-  const std::string &path;
-  const storage::FileInfo &info;
+  std::string dir;   // the folder (a shard of cache/, downloads/ or channels/)
+  std::string name;  // the file name in it
+  size_t size;
   Folder kind;
   int64_t mtime;
 };
+using SweptFiles = std::vector<SweptFile, content::PsramAllocator<SweptFile>>;
 
-// Calls `visit` for every file of cache/ (its shards), downloads/ and channels/ until it
-// returns false; yields between shards so downloads and refreshes get their turn.
-bool for_each_swept_file(const std::function<bool(const SweptFile &)> &visit) {
+// Every file of cache/ (its shards), downloads/ and channels/, read once from the
+// directory entries (name, size, mtime come with the listing: a stat() per file was a
+// directory search per file and made a shard of 1900 files cost minutes, 2026-09-29;
+// walking twice, once to judge the dates and once to delete, cost 22 s for 8190 files).
+// Yields between shards so downloads and refreshes get their turn. In PSRAM: thousands.
+void collect_swept_files(SweptFiles &out) {
   const auto folder = [&](const std::string &dir, Folder kind) {
-    for (const storage::FileInfo &f : storage::list(dir)) {
+    for (storage::FileInfo &f : storage::list(dir)) {
       if (f.directory) continue;
-      const std::string path = dir + "/" + f.name;
-      struct stat sb = {};
-      if (stat(path.c_str(), &sb) != 0) continue;
-      if (!visit(SweptFile{path, f, kind, static_cast<int64_t>(sb.st_mtime)})) return false;
+      out.push_back(SweptFile{dir, std::move(f.name), f.size, kind, f.mtime});
     }
-    return true;
   };
   const std::string cache = storage::cache_dir();
   for (const storage::FileInfo &shard : storage::list(cache)) {
     if (!shard.directory) continue;
-    if (!folder(cache + "/" + shard.name, Folder::Cache)) return false;
+    folder(cache + "/" + shard.name, Folder::Cache);
     vTaskDelay(pdMS_TO_TICKS(2));
   }
-  return folder(storage::downloads_dir(), Folder::Downloads) && folder(storage::channels_dir(), Folder::Channels);
+  folder(storage::downloads_dir(), Folder::Downloads);
+  folder(storage::channels_dir(), Folder::Channels);
 }
 
 }  // namespace
@@ -199,34 +202,34 @@ bool for_each_swept_file(const std::function<bool(const SweptFile &)> &visit) {
 bool sweep(int64_t now, uint32_t older_than_s, int64_t floor, bool dry_run, SweepStats &stats,
            const std::function<void(const std::string &name)> &on_artwork_deleted, std::string &error) {
   if (!has_card()) return false;
-  // Pass 1: a file from the future means the clock or the card is not what it seems;
-  // then nothing is deleted at all.
-  const bool plausible = for_each_swept_file([&](const SweptFile &f) {
-    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Suspect) return true;
-    error = f.path + " is dated " + std::to_string(f.mtime - now) + " s in the future; nothing deleted";
+  SweptFiles files;
+  collect_swept_files(files);
+  // First the dates: a file from the future means the clock or the card is not what it
+  // seems; then nothing is deleted at all.
+  for (const SweptFile &f : files) {
+    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Suspect) continue;
+    error = f.dir + "/" + f.name + " is dated " + std::to_string(f.mtime - now) + " s in the future; nothing deleted";
     return false;
-  });
-  if (!plausible) return false;
-  // Pass 2: count and delete.
-  for_each_swept_file([&](const SweptFile &f) {
+  }
+  // Then count and delete.
+  for (const SweptFile &f : files) {
     ++stats.examined;
-    stats.bytes += f.info.size;
-    // Suspect here too (a file touched between the passes): kept.
-    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Delete) return true;
+    stats.bytes += f.size;
+    if (policy::sweep_verdict(f.mtime, now, older_than_s, floor) != policy::SweepVerdict::Delete) continue;
+    const std::string path = f.dir + "/" + f.name;
     if (!dry_run) {
       std::string e;
-      if (!storage::remove_path(f.path, e)) {  // e.g. open by the loader this instant: next night
-        ESP_LOGW(TAG, "sweep: %s not removed: %s", f.path.c_str(), e.c_str());
-        return true;
+      if (!storage::remove_path(path, e)) {  // e.g. open by the loader this instant: next night
+        ESP_LOGW(TAG, "sweep: %s not removed: %s", path.c_str(), e.c_str());
+        continue;
       }
     }
     ++stats.deleted;
-    stats.freed += f.info.size;
+    stats.freed += f.size;
     if (f.kind == Folder::Channels) ++stats.indexes_deleted;
     if (f.kind == Folder::Downloads) ++stats.downloads_deleted;
-    if (f.kind == Folder::Cache) on_artwork_deleted(f.info.name);
-    return true;
-  });
+    if (f.kind == Folder::Cache) on_artwork_deleted(f.name);
+  }
   return true;
 }
 

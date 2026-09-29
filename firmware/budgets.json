@@ -1,5 +1,5 @@
 {
-  "_comment": "Resource floors and ceilings the firmware must hold (docs/review-2026-09/). A change that breaks one raises it here deliberately, in the same commit, with the reason in the commit message. Runtime values are checked by tests/device/api_smoke.py (steady state) and tests/device/soak.py (the floor over a run); the static ones are read from `idf.py size` by tools/check_size.py and, later, by CI. Set on 2026-09-22 from the measurements after the configuration change P-M2. first_artwork_after_animation_ms (2026-09-26): the first artwork of a boot goes up at most this long after the boot animation ends (spec 15.1, acceptance 18.8; playback.boot in the status document, checked by api_smoke.py when the device has played anything). image_bytes_max raised from 2300000 on 2026-09-28: the LED clock face's baked assets (two 64x64 RGBA frames, the digit sheets: 47 KB) took the public image from about 2.27 MB to 2,320,192 bytes; the app partition is 8 MB, the budget is a watch on growth.",
+  "_comment": "Resource floors and ceilings the firmware must hold (docs/review-2026-09/). A change that breaks one raises it here deliberately, in the same commit, with the reason in the commit message. Runtime values are checked by tests/device/api_smoke.py (steady state) and tests/device/soak.py (the floor over a run); the static ones are read from `idf.py size` by tools/check_size.py and, later, by CI. Set on 2026-09-22 from the measurements after the configuration change P-M2. first_artwork_after_animation_ms (2026-09-26): the first artwork of a boot goes up at most this long after the boot animation ends (spec 15.1, acceptance 18.8; playback.boot in the status document, checked by api_smoke.py when the device has played anything). sweep_ms_per_file_max (2026-09-29): a cache sweep may cost at most this per file examined (checked by tests/device/cache_sweep_smoke.py); the walk used to stat() every file, a directory search each, and 8158 files took 230 s on the HTTP task; measured 1.37 ms per file (8190 files, 11.2 s) after the fix, the budget leaves room for a slower card. image_bytes_max raised from 2300000 on 2026-09-28: the LED clock face's baked assets (two 64x64 RGBA frames, the digit sheets: 47 KB) took the public image from about 2.27 MB to 2,320,192 bytes; the app partition is 8 MB, the budget is a watch on growth.",
   "image_bytes_max": 2400000,
   "static_diram_bytes_max": 140000,
   "internal_free_min": 48000,
@@ -7,5 +7,6 @@
   "soak_internal_free_min": 32768,
   "core0_busy_percent_max": 10,
   "late_flips_per_soak_max": 2,
-  "first_artwork_after_animation_ms": 2000
+  "first_artwork_after_animation_ms": 2000,
+  "sweep_ms_per_file_max": 4
 }
