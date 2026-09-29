@@ -828,6 +828,11 @@ device and read over diagnostics.
    slows rather than drops.
 4. Timing: a GIF with 10 ms delays plays at 10 fps; an APNG with 16 ms delays plays at
    60 fps; a 40-frame loop measures 40 x delay per loop within 1 % over 10 minutes.
+   Known limit (measured 2026-09-29, accepted): while a provider walk downloads and
+   transcodes on core 0, the 16 ms APNG plays at 55 to 57 fps with no frame skipped (the
+   decode on core 1 slows from about 10 to 15 ms per frame under the shared PSRAM
+   traffic); the criterion holds with the walks idle, and a yield throttle in the
+   worker recovered only 2 fps, so nothing was changed for it.
 5. Scaling: 32x32 shows at exactly 2x with hard edges; 128x128 averages 2x2; a 64x32
    shows pillar/letterboxed in the background colour, centred.
 6. Modes: switching to Photo mode measures at least 600 Hz; back to Quality at 271 Hz;

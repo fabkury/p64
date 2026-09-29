@@ -989,7 +989,34 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   carry mtime and size out of the directory read (FatFs `f_readdir` has them, the VFS
   drops them) and answer the route at once with the sweep on a worker; (2) the 60 fps
   budget under a concurrent transcode, a private-provider matter first (its worker's
-  priority or a pause while an animation above 30 fps plays).
+  priority or a pause while an animation above 30 fps plays). Both taken up the same
+  day, next entry.
+- 2026-09-29, the sweep and the cadence (prompt p059). The cache sweep: `storage::list`
+  read the directory with readdir and then a `stat()` per entry, and the sweep another
+  per file in each of its two passes; FatFs's stat is a search of the directory, so a
+  shard of 1900 files was quadratic, 28 ms per file, 230 s for 8158 files on the HTTP
+  task. Now `storage::list` reads the entries through FatFs's own `f_opendir`/`f_readdir`
+  (name, size, attributes and time stamp with each entry; `FileInfo.mtime`, converted as
+  the VFS stat does; the card is drive "0:"; FatFs is built re-entrant; the POSIX walk
+  stays as the fallback) and the sweep collects the files once into a PSRAM vector and
+  judges them from it. Measured: 8190 files in 22.5 s with the listing alone, 11.2 s with
+  the single pass, 1.37 ms per file. `POST /api/v1/diag/cache_sweep` queues a `Sweep` job
+  for the fetcher task and answers 202 at once; `makapix.cache.sweep {queued, running,
+  last}` in the status document carries the outcome; a second request while one is queued
+  or running is 409. `cache_sweep_smoke.py` polls for the outcome, requires every status
+  request during the sweep to answer within 2 s (115 to 160 ms measured), checks the 409,
+  and holds the cost per file to `sweep_ms_per_file_max` (4 ms) in `budgets.json`.
+  Verified on the device: cache_sweep_smoke, api_smoke and tls_slot_smoke 0 failures.
+  The cadence, measured before deciding (the user's choice): a playset with an uncached
+  Divoom channel forced a download-and-transcode walk while `timing_smoke` ran. Idle:
+  60.05 fps, decode about 10 ms per frame. Worker as shipped (yields 5 ms in 20): 55.6
+  fps, 51 transcodes during the test, decode 14 to 16 ms. Worker yielding 10 ms in 10:
+  57.3 and 57.5 fps (52.6 right after a boot), 32 to 37 transcodes, decode 14 to 17 ms.
+  No frame was skipped in any run; most transcodes take 100 to 500 ms, so the slowdown
+  comes from the whole walk (TLS download, card writes) sharing PSRAM with the decoder,
+  not from the transcode's duty cycle, and the throttle was reverted. Decision: accept
+  the loss as a known limit (spec 18.4 amended); the lever that would reach 60 fps is a
+  pause of the walks while an artwork's frame period is under 33 ms, not taken.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
