@@ -19,6 +19,7 @@ Promoted playset is activated, and the playset active at the start is active aga
 end. Exit code 1 on any failure.
 """
 
+import json
 import sys
 import threading
 import time
@@ -61,13 +62,16 @@ class Prober(threading.Thread):
     def __init__(self, base):
         super().__init__(daemon=True)
         self.base, self.stop, self.slowest, self.failures, self.count = base, False, 0.0, 0, 0
+        self.heap_min = None  # the lowest internal_free seen while the sweep ran
 
     def run(self):
         while not self.stop:
             t0 = time.time()
             try:
-                urllib.request.urlopen(self.base + "/api/v1/status", timeout=10).read()
+                d = json.loads(urllib.request.urlopen(self.base + "/api/v1/status", timeout=10).read())["data"]
                 self.slowest = max(self.slowest, time.time() - t0)
+                free = d["heap"]["internal_free"]
+                self.heap_min = free if self.heap_min is None else min(self.heap_min, free)
             except Exception:
                 self.failures += 1
             self.count += 1
@@ -132,6 +136,7 @@ def run(base, delete):
 
     # A dry run with the defaults: 202 at once, counts everything, deletes nothing, and the
     # server keeps answering meanwhile.
+    heap_before = status(base)["heap"]["internal_free"]
     st, j, outcome, prober = sweep(base)
     check(st == 202 and j.get("ok") and j["data"]["queued"] is True, f"POST diag/cache_sweep (defaults) answers 202 at once ({st})")
     check(j["data"]["dry_run"] is True, "dry_run defaults to true")
@@ -139,6 +144,10 @@ def run(base, delete):
     check(outcome is not None and outcome["ok"], "the sweep ran and reported in makapix.cache.sweep.last")
     check(prober.failures == 0 and prober.slowest < 2.0,
           f"the web server answered throughout the sweep (slowest status {prober.slowest * 1000:.0f} ms, {prober.failures} failed of {prober.count})")
+    # The sweep holds nothing between files (2026-09-29: a collected table drained the
+    # internal heap by 25 KB); it may cost the heap no more than a shard's listing.
+    drop = heap_before - (prober.heap_min if prober.heap_min is not None else heap_before)
+    check(drop <= b["sweep_internal_drop_max"], f"internal heap dropped {drop} B during the sweep <= budget {b['sweep_internal_drop_max']} B")
     if outcome:
         r = outcome["result"]
         check(r["dry_run"] is True and r["deleted"] <= r["examined"], f"dry run: {r['examined']} files, {r['deleted']} older, {r['took_ms']} ms")

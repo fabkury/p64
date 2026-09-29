@@ -998,9 +998,16 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   task. Now `storage::list` reads the entries through FatFs's own `f_opendir`/`f_readdir`
   (name, size, attributes and time stamp with each entry; `FileInfo.mtime`, converted as
   the VFS stat does; the card is drive "0:"; FatFs is built re-entrant; the POSIX walk
-  stays as the fallback) and the sweep collects the files once into a PSRAM vector and
-  judges them from it. Measured: 8190 files in 22.5 s with the listing alone, 11.2 s with
-  the single pass, 1.37 ms per file. `POST /api/v1/diag/cache_sweep` queues a `Sweep` job
+  stays as the fallback) and the sweep walks twice as before, holding nothing between
+  files. Measured: 8190 files in 22.5 s, 2.5 to 2.75 ms per file (28 before), the web
+  server answering within 320 ms throughout. A single pass over a collected table was
+  tried the same day (11.2 s, 1.37 ms per file) and dropped on the user's question about
+  its memory: 9000 records with two heap strings each cost 1.3 MB, and under the
+  1024-byte rule their small strings drained the internal heap from 61 to 36 KB, under
+  the 48 KB floor, for the sweep's duration; the two-pass walk costs 6 KB, held by
+  `sweep_internal_drop_max` (16 KB) in `budgets.json` and checked by the smoke. The
+  check-everything-first rule (ADR 0011) stays: it is one comparison per file, and the
+  sweep's whole cost is directory reads over the 1-bit bus. `POST /api/v1/diag/cache_sweep` queues a `Sweep` job
   for the fetcher task and answers 202 at once; `makapix.cache.sweep {queued, running,
   last}` in the status document carries the outcome; a second request while one is queued
   or running is 409. `cache_sweep_smoke.py` polls for the outcome, requires every status
