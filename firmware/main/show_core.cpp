@@ -223,6 +223,7 @@ bool pick_fresh(Pick &out) {
         out.provider = ch.provider;
         out.item = item;
         if (!ch.provider->resolve(ref_of(ch.spec), item, out.path, out.name)) continue;  // gone meanwhile
+        out.name = content::valid_utf8(out.name);
       } else {
         const content::LocalEntry &entry = ch.entries[e];
         if (entry.missing || entry.rejected) continue;
@@ -927,7 +928,7 @@ void do_play_file(const std::string &path, const std::string &provider, int32_t 
                     ? content::Source::PlayThisUrl
                     : content::Source::PlayThisFile;
   item.path = path;
-  item.name = name.empty() ? basename_of(path) : name;
+  item.name = content::valid_utf8(name.empty() ? basename_of(path) : name);
   item.playset = st.playset.name;
   item.provider = item_id >= 0 ? provider : std::string();
   item.item_id = item_id;

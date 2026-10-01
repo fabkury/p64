@@ -91,6 +91,20 @@ TEST_CASE("playset_external_kind") {
   CHECK(back.channels[0].identifier == "fake:pics");
 }
 
+TEST_CASE("valid_utf8 keeps whole characters and drops broken sequences") {
+  using p64::content::valid_utf8;
+  CHECK(valid_utf8("plain ascii") == "plain ascii");
+  CHECK(valid_utf8("\xd0\xa7\xd0\xb8\xd0\xba\xd0\xb5\xd0\xbd") == "\xd0\xa7\xd0\xb8\xd0\xba\xd0\xb5\xd0\xbd");  // Cyrillic
+  CHECK(valid_utf8("\xe2\x9c\x93 \xf0\x9f\x98\x80") == "\xe2\x9c\x93 \xf0\x9f\x98\x80");  // 3- and 4-byte
+  CHECK(valid_utf8("\xd1\x87\xd0\xb5\xd0") == "\xd1\x87\xd0\xb5");  // cut after a lead byte
+  CHECK(valid_utf8("ab\xe2\x9c") == "ab");                          // cut inside a 3-byte character
+  CHECK(valid_utf8("a\x80" "b\xbf") == "ab");                       // stray continuation bytes
+  CHECK(valid_utf8("\xc0\xaf" "x") == "x");                         // an overlong form
+  CHECK(valid_utf8("\xed\xa0\x80" "y") == "y");                     // a surrogate
+  CHECK(valid_utf8("\xf4\x90\x80\x80" "z") == "z");                 // beyond U+10FFFF
+  CHECK(valid_utf8("\xe9" "t\xe9") == "t");                         // Latin-1, not UTF-8
+}
+
 TEST_CASE("provider_registry") {
   using namespace p64::content;
   struct P : Provider {

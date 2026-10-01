@@ -37,6 +37,11 @@ struct ProviderItem {
 };
 using ProviderItems = std::vector<ProviderItem, PsramAllocator<ProviderItem>>;
 
+// A name made safe for the JSON documents: the valid UTF-8 kept, every byte of a broken
+// sequence (a title cut inside a character by a fixed-size field, say) dropped; the API
+// writes names unchecked, and one bad byte makes the whole document unreadable.
+std::string valid_utf8(const std::string &s);
+
 // The size limits (settings "minimum" and "maximum artwork size"): both sides at least
 // `min_side` and at most `max_side`. A side the listing did not carry (0) passes.
 inline bool fits_size(const ProviderItem &e, uint16_t min_side, uint16_t max_side) {

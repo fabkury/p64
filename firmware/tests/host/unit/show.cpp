@@ -427,6 +427,7 @@ class FakeProvider : public p64::content::Provider {
   uint16_t side = 32;
   uint32_t extra_listed = 0;  // listed but not at hand (still downloading)
   uint32_t unchecked = 0;     // a post-load file check still running over this many entries
+  std::string name;           // every item's name when set (else "pic <id>")
 
   const char *id() const override { return "fake"; }
   const char *label() const override { return "Fake source"; }
@@ -447,7 +448,7 @@ class FakeProvider : public p64::content::Provider {
   bool resolve(const p64::content::ChannelRef &, const p64::content::ProviderItem &item, std::string &path,
                std::string &name) override {
     path = "/sd/p64/cache/fake/" + std::to_string(item.id) + ".gif";
-    name = "pic " + std::to_string(item.id);
+    name = this->name.empty() ? "pic " + std::to_string(item.id) : this->name;
     return true;
   }
   void note_load_failed(const p64::content::ChannelRef &, const p64::content::ProviderItem &item, bool) override {
@@ -751,6 +752,31 @@ TEST_CASE("show core: a provider channel plays its items and hears what happened
   env.cfg->makapix_min_side = 32;
   core::provider_changed();
   CHECK(st.channels[0].available > 0u);
+  providers::clear();
+}
+
+TEST_CASE("show core: a provider's name cut inside a UTF-8 character reaches the history whole (2026-10-01)") {
+  // A Divoom title cut by a 36-byte field ended on a lone lead byte and made
+  // /api/v1/history unreadable; the show keeps only valid UTF-8 from a provider.
+  namespace providers = p64::content::providers;
+  providers::clear();
+  FakeProvider fake;
+  fake.name = "\xd0\xa7\xd0\xb8\xd0\xba\xd0\xb5\xd0\xbd \xd1\x87\xd0\xb5\xd0";  // a Cyrillic title cut after a lead byte
+  providers::add(&fake);
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::activate_transient(external_playset());
+  env.complete_scan({});
+  env.complete_loads();
+  const p64::content::HistoryItem *cur = core::state().history.current();
+  REQUIRE(cur);
+  CHECK(cur->name == "\xd0\xa7\xd0\xb8\xd0\xba\xd0\xb5\xd0\xbd \xd1\x87\xd0\xb5");
+  cJSON *doc = core::history_json();
+  char *text = cJSON_PrintUnformatted(doc);
+  CHECK(p64::content::valid_utf8(text) == text);
+  cJSON_free(text);
+  cJSON_Delete(doc);
   providers::clear();
 }
 

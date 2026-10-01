@@ -67,3 +67,33 @@ void erase_credentials() {
 }
 
 }  // namespace p64::content::providers
+
+namespace p64::content {
+
+std::string valid_utf8(const std::string &s) {
+  std::string out;
+  out.reserve(s.size());
+  for (size_t i = 0; i < s.size();) {
+    const auto c = static_cast<unsigned char>(s[i]);
+    // the sequence's length and the smallest code point it may encode (no overlong forms)
+    const size_t n = c < 0x80 ? 1 : (c & 0xe0) == 0xc0 ? 2 : (c & 0xf0) == 0xe0 ? 3 : (c & 0xf8) == 0xf0 ? 4 : 0;
+    const uint32_t floor = n == 2 ? 0x80 : n == 3 ? 0x800 : 0x10000;
+    bool ok = n > 0 && i + n <= s.size();
+    uint32_t cp = n == 1 ? c : n == 2 ? (c & 0x1fu) : n == 3 ? (c & 0x0fu) : (c & 0x07u);
+    for (size_t k = 1; ok && k < n; ++k) {
+      const auto b = static_cast<unsigned char>(s[i + k]);
+      ok = (b & 0xc0) == 0x80;
+      cp = (cp << 6) | (b & 0x3fu);
+    }
+    if (ok && n > 1) ok = cp >= floor && cp <= 0x10ffff && (cp < 0xd800 || cp > 0xdfff);
+    if (ok) {
+      out.append(s, i, n);
+      i += n;
+    } else {
+      ++i;  // drop the lead byte; its continuation bytes fail on their own
+    }
+  }
+  return out;
+}
+
+}  // namespace p64::content

@@ -572,6 +572,9 @@ def check_faces(exe, build_dir):
 
 
 def main():
+    # a failing case may print bytes of any encoding (a broken name, say): never die on them
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(errors="replace")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", help="artwork files (default: both corpora)")
     ap.add_argument("--keep", action="store_true", help="keep the dumped frames in tests/host/build/frames")
@@ -593,10 +596,10 @@ def main():
     unit_args = [exe]
     if args.tc:
         unit_args.append("-tc=" + args.tc)
-    unit = subprocess.run(unit_args, capture_output=True, text=True)
+    unit = subprocess.run(unit_args, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if args.junit:
         with open(args.junit, "w", encoding="utf-8") as f:
-            f.write(subprocess.run(unit_args + ["-r=junit"], capture_output=True, text=True).stdout)
+            f.write(subprocess.run(unit_args + ["-r=junit"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout)
     print(unit.stdout, end="")
     if unit.returncode != 0:
         print(unit.stderr)

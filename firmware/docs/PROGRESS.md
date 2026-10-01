@@ -1087,11 +1087,22 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   high). The hill line is computed per frame on the stack (no static RAM; `player` keeps
   9 KB of stack free). Device: pixel for pixel the mock at 18:47 in New York and,
   mid-slide, at 40.7 N 77.3 W and 77.8 W; `faces_smoke` 0 failures on a rerun (its LED
-  glow check failed twice, timing-sensitive); `widgets_smoke` stops on
-  `/api/v1/history`, whose JSON holds a Divoom name cut inside a UTF-8 character (the
-  private index's 36-byte name field), not fixed here; `api_smoke` fails the first
-  artwork after boot (booted in the clock widget) and the internal largest block, 29.7 KB
-  against the 32 KB floor with the private walk running (the change allocates nothing).
+  glow check failed twice, timing-sensitive); `widgets_smoke` stopped on
+  `/api/v1/history`, whose JSON held a provider's name cut inside a UTF-8 character (a
+  fixed-size name field in the private area): fixed at the user's request the same day,
+  see the next entry; `api_smoke` failed the first artwork after boot (booted in the
+  clock widget) and once the internal largest block (29.7 KB against the 32 KB floor
+  with the private walk running; 34.8 KB on the next run; the change allocates nothing).
+- 2026-10-01, names arrive in the show as valid UTF-8: `content::valid_utf8` (in
+  `provider.cpp`, host-tested: whole characters kept, cut sequences, stray continuation
+  bytes, overlong forms, surrogates and Latin-1 bytes dropped) is applied where a
+  provider resolves an item's name and to play-this names, because the API writes names
+  into its JSON unchecked and one broken byte made `/api/v1/history` unreadable. Show
+  test: a fake provider's name cut after a lead byte reaches the history whole and the
+  history document is valid UTF-8 (fails without the guard). The private source now cuts
+  names at a character boundary too. `tests/host/run.py` no longer dies printing a
+  failing case's raw bytes (it decodes and prints with replacement). Device: the history
+  decodes, `widgets_smoke` and `api_smoke` 0 failures (largest block 34.8 KB).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
