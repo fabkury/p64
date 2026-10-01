@@ -1103,6 +1103,14 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   names at a character boundary too. `tests/host/run.py` no longer dies printing a
   failing case's raw bytes (it decodes and prints with replacement). Device: the history
   decodes, `widgets_smoke` and `api_smoke` 0 failures (largest block 34.8 KB).
+- 2026-10-01, the horizon's time spaced (prompt p064): one more pixel between the
+  characters of the time (Everyday Vast Black), drawn a character at a time in the face,
+  the outlines first and then the ink so it matches a whole-string draw; the font itself
+  and the Clock widget are unchanged; the widest time is 43 px. Mock and references
+  regenerated; host tests 188 cases, 49 references exact; on the device the frame is the
+  mock pixel for pixel. Found on the way: `widgets_smoke` set the weather location to
+  Greenwich and never put it back (how the device came to show Greenwich's sky); it now
+  restores the location and the units.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

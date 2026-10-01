@@ -235,7 +235,9 @@ def main():
     settings(base, {"show": {"main_state": original["show"]["main_state"], "auto_swap_seconds": original["show"]["auto_swap_seconds"],
                              "clock_overlay": {"enabled": original["show"]["clock_overlay"]["enabled"]}},
                     "widgets": {"widget": original["widgets"]["widget"], "interlude_minutes": original["widgets"]["interlude_minutes"],
-                                "interlude_random_clock_face": original["widgets"]["interlude_random_clock_face"]}})
+                                "interlude_random_clock_face": original["widgets"]["interlude_random_clock_face"]},
+                    # the weather location too: the Greenwich test location used to stay behind (2026-10-01)
+                    "weather": {k: original["weather"][k] for k in ("location_set", "latitude", "longitude", "units")}})
     from api_smoke import failures
     print("widgets smoke: %d failures" % failures)
     return 1 if failures else 0

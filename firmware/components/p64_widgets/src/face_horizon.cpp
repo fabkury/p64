@@ -229,8 +229,22 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
   const std::string hh = o.h24 ? (m.hour < 10 ? "0" : "") + std::to_string(m.hour) : std::to_string(m.h12());
   const std::string mm = (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
   const std::string time = hh + (colon_on(m, o) ? ":" : " ") + mm;
-  const int x0 = (Frame::width() - gfx::fonts::width(*big, time)) / 2;
-  const int x_end = x0 + gfx::fonts::draw(frame, *big, x0, 4, time, white, 1, &black);
+  // one extra pixel between the characters; the outlines first, then the ink, as one string draws
+  constexpr int kGap = 1;
+  const int spaced = gfx::fonts::width(*big, time) + kGap * (static_cast<int>(time.size()) - 1);
+  const int x0 = (Frame::width() - spaced) / 2, x_end = x0 + spaced;
+  for (const bool ink : {false, true}) {
+    int x = x0;
+    for (const char ch : time) {
+      const std::string one(1, ch);
+      if (ink) {
+        gfx::fonts::draw(frame, *big, x, 4, one, white, 1);
+      } else {
+        gfx::fonts::draw(frame, *big, x, 4, one, black, 1, &black);
+      }
+      x += gfx::fonts::width(*big, one) + kGap;
+    }
+  }
   if (!o.h24) gfx::fonts::draw(frame, font, x_end - gfx::fonts::width(font, m.meridiem()), 18, m.meridiem(), white, 1, &black);
   gfx::fonts::draw_centred(frame, font, 55, date_text(m, o.month_first), lerp({150, 160, 190}, {230, 240, 230}, light), 1, &black);
 }

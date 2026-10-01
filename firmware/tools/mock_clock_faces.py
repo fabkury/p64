@@ -824,8 +824,19 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
     big = load_font("everyday-vast-black")  # the time, at its native 11 px
     hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
     time_text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
-    x0 = (W - text_width(big, time_text)) // 2
-    x_end = x0 + draw_text(frame, big, x0, 4, time_text, (255, 255, 255), 1, outline=(0, 0, 0))
+    # one extra pixel between the characters; the outlines first, then the ink, as one string draws
+    gap = 1
+    spaced = text_width(big, time_text) + gap * (len(time_text) - 1)
+    x0 = (W - spaced) // 2
+    x_end = x0 + spaced
+    for ink in (False, True):
+        x = x0
+        for ch in time_text:
+            if ink:
+                draw_text(frame, big, x, 4, ch, (255, 255, 255), 1)
+            else:
+                draw_text(frame, big, x, 4, ch, (0, 0, 0), 1, outline=(0, 0, 0))
+            x += text_width(big, ch) + gap
     if not o.h24:
         draw_text(frame, font, x_end - text_width(font, m.meridiem()), 18, m.meridiem(), (255, 255, 255), 1, outline=(0, 0, 0))
     draw_centred(frame, font, 55, m.date(o.month_first), lerp((150, 160, 190), (230, 240, 230), light), 1, outline=(0, 0, 0))
