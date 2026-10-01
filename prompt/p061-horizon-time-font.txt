@@ -1,0 +1,1 @@
+I see that the Horizon clockface, for the main time display (on the center-top of the canvas), is using a font rendered at 2x its pixel size. Let's please change that font to Everyday Vast Black (see C:\Users\fab\F\Estudo\Tecnologia\assets\pixel-fonts\vexed). Import (copy) the needed font to the firmware as applicable.
