@@ -1067,7 +1067,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   exact against the mock at 16:23 EDT; `widgets_smoke`, `faces_smoke`, `ui_smoke` 0
   failures; `api_smoke`'s only failure is the first artwork after boot, the device having
   booted into the clock widget.
-- 2026-10-01, the horizon's sun sets on the hill line (prompt p062; replaces drawing the
+- 2026-10-01, the horizon's sun sets on the hill line (prompt p063; replaces drawing the
   bodies over the far hills, which looked odd). Decided with the user after a pros/cons
   review and two mock sheets: the bodies are drawn behind the far hills again and rise
   and set on their line (the far-hill sprite's top row, smoothed over five columns): the
