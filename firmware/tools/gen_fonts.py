@@ -6,9 +6,10 @@ r"""Rasterises the bundled pixel fonts (assets/fonts) into bitmap glyph tables.
 Writes components/p64_gfx/src/fonts_data.cpp: one table per font with every printable
 ASCII glyph as rows of bits, its advance, and the font's ascent. The TTFs are drawn at
 their native pixel size (Everyday Slight 5 px, Capital Hill and Everyday Standard 6 px,
-Everyday Typical 7 px, Everyday Ample and High Birth 9 px), the sizes at which Pillow renders them without
+Everyday Typical 7 px, Everyday Ample and High Birth 9 px, Everyday Vast Black 11 px), the sizes at which Pillow renders them without
 anti-aliasing; anything else would blur a pixel font. Only the regular cut of each is
-bundled. Fonts marked "overlay" are offered for the clock overlay; the others only for
+bundled, except Everyday Vast, whose Black cut is the horizon face's time (since
+2026-10-01). Fonts marked "overlay" are offered for the clock overlay; the others only for
 the Clock widget. The output is committed, so the firmware build needs neither Pillow nor
 the TTFs (ADR 0008). The first font is the default.
 """
@@ -28,6 +29,7 @@ FONTS = [
     ("everyday-typical", "Everyday Typical", "assets/fonts/everyday-typical/Everyday_Typical.ttf", 7, True),
     ("everyday-ample", "Everyday Ample", "assets/fonts/everyday-ample/Everyday_Ample.ttf", 9, True),
     ("high-birth", "High Birth", "assets/fonts/high-birth/High_Birth.ttf", 9, False),
+    ("everyday-vast-black", "Everyday Vast Black", "assets/fonts/everyday-vast/Everyday_Vast_Black.ttf", 11, False),
 ]
 LICENCE = "by VEXED (v3x3d.itch.io), CC BY 4.0"
 OUT = os.path.join(FIRMWARE, "components", "p64_gfx", "src", "fonts_data.cpp")

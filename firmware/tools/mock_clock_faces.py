@@ -790,10 +790,11 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
         for x in range(W):
             frame.set(x, HORIZON_Y, c)
     font = load_font("capital-hill")
+    big = load_font("everyday-vast-black")  # the time, at its native 11 px
     hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
     time_text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
-    x0 = (W - text_width(font, time_text, 2)) // 2
-    x_end = x0 + draw_text(frame, font, x0, 4, time_text, (255, 255, 255), 2, outline=(0, 0, 0))
+    x0 = (W - text_width(big, time_text)) // 2
+    x_end = x0 + draw_text(frame, big, x0, 4, time_text, (255, 255, 255), 1, outline=(0, 0, 0))
     if not o.h24:
         draw_text(frame, font, x_end - text_width(font, m.meridiem()), 18, m.meridiem(), (255, 255, 255), 1, outline=(0, 0, 0))
     draw_centred(frame, font, 55, m.date(o.month_first), lerp((150, 160, 190), (230, 240, 230), light), 1, outline=(0, 0, 0))

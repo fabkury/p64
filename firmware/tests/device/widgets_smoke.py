@@ -79,7 +79,8 @@ def main():
     names = [f["name"] for f in fonts]
     check(names[:1] == ["capital-hill"] and "everyday-standard" in names, "the font list: %s" % ", ".join(names))
     check(all(f["label"] and f["size"] > 0 for f in fonts), "every font has a label and a size")
-    check([f["name"] for f in fonts if not f["overlay"]] == ["high-birth"], "only High Birth is kept out of the overlay")
+    check([f["name"] for f in fonts if not f["overlay"]] == ["high-birth", "everyday-vast-black"],
+          "only High Birth and Everyday Vast Black are kept out of the overlay")
     ink = (1, 254, 3)
     def ink_count():
         px = frame(base)

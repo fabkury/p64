@@ -1,8 +1,8 @@
 // p64 -- the bundled pixel fonts as bitmap glyph tables (ADR 0008): Capital Hill 6 px,
-// Everyday Slight 5 px, Everyday Standard 6 px, Everyday Typical 7 px, Everyday Ample 9 px
-// and High Birth 9 px, all by VEXED (CC BY 4.0), rasterised from the TTFs by
-// tools/gen_fonts.py into fonts_data.cpp. Integer scaling and an optional one-pixel
-// outline; no kerning. Host-tested.
+// Everyday Slight 5 px, Everyday Standard 6 px, Everyday Typical 7 px, Everyday Ample 9 px,
+// High Birth 9 px and Everyday Vast Black 11 px, all by VEXED (CC BY 4.0), rasterised
+// from the TTFs by tools/gen_fonts.py into fonts_data.cpp. Integer scaling and an optional
+// one-pixel outline; no kerning. Host-tested.
 #pragma once
 
 #include <cstddef>

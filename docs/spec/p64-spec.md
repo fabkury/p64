@@ -411,7 +411,8 @@ up. Status screens are drawn seamlessly like any content.
 
 Common to all widgets: fonts are bitmap glyphs rasterised at build time from the bundled
 pixel fonts (Capital Hill 6 px; Everyday Slight 5 px, Everyday Standard 6 px, Everyday
-Typical 7 px and Everyday Ample 9 px; High Birth 9 px, for the Clock widget only; all by
+Typical 7 px and Everyday Ample 9 px; High Birth 9 px and Everyday Vast Black 11 px, for
+the Clock widget only, the latter also the horizon face's time since 2026-10-01; all by
 VEXED, CC-BY 4.0, with attribution shown in the web UI's About section; settled
 2026-09-23); text and background
 colours are per-widget settings; every widget renders its first frame within one panel
@@ -770,7 +771,7 @@ All persisted unless noted. Ranges are inclusive.
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |
 | Show | channel selection | stochastic, swrr | stochastic |
-| Show | clock overlay | enabled; font (all but High Birth); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
+| Show | clock overlay | enabled; font (all but High Birth and Everyday Vast Black); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
 | Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0 |
 | Widgets | random clock face at clock interludes | on/off | off |

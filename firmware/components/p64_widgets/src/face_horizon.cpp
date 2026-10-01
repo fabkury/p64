@@ -3,7 +3,7 @@
 // (a red disc near the horizon, gold with rays above), stars once the sun is far enough
 // down, the moon with its phase, clouds by the weather's cover drifting with the minute,
 // rain or snow, hills and a tree that darken at night (assets/clock/horizon), the time on
-// top in outlined white and the date on the ground. Floating point: the host test compares
+// top in outlined white (Everyday Vast Black) and the date on the ground. Floating point: the host test compares
 // it with the mock within a tolerance rather than pixel for pixel.
 #include <cmath>
 
@@ -180,12 +180,14 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
   if (sky.precip == Sky::Precip::Snow && light > 0)
     frame.fill_rect(0, kHorizonY, Frame::width(), 1, lerp({60, 64, 80}, {225, 230, 240}, light));
   const gfx::fonts::Font &font = gfx::fonts::default_font();
+  const gfx::fonts::Font *big = gfx::fonts::by_name("everyday-vast-black");  // the time, at its native 11 px
+  if (!big) big = &font;
   const Rgb white{255, 255, 255}, black{0, 0, 0};
   const std::string hh = o.h24 ? (m.hour < 10 ? "0" : "") + std::to_string(m.hour) : std::to_string(m.h12());
   const std::string mm = (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
   const std::string time = hh + (colon_on(m, o) ? ":" : " ") + mm;
-  const int x0 = (Frame::width() - gfx::fonts::width(font, time, 2)) / 2;
-  const int x_end = x0 + gfx::fonts::draw(frame, font, x0, 4, time, white, 2, &black);
+  const int x0 = (Frame::width() - gfx::fonts::width(*big, time)) / 2;
+  const int x_end = x0 + gfx::fonts::draw(frame, *big, x0, 4, time, white, 1, &black);
   if (!o.h24) gfx::fonts::draw(frame, font, x_end - gfx::fonts::width(font, m.meridiem()), 18, m.meridiem(), white, 1, &black);
   gfx::fonts::draw_centred(frame, font, 55, date_text(m, o.month_first), lerp({150, 160, 190}, {230, 240, 230}, light), 1, &black);
 }

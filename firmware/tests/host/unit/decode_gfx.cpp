@@ -168,7 +168,7 @@ TEST_CASE("frame_blend") {
 
 TEST_CASE("fonts") {
   using namespace p64::gfx::fonts;
-  CHECK_EQ(kFontCount, 6u);
+  CHECK_EQ(kFontCount, 7u);
   const Font *ch = by_name("capital-hill");
   const Font *ev = by_name("everyday-typical");
   CHECK((ch != nullptr && ev != nullptr));

@@ -1057,6 +1057,16 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   frame is the mock within 1 on one channel in 717 hill pixels (float against double at
   full daylight, the horizon's documented tolerance); `faces_smoke` and `api_smoke` 0
   failures (heap 57.9 KB free with the New York forecast fetched).
+- 2026-10-01, the horizon's time in Everyday Vast Black (prompt p061): the face drew the
+  time in Capital Hill at twice its size; it now uses VEXED's Everyday Vast Black at its
+  native 11 px (copied with its family into `assets/fonts/everyday-vast`, CC BY 4.0,
+  credited in the About section), outlined as before, AM/PM and the date unchanged in
+  Capital Hill. The font joins the bundled tables (`gen_fonts.py`, seventh font), so the
+  Clock widget offers it too; it is kept out of the overlay. Mock and references
+  regenerated; host tests 185 cases, 49 references exact. On the device: the time's rows
+  exact against the mock at 16:23 EDT; `widgets_smoke`, `faces_smoke`, `ui_smoke` 0
+  failures; `api_smoke`'s only failure is the first artwork after boot, the device having
+  booted into the clock widget.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
