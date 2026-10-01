@@ -1,0 +1,7 @@
+Let's talk about the problem of the sun setting behind the hill, causing the impression of a much earlier sunset time. We recently decided to draw the sun in front of the hill, but that looks odd. Let's consider another alternative:
+ - treat the "hill line" as the horizon
+ - the sun sets on the hill line, drawn behind the hill instead of in front of it
+ - in other words, we "adjust" for the height of the hill line, and artifically make the sun set behind that line instead of the horizon.
+ 
+
+Don't implement anything yet. Just give me the pros, the cons, the costs and the risks of following the idea I just described, and issue your recommendations about the matter.
