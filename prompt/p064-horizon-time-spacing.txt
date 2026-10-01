@@ -1,0 +1,1 @@
+The font we're using for the main clock in the Horizon clockface, Everyday Vast Black, needs more spacing. Please add 1 more pixel of space between the digits/characters on that main clock. Flash the new firmware.
