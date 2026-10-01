@@ -1,0 +1,5 @@
+I have a p64 connected to this computer via USB-C and to the same LAN as this computer (it responds at mDNS p64.local).
+
+Please double check whether the Horizon clockface is correctly rendering its procedural art according to the time of the day and position of the sun and moon at a given location. Use the local time of this computer as reference, knowning that its location is New York City. In other words, double check whether the Horizon clockface is actually working and rendering time-and-location-appropriate art.
+
+Feel free to use the referred p64 for any testing purpose, even flashing new firmware if applicable.
