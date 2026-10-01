@@ -606,8 +606,37 @@ def sky_x(az, el, lat):
     return int(round(31.5 - 25.5 * e))
 
 
-def sky_y(el):
-    return int(round(45 - 27 * max(-0.2, min(1, el / 90))))
+# The sun and the moon rise and set on the far hills' line, not on the horizon row. The
+# day's arc is one curve of the elevation, the old one lifted onto a raised horizon (the
+# higher of the hill line's two ends) and running to row 18 at the zenith, so it stays
+# round and symmetric. Where the hills under a body are lower than that, the body sinks
+# to their line instead, the difference fading out over the first 5 degrees (it only ever
+# lowers a body near the line, so a body never dips while rising); where they are higher,
+# they simply hide it. The setting: at +0.7 degrees the disc rests on the line, by -0.83
+# (the almanac's sunset: the upper limb at the horizon, refraction included) it has slid
+# behind it, under a pixel a minute for the sun in New York.
+RESTS, SET, BLEND = 0.7, -0.83, 5.0
+ZENITH_Y = 18
+
+
+def hill_line(far):
+    """The far hills' top row in the frame per column, smoothed over five columns."""
+    a = far.split()[-1].load()
+    tops = [next((y for y in range(far.size[1]) if a[x, y] >= 128), far.size[1]) + HORIZON_Y - 12 for x in range(W)]
+    return [sum(tops[min(W - 1, max(0, x + d))] for d in range(-2, 3)) / 5 for x in range(W)]
+
+
+def body_y(el, x, radius, line):
+    """The row of a body's centre (a disc of that radius) at column x, or None once set."""
+    if el <= SET:
+        return None
+    raised = min(line[0], line[W - 1])
+    local = max(line[min(W - 1, max(0, x))], raised)
+    edge = raised + (local - raised) * max(0.0, 1 - (el - RESTS) / BLEND)
+    rests, hidden = edge - radius - 1, edge + radius
+    if el < RESTS:
+        return int(round(hidden + (rests - hidden) * (el - SET) / (RESTS - SET)))
+    return int(round(rests + (ZENITH_Y - rests) * (min(el, 90) - RESTS) / (90 - RESTS)))
 
 
 # Colours keyed by the sun's elevation: (elevation, top of sky, horizon near the sun,
@@ -735,7 +764,7 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
     top, near_c, away_c = sky_palette(el)
     grey = 0.22 * cover
     top, near_c, away_c = (lerp(c, (110, 116, 130), grey) for c in (top, near_c, away_c))
-    sx, sy = sky_x(az, el, lat), sky_y(el)
+    sx = sky_x(az, el, lat)
     glow_width = 30 if el < 12 else 60
     for x in range(W):
         w = math.exp(-((x - sx) / glow_width) ** 2)
@@ -752,14 +781,15 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     if 0 <= x + dx < W and 0 <= y + dy < HORIZON_Y:
                         frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
-    # the far hills stand up to 12 px above the horizon line: the sun and the moon pass in
-    # front of them and set behind the near hills only, at the horizon line
-    blit_tinted(frame, far, 0, HORIZON_Y - 12, lerp(lerp((8, 14, 26), (66, 128, 78), light), away_c, 0.25 * light))
+    line = hill_line(far)
     phase = moon_phase(year, m.yday, h, tz)
     mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
-    if mel > -2 and el < 25:
-        draw_moon(frame, sky_x(maz, mel, lat), sky_y(mel), phase, lat, el < -6)
-    if el > -1.5:
+    mx = sky_x(maz, mel, lat)
+    my = body_y(mel, mx, 4, line)
+    if my is not None and el < 25:
+        draw_moon(frame, mx, my, phase, lat, el < -6)
+    sy = body_y(el, sx, 3, line)
+    if sy is not None:
         if el < 6:
             k = max(0.0, el / 6)
             blit_tinted(frame, sun_low, sx - 5, sy - 5, lerp((255, 110, 60), (255, 222, 90), k))
@@ -783,6 +813,7 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
                         frame.set(x, y + k, lerp(frame.get(x, y + k), (150, 190, 240), 0.7))
             else:
                 frame.set(x, y, (240, 244, 255))
+    blit_tinted(frame, far, 0, HORIZON_Y - 12, lerp(lerp((8, 14, 26), (66, 128, 78), light), away_c, 0.25 * light))
     blit_tinted(frame, near, 0, HORIZON_Y, lerp((4, 8, 14), (32, 84, 46), light))
     blit_tinted(frame, tree, 49, 43, (0, 0, 0))
     if precip == "snow" and light > 0:

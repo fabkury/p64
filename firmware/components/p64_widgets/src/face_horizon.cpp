@@ -5,6 +5,7 @@
 // rain or snow, hills and a tree that darken at night (assets/clock/horizon), the time on
 // top in outlined white (Everyday Vast Black) and the date on the ground. Floating point: the host test compares
 // it with the mock within a tolerance rather than pixel for pixel.
+#include <algorithm>
 #include <cmath>
 
 #include "clock_assets.hpp"
@@ -70,11 +71,47 @@ int sky_x(float az, float el, float lat) {
   return static_cast<int>(std::lround(31.5f - 25.5f * e));
 }
 
-int sky_y(float el) {
-  float t = el / 90;
-  if (t < -0.2f) t = -0.2f;
-  if (t > 1) t = 1;
-  return static_cast<int>(std::lround(45 - 27 * t));
+// The sun and the moon rise and set on the far hills' line, not on the horizon row. The
+// day's arc is one curve of the elevation, the old one lifted onto a raised horizon (the
+// higher of the hill line's two ends) and running to row 18 at the zenith, so it stays
+// round and symmetric. Where the hills under a body are lower than that, the body sinks
+// to their line instead, the difference fading out over the first 5 degrees (it only ever
+// lowers a body near the line, so a body never dips while rising); where they are higher,
+// they simply hide it. The setting: at +0.7 degrees the disc rests on the line, by -0.83
+// (the almanac's sunset: the upper limb at the horizon, refraction included) it has slid
+// behind it, under a pixel a minute for the sun in New York.
+constexpr double kRests = 0.7, kSet = -0.83, kBlend = 5.0;
+constexpr int kZenithY = 18;
+
+// The far hills' top row in the frame per column, smoothed over five columns.
+struct HillLine {
+  double row[64];
+  HillLine() {
+    const sprite::View far = sprite::view(assets::kHorizonFarHills);
+    int tops[64];
+    for (int x = 0; x < 64; ++x) {
+      int y = 0;
+      while (y < far.h && !far.inked(x, y)) ++y;
+      tops[x] = y + kHorizonY - 12;
+    }
+    for (int x = 0; x < 64; ++x) {
+      int sum = 0;
+      for (int d = -2; d <= 2; ++d) sum += tops[std::min(63, std::max(0, x + d))];
+      row[x] = sum / 5.0;
+    }
+  }
+};
+
+bool body_y(const HillLine &line, double el, int x, int radius, int &y) {
+  if (el <= kSet) return false;
+  const double raised = std::min(line.row[0], line.row[63]);
+  const double local = std::max(line.row[std::min(63, std::max(0, x))], raised);
+  const double edge = raised + (local - raised) * std::max(0.0, 1 - (el - kRests) / kBlend);
+  const double rests = edge - radius - 1, hidden = edge + radius;
+  const double cy = el < kRests ? hidden + (rests - hidden) * (el - kSet) / (kRests - kSet)
+                                : rests + (kZenithY - rests) * (std::min(el, 90.0) - kRests) / (90 - kRests);
+  y = static_cast<int>(std::lround(cy));
+  return true;
 }
 
 // A 9 px moon with its terminator; the lit side is the right one while waxing (mirrored in
@@ -102,6 +139,11 @@ void draw_moon(Frame &frame, int x, int y, float phase, float lat, bool dark_sky
 
 }  // namespace
 
+int horizon_body_row(double elevation, int x, int radius) {
+  int y = 0;
+  return body_y(HillLine(), elevation, x, radius, y) ? y : -1;
+}
+
 void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sky) {
   const float h = m.hour + m.minute / 60.0f;
   const solar::Position sun = solar::sun(sky.latitude, sky.longitude, sky.tz_hours, m.yday, h);
@@ -112,7 +154,7 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
   top = lerp(top, {110, 116, 130}, grey);
   near = lerp(near, {110, 116, 130}, grey);
   away = lerp(away, {110, 116, 130}, grey);
-  const int sx = sky_x(sun.azimuth, el, sky.latitude), sy = sky_y(el);
+  const int sx = sky_x(sun.azimuth, el, sky.latitude);
   const float glow_width = el < 12 ? 30.0f : 60.0f;
   for (int x = 0; x < Frame::width(); ++x) {
     const float d = (x - sx) / glow_width;
@@ -139,15 +181,14 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       ++i;
     }
   }
-  // the far hills stand up to 12 px above the horizon line: the sun and the moon pass in
-  // front of them and set behind the near hills only, at the horizon line
-  sprite::stamp(frame, sprite::view(assets::kHorizonFarHills), 0, kHorizonY - 12,
-                lerp(lerp({8, 14, 26}, {66, 128, 78}, light), away, 0.25f * light));
+  const HillLine line;
   const float phase = solar::moon_phase(m.year, m.yday, h, sky.tz_hours);
   const solar::Position moon = solar::moon(sky.latitude, sky.longitude, sky.tz_hours, m.year, m.yday, h);
-  if (moon.elevation > -2 && el < 25)
-    draw_moon(frame, sky_x(moon.azimuth, moon.elevation, sky.latitude), sky_y(moon.elevation), phase, sky.latitude, el < -6);
-  if (el > -1.5f) {
+  const int mx = sky_x(moon.azimuth, moon.elevation, sky.latitude);
+  int my = 0;
+  if (body_y(line, moon.elevation, mx, 4, my) && el < 25) draw_moon(frame, mx, my, phase, sky.latitude, el < -6);
+  int sy = 0;
+  if (body_y(line, el, sx, 3, sy)) {
     if (el < 6) {
       const float k = std::max(0.0f, el / 6);
       sprite::stamp(frame, sprite::view(assets::kHorizonSunLow), sx - 5, sy - 5, lerp({255, 110, 60}, {255, 222, 90}, k));
@@ -175,6 +216,8 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       }
     }
   }
+  sprite::stamp(frame, sprite::view(assets::kHorizonFarHills), 0, kHorizonY - 12,
+                lerp(lerp({8, 14, 26}, {66, 128, 78}, light), away, 0.25f * light));
   sprite::stamp(frame, sprite::view(assets::kHorizonNearHills), 0, kHorizonY, lerp({4, 8, 14}, {32, 84, 46}, light));
   sprite::stamp(frame, sprite::view(assets::kHorizonTree), 49, 43, gfx::kBlack);
   if (sky.precip == Sky::Precip::Snow && light > 0)

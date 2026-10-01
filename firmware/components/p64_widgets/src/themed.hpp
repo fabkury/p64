@@ -58,6 +58,9 @@ struct Sky {
   enum class Precip : uint8_t { None, Rain, Snow } precip = Precip::None;
 };
 void draw_horizon(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky);
+// The row of a body's centre at column x (the sun's disc has radius 3, the moon's 4): on
+// the far hills' line at +0.7 degrees, behind it by -0.83 (then -1), a round arc above.
+int horizon_body_row(double elevation, int x, int radius);
 
 // 4. Words: the time spelled on a letter grid (twelve-hour by nature).
 void draw_words(gfx::Frame &frame, const Moment &m, const Options &o);

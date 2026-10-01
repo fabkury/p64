@@ -337,16 +337,18 @@ TEST_CASE("themed: 12-hour mode blanks the leading zero and shows AM or PM on ev
   CHECK_FALSE(same(a, b));
 }
 
-TEST_CASE("themed: the horizon's low sun shows above the hills until it sets") {
-  // New York, 2026-09-26: the far hills stand 12 px above the horizon line on the right,
-  // where the sun sets; the sun used to hide behind them from 18 degrees up
+TEST_CASE("themed: the horizon's sun sets on the far hills' line at the almanac's sunset") {
+  // New York, 2026-09-26 (the almanac: sunset 18:46 EDT). The disc rests on the hill line
+  // until 18:40, slides behind it and is gone by 18:48 (the solar model runs about 0.3
+  // degrees high: two minutes); the far hills stand 5 px above the horizon there and used
+  // to hide it an hour early.
   themed::Sky ny;
   ny.latitude = kNyLat, ny.longitude = kNyLon, ny.tz_hours = kNyTz;
   const auto sun_pixels = [&](int h, int m) {
     Frame f;
     themed::draw_horizon(f, themed::Moment::from(moment(h, m)), themed::Options{}, ny);
     int n = 0;
-    for (int y = 30; y < 46; ++y)
+    for (int y = 25; y < 46; ++y)
       for (int x = 40; x < 64; ++x) {
         const Rgb c = f.get(x, y);
         if (c.r > 220 && c.g > 90 && c.b < 160) ++n;  // the disc, red to gold
@@ -355,9 +357,37 @@ TEST_CASE("themed: the horizon's low sun shows above the hills until it sets") {
   };
   for (const int hm : {1700, 1740, 1800, 1820, 1840}) {
     CAPTURE(hm);
-    CHECK(sun_pixels(hm / 100, hm % 100) >= 9);
+    CHECK(sun_pixels(hm / 100, hm % 100) >= 30);  // the whole 7 px disc
   }
-  CHECK(sun_pixels(19, 5) == 0);  // set
+  const int half = sun_pixels(18, 43);
+  CHECK(half > 0);
+  CHECK(half < 30);
+  CHECK(sun_pixels(18, 48) == 0);
+  CHECK(sun_pixels(19, 5) == 0);
+}
+
+TEST_CASE("themed: the horizon's bodies rest on the hill line, never dip while rising, and arc symmetrically") {
+  for (const int radius : {3, 4}) {
+    for (int x = 0; x < 64; ++x) {
+      CAPTURE(radius);
+      CAPTURE(x);
+      CHECK(themed::horizon_body_row(-0.84, x, radius) == -1);
+      int previous = 64;
+      for (double el = -0.82; el <= 90; el += 0.05) {
+        const int y = themed::horizon_body_row(el, x, radius);
+        REQUIRE(y >= 0);
+        CHECK(y <= previous);
+        previous = y;
+      }
+      CHECK(themed::horizon_body_row(90, x, radius) == 18);
+    }
+    // above the first 5 degrees the arc is the same in every column (round, symmetric)
+    for (const double el : {6.0, 15.0, 30.0, 60.0})
+      for (int x = 1; x < 64; ++x) CHECK(themed::horizon_body_row(el, x, radius) == themed::horizon_body_row(el, 0, radius));
+  }
+  // at rest the disc's bottom row is just above the hill line, at the hidden end its top is on it
+  CHECK(themed::horizon_body_row(0.7, 57, 3) == 41 - 3 - 1);
+  CHECK(themed::horizon_body_row(-0.8, 57, 3) == 41 + 3);
 }
 
 TEST_CASE("themed: the horizon is dark at night and bright by day, and the weather greys it") {

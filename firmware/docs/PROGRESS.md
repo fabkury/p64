@@ -1067,6 +1067,31 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   exact against the mock at 16:23 EDT; `widgets_smoke`, `faces_smoke`, `ui_smoke` 0
   failures; `api_smoke`'s only failure is the first artwork after boot, the device having
   booted into the clock widget.
+- 2026-10-01, the horizon's sun sets on the hill line (prompt p062; replaces drawing the
+  bodies over the far hills, which looked odd). Decided with the user after a pros/cons
+  review and two mock sheets: the bodies are drawn behind the far hills again and rise
+  and set on their line (the far-hill sprite's top row, smoothed over five columns): the
+  disc rests on it at +0.7 degrees and slides behind it by -0.83, the almanac's sunset,
+  about 0.9 px a minute for the sun in New York; the moon follows the same rule. A first
+  mapping lifted each column by its own hill height (fading by 90 degrees; the 20-degree
+  fade first offered would have made the sun dip while rising, the hill and the disc
+  being about 20 degrees of the panel's scale) and bulged the arc over the peak; the
+  user asked for a round, symmetric path, so the arc is one curve of the elevation from
+  a raised horizon (the higher of the line's two ends, row 41) to row 18, the local line
+  bending only the first 5 degrees where it is lower; where the hills stand higher (the
+  peak), they hide a low body (Tromso's February sun passes behind it). `themed::
+  horizon_body_row` is the rule, host-tested: hidden below -0.83, never rising less
+  as the elevation grows in any column, the same row in every column above 5 degrees,
+  the rest and hidden rows; and New York's sun on 2026-09-26 whole until 18:40, partly
+  hidden at 18:43, gone at 18:48 (the almanac: 18:46; the solar model runs 0.3 degrees
+  high). The hill line is computed per frame on the stack (no static RAM; `player` keeps
+  9 KB of stack free). Device: pixel for pixel the mock at 18:47 in New York and,
+  mid-slide, at 40.7 N 77.3 W and 77.8 W; `faces_smoke` 0 failures on a rerun (its LED
+  glow check failed twice, timing-sensitive); `widgets_smoke` stops on
+  `/api/v1/history`, whose JSON holds a Divoom name cut inside a UTF-8 character (the
+  private index's 36-byte name field), not fixed here; `api_smoke` fails the first
+  artwork after boot (booted in the clock widget) and the internal largest block, 29.7 KB
+  against the 32 KB floor with the private walk running (the change allocates nothing).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
