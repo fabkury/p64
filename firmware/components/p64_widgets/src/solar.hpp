@@ -1,8 +1,7 @@
 // Where the sun and the moon are, for the horizon face (spec 7.1): NOAA's low-precision
-// solar position (well under a degree), the moon's phase from the synodic month, and a
-// rough lunar position (the moon trails the sun by its phase along the ecliptic, the
-// orbit's tilt ignored). Pure arithmetic, host-tested against the almanac; the same
-// formulas as tools/mock_clock_faces.py.
+// solar position (well under a degree) and the Astronomical Almanac's low-precision moon
+// (about 0.3 degrees; its phase from its elongation from the sun). Pure arithmetic,
+// host-tested against the almanac; the same formulas as tools/mock_clock_faces.py.
 #pragma once
 
 namespace p64::widgets::solar {
@@ -17,7 +16,8 @@ struct Position {
 // September).
 Position sun(float latitude, float longitude, float tz_hours, int year_day, float hour_local);
 // 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter.
-float moon_phase(int year, int year_day, float hour_local);
-Position moon(float latitude, float longitude, float tz_hours, int year_day, float hour_local, float phase);
+float moon_phase(int year, int year_day, float hour_local, float tz_hours);
+// The moon as seen from the place (parallax included, refraction not).
+Position moon(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local);
 
 }  // namespace p64::widgets::solar

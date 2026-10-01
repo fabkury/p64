@@ -65,8 +65,9 @@ hour of every day, and every place, looks like itself:
   the zenith), with the twilight glow on the sun's side of the horizon only. The sun is a
   red disc within 6 degrees of the horizon and gold with rays above.
 - Stars come out from 4 degrees below and are full from 12 below. The moon shows its
-  phase (terminator drawn per pixel, from the synodic month since the new moon of
-  2000-01-06) and sits where a body that far behind the sun sits; on a dark sky its
+  phase (terminator drawn per pixel, from its elongation from the sun) where it really
+  is: the Astronomical Almanac's low-precision moon, about 0.3 degrees (since
+  2026-10-01; a phase-only estimate before, up to 20 degrees off); on a dark sky its
   night side shows faintly.
 - The weather widget's current condition, when a location is set, adds clouds (one, two,
   four or seven by the cover, lit by the sky), greys the sky, and streaks rain or drops

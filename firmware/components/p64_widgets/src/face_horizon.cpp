@@ -139,8 +139,8 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       ++i;
     }
   }
-  const float phase = solar::moon_phase(m.year, m.yday, h);
-  const solar::Position moon = solar::moon(sky.latitude, sky.longitude, sky.tz_hours, m.yday, h, phase);
+  const float phase = solar::moon_phase(m.year, m.yday, h, sky.tz_hours);
+  const solar::Position moon = solar::moon(sky.latitude, sky.longitude, sky.tz_hours, m.year, m.yday, h);
   if (moon.elevation > -2 && el < 25)
     draw_moon(frame, sky_x(moon.azimuth, moon.elevation, sky.latitude), sky_y(moon.elevation), phase, sky.latitude, el < -6);
   if (el > -1.5f) {

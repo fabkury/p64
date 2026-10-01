@@ -1024,6 +1024,31 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   not from the transcode's duty cycle, and the throttle was reverted. Decision: accept
   the loss as a known limit (spec 18.4 amended); the lever that would reach 60 fps is a
   pause of the walks while an artwork's frame period is under 33 ms, not taken.
+- 2026-10-01, the horizon checked against the sky (prompt p060), New York, from the
+  laptop's clock. Reference: Skyfield with the JPL DE421 ephemeris, 2026-09-01 to
+  2026-11-15 every 37 minutes, on the C++ `solar.cpp` built natively. The sun was right
+  (0.44 degrees at worst in elevation, 0.45 in azimuth: the refraction the model leaves
+  out). The moon was not: placed from the phase alone (trailing the sun by the phase, the
+  sun's declination that many months later, the orbit's tilt and eccentricity ignored)
+  it was off by up to 20 degrees in elevation and 52 in azimuth (9 px on the panel), drawn
+  above the horizon while really below (or hidden while up) in 6 % of the night samples,
+  and its phase lagged by a day (the 365.25-day year from 2000, local time taken for UT,
+  the mean month). Replaced by the Astronomical Almanac's low-precision moon (six
+  longitude terms, four latitude, the parallax) and the phase from the elongation, in
+  `solar.cpp` and the mock: against Skyfield 0.24 degrees in elevation at worst, never
+  more than 1 px, visibility never wrong, phase within 0.02 days; over 2025 to 2030 at
+  New York, Sao Paulo, Tromso and Sydney within 0.37 degrees. Tonight's moonrise: 21:40
+  by the model, 21:38 in the almanac (21:18 before). The signatures changed
+  (`moon_phase` takes the zone, `moon` the year and no phase); the host tests check the
+  full moon of 2026-09-26, the new moon of 2026-10-10 and tonight's moon against the
+  almanac. On the device (flashed, `ota_0`): with the location at New York, 15:35 and
+  15:47 EDT were pixel for pixel the mock (a high sun in the south-west, a clear blue
+  sky), and with Tokyo (04:47 there, the moon at 76 degrees) the frame was the new mock
+  exactly and 101 pixels off the old one; `faces_smoke` and `api_smoke` 0 failures (heap
+  67.7 KB free). The settings were put back (the weather location is still Greenwich,
+  so the horizon shows Greenwich's sky in the device's zone). Seen on the way, not
+  changed: the far hills stand up to 12 px above the horizon line on the right, so the
+  setting sun hides behind them from about 18 degrees up, an hour before sunset.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

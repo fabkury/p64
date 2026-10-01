@@ -7,6 +7,8 @@
 #include "solar.hpp"
 #include "themed.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace {
@@ -65,17 +67,27 @@ TEST_CASE("solar: New York's sun on 2026-09-26 rises about 06:50 and sets about 
   CHECK(solar::sun(kNyLat, kNyLon, kNyTz, 268, 0.5f).elevation < -40);
 }
 
-TEST_CASE("solar: the moon is full on 2026-09-26 and rises in the east at dusk") {
-  const float phase = solar::moon_phase(2026, 268, 18.7f);
-  CHECK(phase == doctest::Approx(0.5f).epsilon(0.08));
-  const solar::Position moon = solar::moon(kNyLat, kNyLon, kNyTz, 268, 18.7f, phase);
-  CHECK(moon.elevation > -3);
-  CHECK(moon.elevation < 10);
-  CHECK(moon.azimuth == doctest::Approx(90).epsilon(0.1));
-  // a new moon sits with the sun
-  const solar::Position s = solar::sun(kNyLat, kNyLon, kNyTz, 268, 12.5f);
-  const solar::Position m = solar::moon(kNyLat, kNyLon, kNyTz, 268, 12.5f, 0.0f);
-  CHECK(m.elevation == doctest::Approx(s.elevation).epsilon(0.05));
+TEST_CASE("solar: New York's moon against the almanac (full on 2026-09-26, new on 2026-10-10)") {
+  // full at 12:49 EDT on 2026-09-26, rising at 18:35 in the east (the almanac's refracted
+  // upper limb; the model's centre crosses a few minutes later)
+  CHECK(solar::moon_phase(2026, 268, 12 + 49 / 60.0f, kNyTz) == doctest::Approx(0.5f).epsilon(0.02));
+  CHECK(solar::moon(kNyLat, kNyLon, kNyTz, 2026, 268, 18 + 15 / 60.0f).elevation < 0);
+  const solar::Position rising = solar::moon(kNyLat, kNyLon, kNyTz, 2026, 268, 19.0f);
+  CHECK(rising.elevation > 0);
+  CHECK(rising.azimuth == doctest::Approx(90).epsilon(0.1));
+  // new at 11:50 EDT on 2026-10-10: beside the sun at noon, at 37.4 / 168.3 degrees
+  const float phase = solar::moon_phase(2026, 282, 11 + 50 / 60.0f, kNyTz);
+  CHECK(std::min(phase, 1 - phase) < 0.005f);
+  const solar::Position m = solar::moon(kNyLat, kNyLon, kNyTz, 2026, 282, 12.0f);
+  CHECK(std::fabs(m.elevation - 37.4f) < 1);
+  CHECK(std::fabs(m.azimuth - 168.3f) < 1);
+  // waning gibbous on 2026-10-01: up at 21:40 (the almanac: 21:38), at 12.1 / 64.3 at 23:00
+  CHECK(solar::moon_phase(2026, 273, 15.5f, kNyTz) == doctest::Approx(0.686f).epsilon(0.01));
+  CHECK(solar::moon(kNyLat, kNyLon, kNyTz, 2026, 273, 21 + 25 / 60.0f).elevation < 0);
+  CHECK(solar::moon(kNyLat, kNyLon, kNyTz, 2026, 273, 21 + 55 / 60.0f).elevation > 0);
+  const solar::Position late = solar::moon(kNyLat, kNyLon, kNyTz, 2026, 273, 23.0f);
+  CHECK(std::fabs(late.elevation - 12.1f) < 1);
+  CHECK(std::fabs(late.azimuth - 64.3f) < 1);
 }
 
 TEST_CASE("themed: the weather's WMO code sets the horizon's cover and precipitation") {

@@ -390,7 +390,7 @@ hands `draw_clock` a `ClockContext` (the time with its milliseconds, the weather
 and the zone offset, the forecast's cover and precipitation for the horizon) and keeps a
 `ClockState` for the flip, whose minute change is ten 45 ms frames drawn from one
 per-pixel function of the tile (no tile image is kept). `solar.cpp` (NOAA's low-precision
-sun, a synodic moon phase, a rough moon position) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
+sun, the Astronomical Almanac's low-precision moon with its phase from the elongation) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours
 without a refresh. The temperature widget reads the SHTC3 through a sampler task every

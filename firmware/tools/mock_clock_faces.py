@@ -521,7 +521,8 @@ def draw_nixie(m, o):
 # weather widget's latitude and longitude, the date and the local time): the twilight glow
 # sits on the sun's side of the horizon, the sun climbs as high as it does there, stars
 # come out when the sun is far enough below, and the moon shows its phase. NOAA's
-# low-precision formulas (well under a degree), the same in solar.cpp.
+# low-precision sun (well under a degree) and the Astronomical Almanac's low-precision
+# moon (about 0.3 degrees), the same in solar.cpp.
 
 
 def solar_position(lat, lon, tz_hours, year_day, hour_local):
@@ -543,24 +544,56 @@ def _elev_az(lat, decl, ha):
     return math.degrees(el), math.degrees(az) % 360
 
 
-def moon_phase(year, year_day, hour_local):
-    """0 new, 0.25 first quarter, 0.5 full, 0.75 last quarter; from the new moon of
-    2000-01-06 18:14 UTC and the synodic month."""
-    days = (year - 2000) * 365.25 + year_day + 1 - 6.76 + hour_local / 24
-    return (days / 29.530588) % 1.0
+def _j2000_days(year, year_day, hour_local, tz_hours):
+    """Days from J2000.0 (2000-01-01 12:00 UT) to a local moment."""
+    def leaps(y):
+        return (y - 1) // 4 - (y - 1) // 100 + (y - 1) // 400
+    return 365 * (year - 2000) + (leaps(year) - leaps(2000)) + year_day + (hour_local - tz_hours) / 24 - 0.5
 
 
-def moon_position(lat, lon, tz_hours, year_day, hour_local, phase):
-    """Where the moon is, roughly: it trails the sun by the phase around the sky, and sits
-    where the sun sits that many months later along the ecliptic (the tilt ignored)."""
-    g = 2 * math.pi / 365 * (year_day + phase * 365.25)
-    decl = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g) - 0.006758 * math.cos(2 * g)
-            + 0.000907 * math.sin(2 * g))
-    g0 = 2 * math.pi / 365 * (year_day + (hour_local - tz_hours - 12) / 24)
-    eqtime = 229.18 * (0.000075 + 0.001868 * math.cos(g0) - 0.032077 * math.sin(g0))
-    tst = hour_local * 60 + eqtime + 4 * lon - 60 * tz_hours
-    ha = math.radians(tst / 4 - 180 - 360 * phase)
-    return _elev_az(math.radians(lat), decl, ha)
+def _sun_longitude(n):
+    """The sun's apparent ecliptic longitude in degrees (the Astronomical Almanac's low precision)."""
+    g = math.radians(357.528 + 0.9856003 * n)
+    return 280.460 + 0.9856474 * n + 1.915 * math.sin(g) + 0.020 * math.sin(2 * g)
+
+
+def _moon_ecliptic(n):
+    """The moon's geocentric ecliptic longitude, latitude and horizontal parallax in degrees:
+    the Astronomical Almanac's low-precision series (about 0.3 degrees)."""
+    t = n / 36525
+
+    def s(a, b):
+        return math.sin(math.radians(a + b * t))
+
+    def c(a, b):
+        return math.cos(math.radians(a + b * t))
+    lon = (218.32 + 481267.881 * t + 6.29 * s(135.0, 477198.87) - 1.27 * s(259.3, -413335.36)
+           + 0.66 * s(235.7, 890534.22) + 0.21 * s(269.9, 954397.74) - 0.19 * s(357.5, 35999.05)
+           - 0.11 * s(186.5, 966404.03))
+    lat = (5.13 * s(93.3, 483202.02) + 0.28 * s(228.2, 960400.89) - 0.28 * s(318.3, 6003.15)
+           - 0.17 * s(217.6, -407332.21))
+    par = (0.9508 + 0.0518 * c(135.0, 477198.87) + 0.0095 * c(259.3, -413335.36) + 0.0078 * c(235.7, 890534.22)
+           + 0.0028 * c(269.9, 954397.74))
+    return lon, lat, par
+
+
+def moon_phase(year, year_day, hour_local, tz_hours):
+    """0 new, 0.25 first quarter, 0.5 full, 0.75 last quarter: the moon's elongation from the sun."""
+    n = _j2000_days(year, year_day, hour_local, tz_hours)
+    return ((_moon_ecliptic(n)[0] - _sun_longitude(n)) / 360) % 1.0
+
+
+def moon_position(lat, lon, tz_hours, year, year_day, hour_local):
+    """Where the moon is as seen from the place (parallax included, refraction not)."""
+    n = _j2000_days(year, year_day, hour_local, tz_hours)
+    mlon, mlat, par = _moon_ecliptic(n)
+    obliquity = math.radians(23.439 - 0.0000004 * n)
+    mlon, mlat = math.radians(mlon), math.radians(mlat)
+    ra = math.atan2(math.sin(mlon) * math.cos(obliquity) - math.tan(mlat) * math.sin(obliquity), math.cos(mlon))
+    decl = math.asin(math.sin(mlat) * math.cos(obliquity) + math.cos(mlat) * math.sin(obliquity) * math.sin(mlon))
+    sidereal = math.radians(280.46061837 + 360.98564736629 * n + lon)
+    el, az = _elev_az(math.radians(lat), decl, sidereal - ra)
+    return el - par * math.cos(math.radians(el)), az
 
 
 def sky_x(az, el, lat):
@@ -719,8 +752,8 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     if 0 <= x + dx < W and 0 <= y + dy < HORIZON_Y:
                         frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
-    phase = moon_phase(year, m.yday, h)
-    mel, maz = moon_position(lat, lon, tz, m.yday, h, phase)
+    phase = moon_phase(year, m.yday, h, tz)
+    mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
     if mel > -2 and el < 25:
         draw_moon(frame, sky_x(maz, mel, lat), sky_y(mel), phase, lat, el < -6)
     if el > -1.5:
