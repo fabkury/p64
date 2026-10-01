@@ -1045,10 +1045,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   15:47 EDT were pixel for pixel the mock (a high sun in the south-west, a clear blue
   sky), and with Tokyo (04:47 there, the moon at 76 degrees) the frame was the new mock
   exactly and 101 pixels off the old one; `faces_smoke` and `api_smoke` 0 failures (heap
-  67.7 KB free). The settings were put back (the weather location is still Greenwich,
-  so the horizon shows Greenwich's sky in the device's zone). Seen on the way, not
-  changed: the far hills stand up to 12 px above the horizon line on the right, so the
-  setting sun hides behind them from about 18 degrees up, an hour before sunset.
+  67.7 KB free). The weather location was Greenwich (so the horizon showed Greenwich's
+  sky in the device's zone); set to New York at the user's choice. Second finding: the
+  far hills stand up to 12 px above the horizon line on the right, so the setting sun hid
+  behind them from about 18 degrees up, an hour before sunset (and the moon likewise).
+  The user chose to draw the sun over the hills: the far hills are now drawn before the
+  moon, the sun, the clouds and the rain, and the bodies set behind the near hills only,
+  at the horizon line (New York's sun now visible until 18:36, sunset). Host test: the
+  low sun shows from 17:00 to 18:40 on 2026-09-26 and is gone at 19:05 (it fails on the
+  old order from 18:00). Flashed again: at 16:12 EDT with New York's clear forecast the
+  frame is the mock within 1 on one channel in 717 hill pixels (float against double at
+  full daylight, the horizon's documented tolerance); `faces_smoke` and `api_smoke` 0
+  failures (heap 57.9 KB free with the New York forecast fetched).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

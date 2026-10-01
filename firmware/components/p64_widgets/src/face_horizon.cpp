@@ -139,6 +139,10 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       ++i;
     }
   }
+  // the far hills stand up to 12 px above the horizon line: the sun and the moon pass in
+  // front of them and set behind the near hills only, at the horizon line
+  sprite::stamp(frame, sprite::view(assets::kHorizonFarHills), 0, kHorizonY - 12,
+                lerp(lerp({8, 14, 26}, {66, 128, 78}, light), away, 0.25f * light));
   const float phase = solar::moon_phase(m.year, m.yday, h, sky.tz_hours);
   const solar::Position moon = solar::moon(sky.latitude, sky.longitude, sky.tz_hours, m.year, m.yday, h);
   if (moon.elevation > -2 && el < 25)
@@ -171,8 +175,6 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       }
     }
   }
-  sprite::stamp(frame, sprite::view(assets::kHorizonFarHills), 0, kHorizonY - 12,
-                lerp(lerp({8, 14, 26}, {66, 128, 78}, light), away, 0.25f * light));
   sprite::stamp(frame, sprite::view(assets::kHorizonNearHills), 0, kHorizonY, lerp({4, 8, 14}, {32, 84, 46}, light));
   sprite::stamp(frame, sprite::view(assets::kHorizonTree), 49, 43, gfx::kBlack);
   if (sky.precip == Sky::Precip::Snow && light > 0)

@@ -752,6 +752,9 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     if 0 <= x + dx < W and 0 <= y + dy < HORIZON_Y:
                         frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
+    # the far hills stand up to 12 px above the horizon line: the sun and the moon pass in
+    # front of them and set behind the near hills only, at the horizon line
+    blit_tinted(frame, far, 0, HORIZON_Y - 12, lerp(lerp((8, 14, 26), (66, 128, 78), light), away_c, 0.25 * light))
     phase = moon_phase(year, m.yday, h, tz)
     mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
     if mel > -2 and el < 25:
@@ -780,7 +783,6 @@ def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="")
                         frame.set(x, y + k, lerp(frame.get(x, y + k), (150, 190, 240), 0.7))
             else:
                 frame.set(x, y, (240, 244, 255))
-    blit_tinted(frame, far, 0, HORIZON_Y - 12, lerp(lerp((8, 14, 26), (66, 128, 78), light), away_c, 0.25 * light))
     blit_tinted(frame, near, 0, HORIZON_Y, lerp((4, 8, 14), (32, 84, 46), light))
     blit_tinted(frame, tree, 49, 43, (0, 0, 0))
     if precip == "snow" and light > 0:

@@ -68,7 +68,9 @@ hour of every day, and every place, looks like itself:
   phase (terminator drawn per pixel, from its elongation from the sun) where it really
   is: the Astronomical Almanac's low-precision moon, about 0.3 degrees (since
   2026-10-01; a phase-only estimate before, up to 20 degrees off); on a dark sky its
-  night side shows faintly.
+  night side shows faintly. The sun and the moon pass in front of the far hills and set
+  behind the near hills, at the horizon line (since 2026-10-01; before, the far hills hid
+  the setting sun from 18 degrees up).
 - The weather widget's current condition, when a location is set, adds clouds (one, two,
   four or seven by the cover, lit by the sky), greys the sky, and streaks rain or drops
   snow, with a snow line on the ground.

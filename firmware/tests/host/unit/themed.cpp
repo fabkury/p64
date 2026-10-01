@@ -337,6 +337,29 @@ TEST_CASE("themed: 12-hour mode blanks the leading zero and shows AM or PM on ev
   CHECK_FALSE(same(a, b));
 }
 
+TEST_CASE("themed: the horizon's low sun shows above the hills until it sets") {
+  // New York, 2026-09-26: the far hills stand 12 px above the horizon line on the right,
+  // where the sun sets; the sun used to hide behind them from 18 degrees up
+  themed::Sky ny;
+  ny.latitude = kNyLat, ny.longitude = kNyLon, ny.tz_hours = kNyTz;
+  const auto sun_pixels = [&](int h, int m) {
+    Frame f;
+    themed::draw_horizon(f, themed::Moment::from(moment(h, m)), themed::Options{}, ny);
+    int n = 0;
+    for (int y = 30; y < 46; ++y)
+      for (int x = 40; x < 64; ++x) {
+        const Rgb c = f.get(x, y);
+        if (c.r > 220 && c.g > 90 && c.b < 160) ++n;  // the disc, red to gold
+      }
+    return n;
+  };
+  for (const int hm : {1700, 1740, 1800, 1820, 1840}) {
+    CAPTURE(hm);
+    CHECK(sun_pixels(hm / 100, hm % 100) >= 9);
+  }
+  CHECK(sun_pixels(19, 5) == 0);  // set
+}
+
 TEST_CASE("themed: the horizon is dark at night and bright by day, and the weather greys it") {
   Frame night, day, overcast;
   themed::Sky ny;
