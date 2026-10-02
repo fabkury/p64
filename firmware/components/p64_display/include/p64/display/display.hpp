@@ -10,9 +10,10 @@
 // predicted boundary, spins on the flag, then checks from the descriptor addresses that
 // the DMA really moved to the other chain. Rendering is thereby locked to the refresh.
 //
-// Panel modes are refresh profiles of the driver (p64 patch): Quality sends all ten bit
-// planes at the sdkconfig minimum refresh rate (transition bit 4, 271 Hz on this panel
-// at 20 MHz); Photo sends eight planes at 600 Hz minimum (transition bit 4, 814 Hz).
+// Panel modes are refresh profiles of the driver (p64 patch): Quality sends all eleven
+// bit planes at the sdkconfig minimum refresh rate (transition bit 5, 264 Hz on this
+// panel at 20 MHz, low windows rounded to 1 2 4 8 16 31 clocks); Photo sends eight planes
+// at 600 Hz minimum (transition bit 4, 814 Hz).
 // A switch rebuilds the descriptor chains in place inside arrays allocated at begin()
 // (nothing is allocated, so it cannot fail for lack of internal RAM) and repaints the
 // last picture into both buffers with the new LUT; the panel shows the previous picture
@@ -29,13 +30,9 @@ class Hub75Driver;
 
 namespace p64::display {
 
-// Quality11 is the eleven-plane trial of 2026-10-02 (11 planes, transition bit 5, 264 Hz,
-// binary low windows): kept beside Quality so the two can be compared on the panel.
-enum class Mode : uint8_t { Quality = 0, Photo = 1, Quality11 = 2 };
+enum class Mode : uint8_t { Quality = 0, Photo = 1 };
 
-inline const char *mode_name(Mode m) {
-  return m == Mode::Photo ? "photo" : m == Mode::Quality11 ? "quality11" : "quality";
-}
+inline const char *mode_name(Mode m) { return m == Mode::Photo ? "photo" : "quality"; }
 
 class Display {
  public:

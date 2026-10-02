@@ -1153,6 +1153,29 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   On the way: the mock's blend rounds toward zero like the firmware, and `run.py` no
   longer crashes reporting a face whose pixels differ by 8 or less. Open: brightness
   1..8 in a dark room.
+- 2026-10-02, Quality mode at eleven bit planes (prompts p068, p069; ADR 0015). Asked
+  whether Quality could gain more with the refresh allowed under 250 Hz, the host model
+  showed that a slower refresh buys depth only with more planes and more descriptors,
+  both internal RAM, and that the best step per kilobyte needs no slower refresh: eleven
+  planes at transition bit 5 (264 Hz) with the low windows rounded to 1 2 4 8 16 31
+  clocks, 243 codes and 51 in the darkest quarter against 233 and 41, for 8 KB. The
+  driver's `set_refresh_profile` gained `round_low` (`p64bcm::plane_windows`; a level
+  where rounding would blank a plane sent several times falls back to truncation, found
+  by the host tests at 12 planes, bit 9). A trial mode beside Quality let the user flip
+  the two in place over a streamed chart (grey and colour ramps 0..63, a ramp 0..252, a
+  dark gradient); the user judged eleven planes better, and it replaced Quality. Device:
+  boot log windows 1 2 4 8 16 31 62.., 243 distinct codes, full white 1984 of 2368 clocks;
+  `panel_mode_smoke` (263.9 / 813.8 Hz, 11 / 8 planes), `brightness_smoke`, `api_smoke`
+  0 failures; internal heap 54.9 KB free, largest block 31.7 KB, so the largest-block
+  floor in `budgets.json` went from 32 to 28 KB deliberately (the user's choice, with the
+  drift investigated separately). Copy into the bit planes 8.17 ms per frame;
+  `timing_smoke`: 25 and 10 fps exact, the 60 fps APNG at 59.7 to 60.4 fps with one late
+  frame in two of four runs (none with ten planes on 2026-09-29). The drift of the
+  largest block (45 to 47 KB after the review's tier 1 on 2026-09-22, about 34.8 KB from
+  2026-09-26 on): static DIRAM is 121.0 KB in the public build (120.1 KB then) and 129.5
+  KB in the private one, whose WebP encoder alone holds 7.9 KB of .bss; the public image
+  is 2.35 MB (the private one 2.75 MB, over the 2.4 MB budget that CI checks on the
+  public build).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

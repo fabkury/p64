@@ -55,15 +55,16 @@ one configuration property read everywhere, never literal numbers.
 
 | Mode | Bit planes | Refresh (measured at 20 MHz pixel clock, 2026-09-20) | Codes per channel | Light at full white | Use |
 |---|---|---|---|---|---|
-| Quality (default) | 10 | 271.3 Hz (transition bit 4, 36 transmissions per row) | 1024 | 100 % (1979 of 2304 pixel clocks per frame lit) | Normal viewing: dark tones keep their steps |
-| Photo | 8 | 813.8 Hz (transition bit 4, 12 transmissions per row) | 256 | about 74 % of Quality (491 of 768 clocks lit, at three times the rate) | Being photographed or filmed: no rolling-shutter banding |
+| Quality (default) | 11 | 263.9 Hz (transition bit 5, 37 transmissions per row; low windows 1 2 4 8 16 31 clocks) | 2048 (243 distinct after the gamma 2.2 fit, 51 in the darkest quarter) | 100 % (1984 of 2368 pixel clocks per frame lit) | Normal viewing: dark tones keep their steps |
+| Photo | 8 | 813.8 Hz (transition bit 4, 12 transmissions per row) | 256 | about 76 % of Quality (491 of 768 clocks lit, at three times the rate) | Being photographed or filmed: no rolling-shutter banding |
 
 Photo mode is dimmer by design: the five planes sent once carry halved output-enable
 windows whatever the plane count, and with only twelve transmissions per row they are a
 larger share of the frame. Cameras compensate with exposure; the setting is not meant
-for viewing. Quality mode stays at 271 Hz: the next finer setting (transition bit 3,
-146 Hz) would need two 25.7 KB descriptor chains in internal RAM instead of two 13.8 KB
-ones, which the device does not have (settled with the user on 2026-09-20).
+for viewing. Quality mode is eleven planes at 264 Hz since 2026-10-02 (ADR 0015; ten
+planes at 271.3 Hz and 233 codes before, chosen by the user's eye on the panel). Deeper
+settings need a refresh near 140 Hz and 23 to 41 KB more internal RAM, which the device
+does not have (settled with the user on 2026-09-20 and 2026-10-02).
 
 Switching modes is a user action in the web UI and the API. The driver's refresh
 profile changes in place (no re-initialisation, nothing allocated): the panel shows the
@@ -836,10 +837,11 @@ device and read over diagnostics.
    worker recovered only 2 fps, so nothing was changed for it.
 5. Scaling: 32x32 shows at exactly 2x with hard edges; 128x128 averages 2x2; a 64x32
    shows pillar/letterboxed in the background colour, centred.
-6. Modes: switching to Photo mode measures at least 600 Hz; back to Quality at 271 Hz;
+6. Modes: switching to Photo mode measures at least 600 Hz; back to Quality at 264 Hz;
    both with under 1 s of blank. Verified 2026-09-20 from the driver's timing (813.8
    and 271.3 Hz) over 12 switches plus a five-request burst, frame lock kept, no
-   allocation (`tests/device/panel_mode_smoke.py`); a camera measurement is still open.
+   allocation (`tests/device/panel_mode_smoke.py`); again on 2026-10-02 with Quality at
+   eleven planes (263.9 Hz); a camera measurement is still open.
 7. Brightness: 255 with the 27 W supply draws under 15 W at full white; the ceiling holds
    under Makapix commands and schedules.
 8. Boot: power-on to the first artwork within 2 s of the boot animation's end with a

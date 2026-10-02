@@ -13,7 +13,7 @@ off-the-shelf Waveshare boards, no soldering.
 - **Plays pixel art the way it was drawn.** GIF, PNG/APNG, WebP and BMP, static or animated,
   with transparency. Small canvases are scaled up by whole numbers so pixels stay square;
   large ones are scaled down cleanly. Every frame is shown, none skipped.
-- **Looks right.** 10-bit colour per channel at a 271 Hz refresh, gamma 2.2, seamless
+- **Looks right.** 11-bit colour per channel at a 264 Hz refresh, gamma 2.2, seamless
   changes from one artwork to the next: no blank frame, no flicker, no brightness step.
   A "Photo" mode raises the refresh to 814 Hz for cameras.
 - **Runs on its own.** Put files on a microSD card, or pair it with Makapix Club and it

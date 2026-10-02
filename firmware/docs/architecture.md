@@ -69,7 +69,7 @@ file bytes (PSRAM)  -> Decoder -> canvas RGB888 (canvas size, PSRAM)
                     -> Scaler  -> logical Frame 64x64 (internal RAM)
                     -> overlay (clock) -> ready slot (frame + due time)
 render task         -> rotation + RGB gains into the physical buffer
-                    -> hub75 draw_pixels (RGB888 -> bit planes, 6.9 ms at 10 planes)
+                    -> hub75 draw_pixels (RGB888 -> bit planes, 8.2 ms at 11 planes)
                     -> flip on the next DMA frame boundary
 ```
 
@@ -119,9 +119,10 @@ Ported from the hardware tests (`reference/hardware-tests/main/display.*`) and e
   pause and panel off. The plan in force is in the status document's `panel`
   (`light`, `oe_level`, `lut_scale`).
 - Panel modes are refresh profiles of the driver (p64 patch `set_refresh_profile`):
-  Quality sends the ten compile-time planes at the sdkconfig minimum rate (transition
-  bit 4, 271.3 Hz); Photo sends eight planes at 600 Hz minimum (transition bit 4,
-  813.8 Hz, 256 codes, about 74 % of Quality's light). The render task switches between
+  Quality sends the eleven compile-time planes at the sdkconfig minimum rate (transition
+  bit 5, 263.9 Hz) with the low windows rounded to 1 2 4 8 16 31 clocks (243 codes, ADR
+  0015; ten planes at 271.3 Hz until 2026-10-02); Photo sends eight planes at 600 Hz
+  minimum (transition bit 4, 813.8 Hz, 256 codes, about 76 % of Quality's light). The render task switches between
   two frames: the DMA stops, the output-enable windows and the LUT are refitted, the
   descriptor chains are rebuilt in place inside arrays allocated once at `begin()` (a
   switch never allocates: internal RAM is too fragmented after hours of uptime for two
@@ -154,7 +155,7 @@ the device and on the host; results go to `firmware/README.md`.
 
 | Item | Where | Size |
 |---|---|---|
-| Panel bit-plane buffers, 10 planes, double | internal (DMA) | about 82 KB |
+| Panel bit-plane buffers, 11 planes, double | internal (DMA) | about 90 KB (88 KB of row buffers, 2 x 13.9 KB of descriptors) |
 | Ready frames (4 x 64x64x3) + physical buffer | internal | 60 KB |
 | Wi-Fi + lwIP | internal/PSRAM (`SPIRAM_TRY_ALLOCATE_WIFI_LWIP`) | 40-60 KB internal; the driver's hot code in flash since 2026-09-22 (`ESP_WIFI_IRAM_OPT=n`, `ESP_WIFI_RX_IRAM_OPT=n`) |
 | TLS: MQTT session + one download | PSRAM buffers, dynamic | 2 x ~40 KB |

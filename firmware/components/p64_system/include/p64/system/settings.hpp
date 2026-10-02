@@ -17,9 +17,8 @@ struct cJSON;  // apply_json's reader takes a parsed document
 
 namespace p64::system {
 
-// The values are display::Mode's (main.cpp and api.cpp cast one to the other). Quality11
-// is the eleven-plane trial of 2026-10-02.
-enum class PanelMode : uint8_t { Quality = 0, Photo = 1, Quality11 = 2 };
+// The values are display::Mode's (main.cpp and api.cpp cast one to the other).
+enum class PanelMode : uint8_t { Quality = 0, Photo = 1 };
 enum class MainState : uint8_t { AnimationShow = 0, Widget = 1, Stream = 2 };
 enum class PickMode : uint8_t { Random = 0, Recency = 1 };
 enum class ChannelSelect : uint8_t { Stochastic = 0, Swrr = 1 };

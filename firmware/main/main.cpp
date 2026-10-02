@@ -196,9 +196,7 @@ extern "C" void app_main() {
   g_player.start(*g_queue);
   p64::system::subscribe(p64::system::Event::SettingsChanged,
                          [](const p64::system::Message &) { apply_display_settings(p64::system::settings()); });
-  if (s.panel_mode != p64::system::PanelMode::Quality) {
-    g_renderer.request_mode(static_cast<p64::display::Mode>(s.panel_mode));
-  }
+  if (s.panel_mode == p64::system::PanelMode::Photo) g_renderer.request_mode(p64::display::Mode::Photo);
 
   // The show puts the boot animation up at once; the card mounts and the playset is
   // restored while it runs (spec 15.1).

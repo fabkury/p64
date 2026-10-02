@@ -63,13 +63,6 @@ TEST_CASE("settings: defaults survive their own JSON") {
   CHECK(a.hostname() == "p64");
 }
 
-TEST_CASE("settings: the eleven-plane trial is a panel mode of its own, cast to the display's") {
-  const Settings a = applied(R"({"display":{"panel_mode":"quality11"}})");
-  CHECK(a.panel_mode == p64::system::PanelMode::Quality11);
-  CHECK(a.to_json().find("\"panel_mode\":\"quality11\"") != std::string::npos);
-  CHECK_EQ(static_cast<int>(p64::system::PanelMode::Quality11), 2);  // display::Mode::Quality11
-}
-
 TEST_CASE("settings: every field survives a round trip") {
   Settings a = applied(R"({"display":{"brightness":77,"brightness_ceiling":200,"night":{"enabled":true,
     "start_minutes":1320,"end_minutes":420,"brightness":0},"panel_mode":"photo","rotation":270,

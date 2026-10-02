@@ -165,8 +165,9 @@ RTC has no battery and no driver, there is no manual set; read the time only thr
 and never store or compare a date before that. After an OTA install the device boots from
 `ota_1` while `flash.ps1` writes `ota_0`: roll back from the Update card (or run
 `tests\device\ota_smoke.py`, which ends with a rollback) before trusting a flash.
-The panel modes are refresh profiles of the vendored driver (Quality 10 planes at
-271 Hz, Photo 8 planes at 814 Hz, switched in place inside descriptor arrays allocated
+The panel modes are refresh profiles of the vendored driver (Quality 11 planes at
+264 Hz with rounded low windows since 2026-10-02, ADR 0015; Photo 8 planes at 814 Hz;
+switched in place inside descriptor arrays allocated
 once at boot); a mode switch must never allocate internal RAM, and the plane
 output-enable windows must stay superincreasing or the LUT fit collapses (both bitten
 on 2026-09-20, `firmware/docs/PROGRESS.md`).

@@ -116,7 +116,8 @@ with the previous LUT). The row buffers always hold the compile-time depth; a sm
 `planes` leaves the top planes out of the chain and the LUT produces codes of that many
 bits (the compile-time gamma table is normalised by its own maximum).
 `get_bit_planes()` reports the count in force. p64 switches between Quality (10 planes,
-250 Hz minimum -> 271 Hz) and Photo (8 planes, 600 Hz minimum -> 814 Hz) this way.
+250 Hz minimum -> 271 Hz; 11 planes -> 264 Hz with rounded low windows since 2026-10-02)
+and Photo (8 planes, 600 Hz minimum -> 814 Hz) this way.
 Re-creating the driver (`end()` then a new `begin()`) leaves the DMA stalled on this
 board: the descriptor pointer never moves again, in either mode.
 
@@ -168,5 +169,6 @@ instead of truncated (`p64bcm::plane_windows`, `weight_total`, `plan_light`). El
 planes at a 250 Hz minimum land on transition bit 5 (37 transmissions per row, 264 Hz);
 truncated, their low windows are 0 1 3 7 15 31 (plane 0 falls back to one clock and
 weighs what plane 1 does, 239 codes), rounded they are 1 2 4 8 16 31, binary from one
-clock (243 codes, 51 in the darkest quarter against Quality's 233 and 41). The default
-stays false, so Quality and Photo keep their tables.
+clock (243 codes, 51 in the darkest quarter against the ten-plane Quality's 233 and 41).
+The default stays false; p64's Quality mode is this profile since 2026-10-02, Photo keeps
+the truncated windows.

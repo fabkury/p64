@@ -188,7 +188,8 @@ TEST_CASE("bcm: with each window in the next buffer every plane weighs its windo
 
 TEST_CASE("bcm: the light along the inputs never falls, Quality and Photo, at every level") {
   for (int b = kFloor; b <= 255; ++b) {
-    CHECK_MESSAGE(light_monotonic(fit(10, 4, b), 10), "Quality level ", b);
+    CHECK_MESSAGE(light_monotonic(fit(11, 5, b, true), 11), "Quality level ", b);
+    CHECK_MESSAGE(light_monotonic(fit(10, 4, b), 10), "Quality until 2026-10-02, level ", b);
     CHECK_MESSAGE(light_monotonic(fit(8, 4, b), 8), "Photo level ", b);
   }
 }
@@ -306,9 +307,9 @@ TEST_CASE("bcm: a scaled fit at full level is the unscaled fit's light times the
 
 }  // namespace
 
-// The eleven-plane trial (2026-10-02): 11 planes at the 250 Hz minimum land on transition
+// Quality since 2026-10-02 (ADR 0015): 11 planes at the 250 Hz minimum land on transition
 // bit 5; rounded, the windows of the planes sent once are binary from one clock.
-TEST_CASE("bcm: Quality11 rounds its low windows to 1 2 4 8 16 31 and fits 243 codes") {
+TEST_CASE("bcm: Quality rounds its low windows to 1 2 4 8 16 31 and fits 243 codes") {
   const Profile r = fit(11, 5, 255, true);
   const int windows[11] = {1, 2, 4, 8, 16, 31, 62, 62, 62, 62, 62};
   const uint32_t weights[11] = {1, 2, 4, 8, 16, 31, 62, 124, 248, 496, 992};
@@ -330,7 +331,10 @@ TEST_CASE("bcm: Quality11 rounds its low windows to 1 2 4 8 16 31 and fits 243 c
     return n;
   };
   CHECK_EQ(dark(r), 51u);
-  CHECK_EQ(dark(fit(10, 4, 255)), 41u);
+  CHECK_EQ(dark(fit(10, 4, 255)), 41u);  // the ten-plane Quality before 2026-10-02
+  // The driver's floor level gives the same share of the light as before, so brightness 1
+  // (light_curve.hpp: 127 / 1979 / 16) stays a sixteenth of it.
+  CHECK_EQ(bcm::weight_total(kMaxPixels, kFloor, 11, 5, true), 128u);
 }
 
 TEST_CASE("bcm: rounded low windows keep every level superincreasing, monotonic and as lit as the plan says") {
@@ -347,7 +351,7 @@ TEST_CASE("bcm: rounded low windows keep every level superincreasing, monotonic 
       }
     }
   }
-  // The light plan lands Quality11's requests like Quality's.
+  // The light plan lands the eleven-plane requests like the ten-plane ones.
   const uint32_t full = bcm::weight_total(kMaxPixels, 255, 11, 5, true);
   for (uint32_t light = 1024; light <= 65536; light += 1024) {
     const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 11, 5, kFloor, light, true);
