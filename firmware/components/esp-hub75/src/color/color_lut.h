@@ -116,7 +116,7 @@ constexpr double cie1931(double lightness) {
  * @return std::array of 256 values scaled to BitDepth range
  */
 template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_cie1931_lut() {
-  static_assert(BitDepth >= 4 && BitDepth <= 12, "Bit depth must be 4-12");
+  static_assert(BitDepth >= 4 && BitDepth <= 16, "Bit depth must be 4-16");  // p64 patch: 16 for the fit targets
 
   constexpr uint16_t max_val = (1 << BitDepth) - 1;
   std::array<uint16_t, 256> lut{};
@@ -157,7 +157,7 @@ constexpr double constexpr_pow22(double x) {
  * @brief Generate Gamma 2.2 lookup table at compile time
  */
 template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_gamma22_lut() {
-  static_assert(BitDepth >= 4 && BitDepth <= 12, "Bit depth must be 4-12");
+  static_assert(BitDepth >= 4 && BitDepth <= 16, "Bit depth must be 4-16");  // p64 patch: 16 for the fit targets
 
   constexpr uint16_t max_val = (1 << BitDepth) - 1;
   std::array<uint16_t, 256> lut{};
@@ -177,7 +177,7 @@ template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_gamma22_
  * @brief Generate Linear lookup table at compile time
  */
 template<uint8_t BitDepth> constexpr std::array<uint16_t, 256> generate_linear_lut() {
-  static_assert(BitDepth >= 4 && BitDepth <= 12, "Bit depth must be 4-12");
+  static_assert(BitDepth >= 4 && BitDepth <= 16, "Bit depth must be 4-16");  // p64 patch: 16 for the fit targets
 
   constexpr uint16_t max_val = (1 << BitDepth) - 1;
   std::array<uint16_t, 256> lut{};
@@ -204,6 +204,19 @@ static constexpr auto LUT = generate_gamma22_lut<HUB75_BIT_DEPTH>();
 #else
 #error "Invalid HUB75_GAMMA_MODE (must be 0=LINEAR, 1=CIE1931, or 2=GAMMA_2_2)"
 #endif
+
+// p64 patch: the same curve over 0..65535, the targets the GDMA backend fits its LUT to
+// (fit_lut_to_weights). The table above has one step per code of HUB75_BIT_DEPTH, which is
+// 1.9 pixel clocks of light in p64's Quality profile, coarser than the one-clock window of
+// the lowest plane: it rounded dark targets to the wrong code and two more inputs to black.
+#if HUB75_GAMMA_MODE == 0
+static constexpr auto FIT_TARGETS = generate_linear_lut<16>();
+#elif HUB75_GAMMA_MODE == 1
+static constexpr auto FIT_TARGETS = generate_cie1931_lut<16>();
+#else
+static constexpr auto FIT_TARGETS = generate_gamma22_lut<16>();
+#endif
+inline constexpr uint32_t FIT_TARGET_MAX = 65535;
 
 // ============================================================================
 // Runtime BCM LUT Adjustment
@@ -241,5 +254,8 @@ int adjust_lut_for_bcm(uint16_t *lut, int bit_depth, int lsb_msb_transition);
  * @return Pointer to 256-entry LUT (uint16_t array)
  */
 HUB75_WARN_UNUSED inline constexpr const uint16_t *get_lut() noexcept { return LUT.data(); }
+
+/** @brief p64 patch: the 16-bit targets of the LUT fit (FIT_TARGET_MAX = full light) */
+HUB75_WARN_UNUSED inline constexpr const uint16_t *get_fit_targets() noexcept { return FIT_TARGETS.data(); }
 
 }  // namespace hub75

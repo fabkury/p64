@@ -10,9 +10,9 @@ namespace {
 namespace bcm = hub75::p64bcm;
 
 constexpr int kMaxPixels = 63;  // a 64-clock row minus one clock of latch blanking (sdkconfig)
-constexpr uint32_t kIdealMax = 1023;
+constexpr uint32_t kIdealMax = 65535;  // the driver fits to 16-bit targets (FIT_TARGETS)
 
-// A gamma 2.2 table over 0..1023, the shape of the driver's (its exact rounding differs a
+// A gamma 2.2 table over 0..65535, the shape of the driver's (its exact rounding differs a
 // little, which moves a code here and there, not the invariants tested below).
 struct Gamma {
   uint16_t v[256];
@@ -123,10 +123,10 @@ TEST_CASE("bcm: every profile at every brightness keeps the weights superincreas
   CHECK_EQ(profiles, (6 + 7 + 8 + 9 + 10) * 255);
 }
 
-TEST_CASE("bcm: the profiles in use lose no level to the blanking (229 and 179 codes at full brightness)") {
+TEST_CASE("bcm: the profiles in use lose no level to the blanking (233 and 179 codes at full brightness)") {
   // No plane is blanked in Quality or Photo at any brightness, so the walk over lit
   // planes is the walk over every code, and the counts are those of the device's log.
-  CHECK_EQ(fit(10, 4, 255).distinct, 229u);
+  CHECK_EQ(fit(10, 4, 255).distinct, 233u);  // 229 with the 10-bit targets, until 2026-10-02
   CHECK_EQ(fit(8, 4, 255).distinct, 179u);
   for (int b = 1; b <= 255; ++b) {
     for (const Profile &p : {fit(10, 4, b), fit(8, 4, b)}) {

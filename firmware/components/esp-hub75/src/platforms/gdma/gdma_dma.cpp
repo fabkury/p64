@@ -14,7 +14,7 @@
 #ifdef CONFIG_IDF_TARGET_ESP32S3
 
 #include "gdma_dma.h"
-#include "../../color/color_lut.h"  // p64 patch: get_lut() for fit_lut_to_weights()
+#include "../../color/color_lut.h"  // p64 patch: get_fit_targets() for fit_lut_to_weights()
 #include "p64_bcm.h"                // p64 patch: the plane windows and the LUT fit
 #include <cmath>                    // p64 patch
 #include <cstdio>                   // p64 patch
@@ -1146,12 +1146,12 @@ void GdmaDma::fit_lut_to_weights() {
     total += plane_weight_[bit];
   }
   if (total == 0) return;
-  // The compile-time gamma table spans 0..2^HUB75_BIT_DEPTH-1 whatever the number of
-  // planes in the chain; the codes span 0..2^active_planes_-1.
+  // The targets are the gamma curve over 0..65535 (finer than any plane's light) whatever
+  // the number of planes in the chain; the codes span 0..2^active_planes_-1.
   uint32_t weights[16] = {};
   for (int bit = 0; bit < active_planes_; bit++) weights[bit] = plane_weight_[bit];
   const unsigned fitted_distinct =
-      p64bcm::fit_lut(get_lut(), (1u << HUB75_BIT_DEPTH) - 1, weights, active_planes_, lut_, lut_scale_q16_);
+      p64bcm::fit_lut(get_fit_targets(), FIT_TARGET_MAX, weights, active_planes_, lut_, lut_scale_q16_);
   if (log_windows_) {  // once per refresh profile, not on every brightness change
     log_windows_ = false;
     char text[128];

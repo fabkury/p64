@@ -51,6 +51,17 @@ whose summed on-time is nearest the gamma table's target. This replaces upstream
 brightness shortens every window, so the low planes lose resolution first; run the panel
 near full brightness for the best gradation and dim in software if needed.
 
+## The fit's targets are 16 bits wide (2026-10-02, color_lut.h FIT_TARGETS)
+
+The fit used to take its targets from the compile-time gamma table, which has one step
+per code of `HUB75_BIT_DEPTH`: 1/1023 of full light, 1.9 pixel clocks in p64's Quality
+profile, coarser than the one-clock window of plane 0. Dark targets were rounded before
+the fit saw them. `FIT_TARGETS` is the same curve over 0..65535 (the generators accept
+16 bits now) and `fit_lut_to_weights()` uses it: Quality goes from 229 to 233 distinct
+codes, 41 instead of 37 in the darkest quarter, and inputs 6 and 7 are no longer black
+(1 to 5 still are: their light is under half a clock). Photo keeps 179. Costs 512 bytes
+of flash.
+
 ## The light plan: set_light() below the brightness curve's floor (2026-09-27)
 
 `Hub75Driver::set_light(light_q16)` asks for a share of the profile's full light
