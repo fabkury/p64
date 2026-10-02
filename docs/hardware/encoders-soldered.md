@@ -28,7 +28,8 @@ On hand (2026-09-21): the two 5880 boards, the two 5528 knobs, the 4209 and 4397
 (150 mm), the 4399 cable (50 mm), the 2.2 k resistors, the ELEGOO breadboards, fine
 tweezers, jumper wires or header pins (the 5880 bags include a short header strip each).
 The soldering kit of the table below arrived on 2026-09-26, the multimeter (Klein MM325)
-and the solder wick on 2026-09-27, the replacement 5880 for knob B on 2026-10-01. The
+and the solder wick on 2026-09-27, the replacement 5880 for knob B on 2026-10-01; the
+200 mm 4401 cable and a 2 mm hex key are on hand too (2026-10-01). The
 "no multimeter" notes in sections 3.3, 4 and 6.1 stay for a builder without one: the
 probe firmware (section 5) is the check that matters.
 
@@ -36,8 +37,6 @@ Still needed:
 
 | Part | For | Note |
 |---|---|---|
-| 2 mm hex key | the knobs' set screws | not included with the knobs |
-| SH-SH cable, 200 mm (Adafruit 4401) | board to board inside the shell | the two knob positions are 94 mm apart and the sockets face up/down; the 50 mm 4399 is for the bench only |
 | Electrical tape or 3 mm heat-shrink | wrapping the cable joints | tape is fine |
 | Tier 2 only: 1/4 W 2.2 k resistors (optional) | neater on the board than 1/2 W | the 1/2 W parts work, they are just bulky |
 | Tier 2 splice only: wire strippers, 2 mm heat-shrink, a lighter or heat gun | joining the cables | only if the pin-to-socket joints are not wanted |
@@ -263,8 +262,10 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   pulled from board B while running: knob B dropped after ten failed reads, knob A kept
   the brightness with 0 errors and was never lost, and B was found again at 0x37 without
   a reboot, with its blue identify, about 15 s after the plug went back.
-- Next: tier 2 (section 6), then the shell (section 7), which waits for the v7b print,
-  the 200 mm 4401 cable and a 2 mm hex key.
+- Next: tier 2 (section 6): the two pull-ups soldered onto board A, and the cables mated
+  pin to socket, not spliced (decided 2026-10-01). Then the shell (section 7): the v7b
+  print is ordered and awaited (2026-10-01); when it arrives, lay the washer and nut in a
+  spot-face before anything else (their diameter is still unmeasured).
 
 ## 6. Soldering, tier 2: the permanent harness
 
