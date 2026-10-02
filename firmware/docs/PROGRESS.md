@@ -1173,9 +1173,13 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   frame in two of four runs (none with ten planes on 2026-09-29). The drift of the
   largest block (45 to 47 KB after the review's tier 1 on 2026-09-22, about 34.8 KB from
   2026-09-26 on): static DIRAM is 121.0 KB in the public build (120.1 KB then) and 129.5
-  KB in the private one, whose WebP encoder alone holds 7.9 KB of .bss; the public image
+  KB in the private one, whose WebP encoder alone held 7.9 KB of .bss; the public image
   is 2.35 MB (the private one 2.75 MB, over the 2.4 MB budget that CI checks on the
-  public build).
+  public build). The encoder's run-time tables were then moved to PSRAM in the private
+  area (its static DIRAM 121.9 KB): at rest the private build reads 61 to 63.5 KB free
+  (54.9 before) and a 32.0 KB largest block, so what still holds the largest block below
+  the 45 KB of 2026-09-22 is a boot-time allocation splitting the region, not static
+  data (open).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
