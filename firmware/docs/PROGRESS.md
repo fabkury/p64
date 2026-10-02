@@ -1144,7 +1144,15 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   28.7, 32.8 and 34.8 KB on three boots today, at or under the 32 KB floor. Everything
   dark that was tuned by eye before this day (the LED face's ghost segments, the themed
   faces' night colours, the brightness ladder's low end) was judged on the too-bright
-  darks and wants a new look.
+  darks and wants a new look. Looked at the same day by the user: the LED face's ghosts
+  had become too faint and came up a quarter in value (accepted); the six themed faces
+  read well except the nixie, whose tubes showed a black line down the middle (Pillow's
+  `rounded_rectangle` had left the middle column of the 13-wide tube empty since the
+  faces were made; the mock fills it now) and whose reflection was covered by the
+  numerals' halo (it is drawn by the face now, after the numerals, screened over them).
+  On the way: the mock's blend rounds toward zero like the firmware, and `run.py` no
+  longer crashes reporting a face whose pixels differ by 8 or less. Open: brightness
+  1..8 in a dark room.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
