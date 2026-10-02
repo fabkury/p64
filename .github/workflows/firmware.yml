@@ -35,7 +35,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Toolchain and Pillow
         run: |
           apt-get update -qq && apt-get install -y -qq g++ > /dev/null
@@ -54,7 +54,7 @@ jobs:
           python tests/host/run.py --sanitize --werror --junit host-junit.xml
       - name: Upload the unit test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: host-junit
           path: firmware/host-junit.xml
@@ -67,7 +67,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build
         working-directory: firmware
         run: |
@@ -83,7 +83,7 @@ jobs:
       - name: Image and checksum
         working-directory: firmware/build
         run: sha256sum p64.bin | tee p64.bin.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: p64-firmware
           path: |
