@@ -29,9 +29,9 @@ struct Profile {
   unsigned distinct = 0;
 };
 
-Profile fit(int planes, int transition, int brightness) {
+Profile fit(int planes, int transition, int brightness, bool round_low = false) {
   Profile p;
-  bcm::plane_windows(kMaxPixels, brightness, planes, transition, p.windows);
+  bcm::plane_windows(kMaxPixels, brightness, planes, transition, p.windows, round_low);
   // The weights the driver fits to: the time each plane's data is on the LEDs, from the
   // windows as they sit in the buffers.
   int in_buffer[16] = {};
@@ -305,3 +305,55 @@ TEST_CASE("bcm: a scaled fit at full level is the unscaled fit's light times the
 }
 
 }  // namespace
+
+// The eleven-plane trial (2026-10-02): 11 planes at the 250 Hz minimum land on transition
+// bit 5; rounded, the windows of the planes sent once are binary from one clock.
+TEST_CASE("bcm: Quality11 rounds its low windows to 1 2 4 8 16 31 and fits 243 codes") {
+  const Profile r = fit(11, 5, 255, true);
+  const int windows[11] = {1, 2, 4, 8, 16, 31, 62, 62, 62, 62, 62};
+  const uint32_t weights[11] = {1, 2, 4, 8, 16, 31, 62, 124, 248, 496, 992};
+  for (int bit = 0; bit < 11; ++bit) {
+    CHECK_EQ(r.windows[bit], windows[bit]);
+    CHECK_EQ(r.weights[bit], weights[bit]);
+  }
+  CHECK_EQ(r.distinct, 243u);
+  CHECK_EQ(bcm::weight_total(kMaxPixels, 255, 11, 5, true), 1984u);  // Quality's light, 1979, within 0.3 %
+  // Truncated, plane 0 falls back to one clock and weighs what plane 1 does.
+  const Profile t = fit(11, 5, 255);
+  CHECK_EQ(t.windows[0], 1);
+  CHECK_EQ(t.windows[1], 1);
+  CHECK_EQ(t.distinct, 239u);
+  // More codes than Quality in the darkest quarter (inputs 0..63).
+  auto dark = [](const Profile &p) {
+    unsigned n = 1;
+    for (int i = 1; i < 64; ++i) n += p.lut[i] != p.lut[i - 1];
+    return n;
+  };
+  CHECK_EQ(dark(r), 51u);
+  CHECK_EQ(dark(fit(10, 4, 255)), 41u);
+}
+
+TEST_CASE("bcm: rounded low windows keep every level superincreasing, monotonic and as lit as the plan says") {
+  for (int planes = 6; planes <= 12; ++planes) {
+    for (int transition = 0; transition < planes; ++transition) {
+      for (int b = 1; b <= 255; ++b) {
+        const Profile p = fit(planes, transition, b, true);
+        CHECK_MESSAGE(superincreasing(p, planes), "planes ", planes, " transition ", transition, " brightness ", b);
+        CHECK_MESSAGE(light_monotonic(p, planes), "planes ", planes, " transition ", transition, " brightness ", b);
+        for (int bit = 0; bit < planes; ++bit) CHECK(p.windows[bit] <= kMaxPixels - 1);
+        if (b >= kFloor) {
+          for (int bit = 0; bit < planes; ++bit) CHECK(p.weights[bit] == p.windows[bit] * bcm::plane_reps(bit, transition));
+        }
+      }
+    }
+  }
+  // The light plan lands Quality11's requests like Quality's.
+  const uint32_t full = bcm::weight_total(kMaxPixels, 255, 11, 5, true);
+  for (uint32_t light = 1024; light <= 65536; light += 1024) {
+    const bcm::LightPlan plan = bcm::plan_light(kMaxPixels, 11, 5, kFloor, light, true);
+    CHECK(plan.effective >= kFloor);
+    CHECK(plan.weight == bcm::weight_total(kMaxPixels, plan.effective, 11, 5, true));
+    const double target = static_cast<double>(full) * light / 65536.0;
+    CHECK(std::fabs(static_cast<double>(plan.weight) * plan.scale_q16 / 65536.0 - target) <= 1.0);
+  }
+}

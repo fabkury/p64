@@ -220,9 +220,11 @@ class Hub75Driver {
    * @brief p64 patch: changes the number of bit planes sent (1..the compile-time depth)
    * and the minimum refresh rate in place, like set_min_refresh_rate(). Fewer planes
    * mean a shorter chain (faster refresh) and codes of that many bits; the LUT is
-   * refitted. False when unsupported or refused (the previous profile then stays).
+   * refitted. `round_low` rounds the halved output-enable windows of the planes sent
+   * once to the nearest clock instead of truncating them (binary weights from one clock
+   * at transition bit 5). False when unsupported or refused (the previous profile stays).
    */
-  bool set_refresh_profile(uint8_t planes, uint16_t min_hz);
+  bool set_refresh_profile(uint8_t planes, uint16_t min_hz, bool round_low = false);
   /** @brief p64 patch: bit planes currently sent (the compile-time depth until changed). */
   int get_bit_planes() const;
   /**

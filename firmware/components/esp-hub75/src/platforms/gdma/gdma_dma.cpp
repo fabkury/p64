@@ -583,7 +583,7 @@ Hub75LightPlan GdmaDma::get_light_plan() const {
   plan.scale_q16 = lut_scale_q16_;
   for (int bit = 0; bit < active_planes_; bit++) plan.weight += plane_weight_[bit];
   plan.full_weight =
-      p64bcm::weight_total(dma_width_ - config_.latch_blanking, 255, active_planes_, lsbMsbTransitionBit_);
+      p64bcm::weight_total(dma_width_ - config_.latch_blanking, 255, active_planes_, lsbMsbTransitionBit_, round_low_);
   return plan;
 }
 
@@ -1026,7 +1026,7 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t eff
   int windows[16] = {};
   // p64 patch: the arithmetic (halving windows, the one-clock fallback, blanking a plane
   // that would break the superincreasing weights) lives in p64_bcm.h, host-tested.
-  p64bcm::plane_windows(max_pixels, effective_brightness, active_planes_, lsbMsbTransitionBit_, windows);
+  p64bcm::plane_windows(max_pixels, effective_brightness, active_planes_, lsbMsbTransitionBit_, windows, round_low_);
   for (int bit = 0; bit < active_planes_; bit++) plane_on_pixels_[bit] = static_cast<uint16_t>(windows[bit]);
   for (int bit = active_planes_; bit < bit_depth_; bit++) plane_on_pixels_[bit] = 0;
   // p64 patch: a buffer's output-enable bits gate the data latched by the buffer sent
@@ -1097,7 +1097,7 @@ void GdmaDma::set_brightness_oe() {
   uint8_t effective;
   if (light_mode_) {
     const p64bcm::LightPlan plan = p64bcm::plan_light(dma_width_ - config_.latch_blanking, active_planes_,
-                                                      lsbMsbTransitionBit_, min_brightness_, light_q16_);
+                                                      lsbMsbTransitionBit_, min_brightness_, light_q16_, round_low_);
     effective = static_cast<uint8_t>(plan.effective);
     lut_scale_q16_ = plan.scale_q16 ? plan.scale_q16 : 65536u;
     ESP_LOGD(TAG, "light %lu/65536: OE level %u (%lu clocks), LUT scale %lu/65536",
@@ -1189,13 +1189,13 @@ bool GdmaDma::set_dma_priority(int priority) {
 // and a profile that would not fit them is refused before the DMA is touched. Should the
 // rebuild fail anyway, the previous profile is rebuilt and the DMA restarted, so the
 // panel never stays dark.
-bool GdmaDma::set_refresh_profile(uint8_t planes, uint16_t hz) {
+bool GdmaDma::set_refresh_profile(uint8_t planes, uint16_t hz, bool round_low) {
   if (!dma_chan_ || !row_buffers_[0] || !descriptors_[0] || hz == 0) return false;
   if (planes < 1 || planes > bit_depth_) {
     ESP_LOGW(TAG, "refresh profile with %u bit planes refused (row buffers hold %u)", planes, bit_depth_);
     return false;
   }
-  if (planes == active_planes_ && hz == min_refresh_hz_) return true;
+  if (planes == active_planes_ && hz == min_refresh_hz_ && round_low == round_low_) return true;
   const uint8_t transition = transition_bit_for(planes, hz);
   const size_t needed = static_cast<size_t>(num_rows_) * GdmaDma::calculate_bcm_transmissions(planes, transition);
   if (needed > descriptor_capacity_) {
@@ -1205,9 +1205,11 @@ bool GdmaDma::set_refresh_profile(uint8_t planes, uint16_t hz) {
   }
   const uint8_t previous_planes = active_planes_;
   const uint16_t previous_hz = min_refresh_hz_;
+  const bool previous_round_low = round_low_;
   stop_transfer();
   active_planes_ = planes;
   min_refresh_hz_ = hz;
+  round_low_ = round_low;
   log_windows_ = true;
   calculate_bcm_timings();
   set_brightness_oe();
@@ -1217,6 +1219,7 @@ bool GdmaDma::set_refresh_profile(uint8_t planes, uint16_t hz) {
              hz, previous_planes, previous_hz);
     active_planes_ = previous_planes;
     min_refresh_hz_ = previous_hz;
+    round_low_ = previous_round_low;
     calculate_bcm_timings();
     set_brightness_oe();
     build_descriptor_chain();  // the previous profile fitted before; the request itself failed

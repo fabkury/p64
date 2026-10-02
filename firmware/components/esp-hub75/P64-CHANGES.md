@@ -159,3 +159,14 @@ planes at transition bit 6 still fitted 3 codes. The fit now walks only the code
 from lit planes. Quality (10 planes, bit 4) and Photo (8 planes, bit 4) never blank a
 plane, so their tables are unchanged (229 and 179 distinct codes at full brightness, in
 the driver's log on the device and in the test).
+
+## Rounded low windows for a profile (2026-10-02, the eleven-plane trial)
+
+`set_refresh_profile(planes, min_hz, round_low)` takes a third argument: with it the
+halved output-enable windows of the planes sent once are rounded to the nearest clock
+instead of truncated (`p64bcm::plane_windows`, `weight_total`, `plan_light`). Eleven
+planes at a 250 Hz minimum land on transition bit 5 (37 transmissions per row, 264 Hz);
+truncated, their low windows are 0 1 3 7 15 31 (plane 0 falls back to one clock and
+weighs what plane 1 does, 239 codes), rounded they are 1 2 4 8 16 31, binary from one
+clock (243 codes, 51 in the darkest quarter against Quality's 233 and 41). The default
+stays false, so Quality and Photo keep their tables.

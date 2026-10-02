@@ -286,8 +286,9 @@ class PlatformDma {
   // chains rebuilt, DMA restarted, pixel data kept). False when unsupported.
   virtual bool set_min_refresh_rate(uint16_t hz) { return false; }
   // p64 patch: changes the number of bit planes in the chain and the minimum refresh rate
-  // in place (planes 1..compile-time depth). False when unsupported or refused.
-  virtual bool set_refresh_profile(uint8_t planes, uint16_t min_hz) { return false; }
+  // in place (planes 1..compile-time depth); `round_low` rounds the halved windows of the
+  // planes sent once (p64_bcm.h plane_windows). False when unsupported or refused.
+  virtual bool set_refresh_profile(uint8_t planes, uint16_t min_hz, bool round_low = false) { return false; }
   // p64 patch: bit planes currently in the chain (0 when the platform does not know).
   virtual int get_bit_planes() const { return 0; }
   // p64 patch: the light as a share of full (16.16), bypassing the curve; platforms

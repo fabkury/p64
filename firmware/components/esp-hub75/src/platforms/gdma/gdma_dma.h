@@ -108,8 +108,8 @@ class GdmaDma : public PlatformDma {
   bool set_dma_priority(int priority) override;
   int get_dma_priority() const override { return dma_priority_; }
   int get_dma_channel_id() const override;
-  bool set_min_refresh_rate(uint16_t hz) override { return set_refresh_profile(active_planes_, hz); }
-  bool set_refresh_profile(uint8_t planes, uint16_t min_hz) override;
+  bool set_min_refresh_rate(uint16_t hz) override { return set_refresh_profile(active_planes_, hz, round_low_); }
+  bool set_refresh_profile(uint8_t planes, uint16_t min_hz, bool round_low = false) override;
   int get_bit_planes() const override { return active_planes_; }
 
   // ============================================================================
@@ -198,6 +198,7 @@ class GdmaDma : public PlatformDma {
   // fitted to those weights by fit_lut_to_weights().
   int dma_priority_ = 0;  // p64 patch: GDMA arbitration priority of dma_chan_
   uint16_t min_refresh_hz_ = 0;  // p64 patch: the minimum refresh rate in force (config_ is const)
+  bool round_low_ = false;       // p64 patch: the profile's low windows rounded (p64_bcm.h plane_windows)
   uint16_t plane_on_pixels_[16] = {};
   uint32_t plane_weight_[16] = {};
   bool log_windows_ = true;  // p64 patch: log the windows once per refresh profile

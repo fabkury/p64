@@ -25,11 +25,24 @@ inline uint32_t plane_reps(int bit, int transition_bit) {
 // `max_pixels` usable clocks at `effective_brightness` (0..255 after the driver's curve).
 // Keeps the weights superincreasing: a plane that would weigh less than the planes below
 // it is blanked (it still costs its transmission).
-inline void plane_windows(int max_pixels, int effective_brightness, int planes, int transition_bit, int out[]) {
+//
+// `round_low` rounds the halved windows of the planes sent once to the nearest clock
+// instead of truncating them (2026-10-02, the eleven-plane trial): at transition bit 5
+// the truncated windows are 0 1 3 7 15 31, plane 0 falls back to one clock and two
+// planes weigh the same (239 codes); rounded they are 1 2 4 8 16 31, binary from one
+// clock (243 codes). Quality and Photo keep the truncated windows they shipped with.
+// Rounded up, the low windows can outweigh a plane sent several times, which would then be
+// blanked (seen in the host tests at twelve planes, transition bit 9, half brightness);
+// such a level falls back to the truncated windows.
+inline void plane_windows(int max_pixels, int effective_brightness, int planes, int transition_bit, int out[],
+                          bool round_low = false) {
   uint32_t weight_below = 0;
   for (int bit = 0; bit < planes; bit++) {
     int display_pixels = (max_pixels * effective_brightness) >> 8;
-    if (bit <= transition_bit) display_pixels >>= (transition_bit + 1 - bit);
+    if (bit <= transition_bit) {
+      const int shift = transition_bit + 1 - bit;
+      display_pixels = round_low ? (display_pixels + (1 << (shift - 1))) >> shift : display_pixels >> shift;
+    }
     // The upstream fallback: at very low brightness the top planes keep one clock.
     const int min_bit_for_display = std::max(0, planes - 1 - (effective_brightness >> 4));
     if (effective_brightness > 0 && display_pixels == 0 && bit >= min_bit_for_display) display_pixels = 1;
@@ -39,6 +52,14 @@ inline void plane_windows(int max_pixels, int effective_brightness, int planes, 
     if (static_cast<uint32_t>(display_pixels) * reps < weight_below) display_pixels = 0;
     weight_below += static_cast<uint32_t>(display_pixels) * reps;
     out[bit] = display_pixels;
+  }
+  if (round_low && effective_brightness > 0) {
+    for (int bit = transition_bit + 1; bit < planes; bit++) {
+      if (out[bit] == 0) {
+        plane_windows(max_pixels, effective_brightness, planes, transition_bit, out, false);
+        return;
+      }
+    }
   }
 }
 
@@ -69,9 +90,10 @@ inline void data_weights(const int buffer_window[], int planes, int transition_b
 
 // The light of a profile at `effective_brightness`: the sum over the planes of window
 // times repetitions, in pixel clocks per frame (1979 for Quality at 255).
-inline uint32_t weight_total(int max_pixels, int effective_brightness, int planes, int transition_bit) {
+inline uint32_t weight_total(int max_pixels, int effective_brightness, int planes, int transition_bit,
+                             bool round_low = false) {
   int windows[16] = {};
-  plane_windows(max_pixels, effective_brightness, planes, transition_bit, windows);
+  plane_windows(max_pixels, effective_brightness, planes, transition_bit, windows, round_low);
   uint32_t total = 0;
   for (int bit = 0; bit < planes; bit++) total += static_cast<uint32_t>(windows[bit]) * plane_reps(bit, transition_bit);
   return total;
@@ -92,11 +114,12 @@ struct LightPlan {
   uint32_t scale_q16 = 0;   // the LUT scale, 16.16 (65536 = none)
 };
 
-inline LightPlan plan_light(int max_pixels, int planes, int transition_bit, int min_effective, uint32_t light_q16) {
+inline LightPlan plan_light(int max_pixels, int planes, int transition_bit, int min_effective, uint32_t light_q16,
+                            bool round_low = false) {
   LightPlan plan;
   if (light_q16 == 0) return plan;
   if (light_q16 > 65536u) light_q16 = 65536u;
-  const uint32_t full = weight_total(max_pixels, 255, planes, transition_bit);
+  const uint32_t full = weight_total(max_pixels, 255, planes, transition_bit, round_low);
   if (light_q16 == 65536u) {  // the top levels tie (their windows saturate): report 255
     plan.effective = 255;
     plan.weight = full;
@@ -105,10 +128,10 @@ inline LightPlan plan_light(int max_pixels, int planes, int transition_bit, int 
   }
   const double target = static_cast<double>(full) * light_q16 / 65536.0;
   int level = min_effective < 1 ? 1 : min_effective;
-  uint32_t weight = weight_total(max_pixels, level, planes, transition_bit);
+  uint32_t weight = weight_total(max_pixels, level, planes, transition_bit, round_low);
   while (level < 255 && static_cast<double>(weight) < target) {
     level++;
-    weight = weight_total(max_pixels, level, planes, transition_bit);
+    weight = weight_total(max_pixels, level, planes, transition_bit, round_low);
   }
   plan.effective = level;
   plan.weight = weight;

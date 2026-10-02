@@ -220,8 +220,8 @@ bool Hub75Driver::set_min_refresh_rate(uint16_t hz) {
   config_.min_refresh_rate = hz;
   return true;
 }
-bool Hub75Driver::set_refresh_profile(uint8_t planes, uint16_t min_hz) {
-  if (!dma_ || !running_ || !dma_->set_refresh_profile(planes, min_hz)) return false;
+bool Hub75Driver::set_refresh_profile(uint8_t planes, uint16_t min_hz, bool round_low) {
+  if (!dma_ || !running_ || !dma_->set_refresh_profile(planes, min_hz, round_low)) return false;
   config_.min_refresh_rate = min_hz;
   return true;
 }
