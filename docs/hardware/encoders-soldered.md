@@ -27,23 +27,22 @@ unassigned; a settings switch swaps A and B once the shell shows which knob is l
 On hand (2026-09-21): the two 5880 boards, the two 5528 knobs, the 4209 and 4397 cables
 (150 mm), the 4399 cable (50 mm), the 2.2 k resistors, the ELEGOO breadboards, fine
 tweezers, jumper wires or header pins (the 5880 bags include a short header strip each).
-The soldering kit of the table below arrived on 2026-09-26. **No multimeter yet**
-(2026-09-26): every continuity and voltage check in this document is optional until one
-arrives; the probe firmware (section 5) is the check that matters, and the "no
-multimeter" notes in sections 3.3, 4 and 6.1 say what to do instead.
+The soldering kit of the table below arrived on 2026-09-26, the multimeter (Klein MM325)
+and the solder wick on 2026-09-27, the replacement 5880 for knob B on 2026-10-01. The
+"no multimeter" notes in sections 3.3, 4 and 6.1 stay for a builder without one: the
+probe firmware (section 5) is the check that matters.
 
 Still needed:
 
 | Part | For | Note |
 |---|---|---|
-| Replacement Adafruit 5880 for knob B | the first board B never answered (2026-09-27) | bridge A0 on the new board with a small bead, then the checks of section 3.3 |
 | 2 mm hex key | the knobs' set screws | not included with the knobs |
 | SH-SH cable, 200 mm (Adafruit 4401) | board to board inside the shell | the two knob positions are 94 mm apart and the sockets face up/down; the 50 mm 4399 is for the bench only |
 | Electrical tape or 3 mm heat-shrink | wrapping the cable joints | tape is fine |
 | Tier 2 only: 1/4 W 2.2 k resistors (optional) | neater on the board than 1/2 W | the 1/2 W parts work, they are just bulky |
 | Tier 2 splice only: wire strippers, 2 mm heat-shrink, a lighter or heat gun | joining the cables | only if the pin-to-socket joints are not wanted |
 
-The soldering kit, also still needed. The picks are examples chosen on 2026-09-23 for this
+The soldering kit (on hand since 2026-09-26). The picks are examples chosen on 2026-09-23 for this
 project's three small jobs (a surface-mount bridge, two through-hole resistors, perhaps a
 rework); any part meeting the spec does:
 
@@ -88,6 +87,12 @@ Full reasoning and numbers in the solderless option, section 3. In one table:
 
 This is the smallest soldering job there is: joining two pads that are 0.3 mm apart with
 one blob of solder. Do it before the bench build, on the board that will be knob B.
+
+**Test the board before the iron touches it** (lesson of 2026-09-27: the first board B
+was bridged untested and then answered at no address, so whether it arrived dead was
+never known). Plug the untouched board alone onto the harness and power up: its NeoPixel
+lights green and `GET /api/v1/diag/encoders?scan=1` lists 0x36. Only then bridge A0, and
+plug it alone again: blue, and 0x37.
 
 ### 3.1 Setup
 
@@ -185,7 +190,7 @@ Bench record:
 | SDA to SCL on board 2, unpowered | ~20 k | 19.93 k (the two 10 k pull-ups in series); SDA or SCL to the VIN pad reads OL, as an unpowered regulator does |
 | SDA, SCL, VIN to GND on board 2 | no beep | no beep |
 | Board 2 alone on the 4397, powered | 3Vo 3.3 V, SDA and SCL ~2.86 V | 3Vo 3.3 V, SDA 2.88 V, SCL 2.88 V; `?scan=1` empty, both lines idle at 1 |
-| `flash.ps1` with IO46 pulled high | works | |
+| `flash.ps1` with IO46 pulled high | works | works with the chain attached (2026-09-26): the chain stays connected for good |
 | Free internal heap, largest block, before the probe | from `/diag/memory` | |
 
 ## 5. Firmware
@@ -245,14 +250,21 @@ Identical to the solderless option, section 6, with two devices. Only the differ
   microcontroller is dead; replace the board** (a fresh 5880; ask Adafruit or the
   reseller about the one that never answered). The dead board keeps its knob, nut and
   washer for the replacement. Knob A runs alone meanwhile.
-- To resume, with the wick and the multimeter: (1) meter across the A0 pads (beep?) and
-  from each A0 pad to the neighbouring A1 pads and to the 103 network's ends (no beep);
-  (2) wick the bridge off, clean, plug B alone onto the 4397: a board that answers at
-  0x36 is alive and gets a new bridge with flux and a smaller bead; one that stays silent
-  with bare pads is dead and gets replaced (ask Adafruit or the reseller; a fresh 5880 is
-  the fallback, and the firmware runs with one knob meanwhile); (3) once B answers at
-  0x37, `encoders_smoke.py --watch 30` on both knobs, then stage C's knob B checks (next,
-  previous, like) and the "unplug the 4399 while running" check.
+- 2026-10-01, the replacement 5880, tested before soldering: alone on the 4397 it lit
+  green and answered at 0x36 (hardware id 0x55, 47 detents, 0 read errors). A0 bridged
+  with flux and a small bead; on the meter the A0 pads beep, the chip-side pads of A0 and
+  A1 do not, the A1 pads do not, SDA to SCL reads about 20 k. Alone again: blue, 0x37.
+- 2026-10-01, both knobs, the bench acceptance of section 5, all passed on the breadboard
+  harness with the 50 mm 4399 between the boards: A green and B blue at boot;
+  `encoders_smoke.py --expect 2 --watch 45` 0 failures with both knobs turned at once
+  (dozens of detents each way, presses on both, 0 read errors on either board); knob B
+  turns next and previous and its press likes the Makapix artwork on the panel (the log
+  says "liked post 1567"; on a card artwork it says there is nothing to like); the 4399
+  pulled from board B while running: knob B dropped after ten failed reads, knob A kept
+  the brightness with 0 errors and was never lost, and B was found again at 0x37 without
+  a reboot, with its blue identify, about 15 s after the plug went back.
+- Next: tier 2 (section 6), then the shell (section 7), which waits for the v7b print,
+  the 200 mm 4401 cable and a 2 mm hex key.
 
 ## 6. Soldering, tier 2: the permanent harness
 

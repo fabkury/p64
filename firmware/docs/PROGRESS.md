@@ -1111,6 +1111,18 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   mock pixel for pixel. Found on the way: `widgets_smoke` set the weather location to
   Greenwich and never put it back (how the device came to show Greenwich's sky); it now
   restores the location and the units.
+- 2026-10-01, p64b, knob B (prompt p062): the replacement 5880 was tested before
+  soldering (green, 0x36), bridged at A0 (meter readings as expected) and answered at
+  0x37 with its blue identify. With both boards chained on the breadboard harness the
+  bench acceptance passed: `encoders_smoke.py --expect 2 --watch 45` 0 failures with
+  both knobs turned at once and 0 read errors on either board; knob B's roles ran on
+  hardware for the first time (next, previous, and a like that the log confirms: "liked
+  post 1567"; a press on a card artwork is ignored); the board-to-board cable pulled
+  while running dropped knob B after ten failed reads, left knob A untouched (0 errors,
+  never lost) and B came back at 0x37 without a reboot. Internal heap 56 KB free,
+  largest 32 KB, with both boards polled. No firmware change. Next for p64b: the
+  permanent harness (tier 2), the v7b print, the in-shell assembly
+  (`docs/hardware/encoders-soldered.md` 5.1, 6, 7).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

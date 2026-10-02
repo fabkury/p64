@@ -1,7 +1,7 @@
 // p64 -- the p64b rotary encoders (two Adafruit 5880 seesaw boards on the external I2C
-// bus): the poll task, the boot identify, the counters. Stage B, the probe: every detent
-// and press is logged and counted; the roles (brightness, next / previous, pause, like)
-// are stage C (docs/hardware/encoders-soldered.md, section 5).
+// bus): the poll task, the boot identify, the counters, and the roles handed to the
+// hooks (knob A brightness and pause, knob B next / previous and like; knob_rules.hpp,
+// docs/hardware/encoders-soldered.md section 5).
 #pragma once
 
 #include "cJSON.h"

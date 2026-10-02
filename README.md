@@ -115,8 +115,11 @@ there yet, as of 2026-09-21:
 - **The shell in the photos is v1.** The current design, v7, adds a window for the USB-C
   cables (and, in p64b, mounts for the two knobs) and is not printed yet. v1 is proven,
   archived under `enclosure/archive/pre-v7/`, and needs a right-angle USB-C cable instead.
-- **The two knobs are designed, not wired.** Their wiring projects are in
-  `docs/hardware/`; the firmware has the input hooks ready.
+- **The two knobs work on the bench, not yet in a shell.** Both are wired to the board's
+  GPIO socket on a breadboard and accepted (2026-10-01): one turns the brightness and
+  pauses, the other steps through the artworks and likes on Makapix Club. The permanent
+  harness and the p64b shell are still to come; the wiring projects are in
+  `docs/hardware/`.
 - **Some acceptance measurements** in the specification still need instruments.
 
 ## Repository map
