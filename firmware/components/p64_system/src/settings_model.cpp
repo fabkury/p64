@@ -97,7 +97,7 @@ void get_enum(const cJSON *o, const char *name, E &out, const char *const *names
   }
 }
 
-const char *const kPanelModes[] = {"quality", "photo"};
+const char *const kPanelModes[] = {"quality", "photo", "quality11"};
 const char *const kMainStates[] = {"animation_show", "widget", "stream"};
 const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
@@ -303,7 +303,7 @@ bool Settings::read_json(const cJSON *root) {
   get_num(n, "start_minutes", night.start_minutes);
   get_num(n, "end_minutes", night.end_minutes);
   get_num(n, "brightness", night.brightness);
-  get_enum(d, "panel_mode", panel_mode, kPanelModes, 2);
+  get_enum(d, "panel_mode", panel_mode, kPanelModes, 3);
   get_num(d, "rotation", rotation);
   get_bool(d, "rotation_auto", rotation_auto);
   get_rgb(d, "background", background);

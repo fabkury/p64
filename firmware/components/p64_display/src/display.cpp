@@ -27,14 +27,35 @@ namespace {
 constexpr const char *TAG = "display";
 
 // The refresh profile (bit planes sent, minimum refresh rate) of each mode. Quality is
-// the sdkconfig depth and rate (10 planes, 250 Hz -> transition bit 4, 271 Hz on this
-// panel). Photo drops the two lowest planes (spec 3.1): 8 planes at 600 Hz minimum ->
-// transition bit 4, 814 Hz, 256 codes, about three quarters of Quality's light (the
-// halved windows of the planes sent once cost duty cycle).
-constexpr unsigned kQualityPlanes = CONFIG_HUB75_BIT_DEPTH;
+// 10 planes at the sdkconfig rate (250 Hz -> transition bit 4, 271 Hz on this panel).
+// Photo drops the two lowest planes (spec 3.1): 8 planes at 600 Hz minimum -> transition
+// bit 4, 814 Hz, 256 codes, about three quarters of Quality's light (the halved windows
+// of the planes sent once cost duty cycle). Quality11, the trial of 2026-10-02, is the
+// sdkconfig depth (11 planes, the row buffers hold that many) at the same rate ->
+// transition bit 5, 264 Hz, its low windows rounded to 1 2 4 8 16 31 (243 codes).
+constexpr unsigned kQualityPlanes = 10;
 constexpr unsigned kQualityMinRefreshHz = CONFIG_HUB75_MIN_REFRESH_RATE;
+constexpr unsigned kQuality11Planes = CONFIG_HUB75_BIT_DEPTH;
 constexpr unsigned kPhotoPlanes = 8;
 constexpr unsigned kPhotoMinRefreshHz = 600;
+static_assert(kQuality11Planes >= kQualityPlanes, "the row buffers must hold Quality's planes");
+
+struct Profile {
+  unsigned planes;
+  unsigned hz;
+  bool round_low;
+};
+
+Profile profile_of(p64::display::Mode mode) {
+  switch (mode) {
+    case p64::display::Mode::Photo:
+      return {kPhotoPlanes, kPhotoMinRefreshHz, false};
+    case p64::display::Mode::Quality11:
+      return {kQuality11Planes, kQualityMinRefreshHz, true};
+    default:
+      return {kQualityPlanes, kQualityMinRefreshHz, false};
+  }
+}
 
 // Timed fallback: extra time after the refresh period before the back buffer is
 // touched, covering the descriptor the DMA may already have fetched plus jitter.
@@ -181,6 +202,16 @@ bool Display::start_driver(unsigned min_refresh_hz) {
     stop_driver();
     return false;
   }
+  // The driver starts with every plane its row buffers hold (Quality11's eleven), which
+  // also sizes the descriptor arrays for the longest chain p64 uses (37 transmissions
+  // per row against Quality's 36); the boot mode's profile goes in before the first frame.
+  const Profile boot = profile_of(mode_);
+  if (static_cast<unsigned>(driver_->get_bit_planes()) != boot.planes &&
+      !driver_->set_refresh_profile(static_cast<uint8_t>(boot.planes), static_cast<uint16_t>(boot.hz),
+                                    boot.round_low)) {
+    ESP_LOGW(TAG, "boot profile of %s refused; the driver keeps %d planes", mode_name(mode_),
+             driver_->get_bit_planes());
+  }
   period_us_ = driver_->get_frame_period_us();
   chain_bytes_ = static_cast<uint32_t>(driver_->get_descriptor_count() * sizeof(dma_descriptor_t));
   if (chain_bytes_ == 0) chain_bytes_ = kNominalChainBytes;
@@ -206,7 +237,7 @@ bool Display::start_driver(unsigned min_refresh_hz) {
   ESP_LOGI(TAG,
            "HUB75 refresh running (%s mode): %d bit planes, planes 0..%d sent once with halving output-enable "
            "windows, %u transmissions per frame; refresh period %.1f us (%.1f Hz), GDMA priority %d",
-           mode_ == Mode::Photo ? "photo" : "quality", driver_->get_bit_planes(), transition,
+           mode_name(mode_), driver_->get_bit_planes(), transition,
            static_cast<unsigned>(driver_->get_descriptor_count()), refresh_period_us(), 1e6 / refresh_period_us(),
            driver_->get_dma_priority());
   if (lcd_dma_channel_ >= 0) {
@@ -239,11 +270,9 @@ bool Display::set_mode(Mode mode) {
   if (!driver_) return false;
   if (mode == mode_) return true;
   const int64_t t0 = esp_timer_get_time();
-  const unsigned planes = mode == Mode::Photo ? kPhotoPlanes : kQualityPlanes;
-  const unsigned hz = mode == Mode::Photo ? kPhotoMinRefreshHz : kQualityMinRefreshHz;
-  if (!driver_->set_refresh_profile(static_cast<uint8_t>(planes), static_cast<uint16_t>(hz))) {
-    ESP_LOGE(TAG, "mode switch to %s refused by the driver; staying in %s", mode == Mode::Photo ? "photo" : "quality",
-             mode_ == Mode::Photo ? "photo" : "quality");
+  const Profile p = profile_of(mode);
+  if (!driver_->set_refresh_profile(static_cast<uint8_t>(p.planes), static_cast<uint16_t>(p.hz), p.round_low)) {
+    ESP_LOGE(TAG, "mode switch to %s refused by the driver; staying in %s", mode_name(mode), mode_name(mode_));
     return false;
   }
   mode_ = mode;
@@ -264,7 +293,7 @@ bool Display::set_mode(Mode mode) {
   last_flip_us_ = esp_timer_get_time();
   repaint_both_buffers();
   ESP_LOGI(TAG, "panel mode switched to %s in %lld ms: %d bit planes, %.1f Hz, transition bit %d, %s",
-           mode == Mode::Photo ? "photo" : "quality", static_cast<long long>((esp_timer_get_time() - t0) / 1000),
+           mode_name(mode), static_cast<long long>((esp_timer_get_time() - t0) / 1000),
            driver_->get_bit_planes(), 1e6 / refresh_period_us(), driver_->get_lsb_msb_transition_bit(),
            lcd_dma_channel_ >= 0 ? "frame-locked" : "timed waits");
   return true;

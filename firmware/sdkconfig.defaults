@@ -139,11 +139,12 @@ CONFIG_HUB75_LAYOUT_HORIZONTAL=y
 # display layer (a runtime setting, default 90 for the printed shell).
 CONFIG_HUB75_ROTATE_0=y
 
-# --- HUB75 quality: 10 bit planes, gamma 2.2, 20 MHz, minimum refresh 250 Hz -> transition
-# bit 4, 271.3 Hz, 1024 codes (Quality mode). Photo mode raises the minimum refresh at
-# runtime (600 -> transition bit 6, 698 Hz). GDMA priority 5 keeps the panel ahead of the
-# crypto engines' DMA bursts. ---
-CONFIG_HUB75_BIT_DEPTH_10=y
+# --- HUB75 quality: row buffers for 11 bit planes (the Quality11 trial of 2026-10-02:
+# transition bit 5, 264 Hz; 8 KB more internal DMA memory than 10), gamma 2.2, 20 MHz,
+# minimum refresh 250 Hz. Quality mode sends 10 of them (transition bit 4, 271.3 Hz) and
+# Photo 8 at 600 Hz minimum (814 Hz), switched at runtime (p64_display). GDMA priority 5
+# keeps the panel ahead of the crypto engines' DMA bursts. ---
+CONFIG_HUB75_BIT_DEPTH_11=y
 CONFIG_HUB75_GAMMA_2_2=y
 CONFIG_HUB75_CLK_20MHZ=y
 CONFIG_HUB75_MIN_REFRESH_RATE=250

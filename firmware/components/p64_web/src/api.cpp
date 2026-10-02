@@ -83,7 +83,6 @@ std::string url_decode(const std::string &in) {
   return out;
 }
 
-const char *mode_name(display::Mode m) { return m == display::Mode::Photo ? "photo" : "quality"; }
 
 }  // namespace
 
@@ -227,7 +226,7 @@ cJSON *build_status() {
   if (g_hooks.display && g_hooks.display()) {
     const display::Display::Health h = g_hooks.display()->health();
     cJSON *panel = cJSON_AddObjectToObject(d, "panel");
-    cJSON_AddStringToObject(panel, "mode", mode_name(h.mode));
+    cJSON_AddStringToObject(panel, "mode", display::mode_name(h.mode));
     cJSON_AddNumberToObject(panel, "refresh_hz", h.refresh_hz);
     cJSON_AddNumberToObject(panel, "bit_depth", h.bit_depth);
     cJSON_AddNumberToObject(panel, "transition_bit", h.transition_bit);
@@ -296,7 +295,7 @@ esp_err_t settings_put(httpd_req_t *req) {
   if (!saved) return reply_error(req, "500 Internal Server Error", "SAVE_FAILED", "settings could not be stored");
   const system::Settings after = system::settings();
   if (after.panel_mode != before.panel_mode && g_hooks.request_mode) {
-    g_hooks.request_mode(after.panel_mode == system::PanelMode::Photo ? display::Mode::Photo : display::Mode::Quality);
+    g_hooks.request_mode(static_cast<display::Mode>(after.panel_mode));  // the same values (settings.hpp)
   }
   ws::notify();
   return reply_ok(req, cJSON_Parse(after.to_json().c_str()));

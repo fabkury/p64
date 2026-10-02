@@ -91,8 +91,7 @@ void apply_display_settings(const p64::system::Settings &s) {
   } else {
     g_display.set_brightness(p64::ops::effective_brightness(s));
   }
-  g_renderer.request_mode(s.panel_mode == p64::system::PanelMode::Photo ? p64::display::Mode::Photo
-                                                                          : p64::display::Mode::Quality);
+  g_renderer.request_mode(static_cast<p64::display::Mode>(s.panel_mode));  // the same values (settings.hpp)
 }
 
 // The brightness knob (p64b): every detent goes to the panel at once, through the same
@@ -197,7 +196,9 @@ extern "C" void app_main() {
   g_player.start(*g_queue);
   p64::system::subscribe(p64::system::Event::SettingsChanged,
                          [](const p64::system::Message &) { apply_display_settings(p64::system::settings()); });
-  if (s.panel_mode == p64::system::PanelMode::Photo) g_renderer.request_mode(p64::display::Mode::Photo);
+  if (s.panel_mode != p64::system::PanelMode::Quality) {
+    g_renderer.request_mode(static_cast<p64::display::Mode>(s.panel_mode));
+  }
 
   // The show puts the boot animation up at once; the card mounts and the playset is
   // restored while it runs (spec 15.1).

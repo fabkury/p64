@@ -107,7 +107,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Panel mode</h3>
-        <div class="rot-row"><button class="rot-btn" id="mode-quality" onclick="save({display:{panel_mode:'quality'}})">Quality (271 Hz, 10 bit planes)</button><button class="rot-btn" id="mode-photo" onclick="save({display:{panel_mode:'photo'}})">Photo (814 Hz, for cameras)</button></div>
+        <div class="rot-row"><button class="rot-btn" id="mode-quality" onclick="save({display:{panel_mode:'quality'}})">Quality (271 Hz, 10 bit planes)</button><button class="rot-btn" id="mode-photo" onclick="save({display:{panel_mode:'photo'}})">Photo (814 Hz, for cameras)</button><button class="rot-btn" id="mode-quality11" onclick="save({display:{panel_mode:'quality11'}})">Quality 11 (264 Hz, 11 bit planes, trial)</button></div>
     </div>
     <div class="section">
         <h3>Rotation (clockwise)</h3>
@@ -473,6 +473,7 @@ function fill(s) {
     var nb = document.getElementById('night-brightness'); if (![].some.call(nb.options, function (o) { return +o.value === d.night.brightness; })) { var o = document.createElement('option'); o.value = d.night.brightness; o.textContent = d.night.brightness; nb.appendChild(o); } nb.value = d.night.brightness;
     document.getElementById('mode-quality').classList.toggle('active', d.panel_mode === 'quality');
     document.getElementById('mode-photo').classList.toggle('active', d.panel_mode === 'photo');
+    document.getElementById('mode-quality11').classList.toggle('active', d.panel_mode === 'quality11');
     document.querySelectorAll('.rot-btn[data-rot]').forEach(function (b) { b.classList.toggle('active', +b.getAttribute('data-rot') === d.rotation && !d.rotation_auto); });
     document.getElementById('rot-auto').classList.toggle('active', !!d.rotation_auto);
     sv('bg-r', d.background.r); sv('bg-g', d.background.g); sv('bg-b', d.background.b); bgPreview();

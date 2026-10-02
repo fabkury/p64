@@ -29,7 +29,13 @@ class Hub75Driver;
 
 namespace p64::display {
 
-enum class Mode : uint8_t { Quality = 0, Photo = 1 };
+// Quality11 is the eleven-plane trial of 2026-10-02 (11 planes, transition bit 5, 264 Hz,
+// binary low windows): kept beside Quality so the two can be compared on the panel.
+enum class Mode : uint8_t { Quality = 0, Photo = 1, Quality11 = 2 };
+
+inline const char *mode_name(Mode m) {
+  return m == Mode::Photo ? "photo" : m == Mode::Quality11 ? "quality11" : "quality";
+}
 
 class Display {
  public:
