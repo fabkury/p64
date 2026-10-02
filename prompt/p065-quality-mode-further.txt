@@ -1,0 +1,8 @@
+p64 has two modes of operation:
+ - Quality Mode: maximizes visual quality, but might/will cause banding in photos.
+ - Photo Mode: compromises visual quality to allow photos with no banding.
+
+My question is:
+ - Can the visual quality of Quality Mode be improved even further? If yes, how, and at what cost and risks? If not, why not?
+
+Don't implement anything, just report back to me first.
