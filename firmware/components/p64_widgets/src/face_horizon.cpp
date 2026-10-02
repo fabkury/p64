@@ -3,10 +3,13 @@
 // (a red disc near the horizon, gold with rays above), stars once the sun is far enough
 // down, the moon with its phase, clouds by the weather's cover drifting with the minute,
 // rain or snow, hills and a tree that darken at night (assets/clock/horizon), the time on
-// top in outlined white (Everyday Vast Black) and the date on the ground. Floating point: the host test compares
-// it with the mock within a tolerance rather than pixel for pixel.
+// top in white outlined at 75 % black (Everyday Vast Black) and the date on the ground.
+// Floating point: the host test compares it with the mock within a tolerance rather than
+// pixel for pixel.
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <vector>
 
 #include "clock_assets.hpp"
 #include "p64/gfx/fonts.hpp"
@@ -229,10 +232,16 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
   const std::string hh = o.h24 ? (m.hour < 10 ? "0" : "") + std::to_string(m.hour) : std::to_string(m.h12());
   const std::string mm = (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
   const std::string time = hh + (colon_on(m, o) ? ":" : " ") + mm;
-  // one extra pixel between the characters; the outlines first, then the ink, as one string draws
+  // one extra pixel between the characters; the time and the meridiem's outline is one
+  // shape darkened once at kOutlineAlpha, so the sky shows through it evenly where halos
+  // overlap (p070), then the ink over it. The mask is 4 KB, above the internal-RAM
+  // threshold of malloc, so on the device it lands in PSRAM.
   constexpr int kGap = 1;
+  constexpr uint8_t kOutlineAlpha = 191;  // 75 %
   const int spaced = gfx::fonts::width(*big, time) + kGap * (static_cast<int>(time.size()) - 1);
   const int x0 = (Frame::width() - spaced) / 2, x_end = x0 + spaced;
+  const int meridiem_x = x_end - gfx::fonts::width(font, m.meridiem());
+  std::vector<uint8_t> mask(static_cast<size_t>(Frame::width() * Frame::height()), 0);
   for (const bool ink : {false, true}) {
     int x = x0;
     for (const char ch : time) {
@@ -240,12 +249,24 @@ void draw_horizon(Frame &frame, const Moment &m, const Options &o, const Sky &sk
       if (ink) {
         gfx::fonts::draw(frame, *big, x, 4, one, white, 1);
       } else {
-        gfx::fonts::draw(frame, *big, x, 4, one, black, 1, &black);
+        gfx::fonts::draw_mask(mask.data(), *big, x, 4, one, 1, true);
       }
       x += gfx::fonts::width(*big, one) + kGap;
     }
+    if (!o.h24) {
+      if (ink) {
+        gfx::fonts::draw(frame, font, meridiem_x, 18, m.meridiem(), white, 1);
+      } else {
+        gfx::fonts::draw_mask(mask.data(), font, meridiem_x, 18, m.meridiem(), 1, true);
+      }
+    }
+    if (!ink) {
+      for (int y = 0; y < Frame::height(); ++y)
+        for (int xx = 0; xx < Frame::width(); ++xx)
+          if (mask[static_cast<size_t>(y * Frame::width() + xx)] == gfx::fonts::kMaskOutline)
+            frame.blend(xx, y, black, kOutlineAlpha);
+    }
   }
-  if (!o.h24) gfx::fonts::draw(frame, font, x_end - gfx::fonts::width(font, m.meridiem()), 18, m.meridiem(), white, 1, &black);
   gfx::fonts::draw_centred(frame, font, 55, date_text(m, o.month_first), lerp({150, 160, 190}, {230, 240, 230}, light), 1, &black);
 }
 
