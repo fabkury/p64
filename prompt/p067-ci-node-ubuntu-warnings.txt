@@ -1,0 +1,1 @@
+Let's now pivot to address the two warnings about the CI setup. Before we actually do so, please explain to me what do we need to do, and what are its costs.
