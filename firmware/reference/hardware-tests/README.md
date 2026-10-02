@@ -331,7 +331,16 @@ than plain 7 bits).
 The driver is therefore vendored under `components/esp-hub75` and patched (see its
 `P64-CHANGES.md`): planes at or below the transition bit T are sent once with a halving
 output-enable window, so every plane keeps its binary weight, and the LUT is refitted
-to the planes' real on-times after each brightness change. Frame time is
+to the planes' real on-times after each brightness change.
+
+Correction (2026-10-02, found in the product firmware): this folder's patch writes each
+plane's window into that plane's own buffer, but a buffer's output-enable bits gate the
+data latched by the buffer sent before it. Here each window therefore lights the plane
+below it, the data weighs 3 7 15 31 62 62 124 248 496 931 clocks instead of the 1 3 7 15
+31 62 .. 992 below, the darks are two to three times too bright and the light falls by
+half from input 51 to 52. The product driver (`firmware/components/esp-hub75`,
+`p64bcm::buffer_windows`) puts each window into the next buffer; this test bed is left as
+it was, so read its dark-tone numbers below as the intent, not what the panel showed. Frame time is
 32 rows x (T + 2^(bits-1-T)) transmissions x 64 pixels / clock, with T the smallest
 value that reaches the minimum refresh rate. Current setting: 10 bits, minimum 250 Hz,
 hence T = 4, 36 transmissions per row, 271.3 Hz, 1024 codes per channel; output-enable

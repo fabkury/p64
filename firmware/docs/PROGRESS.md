@@ -1123,6 +1123,28 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   largest 32 KB, with both boards polled. No firmware change. Next for p64b: the
   permanent harness (tier 2), the v7b print, the in-shell assembly
   (`docs/hardware/encoders-soldered.md` 5.1, 6, 7).
+- 2026-10-02, the panel's darks corrected (prompts p065, p066). Reading the driver
+  patch showed that each plane's output-enable window sat in its own plane's buffer,
+  while a buffer's window gates the data latched by the buffer before it (the lag
+  upstream relies on when buffer 0 carries the previous row's address). The planes'
+  data weighed 3 7 15 31 62 62 124 248 496 931 clocks in Quality instead of 1 3 7 15 31
+  62 .. 992: the darks two to three times too bright and the light falling at every
+  32nd code, by half from input 51 to 52. Confirmed on the panel before the fix: four
+  grey bands 48, 51, 52, 56 streamed raw, the third clearly darker than the second.
+  Fixed in the driver (`p64bcm::buffer_windows`, the LUT fitted to
+  `p64bcm::data_weights`; host tests for the old weights and for every profile and
+  level); Photo had the same fault (7 falls, the deepest at input 98) and is fixed by
+  the same change. The fit's targets are now the gamma curve over 16 bits instead of
+  the 10-bit table (229 -> 233 codes in Quality, 37 -> 41 in the darkest quarter, inputs
+  6 and 7 no longer black). Device: boot log "1 3 7 15 31 62 62 62 62 62 ... 233
+  distinct codes"; the same bands now rise steadily and two ramps (0..63, 0..252) look
+  smooth to the user; `brightness_smoke`, `panel_mode_smoke`, `api_smoke` 0 failures.
+  Considered and dropped: an eleventh plane (243 codes, worst dark error 15 % -> 2.5 %)
+  needs 8 KB more internal DMA memory, and the largest free internal block measured
+  28.7, 32.8 and 34.8 KB on three boots today, at or under the 32 KB floor. Everything
+  dark that was tuned by eye before this day (the LED face's ghost segments, the themed
+  faces' night colours, the brightness ladder's low end) was judged on the too-bright
+  darks and wants a new look.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
