@@ -1,0 +1,1 @@
+Let's polish the Horizon clockface. It uses font Everyday Vast for its main clock. The main clock has a black border. Please make that black border be drawn at 75% opacity, no fully opaque. I have a p64 device connected via USB-C and to the same LAN as this computer.
