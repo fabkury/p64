@@ -454,18 +454,32 @@ NIXIE_DIGITS = [
 NIXIE_HALO, NIXIE_INK, NIXIE_DIM = (150, 46, 6), (255, 132, 30), (90, 30, 4)
 NIXIE_DATE = (150, 96, 36)
 NIXIE_XS, NIXIE_TY = (2, 17, 34, 49), 8
+# The reflection down the left of the glass (column 2, rows 6..22 of a tube), drawn after
+# the numerals and screened over them: it lies on the glass, in front of the wires (p066,
+# 2026-10-02; it was in the tube asset and the halo covered it). Screened over the haze
+# it is the tube's old highlight colour, (96, 60, 40); over a lit numeral it pales it.
+NIXIE_SHINE, NIXIE_SHINE_X, NIXIE_SHINE_Y = (74, 52, 38), 2, (6, 22)
+
+
+def screen(a, b):
+    """The screen blend, integer (face_nixie.cpp's screen): lighter than either, never darker."""
+    return tuple(a[i] + b[i] - a[i] * b[i] // 255 for i in range(3))
 
 
 def draw_nixie_tube():
-    """A lit tube, 13x38: domed glass with the warm haze inside and a reflection, socket
-    and two pins."""
+    """A lit tube, 13x38: domed glass with the warm haze inside and a glint at the top,
+    socket and two pins (the reflection down the glass is drawn by the face, over the
+    numeral)."""
     tw, th = 13, 38
     tube = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
     d = ImageDraw.Draw(tube)
-    glass, haze, hl = (46, 50, 68, 255), (30, 9, 2, 255), (96, 60, 40, 255)
+    glass, haze = (46, 50, 68, 255), (30, 9, 2, 255)
     d.rounded_rectangle((0, 0, tw - 1, 31), radius=5, fill=glass)
     d.rounded_rectangle((1, 1, tw - 2, 30), radius=4, fill=haze)
-    d.line((2, 6, 2, 22), fill=hl)
+    # Pillow (12.1) leaves the middle column of these odd-width rounded rectangles empty: a
+    # black line down every tube, noticed on the panel on 2026-10-02 (p066). Fill it.
+    d.line((tw // 2, 0, tw // 2, 31), fill=glass)
+    d.line((tw // 2, 1, tw // 2, 30), fill=haze)
     tube.putpixel((3, 4), (84, 92, 118, 255))
     d.rectangle((1, 32, tw - 2, 34), fill=(34, 32, 38, 255))
     d.rectangle((2, 35, tw - 3, 35), fill=(24, 22, 26, 255))
@@ -502,6 +516,9 @@ def draw_nixie(m, o):
         d = digits[int(ch)]
         stamp_halo(frame, d, x + 3, ty + 10, NIXIE_HALO)
         stamp_mask(frame, d, x + 3, ty + 10, NIXIE_INK)
+    for x in NIXIE_XS:
+        for y in range(NIXIE_SHINE_Y[0], NIXIE_SHINE_Y[1] + 1):
+            frame.set(x + NIXIE_SHINE_X, ty + y, screen(frame.get(x + NIXIE_SHINE_X, ty + y), NIXIE_SHINE))
     if colon_on(m, o):
         for y in (ty + 11, ty + 18):
             for x in (31, 32):
