@@ -25,6 +25,23 @@ stuck at code 3 and every input above 13 mapped to it (a posterized, nearly blac
 picture: p64's first Photo mode, 2026-09-20). A plane that would weigh less than the
 planes below it is now blanked instead (window 0).
 
+## Each window in the buffer after its plane (2026-10-02, p64_bcm.h buffer_windows)
+
+The panel's shift registers latch a buffer's data at its last clock, so while a buffer is
+clocked out the LEDs show the data of the buffer sent before it, gated by the
+output-enable bits of the buffer being sent (upstream relies on this when buffer 0
+carries the previous row's address). Upstream gives every plane the same window, so the
+lag costs it nothing. The halving windows above were written into their own plane's
+buffer and so each lit the plane below it: the data weighed 3 7 15 31 62 62 124 248 496
+931 clocks in Quality instead of 1 3 7 15 31 62 124 248 496 992, the darks came out two
+to three times too bright and the light fell at every 32nd code (by half from input 51
+to 52, 31 falls along the ramp; Photo had 7, the deepest at input 98). Found by reading
+the code on 2026-10-02 and confirmed on the panel with four grey bands (48, 51, 52, 56:
+the third at half the second). `p64bcm::buffer_windows()` now puts the window of plane b
+into buffer b + 1 and the top plane's into buffer 0, and the LUT is fitted to
+`p64bcm::data_weights()`, the time each plane's data is on the LEDs given the windows in
+the buffers. Total light, refresh and memory are unchanged.
+
 ## LUT fitted to the real on-times (gdma_dma.cpp, fit_lut_to_weights)
 
 Integer windows and latch blanking make the plane weights only approximately binary, so

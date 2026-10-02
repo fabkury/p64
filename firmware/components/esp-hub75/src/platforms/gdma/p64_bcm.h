@@ -42,6 +42,31 @@ inline void plane_windows(int max_pixels, int effective_brightness, int planes, 
   }
 }
 
+// Which window goes into which buffer of a row's chain (2026-10-02). The panel's shift
+// registers latch a buffer's data at its last clock, so while buffer k is clocked out the
+// LEDs show the data of the buffer sent before it, gated by buffer k's output-enable bits
+// (the reason buffer 0 carries the previous row's address). The window of plane b
+// therefore belongs in the buffer after it, and buffer 0 gets the top plane's, which is
+// still on the previous row. Until this was found the windows sat in their own plane's
+// buffer and the data weighed 3 7 15 31 62 62 124 248 496 931 clocks in Quality instead
+// of 1 3 7 15 31 62 124 248 496 992: darks two to three times too bright and the light
+// dropping by half from input 51 to 52 (seen on the panel with four grey bands).
+inline void buffer_windows(const int plane_window[], int planes, int out[]) {
+  for (int k = 0; k < planes; k++) out[k] = plane_window[(k + planes - 1) % planes];
+}
+
+// The light of each plane's data, in pixel clocks per frame, given the windows in the
+// buffers: a plane's data is on the LEDs during every send of its own buffer but the
+// first, and during the first send of the next buffer. With buffer_windows() this is the
+// plane's window times its repetitions as long as the planes sent more than once share
+// one window, which plane_windows() gives at every level the driver uses (17 and up).
+inline void data_weights(const int buffer_window[], int planes, int transition_bit, uint32_t out[]) {
+  for (int bit = 0; bit < planes; bit++) {
+    out[bit] = (plane_reps(bit, transition_bit) - 1) * static_cast<uint32_t>(buffer_window[bit]) +
+               static_cast<uint32_t>(buffer_window[(bit + 1) % planes]);
+  }
+}
+
 // The light of a profile at `effective_brightness`: the sum over the planes of window
 // times repetitions, in pixel clocks per frame (1979 for Quality at 255).
 inline uint32_t weight_total(int max_pixels, int effective_brightness, int planes, int transition_bit) {

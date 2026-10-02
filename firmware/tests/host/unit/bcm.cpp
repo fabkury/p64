@@ -32,10 +32,16 @@ struct Profile {
 Profile fit(int planes, int transition, int brightness) {
   Profile p;
   bcm::plane_windows(kMaxPixels, brightness, planes, transition, p.windows);
-  for (int bit = 0; bit < planes; ++bit) p.weights[bit] = p.windows[bit] * bcm::plane_reps(bit, transition);
+  // The weights the driver fits to: the time each plane's data is on the LEDs, from the
+  // windows as they sit in the buffers.
+  int in_buffer[16] = {};
+  bcm::buffer_windows(p.windows, planes, in_buffer);
+  bcm::data_weights(in_buffer, planes, transition, p.weights);
   p.distinct = bcm::fit_lut(kGamma.v, kIdealMax, p.weights, planes, p.lut);
   return p;
 }
+
+constexpr int kFloor = 17;  // the driver's lowest output-enable level on this panel
 
 // Every lit plane weighs at least all the planes below it (a blanked plane, weight 0, is
 // allowed: the fit leaves it out).
@@ -142,9 +148,53 @@ TEST_CASE("bcm: brightness 0 is dark, and the LUT fit says so") {
   CHECK_EQ(p.distinct, 0u);
 }
 
+// The latch lag (2026-10-02): a buffer's output-enable bits gate the data of the buffer
+// sent before it. The windows sat in their own plane's buffer until then; the panel
+// showed four grey bands 48, 51, 52, 56 with the third at half the light of the second.
+TEST_CASE("bcm: a window in its own plane's buffer lights the plane below it (the bug of 2026-10-02)") {
+  int windows[16] = {};
+  uint32_t weights[16] = {};
+  bcm::plane_windows(kMaxPixels, 255, 10, 4, windows);
+  bcm::data_weights(windows, 10, 4, weights);  // the windows unrotated, as the patch wrote them
+  const uint32_t was[10] = {3, 7, 15, 31, 62, 62, 124, 248, 496, 931};
+  for (int bit = 0; bit < 10; ++bit) CHECK_EQ(weights[bit], was[bit]);
+  // Not superincreasing: planes 0..4 together outweigh plane 5, so code 31 outshone 32.
+  CHECK(weights[0] + weights[1] + weights[2] + weights[3] + weights[4] > weights[5]);
+}
+
+TEST_CASE("bcm: with each window in the next buffer every plane weighs its window times its repetitions") {
+  int in_buffer[16] = {};
+  const Profile q = fit(10, 4, 255);
+  bcm::buffer_windows(q.windows, 10, in_buffer);
+  const int buffers[10] = {62, 1, 3, 7, 15, 31, 62, 62, 62, 62};  // buffer 0 still shows the row above's top plane
+  const uint32_t weights[10] = {1, 3, 7, 15, 31, 62, 124, 248, 496, 992};
+  for (int bit = 0; bit < 10; ++bit) {
+    CHECK_EQ(in_buffer[bit], buffers[bit]);
+    CHECK_EQ(q.weights[bit], weights[bit]);
+  }
+  // Every profile, every level the driver can set: the data weighs what plane_windows meant.
+  for (int planes = 6; planes <= 12; ++planes) {
+    for (int transition = 0; transition < planes; ++transition) {
+      for (int b = kFloor; b <= 255; ++b) {
+        const Profile p = fit(planes, transition, b);
+        for (int bit = 0; bit < planes; ++bit) {
+          CHECK_MESSAGE(p.weights[bit] == p.windows[bit] * bcm::plane_reps(bit, transition), "planes ", planes,
+                        " transition ", transition, " level ", b, " bit ", bit);
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE("bcm: the light along the inputs never falls, Quality and Photo, at every level") {
+  for (int b = kFloor; b <= 255; ++b) {
+    CHECK_MESSAGE(light_monotonic(fit(10, 4, b), 10), "Quality level ", b);
+    CHECK_MESSAGE(light_monotonic(fit(8, 4, b), 8), "Photo level ", b);
+  }
+}
+
 // The light plan (spec 3.2, 2026-09-27): a share of the full light becomes an
 // output-enable level plus a LUT scale. The driver's floor on this panel is 17.
-constexpr int kFloor = 17;
 
 // The light a plan emits at input 255 of a fitted LUT, in clocks per frame.
 uint32_t top_light(const bcm::LightPlan &plan, int planes, int transition) {

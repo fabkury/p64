@@ -1029,12 +1029,16 @@ void GdmaDma::set_brightness_oe_internal(RowBitPlaneBuffer *buffers, uint8_t eff
   p64bcm::plane_windows(max_pixels, effective_brightness, active_planes_, lsbMsbTransitionBit_, windows);
   for (int bit = 0; bit < active_planes_; bit++) plane_on_pixels_[bit] = static_cast<uint16_t>(windows[bit]);
   for (int bit = active_planes_; bit < bit_depth_; bit++) plane_on_pixels_[bit] = 0;
+  // p64 patch: a buffer's output-enable bits gate the data latched by the buffer sent
+  // before it, so each plane's window goes into the next buffer of the chain (p64_bcm.h).
+  int in_buffer[16] = {};
+  p64bcm::buffer_windows(windows, active_planes_, in_buffer);
 
   for (int row = 0; row < num_rows_; row++) {
     for (int bit = 0; bit < bit_depth_; bit++) {
       uint16_t *buf = (uint16_t *) (buffers[row].data + (bit * dma_width_ * 2));
       // Planes outside the chain (bit >= active_planes_) are not sent; blank them anyway.
-      const int display_pixels = bit < active_planes_ ? windows[bit] : 0;
+      const int display_pixels = bit < active_planes_ ? in_buffer[bit] : 0;
 
       assert(max_pixels >= 2 && "max_pixels < 2: insufficient headroom for safety margin");
       assert(display_pixels >= 0 && "display_pixels underflow");
@@ -1123,14 +1127,22 @@ void GdmaDma::set_brightness_oe() {
 
 // p64 patch ---------------------------------------------------------------------------
 // Maps each 8-bit input to the code whose LED-on time per frame is nearest the gamma
-// table's target. A plane's weight is its output-enable window (pixel clocks) times the
-// number of times it is sent per frame. The windows halve downwards, so the weights are
-// superincreasing (each plane weighs at least the sum of the planes below it) and a
-// larger code never means less light: codes and targets can be walked together in order.
+// table's target. A plane's weight is the time its data is on the LEDs per frame, from
+// the windows as they sit in the buffers (p64bcm::data_weights): its output-enable window
+// (pixel clocks) times the number of times it is sent. The windows halve downwards, so
+// the weights are superincreasing (each plane weighs at least the sum of the planes below
+// it) and a larger code never means less light: codes and targets can be walked together
+// in order.
 void GdmaDma::fit_lut_to_weights() {
+  int windows[16] = {};
+  int in_buffer[16] = {};
+  uint32_t on_screen[16] = {};
+  for (int bit = 0; bit < active_planes_; bit++) windows[bit] = plane_on_pixels_[bit];
+  p64bcm::buffer_windows(windows, active_planes_, in_buffer);
+  p64bcm::data_weights(in_buffer, active_planes_, lsbMsbTransitionBit_, on_screen);
   uint32_t total = 0;
   for (int bit = 0; bit < bit_depth_; bit++) {
-    plane_weight_[bit] = bit < active_planes_ ? plane_on_pixels_[bit] * p64bcm::plane_reps(bit, lsbMsbTransitionBit_) : 0;
+    plane_weight_[bit] = bit < active_planes_ ? on_screen[bit] : 0;
     total += plane_weight_[bit];
   }
   if (total == 0) return;
