@@ -45,13 +45,14 @@ struct Style {
 };
 // The ghost and the glow are half the first design (p054 and p055, 2026-09-28, tuned on
 // the panel: the matrix lifts the dark end, so the first values competed with the lit
-// segments and a third of them was too faint to notice).
+// segments and a third of them was too faint to notice). That lift was the driver's
+// window bug (fixed 2026-10-02); after the fix the ghosts came up a quarter (p066).
 constexpr Style kStyles[5] = {
-    {{10, 2, 2}, {10, 2, 2}, {23, 4, 3}, {255, 48, 24}, {40, 7, 3}, {128, 78, 72}, false},
-    {{2, 8, 3}, {2, 8, 3}, {4, 20, 6}, {60, 255, 70}, {6, 40, 9}, {76, 120, 84}, false},
-    {{10, 6, 1}, {10, 6, 1}, {24, 14, 2}, {255, 160, 24}, {42, 26, 3}, {128, 104, 70}, false},
-    {{2, 3, 12}, {2, 3, 12}, {4, 7, 26}, {60, 120, 255}, {5, 13, 48}, {80, 90, 130}, false},
-    {{5, 11, 11}, {3, 8, 8}, {5, 17, 15}, {150, 255, 225}, {10, 33, 29}, {0, 0, 0}, true},
+    {{10, 2, 2}, {10, 2, 2}, {29, 5, 4}, {255, 48, 24}, {40, 7, 3}, {128, 78, 72}, false},
+    {{2, 8, 3}, {2, 8, 3}, {5, 25, 8}, {60, 255, 70}, {6, 40, 9}, {76, 120, 84}, false},
+    {{10, 6, 1}, {10, 6, 1}, {30, 18, 3}, {255, 160, 24}, {42, 26, 3}, {128, 104, 70}, false},
+    {{2, 3, 12}, {2, 3, 12}, {5, 9, 33}, {60, 120, 255}, {5, 13, 48}, {80, 90, 130}, false},
+    {{5, 11, 11}, {3, 8, 8}, {6, 21, 19}, {150, 255, 225}, {10, 33, 29}, {0, 0, 0}, true},
 };
 
 // a towards b by v/255.

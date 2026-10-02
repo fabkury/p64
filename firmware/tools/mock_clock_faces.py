@@ -1256,20 +1256,23 @@ class SegStyle:
 STYLES = {
     # The ghost and the glow are half the first design (p054 and p055, 2026-09-28, tuned on
     # the panel: on the LED matrix the dark end is lifted, so the first values competed with
-    # the lit segments and a third of them was too faint to notice).
-    "red": SegStyle((10, 2, 2), None, (23, 4, 3), (255, 48, 24), (40, 7, 3), (128, 78, 72)),
-    "green": SegStyle((2, 8, 3), None, (4, 20, 6), (60, 255, 70), (6, 40, 9), (76, 120, 84)),
-    "amber": SegStyle((10, 6, 1), None, (24, 14, 2), (255, 160, 24), (42, 26, 3), (128, 104, 70)),
-    "blue": SegStyle((2, 3, 12), None, (4, 7, 26), (60, 120, 255), (5, 13, 48), (80, 90, 130)),
-    "vfd": SegStyle((5, 11, 11), (3, 8, 8), (5, 17, 15), (150, 255, 225), (10, 33, 29), None),
+    # the lit segments and a third of them was too faint to notice). That lift was the
+    # driver's window bug (fixed 2026-10-02, darks two to three times too bright); after
+    # the fix the ghosts were too faint and came up a quarter (p066).
+    "red": SegStyle((10, 2, 2), None, (29, 5, 4), (255, 48, 24), (40, 7, 3), (128, 78, 72)),
+    "green": SegStyle((2, 8, 3), None, (5, 25, 8), (60, 255, 70), (6, 40, 9), (76, 120, 84)),
+    "amber": SegStyle((10, 6, 1), None, (30, 18, 3), (255, 160, 24), (42, 26, 3), (128, 104, 70)),
+    "blue": SegStyle((2, 3, 12), None, (5, 9, 33), (60, 120, 255), (5, 13, 48), (80, 90, 130)),
+    "vfd": SegStyle((5, 11, 11), (3, 8, 8), (6, 21, 19), (150, 255, 225), (10, 33, 29), None),
 }
 LED_PLASTIC, LED_LIGHT, LED_DARK, LED_INNER = (46, 46, 52), (92, 92, 100), (14, 14, 16), (24, 24, 28)
 CHROME_HI, CHROME, CHROME_LO, CHROME_EDGE = (236, 240, 244), (168, 174, 182), (96, 102, 110), (38, 42, 48)
 
 
 def mix(a, b, v):
-    """a towards b by v/255, integer (the firmware's blend)."""
-    return tuple(a[i] + ((b[i] - a[i]) * v) // 255 for i in range(3))
+    """a towards b by v/255, integer (the firmware's blend: C++ division rounds toward zero,
+    which differs from // when b is darker than a, as a glow beside a brighter ghost is)."""
+    return tuple(a[i] + int((b[i] - a[i]) * v / 255) for i in range(3))
 
 
 def mask_rows(mask):

@@ -550,20 +550,23 @@ def check_faces(exe, build_dir):
             exact += 1
             continue
         # per-pixel largest channel difference
-        worst, off = 0, 0
-        first = None
+        worst, off, small = 0, 0, 0
+        first = None  # the first pixel that differs at all (a difference of 8 or less used to crash the report)
         for i in range(0, len(ours), 3):
             d = max(abs(ours[i + k] - expected[i + k]) for k in range(3))
             if d > 8:
                 off += 1
-                if first is None:
-                    first = (i // 3 % DST_W, i // 3 // DST_W, tuple(ours[i:i + 3]), tuple(expected[i:i + 3]))
+            elif d:
+                small += 1
+            if d and first is None:
+                first = (i // 3 % DST_W, i // 3 // DST_W, tuple(ours[i:i + 3]), tuple(expected[i:i + 3]))
             worst = max(worst, d)
         tolerant = name.startswith("horizon-")
         if tolerant and off <= DST_W * DST_H * 3 // 100:
             continue
         failures += 1
-        print(f"  {name}: {off} pixels differ by more than 8 (worst {worst}); first at ({first[0]},{first[1]}): ours {first[2]} vs {first[3]}")
+        print(f"  {name}: {off} pixels differ by more than 8, {small} by 8 or less (worst {worst}); "
+              f"first at ({first[0]},{first[1]}): ours {first[2]} vs {first[3]}")
     print(f"clock faces: {len(refs)} references, {exact} pixel-exact, {len(refs) - exact - failures} within tolerance, {failures} failed")
     if failures:
         print("CLOCK FACES FAILED")
