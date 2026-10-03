@@ -1,0 +1,11 @@
+Repository retrodiffusion-api (C:\Users\fab\F\Estudo\Tecnologia\sandbox\retrodiffusion-api) contains:
+ - Information about querying the RetroDiffusion API
+ - A secrets.env file containing the API KEY that we can use to query the API and spend real dollars
+
+Please query RetroDiffusion to generate:
+ 1. A new Horizon clockface, called Horizon-RD, in addition to the existing Horizon clockface.
+ 2. A brand new clockface, unrelated to Horizon.
+
+In other words, use RetroDiffusion to generate assets to compose two clockfaces, one similar to Horizon, the other brand new.
+
+Your budget at RetroDiffusion for this task is $5.
