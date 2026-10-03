@@ -1,0 +1,5 @@
+In http://p64.local/settings, change how semitransparent colors are represented in the color swatches (e.g. in the border color swatch).
+
+This is how colors should be represented:
+ - If fully opaque (alpha = 255), the whole swatch is drawn with that solid color.
+ - If not fully opaque, the top-left triangle of the swatch is still drawn with that solid color (in full alpha = 255), while the bottom-right triangle is drawn with the semitransparent color composited over the "transparency checkers".
