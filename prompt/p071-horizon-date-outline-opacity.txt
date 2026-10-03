@@ -1,0 +1,3 @@
+The Horizon clockface uses semitransparent borders on the main clock, but not on the calendar date displayed on the bottom.
+
+Please change that. Make, in the Horizon clockface, the calendar date drawn on the bottom have a semitransparent border just like the main clock.
