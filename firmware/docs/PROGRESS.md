@@ -1197,9 +1197,9 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   the smoke checks the data's age). Device: `widgets_smoke` and `api_smoke` 0 failures;
   the panel's frame equals the mock's layout (US AQI 44 Good, UV 1, New York); internal
   heap at rest 60.9 KB free, largest block 32.8 KB (57.4 and 31.7 before the flash, same
-  uptime class), the weather task's stack 5.7 KB free of 12; host tests 201 cases. Not
-  checked: the public build's size against `check_size.py` (CI does), and the widget on
-  the panel by eye.
+  uptime class), the weather task's stack 5.7 KB free of 12; host tests 201 cases. The user
+  then tried the widget on the panel and its section of the web UI lightly: both worked.
+  Not checked: the public build's size against `check_size.py` (CI does).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
