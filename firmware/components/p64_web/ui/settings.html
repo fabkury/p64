@@ -498,10 +498,15 @@ function fill(s) {
     sc('auto-check', s.updates.auto_check);
 }
 function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }
-function bgPreview() { document.getElementById('bg-preview').style.background = 'rgb(' + (+gv('bg-r') || 0) + ',' + (+gv('bg-g') || 0) + ',' + (+gv('bg-b') || 0) + ')'; }
-function ovPreview() { document.getElementById('ov-preview').style.background = 'rgb(' + (+gv('ov-r') || 0) + ',' + (+gv('ov-g') || 0) + ',' + (+gv('ov-b') || 0) + ')'; }
-// The border swatch shows its opacity over a checkerboard, as it will blend over artwork.
-function ovbPreview() { var e = document.getElementById('ovb-preview'); e.style.background = 'linear-gradient(rgba(' + (+gv('ovb-r') || 0) + ',' + (+gv('ovb-g') || 0) + ',' + (+gv('ovb-b') || 0) + ',' + ((+gv('ov-opacity') || 255) / 255).toFixed(3) + '),rgba(0,0,0,0)),repeating-conic-gradient(#999 0 25%,#ddd 0 50%) 0 0/8px 8px'; }
+// A colour swatch: an opaque colour fills it; a semitransparent one keeps the solid colour in the
+// top-left triangle and shows the blend over a checkerboard in the bottom-right one, as over artwork.
+function swatch(id, r, g, b, a) {
+    var c = r + ',' + g + ',' + b, e = document.getElementById(id);
+    e.style.background = a >= 255 ? 'rgb(' + c + ')' : 'linear-gradient(to bottom right,rgb(' + c + ') 50%,rgba(' + c + ',' + (a / 255).toFixed(3) + ') 50%),repeating-conic-gradient(#999 0 25%,#ddd 0 50%) 0 0/8px 8px';
+}
+function bgPreview() { swatch('bg-preview', +gv('bg-r') || 0, +gv('bg-g') || 0, +gv('bg-b') || 0, 255); }
+function ovPreview() { swatch('ov-preview', +gv('ov-r') || 0, +gv('ov-g') || 0, +gv('ov-b') || 0, 255); }
+function ovbPreview() { swatch('ovb-preview', +gv('ovb-r') || 0, +gv('ovb-g') || 0, +gv('ovb-b') || 0, +gv('ov-opacity') || 255); }
 function saveOvb() { save({ show: { clock_overlay: { border_colour: { r: +gv('ovb-r') || 0, g: +gv('ovb-g') || 0, b: +gv('ovb-b') || 0 } } } }); }
 function saveOv() { save({ show: { clock_overlay: { colour: { r: +gv('ov-r') || 0, g: +gv('ov-g') || 0, b: +gv('ov-b') || 0 } } } }); }
 // The font menus come from the firmware's table (/api/v1/fonts); until they arrive, the wanted value waits.
