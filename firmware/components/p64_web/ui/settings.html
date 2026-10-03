@@ -161,7 +161,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     <div class="section">
         <h3>Main state</h3>
         <div class="rot-row"><button class="rot-btn" id="ms-animation_show" onclick="save({show:{main_state:'animation_show'}})">Animation show</button><button class="rot-btn" id="ms-widget" onclick="save({show:{main_state:'widget'}})">Widget</button><button class="rot-btn" id="ms-stream" onclick="save({show:{main_state:'stream'}})">Stream</button></div>
-        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">Widget shown in the Widget state</label><select class="sel" id="widget" onchange="save({widgets:{widget:this.value}})"><option value="clock">Clock</option><option value="weather">Weather</option><option value="temperature">Temperature</option></select></div>
+        <div class="toggle-row" style="margin-top:8px"><label class="toggle-label">Widget shown in the Widget state</label><select class="sel" id="widget" onchange="save({widgets:{widget:this.value}})"><option value="clock">Clock</option><option value="weather">Weather</option><option value="temperature">Temperature</option><option value="air">Air quality</option></select></div>
     </div>
     <div class="section">
         <h3>Clock</h3>
@@ -198,6 +198,11 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="setting-hint" id="weather-status">Open-Meteo, no key needed.</div>
     </div>
     <div class="section">
+        <h3>Air quality and UV</h3>
+        <div class="toggle-row"><label class="toggle-label">Air quality index</label><select class="sel" id="air-index" onchange="save({air:{index:this.value}})"><option value="us">US AQI</option><option value="european">European AQI</option></select></div>
+        <div class="setting-hint" id="air-status">Open-Meteo, for the weather's location and at its refresh interval; fetched only while this widget is in use.</div>
+    </div>
+    <div class="section">
         <h3>Temperature (on-board sensor)</h3>
         <div class="grid3">
             <div><label>Temperature offset</label><input class="num-input" type="number" id="t-off" min="-10" max="10" onchange="save({temperature:{offset_temperature:+this.value}})"></div>
@@ -213,10 +218,11 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div><label>Clock, every (min)</label><input class="num-input" type="number" id="il-clock" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{clock:+this.value}}})"><div class="setting-hint" id="il-clock-hint" style="margin-top:4px"></div></div>
             <div><label>Weather, every (min)</label><input class="num-input" type="number" id="il-weather" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{weather:+this.value}}})"><div class="setting-hint" id="il-weather-hint" style="margin-top:4px"></div></div>
             <div><label>Temperature, every (min)</label><input class="num-input" type="number" id="il-temp" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{temperature:+this.value}}})"><div class="setting-hint" id="il-temp-hint" style="margin-top:4px"></div></div>
+            <div><label>Air quality, every (min)</label><input class="num-input" type="number" id="il-air" min="0" max="1440" onchange="save({widgets:{interlude_minutes:{air:+this.value}}})"><div class="setting-hint" id="il-air-hint" style="margin-top:4px"></div></div>
         </div>
         <div class="toggle-row" style="margin-top:8px"><label class="toggle-label" for="il-random">Random clock face</label><label class="toggle-switch"><input type="checkbox" id="il-random" onchange="save({widgets:{interlude_random_clock_face:this.checked}})"><span class="toggle-slider"></span></label></div>
         <div class="setting-hint">Each clock interlude draws one of the nine faces at random, never the same one twice running; the Clock widget itself keeps the face set above.</div>
-        <div style="margin-top:8px"><button class="btn" onclick="interludeNow('clock')">Clock now</button> <button class="btn" onclick="interludeNow('weather')">Weather now</button> <button class="btn" onclick="interludeNow('temperature')">Temperature now</button><span class="setting-hint" style="margin:0 0 0 8px">one slot, in the Animation show</span></div>
+        <div style="margin-top:8px"><button class="btn" onclick="interludeNow('clock')">Clock now</button> <button class="btn" onclick="interludeNow('weather')">Weather now</button> <button class="btn" onclick="interludeNow('temperature')">Temperature now</button> <button class="btn" onclick="interludeNow('air')">Air quality now</button><span class="setting-hint" style="margin:0 0 0 8px">one slot, in the Animation show</span></div>
     </div>
 </div>
 
@@ -418,7 +424,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <tr><td><a href="https://zlib.net" target="_blank" rel="noopener">zlib</a></td><td>inflate, for PNG</td><td>zlib</td></tr>
             <tr><td><a href="https://github.com/webmproject/libwebp" target="_blank" rel="noopener">libwebp</a></td><td>WebP decoding</td><td>BSD-3-Clause</td></tr>
             <tr><td><a href="https://github.com/DaveGamble/cJSON" target="_blank" rel="noopener">cJSON</a></td><td>JSON, in the API and the stored documents</td><td>MIT</td></tr>
-            <tr><td><a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></td><td>the weather forecast</td><td>CC BY 4.0</td></tr>
+            <tr><td><a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></td><td>the weather forecast, the air quality and the UV index</td><td>CC BY 4.0</td></tr>
             <tr><td><a href="https://v3x3d.itch.io/" target="_blank" rel="noopener">Pixel fonts by VEXED</a></td><td>Capital Hill, Everyday Slight, Everyday Standard, Everyday Typical, Everyday Ample, Everyday Vast Black and High Birth</td><td>CC BY 4.0</td></tr>
             </tbody>
         </table>
@@ -488,7 +494,7 @@ function fill(s) {
     if (s.weather.location_set) { sv('lat', s.weather.latitude); sv('lon', s.weather.longitude); }
     sv('units', s.weather.units); sv('weather-refresh', s.weather.refresh_minutes);
     sv('t-off', s.temperature.offset_temperature); sv('h-off', s.temperature.offset_humidity); sv('t-trend', s.temperature.trend ? 'on' : 'off');
-    sc('il-random', s.widgets.interlude_random_clock_face); sv('il-clock', s.widgets.interlude_minutes.clock); sv('il-weather', s.widgets.interlude_minutes.weather); sv('il-temp', s.widgets.interlude_minutes.temperature);
+    sc('il-random', s.widgets.interlude_random_clock_face); sv('il-clock', s.widgets.interlude_minutes.clock); sv('il-weather', s.widgets.interlude_minutes.weather); sv('il-temp', s.widgets.interlude_minutes.temperature); sv('il-air', s.widgets.interlude_minutes.air); sv('air-index', (s.air || {}).index || 'us');
     sc('st-takeover', s.stream.takeover); sv('st-silence', s.stream.silence_ms); sc('st-ddp', s.stream.ddp_enabled); sv('st-ddp-port', s.stream.ddp_port); sc('st-raw', s.stream.raw_udp_enabled); sv('st-raw-port', s.stream.raw_udp_port);
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
@@ -656,7 +662,7 @@ p64.onStatus(function (d) {
     var inp = d.inputs || {};
     document.getElementById('diag-imu').textContent = inp.imu_present ? ('present, ' + (inp.calibrated ? 'calibrated' : 'not calibrated') + (inp.auto_rotation_resolved ? ', auto rotation ' + inp.auto_rotation : '')) : 'absent';
     var il = (d.playback || {}).interludes || {};
-    [['clock', 'il-clock-hint'], ['weather', 'il-weather-hint'], ['temperature', 'il-temp-hint']].forEach(function (k) {
+    [['clock', 'il-clock-hint'], ['weather', 'il-weather-hint'], ['temperature', 'il-temp-hint'], ['air', 'il-air-hint']].forEach(function (k) {
         var x = il[k[0]] || {}, t = '';
         if (x.state === 'rolled') t = 'about ' + x.per_swap_percent + ' % of swaps';
         else if (x.state === 'never') t = 'off';
@@ -664,6 +670,8 @@ p64.onStatus(function (d) {
         else if (x.state === 'interval_longer') t = 'off: the auto-swap interval is longer than this';
         document.getElementById(k[1]).textContent = t;
     });
+    var ai = d.air || {};
+    document.getElementById('air-status').textContent = ai.valid ? 'Now US AQI ' + ai.us_aqi + ' (' + ai.us_category.toLowerCase() + '), European AQI ' + ai.european_aqi + ' (' + ai.european_category.toLowerCase() + '), UV ' + ai.uv_index + ', PM2.5 ' + ai.pm2_5 + ', PM10 ' + ai.pm10 + ' (' + Math.round((ai.age_s || 0) / 60) + ' min old).' : (ai.error ? 'Air quality: ' + ai.error : 'Open-Meteo, for the weather\'s location and at its refresh interval; fetched only while this widget is in use.');
     var we = d.weather || {};
     document.getElementById('weather-status').textContent = we.valid ? 'Now ' + Number(we.temperature).toFixed(1) + (we.units === 'imperial' ? ' F' : ' C') + ', ' + we.condition + ' (' + Math.round((we.age_s || 0) / 60) + ' min old).' : 'Weather: ' + (we.error || 'no data yet; set a location.');
 });

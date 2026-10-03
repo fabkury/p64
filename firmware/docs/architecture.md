@@ -26,7 +26,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
-| `p64_widgets` | clock (digital, analogue, seven themed faces), weather, temperature; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `analogue`, `clock_format`, `weather_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
+| `p64_widgets` | clock (digital, analogue, seven themed faces), weather, temperature, air; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `face_air`, `analogue`, `clock_format`, `weather_model`, `air_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack, roles through hooks). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `knob_rules.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
@@ -368,7 +368,7 @@ firmware's own text, the status screens (`main/status_screens.cpp`, spec 6.4), u
 and centred inside the screen's border; the built-in 5x7 font they used before is gone
 (2026-09-23).
 
-`p64_widgets`: three `FrameSource`s and the overlay. The clock renders the time for
+`p64_widgets`: four `FrameSource`s and the overlay. The clock renders the time for
 the frame's due instant (the player works ahead), so its frames are right when they
 show; it asks for the next frame at the next minute (or second when seconds or the
 blinking colon show). Its analogue face (`analogue.cpp`, pure and host-tested) draws
@@ -395,7 +395,17 @@ per-pixel function of the tile (no tile image is kept). `solar.cpp` (NOAA's low-
 sun, the Astronomical Almanac's low-precision moon with its phase from the elongation) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours
-without a refresh. The temperature widget reads the SHTC3 through a sampler task every
+without a refresh. The air widget (2026-10-03, spec 7.4) keeps one `Air` (Open-Meteo's
+air quality reply: the current indexes, particulates and UV, and 48 hourly values,
+parsed by the host-tested `air_model`, which also holds the bands and the graph's
+scale), fetched by the same task right after the forecast, one TLS session after the
+other, and only while the widget is in use (`air_wanted`: the Widget state shows it, its
+interlude gap is set, or a source drew within two hours; drawing is what asks). Its
+face (`face_air.cpp`) is compared pixel for pixel with the references
+`tools/mock_air_widget.py` writes under `tests/host/corpus/air/` (the picture and the
+data of each state) in `tests/host/unit/air.cpp`. When each fetch is due is
+`weather_model::fetch_due` (a changed request, i.e. another location, is fetched at
+once). The temperature widget reads the SHTC3 through a sampler task every
 minute (calibration offsets from the settings, the trend from the last hour of samples)
 and the reading is always in the status document. The overlay is a player hook: `key()`
 changes with the minute and the overlay settings and, when it does, draws HH:MM (AM or PM appended in 12 h mode) with its

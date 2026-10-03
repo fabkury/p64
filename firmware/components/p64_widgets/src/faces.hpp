@@ -9,6 +9,7 @@
 #include "p64/gfx/frame.hpp"
 #include "p64/system/settings.hpp"
 #include "p64/widgets/widgets.hpp"
+#include "air_model.hpp"
 #include "themed.hpp"
 #include "weather_model.hpp"
 
@@ -67,6 +68,10 @@ void stamp_overlay(gfx::Frame &frame, const OverlaySprite &sprite);
 // The weather: the forecast `f` as of `now` (monotonic, like f.fetched_us), or why not.
 void draw_weather(gfx::Frame &out, const system::Settings &s, const weather_model::Forecast &f,
                   const std::string &error, int64_t now);
+// The air quality and UV indexes (spec 7.4, face_air.cpp): `a` as of `now` (monotonic),
+// or why not; `utc_now_s` (seconds since 1970, 0 = unknown) picks the day and marks the hour.
+void draw_air(gfx::Frame &out, const system::Settings &s, const air_model::Air &a, const std::string &error,
+              int64_t now, int64_t utc_now_s);
 // The temperature and humidity reading, with the trend when the settings ask for it.
 void draw_temperature(gfx::Frame &out, const system::Settings &s, const Reading &r);
 

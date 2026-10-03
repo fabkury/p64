@@ -102,7 +102,7 @@ const char *const kMainStates[] = {"animation_show", "widget", "stream"};
 const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
 const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right", "top_center", "bottom_center"};
-const char *const kWidgets[] = {"clock", "weather", "temperature"};
+const char *const kWidgets[] = {"clock", "weather", "temperature", "air"};
 const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
 const char *const kLedStyles[] = {"red", "green", "amber", "blue", "vfd"};
 
@@ -133,6 +133,7 @@ void Settings::clamp() {
   if (interlude_clock != 0) interlude_clock = clamp_to<uint16_t>(interlude_clock, 5, 1440);
   if (interlude_weather != 0) interlude_weather = clamp_to<uint16_t>(interlude_weather, 5, 1440);
   if (interlude_temperature != 0) interlude_temperature = clamp_to<uint16_t>(interlude_temperature, 5, 1440);
+  if (interlude_air != 0) interlude_air = clamp_to<uint16_t>(interlude_air, 5, 1440);
   stream_silence_ms = clamp_to<uint32_t>(stream_silence_ms, 500, 60000);
   if (ddp_port == 0) ddp_port = 4048;
   if (raw_udp_port == 0) raw_udp_port = 4064;
@@ -200,6 +201,7 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(ip, "clock", interlude_clock);
   cJSON_AddNumberToObject(ip, "weather", interlude_weather);
   cJSON_AddNumberToObject(ip, "temperature", interlude_temperature);
+  cJSON_AddNumberToObject(ip, "air", interlude_air);
   cJSON_AddBoolToObject(w, "interlude_random_clock_face", interlude_random_clock_face);
 
   cJSON *ck = obj(root, "clock");
@@ -220,6 +222,9 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(we, "longitude", weather.longitude);
   cJSON_AddStringToObject(we, "units", weather.imperial ? "imperial" : "metric");
   cJSON_AddNumberToObject(we, "refresh_minutes", weather.refresh_minutes);
+
+  cJSON *ai = obj(root, "air");
+  cJSON_AddStringToObject(ai, "index", air.european ? "european" : "us");
 
   cJSON *te = obj(root, "temperature");
   cJSON_AddNumberToObject(te, "offset_temperature", temperature.offset_temperature);
@@ -329,11 +334,12 @@ bool Settings::read_json(const cJSON *root) {
   get_num(co, "border_opacity", clock_overlay.border_opacity);
 
   const cJSON *w = sub(root, "widgets");
-  get_enum(w, "widget", widget, kWidgets, 3);
+  get_enum(w, "widget", widget, kWidgets, sizeof(kWidgets) / sizeof(kWidgets[0]));
   const cJSON *ip = sub(w, "interlude_minutes");
   get_num(ip, "clock", interlude_clock);
   get_num(ip, "weather", interlude_weather);
   get_num(ip, "temperature", interlude_temperature);
+  get_num(ip, "air", interlude_air);
   get_bool(w, "interlude_random_clock_face", interlude_random_clock_face);
 
   const cJSON *ck = sub(root, "clock");
@@ -367,6 +373,13 @@ bool Settings::read_json(const cJSON *root) {
     if (units == "imperial") weather.imperial = true;
     if (units == "metric") weather.imperial = false;
     get_num(we, "refresh_minutes", weather.refresh_minutes);
+  }
+  const cJSON *ai = sub(root, "air");
+  {
+    std::string index;
+    get_str(ai, "index", index, 16);
+    if (index == "european") air.european = true;
+    if (index == "us") air.european = false;
   }
   const cJSON *te = sub(root, "temperature");
   get_num(te, "offset_temperature", temperature.offset_temperature);

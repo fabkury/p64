@@ -176,7 +176,7 @@ The night schedule's darkest setting: the panel shows nothing but the device kee
 
 **Widget**:
 A full-screen view drawn by the device from data rather than from a file: Clock, Weather,
-Temperature.
+Temperature, Air (air quality and UV).
 _Avoid_: app, screen, mode (for a widget)
 
 **Widget state**:

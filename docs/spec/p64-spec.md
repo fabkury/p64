@@ -362,11 +362,11 @@ Plays the active playset as in section 4, with:
   in the other states.
 - Interludes (ADR 0014, 2026-09-28): per widget the user sets the median gap in minutes
   between its interludes (0 = never, else 5 to 1440; defaults clock 30, weather 180,
-  temperature 0). At every auto-swap the firmware rolls each widget with the per-swap
+  temperature 0, air 0). At every auto-swap the firmware rolls each widget with the per-swap
   probability that gives that median at the current auto-swap interval
   (p = 1 - 2^(-T / 60M)); a gap shorter than the interval cannot be met and that widget
   is off. When two widgets win the same swap the one with the larger gap shows (ties in
-  the fixed order Clock, Weather, Temperature), and the compensation for the slots lost
+  the fixed order Clock, Weather, Temperature, Air), and the compensation for the slots lost
   that way keeps every widget's realised per-swap probability at its target. The winner
   is shown for one auto-swap interval, seamlessly, and enters history. Manual next and
   previous never trigger an interlude; next during an interlude ends it;
@@ -380,7 +380,7 @@ Plays the active playset as in section 4, with:
 ### 6.2 Widget state
 
 One chosen widget stays on the panel indefinitely and updates itself (clock every second,
-weather on its refresh, temperature every minute). No overlay, no interludes.
+weather and air on their refresh, temperature every minute). No overlay, no interludes.
 
 ### 6.3 Stream state
 
@@ -490,6 +490,41 @@ refresh of being asked so it can be shown seamlessly.
 - Layout: temperature at 2x with unit, humidity at 1x below, optional trend arrow from the
   last hour. Units follow the weather widget's setting.
 - Both values are also in the status API at all times, whether or not the widget is used.
+
+### 7.4 Air
+
+Air quality and the UV index (prompt p074, 2026-10-03; the research behind it is
+`firmware/docs/widget-research/`).
+
+- Source: Open-Meteo's air quality API (free, no key, the forecast's terms): the current
+  US AQI, European AQI, PM2.5, PM10 and UV index, and two days of hourly indexes and UV.
+  The weather widget's location and refresh interval; no settings of its own but the
+  index. Fetched only while the widget is in use (it is the Widget state's widget, its
+  interlude gap is not 0, or it was drawn in the last two hours), since it is one more
+  TLS session per refresh; asked for out of the blue (an interlude now, a history
+  revisit) it shows "NO DATA" for the second or two the first fetch takes.
+- Index: a setting, the US AQI (default) or the European AQI. Both are fetched and both
+  are in the status API.
+- Layout on 64x64, fixed colours on black, every font at its native size (the user's
+  rule of 2026-10-03: pixel fonts are never scaled): the index at the upper left and the
+  UV index at the upper right in Everyday Vast Black, each in its band's colour; "AQI"
+  and the band's word below on the left, "UV" and its word on the next line at the
+  right; PM2.5 and PM10 in ug/m3; at the bottom the location's day as 24 bars of the
+  hourly index in their band colours (the current hour at full brightness with a white
+  mark under it, the others at half), scaled to the upper bound of the band the day's
+  peak is in, and the UV index over them as a white line.
+- Bands and words. US AQI: Good to 50, Moderate to 100, Sensitive (unhealthy for
+  sensitive groups) to 150, Unhealthy to 200, V.Unhealthy to 300, Hazardous above.
+  European AQI: Good to 20, Fair to 40, Moderate to 60, Poor to 80, Very poor to 100,
+  Extreme above. UV (rounded): Low to 2, Moderate to 5, High to 7, Very high to 10,
+  Extreme from 11. The colours are the indexes' usual ones, the darkest lifted to read
+  on a black panel.
+- Offline: as the weather: the last reply with its age from 90 min on, "NO DATA" after
+  6 h; a value the reply lacks shows as "--".
+- A new location (or new units, for the weather) is fetched at once, not at the next
+  refresh; if that fetch fails the other place's numbers are dropped.
+- `tools/mock_air_widget.py` is the design reference (approved 2026-10-03) and writes the
+  pixel-exact references of the host tests.
 
 ## 8. Streams
 
@@ -607,7 +642,8 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
     rotation (including auto), background colour, RGB gains, clock overlay (on/off, font,
     corner, 12/24 h, colour), boot animation length.
   - Widgets: main state selector (Animation show, Widget: which, Stream), per-widget
-    settings (clock face and font, weather location and units, temperature offsets) and
+    settings (clock face and font, weather location and units, the air quality index,
+    temperature offsets) and
     each widget's interlude gap.
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
   - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
@@ -773,11 +809,12 @@ All persisted unless noted. Ranges are inclusive.
 | Show | pick mode | random, recency | random |
 | Show | channel selection | stochastic, swrr | stochastic |
 | Show | clock overlay | enabled; font (all but High Birth and Everyday Vast Black); position (4 corners, top or bottom centre); 12/24 h; colour; border; border colour; border opacity 1..255 | on; Capital Hill; top-left; 24 h; white; on; black; 255 |
-| Widgets | chosen widget (Widget state) | clock, weather, temperature | clock |
-| Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0 |
+| Widgets | chosen widget (Widget state) | clock, weather, temperature, air | clock |
+| Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0, air 0 |
 | Widgets | random clock face at clock interludes | on/off | off |
 | Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
+| Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
 | Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; on, 4064 |
 | Inputs | tap gestures; sensitivity | on/off; 1 to 10 | on; 5 |

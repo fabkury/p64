@@ -30,6 +30,12 @@ std::string request_url(float latitude, float longitude, bool imperial) {
   return buf;
 }
 
+bool fetch_due(bool request_changed, int64_t fetched_us, int64_t next_us, int64_t now_us, uint16_t refresh_minutes) {
+  if (request_changed) return true;
+  if (now_us < next_us) return false;
+  return fetched_us == 0 || now_us - fetched_us >= static_cast<int64_t>(refresh_minutes) * 60 * 1000000;
+}
+
 int weekday_of(const std::string &iso_date) {
   int y = 0, m = 0, d = 0;
   if (std::sscanf(iso_date.c_str(), "%d-%d-%d", &y, &m, &d) != 3) return -1;

@@ -70,7 +70,7 @@ TEST_CASE("settings: every field survives a round trip") {
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
     "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_minutes":{"clock":10,
-    "weather":20,"temperature":0},"interlude_random_clock_face":true},"stream":{"takeover":false,"silence_ms":900},
+    "weather":20,"temperature":0,"air":45},"interlude_random_clock_face":true},"air":{"index":"european"},"stream":{"takeover":false,"silence_ms":900},
     "inputs":{"tap_enabled":false,"tap_sensitivity":9,"encoders_enabled":false,"encoders_swap":true,"encoders_invert":true},"network":{"device_name":"desk-1","timezone":"America/Sao_Paulo"},
     "makapix":{"refresh_seconds":600,"channel_cache_size":512,"min_size":32,"max_size":64,"cache_retention_days":7},
     "updates":{"auto_check":false}})");
@@ -93,6 +93,12 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK_EQ(a.interlude_clock, 10);
   CHECK_EQ(a.interlude_weather, 20);
   CHECK_EQ(a.interlude_temperature, 0);
+  CHECK_EQ(a.interlude_air, 45);
+  CHECK(a.air.european);
+  CHECK(!Settings().air.european);        // the US index by default
+  CHECK_EQ(Settings().interlude_air, 0);  // and no air interludes
+  CHECK(applied(R"({"widgets":{"widget":"air"}})").widget == p64::system::WidgetKind::Air);
+  CHECK(applied(R"({"air":{"index":"metric"}})").to_json().find(R"("air":{"index":"us"})") != std::string::npos);
   CHECK(a.interlude_random_clock_face);
   CHECK(!Settings().interlude_random_clock_face);
   CHECK_EQ(a.makapix_max_side, 64);
@@ -149,7 +155,7 @@ TEST_CASE("settings: interlude gaps default to 30, 180 and never, and clamp to 0
   CHECK(std::string(p64::system::clock_face_name(p64::system::ClockFace::Led)) == "led");
   CHECK(std::string(p64::system::clock_face_name(static_cast<p64::system::ClockFace>(200))) == "digital");
   CHECK(old.to_json().find("interlude_percent") == std::string::npos);
-  CHECK(old.to_json().find("\"interlude_minutes\":{\"clock\":30,\"weather\":180,\"temperature\":0}") != std::string::npos);
+  CHECK(old.to_json().find("\"interlude_minutes\":{\"clock\":30,\"weather\":180,\"temperature\":0,\"air\":0}") != std::string::npos);
 }
 
 TEST_CASE("settings: the maximum artwork size snaps up to 32, 64, 128 or 256") {

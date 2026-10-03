@@ -329,13 +329,13 @@ void reset_timer() { send(Cmd::ResetTimer); }
 void refresh() { send(Cmd::Refresh); }
 
 bool interlude(const std::string &widget, std::string &error) {
-  static const char *const kNames[] = {"clock", "weather", "temperature"};
+  static const char *const kNames[] = {"clock", "weather", "temperature", "air"};
   int kind = -1;
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < system::kWidgetKindCount; ++i) {
     if (widget == kNames[i]) kind = i;
   }
   if (kind < 0) {
-    error = "widget must be clock, weather or temperature";
+    error = "widget must be clock, weather, temperature or air";
     return false;
   }
   if (system::settings().main_state != system::MainState::AnimationShow) {

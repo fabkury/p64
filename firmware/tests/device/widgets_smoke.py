@@ -119,14 +119,15 @@ def main():
 
     # The Widget state, each widget in turn.
     frames = {}
-    for w in ("clock", "temperature", "weather"):
+    for w in ("clock", "temperature", "weather", "air"):
         settings(base, {"show": {"main_state": "widget"}, "widgets": {"widget": w}})
         time.sleep(3)
         d = status(base)
         check(d["playback"]["state"] == "widget" and d["playback"].get("widget") == w, "widget state shows " + w)
         frames[w] = frame(base)
         check(lit(frames[w]) > 20, w + " draws something (%d lit pixels)" % lit(frames[w]))
-    check(frames["clock"] != frames["temperature"] != frames["weather"], "the three widgets differ")
+    check(frames["clock"] != frames["temperature"] != frames["weather"], "the widgets differ")
+    check(frames["air"] not in (frames["clock"], frames["temperature"], frames["weather"]), "the air widget differs from the others")
 
     # An artwork request in the Widget state leaves it: the playset pill and Next both
     # switch the device to the Animation show, persist it, and the swap timer runs again
@@ -168,21 +169,52 @@ def main():
     we = {}
     while time.time() < deadline:
         we = status(base).get("weather", {})
-        if we.get("valid"):
+        if we.get("valid") and we.get("age_s", 9999) < 60:
             break
         time.sleep(3)
     check(we.get("valid"), "weather fetched: %s" % str(we)[:120])
+    # A new location is fetched at once, not at the next refresh (2026-10-03: the old
+    # place's numbers stayed up to half an hour).
+    check(we.get("valid") and we.get("age_s", 9999) < 60, "the forecast is the new location's (%s s old)" % we.get("age_s"))
     if we.get("valid"):
         check(-40 < we["temperature"] < 50 and len(we.get("days", [])) >= 2, "weather numbers plausible")
         # The floats go out rounded to a tenth (2026-09-26: 20.8 came out as 20.799999237060547).
         nums = [we["temperature"], we["today_max"], we["today_min"]] + [d[k] for d in we["days"] for k in ("max", "min")]
         check(all(abs(v * 10 - round(v * 10)) < 1e-6 for v in nums), "weather numbers carry at most one decimal: %s" % nums)
 
+    # The air quality (spec 7.4): fetched once the air widget is on the panel, both
+    # indexes in the status document, the index a setting; in data the widget fills the
+    # panel's lower third with the day's bars.
+    settings(base, {"show": {"main_state": "widget"}, "widgets": {"widget": "air"}})
+    deadline = time.time() + 60
+    ai = {}
+    while time.time() < deadline:
+        ai = status(base).get("air", {})
+        if ai.get("valid") and ai.get("age_s", 9999) < 60:
+            break
+        time.sleep(3)
+    check(ai.get("valid"), "air quality fetched: %s" % str(ai)[:160])
+    check(ai.get("valid") and ai.get("age_s", 9999) < 60, "the air quality is the new location's (%s s old)" % ai.get("age_s"))
+    if ai.get("valid"):
+        check(0 <= ai["us_aqi"] <= 500 and 0 <= ai["european_aqi"] <= 500 and 0 <= ai["uv_index"] <= 16, "air numbers plausible")
+        check(ai["us_category"] and ai["european_category"] and ai["uv_category"], "the categories are named")
+        check(all(abs(v * 10 - round(v * 10)) < 1e-6 for v in (ai["uv_index"], ai["pm2_5"], ai["pm10"])), "air numbers carry at most one decimal")
+        time.sleep(2.5)  # the source looks again every second until the data is in
+        px = frame(base)
+        bars = sum(1 for y in range(43, 61) for x in range(8, 56) if any(px[(y * 64 + x) * 3:(y * 64 + x) * 3 + 3]))
+        check(bars >= 48, "the day's bars are drawn (%d lit pixels in the graph)" % bars)
+        s = settings(base, {"air": {"index": "european"}})
+        check(s["air"]["index"] == "european", "the index is a setting")
+        s = settings(base, {"air": {"index": "nonsense"}})
+        check(s["air"]["index"] == "european", "an unknown index is ignored")
+        settings(base, {"air": {"index": original.get("air", {}).get("index", "us")}})
+    settings(base, {"show": {"main_state": "animation_show"}})
+
     # The interlude plan (ADR 0014): median gaps in minutes become per-swap chances in
     # the status document, derived from the auto-swap interval.
     s = settings(base, {"show": {"main_state": "animation_show", "auto_swap_seconds": 30},
-                        "widgets": {"interlude_minutes": {"clock": 30, "weather": 180, "temperature": 0}}})
-    check(s["widgets"]["interlude_minutes"] == {"clock": 30, "weather": 180, "temperature": 0}, "interlude minutes stored: %s" % s["widgets"].get("interlude_minutes"))
+                        "widgets": {"interlude_minutes": {"clock": 30, "weather": 180, "temperature": 0, "air": 0}}})
+    check(s["widgets"]["interlude_minutes"] == {"clock": 30, "weather": 180, "temperature": 0, "air": 0}, "interlude minutes stored: %s" % s["widgets"].get("interlude_minutes"))
     il = status(base)["playback"]["interludes"]
     check(il["clock"]["state"] == "rolled" and abs(il["clock"]["per_swap_percent"] - 1.1) < 0.06, "clock every 30 min on 30 s swaps = 1.1 %% per swap: %s" % il["clock"])
     check(il["weather"]["state"] == "rolled" and abs(il["weather"]["per_swap_percent"] - 0.2) < 0.06, "weather every 3 h = 0.2 %% per swap: %s" % il["weather"])

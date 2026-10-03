@@ -1,7 +1,8 @@
 # Widget research: new data sources and the competition
 
-Research of 2026-10-03 (prompt p073). Nothing here is implemented or decided; it is the
-material for a discussion about which widgets p64 could grow next.
+Research of 2026-10-03 (prompt p073): the material for a discussion about which widgets
+p64 could grow next. Since then the shortlist's first entry, air quality and UV, was
+built the same day (prompt p074, spec 7.4); nothing else here is implemented or decided.
 
 Scope, as settled with the user before the research:
 

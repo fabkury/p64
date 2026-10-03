@@ -1,5 +1,6 @@
 #include "p64/widgets/widgets.hpp"
 
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <ctime>
@@ -9,6 +10,7 @@
 #include <utility>
 #include <sys/time.h>
 
+#include "air_model.hpp"
 #include "analogue.hpp"
 #include "clock_format.hpp"
 #include "faces.hpp"
@@ -84,6 +86,84 @@ std::string g_weather_error;
 int64_t g_weather_next_us = 0;
 TaskHandle_t g_weather_task = nullptr;
 
+// The air quality (spec 7.4): fetched after the forecast on the same task, with the
+// weather's location and refresh, but only while somebody wants it (the Widget state
+// shows it, its interlude is on, or an air source was drawn lately): a second TLS
+// session every half hour is not spent on a widget nobody sees.
+air_model::Air g_air;
+std::string g_air_error;
+int64_t g_air_next_us = 0;
+std::atomic<int64_t> g_air_wanted_us{0};  // when an air source last drew
+constexpr size_t kAirMaxBytes = 8 * 1024;
+constexpr int64_t kAirWantedUs = 2 * 3600 * kSecond;
+
+bool air_wanted(const system::Settings &s, int64_t now) {
+  if (s.interlude_air != 0) return true;
+  if (s.main_state == system::MainState::Widget && s.widget == system::WidgetKind::Air) return true;
+  const int64_t drawn = g_air_wanted_us.load();
+  return drawn != 0 && now - drawn < kAirWantedUs;
+}
+
+// One GET of a small JSON document; the error says why not.
+bool fetch_json(const std::string &url, size_t max_bytes, net::fetch::Result &r, std::string &error) {
+  net::fetch::Request req;
+  req.url = url;
+  req.max_bytes = max_bytes;
+  req.headers.emplace_back("Accept", "application/json");
+  net::fetch::perform(req, r);
+  if (r.status == 200 && r.error == ESP_OK) return true;
+  error = r.status ? "HTTP " + std::to_string(r.status) : std::string(esp_err_to_name(r.error));
+  return false;
+}
+
+// What the last attempt of each fetch asked for (the weather task's own): a different
+// request is fetched at once, and its failure drops the other place's numbers.
+std::string g_weather_url, g_air_url;
+
+void fetch_weather(const system::Settings &s, int64_t now, const std::string &url, bool changed) {
+  net::fetch::Result r;
+  weather_model::Forecast f;
+  std::string error;
+  const bool ok = fetch_json(url, kWeatherMaxBytes, r, error) &&
+                  weather_model::parse(reinterpret_cast<const char *>(r.body.data()), r.body.size(), f, error);
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!ok && changed) g_forecast = weather_model::Forecast{};
+  if (ok) {
+    f.fetched_us = now;
+    g_forecast = f;
+    g_weather_error.clear();
+    ESP_LOGI(TAG, "weather: %.1f %s, code %d (%s), today %.0f/%.0f, %d more days", static_cast<double>(f.temperature),
+             f.imperial ? "F" : "C", f.code, icons::group_name(icons::group_for_code(f.code)),
+             static_cast<double>(f.today.max), static_cast<double>(f.today.min), f.day_count);
+  } else {
+    g_weather_error = error;
+    ESP_LOGW(TAG, "weather: %s", error.c_str());
+  }
+  g_weather_next_us = now + (ok ? static_cast<int64_t>(s.weather.refresh_minutes) * 60 * kSecond : kWeatherRetryUs);
+}
+
+void fetch_air(const system::Settings &s, int64_t now, const std::string &url, bool changed) {
+  net::fetch::Result r;
+  // The series is 1 KB; parsed on this task's stack.
+  air_model::Air a;
+  std::string error;
+  const bool ok = fetch_json(url, kAirMaxBytes, r, error) &&
+                  air_model::parse(reinterpret_cast<const char *>(r.body.data()), r.body.size(), a, error);
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!ok && changed) g_air = air_model::Air{};
+  if (ok) {
+    a.fetched_us = now;
+    g_air = a;
+    g_air_error.clear();
+    ESP_LOGI(TAG, "air: US AQI %d, European AQI %d, UV %.1f, PM2.5 %.1f, PM10 %.1f, %d hours", a.us_aqi, a.eu_aqi,
+             static_cast<double>(a.uv), static_cast<double>(a.pm2_5), static_cast<double>(a.pm10), a.hours);
+  } else {
+    g_air_error = error;
+    ESP_LOGW(TAG, "air: %s", error.c_str());
+  }
+  g_air_next_us = now + (ok ? static_cast<int64_t>(s.weather.refresh_minutes) * 60 * kSecond : kWeatherRetryUs);
+}
+
 void weather_task(void *) {
   while (true) {
     ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(30000));
@@ -91,39 +171,31 @@ void weather_task(void *) {
     const system::Settings &s = *view;
     if (!s.weather.location_set) continue;
     if (!net::wifi::status().connected || !net::clock::synced()) continue;
-    const int64_t now = esp_timer_get_time();
-    const bool due = g_forecast.fetched_us == 0 ? now >= g_weather_next_us
-                                                : now - g_forecast.fetched_us >= static_cast<int64_t>(s.weather.refresh_minutes) * 60 * kSecond;
-    if (!due && now < g_weather_next_us) continue;
-    if (!due) continue;
-    net::fetch::Request req;
-    req.url = weather_model::request_url(s.weather.latitude, s.weather.longitude, s.weather.imperial);
-    req.max_bytes = kWeatherMaxBytes;
-    req.headers.emplace_back("Accept", "application/json");
-    net::fetch::Result r;
-    net::fetch::perform(req, r);
-    weather_model::Forecast f;
-    std::string error;
-    bool ok = r.status == 200 && r.error == ESP_OK;
-    if (ok) {
-      ok = weather_model::parse(reinterpret_cast<const char *>(r.body.data()), r.body.size(), f, error);
-    } else {
-      error = r.status ? "HTTP " + std::to_string(r.status) : std::string(esp_err_to_name(r.error));
-    }
+    int64_t now = esp_timer_get_time();
+    int64_t fetched, next;
     {
       std::lock_guard<std::mutex> lock(g_mutex);
-      if (ok) {
-        f.fetched_us = now;
-        g_forecast = f;
-        g_weather_error.clear();
-        ESP_LOGI(TAG, "weather: %.1f %s, code %d (%s), today %.0f/%.0f, %d more days", static_cast<double>(f.temperature),
-                 f.imperial ? "F" : "C", f.code, icons::group_name(icons::group_for_code(f.code)),
-                 static_cast<double>(f.today.max), static_cast<double>(f.today.min), f.day_count);
-      } else {
-        g_weather_error = error;
-        ESP_LOGW(TAG, "weather: %s", error.c_str());
-      }
-      g_weather_next_us = now + (ok ? static_cast<int64_t>(s.weather.refresh_minutes) * 60 * kSecond : kWeatherRetryUs);
+      fetched = g_forecast.fetched_us;
+      next = g_weather_next_us;
+    }
+    std::string url = weather_model::request_url(s.weather.latitude, s.weather.longitude, s.weather.imperial);
+    bool changed = url != g_weather_url;
+    if (weather_model::fetch_due(changed, fetched, next, now, s.weather.refresh_minutes)) {
+      g_weather_url = url;
+      fetch_weather(s, now, url, changed);
+    }
+    now = esp_timer_get_time();
+    if (!air_wanted(s, now)) continue;
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      fetched = g_air.fetched_us;
+      next = g_air_next_us;
+    }
+    url = air_model::request_url(s.weather.latitude, s.weather.longitude);
+    changed = url != g_air_url;
+    if (weather_model::fetch_due(changed, fetched, next, now, s.weather.refresh_minutes)) {
+      g_air_url = url;
+      fetch_air(s, now, url, changed);
     }
   }
 }
@@ -223,6 +295,38 @@ class WeatherSource : public playback::FrameSource {
   std::string name_ = "weather";
 };
 
+class AirSource : public playback::FrameSource {
+ public:
+  const std::string &name() const override { return name_; }
+  bool is_static() const override { return false; }
+  bool next_frame(Frame &out, uint32_t &delay_ms, int64_t) override {
+    const std::shared_ptr<const system::Settings> view = system::settings_view();
+    const system::Settings &s = *view;
+    // PSRAM: the series is too large for the player task's stack to hold twice.
+    if (!data_) data_ = std::allocate_shared<air_model::Air>(content::PsramAllocator<air_model::Air>());
+    std::string error;
+    const int64_t now = esp_timer_get_time();
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      *data_ = g_air;
+      error = g_air_error;
+    }
+    // Drawing it is what asks for the data: the fetcher wakes for the first frame and
+    // this source looks again every second until the reply is in.
+    const bool first = g_air_wanted_us.exchange(now) == 0;
+    if ((first || !data_->valid) && g_weather_task) xTaskNotifyGive(g_weather_task);
+    time_t utc = 0;
+    if (!net::clock::now_utc(utc)) utc = 0;
+    faces::draw_air(out, s, *data_, error, now, static_cast<int64_t>(utc));
+    delay_ms = data_->valid ? 60000 : 1000;
+    return true;
+  }
+
+ private:
+  std::string name_ = "air";
+  std::shared_ptr<air_model::Air> data_;
+};
+
 class TemperatureSource : public playback::FrameSource {
  public:
   const std::string &name() const override { return name_; }
@@ -267,6 +371,7 @@ std::shared_ptr<playback::FrameSource> make(system::WidgetKind kind, int face) {
   switch (kind) {
     case system::WidgetKind::Weather: return psram_shared<WeatherSource>();
     case system::WidgetKind::Temperature: return psram_shared<TemperatureSource>();
+    case system::WidgetKind::Air: return psram_shared<AirSource>();
     case system::WidgetKind::Clock:
     default: return psram_shared<ClockSource>(face);
   }
@@ -276,6 +381,7 @@ const char *widget_name(system::WidgetKind kind) {
   switch (kind) {
     case system::WidgetKind::Weather: return "weather";
     case system::WidgetKind::Temperature: return "temperature";
+    case system::WidgetKind::Air: return "air";
     case system::WidgetKind::Clock:
     default: return "clock";
   }
@@ -352,11 +458,49 @@ cJSON *weather_json() {
   return o;
 }
 
+cJSON *air_json() {
+  // Copied field by field under the lock: the series stays where it is.
+  bool valid;
+  int us, eu;
+  float uv, pm2_5, pm10;
+  int64_t fetched;
+  std::string error;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    valid = g_air.valid;
+    us = g_air.us_aqi;
+    eu = g_air.eu_aqi;
+    uv = g_air.uv;
+    pm2_5 = g_air.pm2_5;
+    pm10 = g_air.pm10;
+    fetched = g_air.fetched_us;
+    error = g_air_error;
+  }
+  const auto tenths = [](float v) { return std::round(static_cast<double>(v) * 10.0) / 10.0; };
+  cJSON *o = cJSON_CreateObject();
+  cJSON_AddBoolToObject(o, "valid", valid);
+  cJSON_AddStringToObject(o, "error", error.c_str());
+  if (!valid) return o;
+  cJSON_AddNumberToObject(o, "age_s", static_cast<double>((esp_timer_get_time() - fetched) / kSecond));
+  cJSON_AddNumberToObject(o, "us_aqi", us);
+  cJSON_AddNumberToObject(o, "european_aqi", eu);
+  cJSON_AddStringToObject(o, "us_category", us < 0 ? "" : air_model::band(air_model::Scale::UsAqi, us).word);
+  cJSON_AddStringToObject(o, "european_category", eu < 0 ? "" : air_model::band(air_model::Scale::EuropeanAqi, eu).word);
+  cJSON_AddNumberToObject(o, "uv_index", tenths(uv));
+  cJSON_AddStringToObject(o, "uv_category",
+                          uv < 0 ? "" : air_model::band(air_model::Scale::Uv, static_cast<int>(static_cast<double>(uv) + 0.5)).word);
+  cJSON_AddNumberToObject(o, "pm2_5", tenths(pm2_5));
+  cJSON_AddNumberToObject(o, "pm10", tenths(pm10));
+  return o;
+}
+
 void weather_refresh_now() {
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_forecast.fetched_us = 0;
     g_weather_next_us = 0;
+    g_air.fetched_us = 0;
+    g_air_next_us = 0;
   }
   if (g_weather_task) xTaskNotifyGive(g_weather_task);
 }

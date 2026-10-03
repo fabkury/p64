@@ -256,6 +256,7 @@ cJSON *build_status() {
     cJSON_AddNumberToObject(sn, "humidity", r.humidity);
     cJSON_AddNumberToObject(sn, "trend_c_per_hour", r.trend_c_per_hour);
     cJSON_AddItemToObject(d, "weather", widgets::weather_json());
+    cJSON_AddItemToObject(d, "air", widgets::air_json());
   }
   cJSON_AddItemToObject(d, "stream", stream::status_json());
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());

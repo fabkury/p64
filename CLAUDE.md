@@ -94,7 +94,9 @@ are done, and M10 delivered the web UI in p3a's layout and five themes
 same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
 the analogue clock face followed on 2026-09-20, six themed clock faces on 2026-09-26
 (flip, nixie, horizon, words, hourglass, orrery) and the LED face (seven-segment, five
-styles including a VFD, `face_led.cpp`) on 2026-09-28; `tools/mock_clock_faces.py` is the
+styles including a VFD, `face_led.cpp`) on 2026-09-28; the air widget (air quality and UV
+from Open-Meteo, a fourth widget kind, spec 7.4; `tools/mock_air_widget.py` is its design
+reference, `firmware/docs/widget-research/` the survey it came from) on 2026-10-03; `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
 `tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks;
@@ -153,7 +155,7 @@ them and get host tests: the show is `main/show_core.cpp` behind the `ShowEnv` i
 (`show.cpp` is only the shell; scenario tests drive the core with a fake env), and the
 pure halves elsewhere are `p64/playback/timing.hpp`, `settings_model.cpp`,
 `p64_makapix/src/contract.cpp` and `policy.cpp`, `p64_web/src/auth_rules.cpp`,
-`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp` and the themed faces (`face_*.cpp`, `solar.cpp`, compared pixel for pixel with the mock's references), `p64_net/src/time_rules.cpp`, `p64_display/src/light_curve.cpp` (the brightness
+`p64_ota/src/release.cpp`, `p64_widgets/src/faces.cpp`, `air_model.cpp` and `face_air.cpp`, and the themed faces (`face_*.cpp`, `solar.cpp`, compared pixel for pixel with the mock's references), `p64_net/src/time_rules.cpp`, `p64_display/src/light_curve.cpp` (the brightness
 scale: perceived lightness, ADR 0013), `p64_inputs/src/knob_rules.cpp`, and the driver's
 `src/platforms/gdma/p64_bcm.h` (the plane windows, the LUT fit and the light plan). New logic goes into those, not into the shells. A task whose stack is in PSRAM
 (`xTaskCreatePinnedToCoreWithCaps`) must never touch the SPI flash (NVS, partitions,

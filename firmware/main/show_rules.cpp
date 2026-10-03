@@ -51,10 +51,10 @@ bool auto_swap_due(bool timer_runs, uint32_t interval_s, int64_t now_us, int64_t
   return timer_runs && interval_s > 0 && now_us - swapped_at_us >= static_cast<int64_t>(interval_s) * 1000000;
 }
 
-InterludePlan interlude_plan(const uint16_t (&median_minutes)[3], uint32_t interval_s) {
+InterludePlan interlude_plan(const uint16_t (&median_minutes)[kInterludeKinds], uint32_t interval_s) {
   InterludePlan plan;
-  // Priority: the largest median first, ties in the fixed order clock, weather, temperature.
-  for (uint8_t i = 0; i < 3; ++i) {
+  // Priority: the largest median first, ties in the fixed order clock, weather, temperature, air.
+  for (uint8_t i = 0; i < kInterludeKinds; ++i) {
     if (median_minutes[i] == 0) continue;
     uint8_t at = plan.count;
     while (at > 0 && median_minutes[plan.order[at - 1]] < median_minutes[i]) {

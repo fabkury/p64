@@ -470,12 +470,13 @@ void play_widget(system::WidgetKind kind, bool interlude, int face = -1) {
 // The interlude plan of the moment (ADR 0014): the settings' median gaps against the
 // auto-swap interval.
 rules::InterludePlan interlude_plan(const system::Settings &s) {
-  const uint16_t minutes[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
+  const uint16_t minutes[rules::kInterludeKinds] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature,
+                                                    s.interlude_air};
   return rules::interlude_plan(minutes, s.auto_swap_seconds);
 }
 
-const system::WidgetKind kWidgetKinds[3] = {system::WidgetKind::Clock, system::WidgetKind::Weather,
-                                            system::WidgetKind::Temperature};
+const system::WidgetKind kWidgetKinds[rules::kInterludeKinds] = {
+    system::WidgetKind::Clock, system::WidgetKind::Weather, system::WidgetKind::Temperature, system::WidgetKind::Air};
 
 // A new interlude of `kind`: a clock interlude draws a random face when the option is
 // on (p057), never the previous random face again.
@@ -1322,10 +1323,11 @@ cJSON *status_json() {
   // The interludes as planned from the settings (ADR 0014): each kind's median gap, its
   // per-swap chance in percent (a tenth's resolution) and why it is off, if it is.
   const rules::InterludePlan plan = interlude_plan(s);
-  const uint16_t minutes[3] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature};
+  const uint16_t minutes[rules::kInterludeKinds] = {s.interlude_clock, s.interlude_weather, s.interlude_temperature,
+                                                    s.interlude_air};
   static const char *const kStates[] = {"never", "no_auto_swap", "interval_longer", "rolled"};
   cJSON *il = cJSON_AddObjectToObject(p, "interludes");
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < rules::kInterludeKinds; ++i) {
     cJSON *k = cJSON_AddObjectToObject(il, g_env->widget_name(kWidgetKinds[i]));
     cJSON_AddNumberToObject(k, "median_minutes", minutes[i]);
     cJSON_AddNumberToObject(k, "per_swap_percent", std::round(plan.per_swap[i] * 1000.0) / 10.0);

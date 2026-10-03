@@ -1,5 +1,5 @@
-// p64 -- widgets (spec section 7): the clock, the weather forecast and the board's
-// temperature/humidity sensor, each a FrameSource the show can put on the panel (the
+// p64 -- widgets (spec section 7): the clock, the weather forecast, the board's
+// temperature/humidity sensor and the air quality, each a FrameSource the show can put on the panel (the
 // Widget state, interludes), plus the clock overlay for the Animation show (6.1). The
 // weather fetcher and the sensor sampler run on their own small core-0 tasks.
 #pragma once
@@ -42,6 +42,10 @@ struct Reading {
 Reading sensor();
 // The weather as JSON for the status document (nullptr when never fetched).
 cJSON *weather_json();
+// The air quality and UV as JSON for the status document ("valid": false until an air
+// widget has asked for it: it is fetched only while one is in use, spec 7.4).
+cJSON *air_json();
+// Fetches the weather (and the air quality, when in use) again now.
 void weather_refresh_now();
 
 }  // namespace p64::widgets

@@ -79,6 +79,8 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_orrery.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "clock_assets.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_model.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "air_model.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_air.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "weather_icons_util.cpp"),
     os.path.join(COMPONENTS, "p64_stream", "src", "protocol.cpp"),

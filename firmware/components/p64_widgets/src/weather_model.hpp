@@ -31,6 +31,13 @@ struct Forecast {
 std::string request_url(float latitude, float longitude, bool imperial);
 // Parses the reply; false with a reason when the shape is wrong. fetched_us is not set.
 bool parse(const char *json, size_t len, Forecast &out, std::string &error);
+// When to fetch (the forecast and the air quality alike; times on the monotonic clock):
+// at once when the request changed since the last attempt (another location, other
+// units: found on the device on 2026-10-03, where a new location kept the old place's
+// numbers until the next refresh); otherwise not before `next_us` (the retry pause
+// after a failure), and then when nothing was fetched yet or the data is
+// `refresh_minutes` old.
+bool fetch_due(bool request_changed, int64_t fetched_us, int64_t next_us, int64_t now_us, uint16_t refresh_minutes);
 // "2026-09-19" (or with a time) to the weekday (0 = Sunday); -1 when unparsable.
 int weekday_of(const std::string &iso_date);
 

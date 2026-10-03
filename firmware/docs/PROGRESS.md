@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (the air widget added 2026-10-03; analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -1180,6 +1180,26 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   (54.9 before) and a 32.0 KB largest block, so what still holds the largest block below
   the 45 KB of 2026-09-22 is a boot-time allocation splitting the region, not static
   data (open).
+- 2026-10-03, the air widget (prompts p073, p074; spec 7.4). After a survey of what
+  comparable displays show and which data a device can fetch on its own
+  (`docs/widget-research/`), the first pick was built: air quality and UV from
+  Open-Meteo's keyless air quality API, as a fourth widget kind `air` (Widget state,
+  interlude gap `interlude_minutes.air`, default 0, `action/interlude`), with the
+  setting `air.index` (US or European AQI). The layout was settled on a mock
+  (`tools/mock_air_widget.py`, ten states, `docs/design/air-widget/sheet.png`); the user
+  approved it with one rule, pixel fonts at their native size only, so the two numbers
+  are Everyday Vast Black instead of Capital Hill at 2x. The interlude rules went from
+  three kinds to `rules::kInterludeKinds` (4). The data is fetched on the weather task
+  after the forecast, only while the widget is in use; the reply for two days is 2.2 KB.
+  Found on the device: a changed location was not fetched until the next refresh (the
+  smoke's "weather fetched" check had been passing on the previous place's forecast);
+  now a changed request is fetched at once (`weather_model::fetch_due`, host-tested, and
+  the smoke checks the data's age). Device: `widgets_smoke` and `api_smoke` 0 failures;
+  the panel's frame equals the mock's layout (US AQI 44 Good, UV 1, New York); internal
+  heap at rest 60.9 KB free, largest block 32.8 KB (57.4 and 31.7 before the flash, same
+  uptime class), the weather task's stack 5.7 KB free of 12; host tests 201 cases. Not
+  checked: the public build's size against `check_size.py` (CI does), and the widget on
+  the panel by eye.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

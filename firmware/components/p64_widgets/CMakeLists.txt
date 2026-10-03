@@ -1,7 +1,7 @@
-# p64_widgets: the clock, weather and temperature widgets and the clock overlay (spec 7,
+# p64_widgets: the clock, weather, temperature and air widgets and the clock overlay (spec 7,
 # 6.1), the Open-Meteo fetcher, the SHTC3 sensor sampler, the weather icons.
 # clock_format, analogue, faces, the themed faces (sprite, solar, themed_common, face_*,
-# clock_assets), weather_model and weather_icons_util have no ESP-IDF includes (host-tested).
+# clock_assets), face_air, air_model, weather_model and weather_icons_util have no ESP-IDF includes (host-tested).
 idf_component_register(
     SRCS
         "src/widgets.cpp"
@@ -20,6 +20,8 @@ idf_component_register(
         "src/face_orrery.cpp"
         "src/clock_assets.cpp"
         "src/weather_model.cpp"
+        "src/air_model.cpp"
+        "src/face_air.cpp"
         "src/weather_icons.cpp"
         "src/weather_icons_util.cpp"
         "src/shtc3.cpp"

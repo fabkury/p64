@@ -1,0 +1,5 @@
+european 0
+location_set 1
+age_min 0
+error HTTP_500
+valid 0

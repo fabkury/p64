@@ -60,7 +60,7 @@ bool auto_swap_due(bool timer_runs, uint32_t interval_s, int64_t now_us, int64_t
 // win in M/T swaps is a half: p = 1 - 2^(-T / 60M). An interval longer than the gap is
 // unsatisfiable (the gap can never be shorter than one interval): that kind is off. The
 // kinds are rolled in priority order, the largest median first (ties: clock, weather,
-// temperature), and the first to win takes the slot, which is "each rolled
+// temperature, air), and the first to win takes the slot, which is "each rolled
 // independently, the larger median wins a coincidence"; a lower kind loses the slots a
 // higher one takes, so its rolled probability is p over the chance that no higher kind
 // won, and its realised per-swap probability is exactly p again (capped at 1 when the
@@ -71,16 +71,17 @@ enum class InterludeState : uint8_t {
   IntervalLonger = 2,  // the interval is longer than the median: off
   Rolled = 3,
 };
+constexpr int kInterludeKinds = 4;  // clock, weather, temperature, air (system::WidgetKind's order)
 struct InterludePlan {
-  InterludeState state[3] = {InterludeState::Never, InterludeState::Never, InterludeState::Never};
-  double per_swap[3] = {0, 0, 0};  // the realised per-swap probability p of each kind (0 unless Rolled)
-  double rolled[3] = {0, 0, 0};    // what each kind is rolled with (>= per_swap: the compensation)
-  uint8_t order[3] = {0, 1, 2};    // the roll order (indexes into the kinds), the first `count` used
+  InterludeState state[kInterludeKinds] = {};     // Never
+  double per_swap[kInterludeKinds] = {};          // the realised per-swap probability p of each kind (0 unless Rolled)
+  double rolled[kInterludeKinds] = {};            // what each kind is rolled with (>= per_swap: the compensation)
+  uint8_t order[kInterludeKinds] = {0, 1, 2, 3};  // the roll order (indexes into the kinds), the first `count` used
   uint8_t count = 0;
 };
-InterludePlan interlude_plan(const uint16_t (&median_minutes)[3], uint32_t interval_s);
+InterludePlan interlude_plan(const uint16_t (&median_minutes)[kInterludeKinds], uint32_t interval_s);
 // Rolls the plan at an auto-swap; `roll` returns a uniform 32-bit number. Returns the
-// index of the winner (0 clock, 1 weather, 2 temperature) or -1.
+// index of the winner (0 clock, 1 weather, 2 temperature, 3 air) or -1.
 int roll_interlude(const InterludePlan &plan, const std::function<uint32_t()> &roll);
 
 // A random clock face for a clock interlude (p057, 2026-09-28): uniform over the `count`

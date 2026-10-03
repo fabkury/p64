@@ -1,0 +1,5 @@
+european 0
+location_set 0
+age_min 0
+error -
+valid 0

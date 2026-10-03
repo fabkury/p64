@@ -42,7 +42,7 @@ TEST_CASE("show: the auto-swap falls due after the interval, never with an inter
 TEST_CASE("show: the interlude plan turns median gaps into per-swap probabilities (ADR 0014)") {
   using rules::InterludeState;
   // The defaults on 30 s swaps: clock every 30 min, weather every 3 h, temperature never.
-  const uint16_t defaults[3] = {30, 180, 0};
+  const uint16_t defaults[4] = {30, 180, 0, 0};
   rules::InterludePlan p = rules::interlude_plan(defaults, 30);
   CHECK_EQ(p.count, 2);
   CHECK_EQ(p.order[0], 1);  // the larger median rolls first
@@ -57,14 +57,14 @@ TEST_CASE("show: the interlude plan turns median gaps into per-swap probabilitie
   CHECK(p.rolled[0] == doctest::Approx(p.per_swap[0] / (1.0 - p.per_swap[1])).epsilon(1e-9));
   CHECK(p.rolled[1] == doctest::Approx(p.per_swap[1]).epsilon(1e-9));
   // An hour on 30 s swaps: no interlude in 120 swaps with probability one half.
-  const uint16_t hour[3] = {60, 0, 0};
+  const uint16_t hour[4] = {60, 0, 0, 0};
   p = rules::interlude_plan(hour, 30);
   CHECK(std::pow(1.0 - p.per_swap[0], 120.0) == doctest::Approx(0.5).epsilon(1e-9));
   // The interval equal to the gap: a coin toss.
-  const uint16_t five[3] = {5, 0, 0};
+  const uint16_t five[4] = {5, 0, 0, 0};
   CHECK(rules::interlude_plan(five, 300).per_swap[0] == doctest::Approx(0.5).epsilon(1e-9));
   // Longer than the gap: unsatisfiable, off; the other kinds unaffected.
-  const uint16_t mixed[3] = {5, 180, 0};
+  const uint16_t mixed[4] = {5, 180, 0, 0};
   p = rules::interlude_plan(mixed, 600);
   CHECK(p.state[0] == InterludeState::IntervalLonger);
   CHECK_EQ(p.per_swap[0], 0.0);
@@ -77,13 +77,24 @@ TEST_CASE("show: the interlude plan turns median gaps into per-swap probabilitie
   CHECK(p.state[0] == InterludeState::NoAutoSwap);
   CHECK(p.state[2] == InterludeState::Never);
   // Ties keep the fixed order clock, weather, temperature.
-  const uint16_t tied[3] = {5, 5, 5};
+  const uint16_t tied[4] = {5, 5, 5, 0};
   p = rules::interlude_plan(tied, 60);
   CHECK_EQ(p.order[0], 0);
   CHECK_EQ(p.order[1], 1);
   CHECK_EQ(p.order[2], 2);
   CHECK(p.rolled[0] < p.rolled[1]);
   CHECK(p.rolled[1] < p.rolled[2]);
+  // The air widget is the fourth kind (p074): last in a tie, first with the largest gap.
+  const uint16_t four[4] = {5, 5, 5, 5};
+  p = rules::interlude_plan(four, 60);
+  CHECK_EQ(p.count, 4);
+  CHECK_EQ(p.order[3], 3);
+  CHECK(p.rolled[2] < p.rolled[3]);
+  const uint16_t air_first[4] = {30, 180, 0, 240};
+  p = rules::interlude_plan(air_first, 30);
+  CHECK_EQ(p.count, 3);
+  CHECK_EQ(p.order[0], 3);
+  CHECK(p.per_swap[3] == doctest::Approx(1.0 - std::exp2(-30.0 / 14400.0)).epsilon(1e-9));
   // Three coin tosses: the third kind can get nothing, its roll caps at one.
   p = rules::interlude_plan(tied, 300);
   CHECK_EQ(p.rolled[0], 0.5);
@@ -92,17 +103,17 @@ TEST_CASE("show: the interlude plan turns median gaps into per-swap probabilitie
 }
 
 TEST_CASE("show: the interlude roll takes the first winner in priority order") {
-  const uint16_t none[3] = {0, 0, 0};
+  const uint16_t none[4] = {0, 0, 0, 0};
   int calls = 0;
   CHECK_EQ(rules::roll_interlude(rules::interlude_plan(none, 30), [&] { ++calls; return 0u; }), -1);
   CHECK_EQ(calls, 0);  // a kind that is off is never rolled
-  const uint16_t five[3] = {5, 0, 0};
+  const uint16_t five[4] = {5, 0, 0, 0};
   const rules::InterludePlan coin = rules::interlude_plan(five, 300);  // 50 %
   CHECK_EQ(rules::roll_interlude(coin, [] { return 0x7fffffffu; }), 0);
   CHECK_EQ(rules::roll_interlude(coin, [] { return 0x80000000u; }), -1);
   // Clock 5 min and weather 180 min on 60 s swaps: the weather is asked first and wins
   // a coincidence; the clock gets the slot only when the weather lost.
-  const uint16_t two[3] = {5, 180, 0};
+  const uint16_t two[4] = {5, 180, 0, 0};
   const rules::InterludePlan plan = rules::interlude_plan(two, 60);
   CHECK_EQ(rules::roll_interlude(plan, [] { return 0u; }), 1);
   uint32_t seq[] = {0xffffffffu, 0u};
@@ -139,7 +150,7 @@ TEST_CASE("show: over many swaps every kind's realised rate and median gap match
     x = x * 6364136223846793005ull + 1442695040888963407ull;
     return static_cast<uint32_t>(x >> 32);
   };
-  const uint16_t minutes[3] = {5, 5, 20};
+  const uint16_t minutes[4] = {5, 5, 20, 0};
   const uint32_t interval_s = 60;
   const rules::InterludePlan plan = rules::interlude_plan(minutes, interval_s);
   const int swaps = 400000;
@@ -331,7 +342,8 @@ class FakeEnv : public p64::show::ShowEnv {
   }
   const char *widget_name(p64::system::WidgetKind kind) override {
     return kind == p64::system::WidgetKind::Weather ? "weather"
-           : kind == p64::system::WidgetKind::Temperature ? "temperature" : "clock";
+           : kind == p64::system::WidgetKind::Temperature ? "temperature"
+           : kind == p64::system::WidgetKind::Air ? "air" : "clock";
   }
   std::shared_ptr<FrameSource> stream_source() override {
     if (!stream) stream = std::make_shared<p64::playback::StaticSource>("stream", Frame());

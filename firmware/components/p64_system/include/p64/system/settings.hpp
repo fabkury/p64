@@ -24,7 +24,8 @@ enum class PickMode : uint8_t { Random = 0, Recency = 1 };
 enum class ChannelSelect : uint8_t { Stochastic = 0, Swrr = 1 };
 // The clock overlay's position: the four corners, or centred at the top or the bottom.
 enum class Corner : uint8_t { TopLeft = 0, TopRight = 1, BottomLeft = 2, BottomRight = 3, TopCenter = 4, BottomCenter = 5 };
-enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2 };
+enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2, Air = 3 };
+constexpr int kWidgetKindCount = 4;
 // The clock widget's face (spec 7.1): the digital and analogue ones honour the font and
 // colour settings; the six themed ones (approved 2026-09-26) draw with their own assets.
 enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7, Led = 8 };
@@ -70,7 +71,7 @@ struct Settings {
   WidgetKind widget = WidgetKind::Clock;
   // Interludes (ADR 0014): the median gap in minutes between interludes of each kind,
   // 0 = never, else 5..1440; the per-swap probability follows from the auto-swap interval.
-  uint16_t interlude_clock = 30, interlude_weather = 180, interlude_temperature = 0;
+  uint16_t interlude_clock = 30, interlude_weather = 180, interlude_temperature = 0, interlude_air = 0;
   // A clock interlude draws a random face (p057): all nine, never the previous one again.
   bool interlude_random_clock_face = false;
   struct Clock {
@@ -91,6 +92,10 @@ struct Settings {
     bool imperial = false;
     uint16_t refresh_minutes = 30;  // 10..180
   } weather;
+  // The air widget (spec 7.4): the weather's location and refresh; the index it shows.
+  struct Air {
+    bool european = false;  // the European AQI instead of the US one
+  } air;
   struct Temperature {
     int8_t offset_temperature = 0;  // -10..10 units
     int8_t offset_humidity = 0;
