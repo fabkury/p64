@@ -1,0 +1,6 @@
+Let's "take our fingers off the keyboard" for a moment (i.e. not implement anything) and just discuss.
+I need your help to brainstorm this:
+ - What could be new sources of content/data for p64 widgets?
+ - What is the 'competition' out there, meaning, what are commonly implemented widgets and how do they operate technically?
+
+Please do research and report back to me. Actually, do one better: document your research in a new folder inside folde firmware/docs/, and report back to me.
