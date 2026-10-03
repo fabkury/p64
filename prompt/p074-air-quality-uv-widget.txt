@@ -1,0 +1,1 @@
+Please pivot to implementing 1. Air quality and UV (Open-Meteo).
