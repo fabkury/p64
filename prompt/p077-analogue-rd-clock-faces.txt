@@ -1,0 +1,7 @@
+Sounds good. I trust you to make decisions about bake-in-versus-PNG.
+
+Let's now enhance the Analogue clock, by generating Analogue-RD. The process should be similar to Horizon-RD:
+ - Generate assets for a bautiful analogue clock
+ - Use them to compose the clockface
+
+Please generate 2 variants: Analogue-RD-1 and Analogue-RD-2. Show both to me as mockups first, before implementing in the firmware. Your budget for this is $5 at RetroDiffusion.
