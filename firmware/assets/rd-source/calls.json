@@ -257,5 +257,54 @@
   "files": [
    "fish_d_idle_0.gif"
   ]
+ },
+ {
+  "name": "sun4",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "the sun: a large round bright golden disc with a pale yellow centre and eight short triangular orange rays around it, symmetric, simple clean icon filling the picture, on a plain dark blue background",
+   "prompt_style": "rd_plus__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "sun4_0.png",
+   "sun4_1.png"
+  ]
+ },
+ {
+  "name": "moon2",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "the full moon: a round pale grey-white disc with a few darker grey craters and maria, centred, with a wide empty margin around it, on a plain black background",
+   "prompt_style": "rd_plus__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "moon2_0.png",
+   "moon2_1.png"
+  ]
+ },
+ {
+  "name": "sun3",
+  "cost": 0.09,
+  "payload": {
+   "prompt": "the sun: one large perfectly round golden yellow disc that fills almost the whole picture, lighter yellow-white centre, warm orange rim, no face, no rays, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 3,
+   "remove_bg": true
+  },
+  "files": [
+   "sun3_0.png",
+   "sun3_1.png",
+   "sun3_2.png"
+  ]
  }
 ]

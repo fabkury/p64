@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <ctime>
+#include <memory>
 #include <string>
 
 #include "p64/gfx/fonts.hpp"
@@ -38,6 +39,11 @@ struct ClockState {
   int shown_hour = 0, shown_minute = 0, shown_second = 0;
   int phase = 0;        // 1..themed::kFlipFrames (or kLedFadeFrames) while a change animates
   themed::Moment from;  // the digits before the change
+  // The decoded pictures of the face on show, when it keeps its art as PNG (horizon_rd,
+  // aquarium): loaded at its first frame, freed when another face draws or the state goes.
+  std::unique_ptr<themed::HorizonRdArt> horizon_rd;
+  std::unique_ptr<themed::AquariumArt> aquarium;
+  bool art_failed = false;  // a picture did not decode: do not try again every frame
 };
 // The weather's WMO code as the horizon's cloud cover and precipitation.
 void weather_to_sky(int wmo_code, themed::Sky &sky);

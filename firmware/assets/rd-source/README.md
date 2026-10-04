@@ -1,30 +1,33 @@
-# Retro Diffusion sources of the clock face candidates (p075, 2026-10-03)
+# Retro Diffusion sources of two clock faces (p075, p076, 2026-10-03)
 
-The raw outputs of the Retro Diffusion API (<https://www.retrodiffusion.ai>) that the two
-candidate faces Horizon-RD and aquarium are drawn from, and the record of what was paid.
+The raw outputs of the Retro Diffusion API (<https://www.retrodiffusion.ai>) that the
+faces `horizon_rd` and `aquarium` are drawn from, and the record of what was paid.
 
 - `calls.json`: every paid call in order, with its exact payload (the input image left
-  out), its price and its output files. The user's budget was $5; **$1.85 was spent**
-  (account balance $7.16 before, $5.31 after).
-- `used/`: the outputs the assets are cut from. `fish_*_k20.png` and `fish_*_k16.png` are
-  the service's free `k_centroid_downscale` of the three 32 px fish animations laid out as
-  strips (not in `calls.json`, they cost nothing).
+  out), its price and its output files. **$2.18 was spent** in two rounds: $1.85 of a $5
+  budget for the candidates (p075), then $0.33 of a further $1 for a larger sun and a
+  smaller moon (p076). Account balance $7.16 before, $4.98 after.
+- `used/`: the outputs the assets are cut from. `fish_*_k20.png`, `fish_*_k16.png` and
+  `moon_k12.png` are the service's free `k_centroid_downscale` of the fish animations
+  (laid out as strips) and of `moon_0.png` (not in `calls.json`, they cost nothing).
 - `unused/`: what was paid for and not used, kept so nobody pays for it twice.
 
-`tools/prep_rd_clock_assets.py` turns `used/` into `assets/clock-candidates/` offline and
-for free; `tools/mock_rd_clock_faces.py` draws the faces. How to call the API (client,
-prices, pitfalls) is the user's `retrodiffusion-api` repository; the key never enters this
-one.
+`tools/prep_rd_clock_assets.py` turns `used/` into `assets/clock-png/` offline and for
+free; `tools/gen_clock_assets.py` embeds those PNG files in the firmware;
+`tools/mock_clock_faces.py` draws the faces. How to call the API (client, prices,
+pitfalls) is the user's `retrodiffusion-api` repository; the key never enters this one.
 
 | Face | Used | Price |
 |---|---|---|
 | Horizon-RD | `land_1` (rd_plus__low_res, two candidates) | $0.12 |
-| | `moon_0`, `sun2_0`, `cloud_0`, `cloud_1` (rd_fast__low_res, background removed) | $0.15 |
+| | `moon_0` (rd_fast__low_res, 14 px, shrunk to 12 for free), `cloud_0`, `cloud_1` | $0.09 |
+| | `sun3_1` (rd_fast__low_res, three candidates, a 12 px disc) | $0.09 |
 | Aquarium | `tank_0` (rd_plus__low_res, two candidates) | $0.12 |
 | | `tank_subtle_0` (subtle_motion, 16 frames; it loops: seam 2 % against steps of 1 to 3 %) | $0.25 |
 | | three goldfish stills (rd_fast__low_res) | $0.12 |
 | | three goldfish animations (advanced idle, 8 frames each; played forth and back, they do not loop) | $0.42 |
-| Not used | `sun_0` (spiky), `fish_c_0` (a black moor, too dark for the panel) | $0.06 |
+| Not used | `sun_0` (spiky), `sun2_0` and `sun2_1` (8 px, too small beside the moon), `fish_c_0` (a black moor, too dark for the panel) | $0.12 |
+| | `sun4_0`, `sun4_1` (rd_plus, with rays: brown rims), `moon2_0`, `moon2_1` (rd_plus: the shrunk first moon kept the look the user had seen) | $0.24 |
 | | `land_night`, `tank_night` (image_edit): the edit redrew both scenes instead of relighting them, so night is computed from the day picture | $0.36 |
 | | `land_subtle_0` (subtle_motion on the landscape): came back almost still (under 1 % of pixels change), so the lake's glints are computed | $0.25 |
 
@@ -37,4 +40,5 @@ What the service taught here, beyond the notes in `retrodiffusion-api`:
 - `rd_advanced_animation__idle` animates a fish on a flat colour well (the flat colour
   comes back exact and keys out); 32 px is the smallest input, and the free k-centroid
   downscale of the whole strip to 20 px cells keeps the frames consistent.
-- `rd_fast__low_res` goes down to 16x16 and fills the canvas: a 14 px moon, an 8 px sun.
+- `rd_fast__low_res` goes down to 16x16; how much of the canvas the subject fills follows the
+  prompt ("fills almost the whole picture" gave a 12 px disc, without it 8 px).

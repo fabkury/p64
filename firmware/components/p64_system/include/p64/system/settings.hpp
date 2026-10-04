@@ -28,7 +28,7 @@ enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2, Air =
 constexpr int kWidgetKindCount = 4;
 // The clock widget's face (spec 7.1): the digital and analogue ones honour the font and
 // colour settings; the six themed ones (approved 2026-09-26) draw with their own assets.
-enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7, Led = 8 };
+enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7, Led = 8, HorizonRd = 9, Aquarium = 10 };
 // The LED face's look (p053): four LED colours behind a filter, or a vacuum fluorescent display.
 enum class LedStyle : uint8_t { Red = 0, Green = 1, Amber = 2, Blue = 3, Vfd = 4 };
 
@@ -158,7 +158,7 @@ struct Settings {
 
 // The JSON names of the clock faces ("digital", "analogue", ...).
 const char *clock_face_name(ClockFace face);
-constexpr int kClockFaceCount = 9;
+constexpr int kClockFaceCount = 11;
 
 // Loads the document from NVS (defaults for anything missing) at boot.
 bool settings_init();

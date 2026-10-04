@@ -5,12 +5,12 @@ r"""Cuts the Retro Diffusion pictures into the assets of the two faces drawn fro
     python tools\prep_rd_clock_assets.py        (from firmware/; needs Pillow; free, offline)
 
 Reads assets/rd-source/used/ (the raw outputs of the paid calls, each listed with its exact
-payload and price in assets/rd-source/calls.json; the fish_*_k20 strips are the service's
-free k-centroid downscale of the 32 px animations) and writes assets/clock-candidates/horizon-rd/
-and aquarium/ (not assets/clock/, which tools/gen_clock_assets.py bakes into the firmware: the
-faces are candidates until approved). Every step here is deterministic, so the assets can be rebuilt
-without spending anything; edit a constant below and rerun rather than editing the PNGs.
-tools/mock_rd_clock_faces.py draws the faces from the result.
+payload and price in assets/rd-source/calls.json; the fish_*_k20 strips and moon_k12 are
+the service's free k-centroid downscales) and writes assets/clock-png/horizon_rd/ and
+aquarium/, which tools/gen_clock_assets.py embeds in the firmware as PNG files (the faces
+decode them when they start). Every step here is deterministic, so the assets can be
+rebuilt without spending anything; edit a constant below and rerun rather than editing the
+PNGs. tools/mock_clock_faces.py draws the faces from the result.
 
 Horizon-RD (the land sits at row LAND_Y of the frame):
   land.png     the landscape, its white sky and its painted sun keyed out
@@ -34,7 +34,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE = os.path.abspath(os.path.join(HERE, ".."))
 SRC = os.path.join(FIRMWARE, "assets", "rd-source", "used")
-ASSETS = os.path.join(FIRMWARE, "assets", "clock-candidates")
+ASSETS = os.path.join(FIRMWARE, "assets", "clock-png")
 
 LAND_Y = 26  # the first row of land.png in the frame
 SUN_ROWS = 26  # the painted sun lives above this row of the source
@@ -61,7 +61,7 @@ def src(name):
 def save(face, name, img):
     path = os.path.join(ASSETS, face, name + ".png")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.save(path)
+    img.save(path, optimize=True)
     print(f"{face}/{name}.png {img.width}x{img.height}")
 
 
@@ -111,20 +111,19 @@ def horizon_rd():
     lights = Image.new("RGBA", land.size, (0, 0, 0, 0))
     for x, y in WINDOWS:
         lights.putpixel((x, y - LAND_Y), WINDOW_COLOUR)
-    save("horizon-rd", "land", land)
-    save("horizon-rd", "lake", lake)
-    save("horizon-rd", "lights", lights)
+    save("horizon_rd", "land", land)
+    save("horizon_rd", "lake", lake)
+    save("horizon_rd", "lights", lights)
 
-    sun = Image.open(src("sun2_0.png")).convert("RGBA")
-    for y in range(sun.height):
-        for x in range(sun.width):
-            r, g, b, a = sun.getpixel((x, y))
-            if a < 128 or r < 200:  # the dark halo the model drew around the disc
-                sun.putpixel((x, y), (0, 0, 0, 0))
-    save("horizon-rd", "sun", crop_alpha(sun))
-    save("horizon-rd", "moon", crop_alpha(Image.open(src("moon_0.png")).convert("RGBA")))
-    save("horizon-rd", "cloud-a", crop_alpha(Image.open(src("cloud_0.png")).convert("RGBA")))
-    save("horizon-rd", "cloud-b", crop_alpha(Image.open(src("cloud_1.png")).convert("RGBA")))
+    save("horizon_rd", "sun", crop_alpha(Image.open(src("sun3_1.png")).convert("RGBA")))
+    moon = Image.open(src("moon_k12.png")).convert("RGBA")  # on black, from the downscale
+    for y in range(moon.height):
+        for x in range(moon.width):
+            if max(moon.getpixel((x, y))[:3]) < 40:
+                moon.putpixel((x, y), (0, 0, 0, 0))
+    save("horizon_rd", "moon", moon)
+    save("horizon_rd", "cloud-a", crop_alpha(Image.open(src("cloud_0.png")).convert("RGBA")))
+    save("horizon_rd", "cloud-b", crop_alpha(Image.open(src("cloud_1.png")).convert("RGBA")))
 
 
 # ---------------------------------------------------------------- Aquarium

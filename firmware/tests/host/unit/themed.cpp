@@ -1,9 +1,10 @@
 // Host unit tests: the themed clock faces (spec 7.1): the solar model against the almanac,
 // the words grid, the flip's animation state, the hold times, the orrery's arithmetic, the
-// hourglass's sand. The pixels themselves are compared with the mock's references by
+// hourglass's sand, the PNG pictures of the Horizon-RD and the aquarium and their cadence. The pixels themselves are compared with the mock's references by
 // tests/host/run.py (tests/host/corpus/clock/).
 #include "common.hpp"
 #include "faces.hpp"
+#include "picture.hpp"
 #include "solar.hpp"
 #include "themed.hpp"
 
@@ -426,8 +427,9 @@ TEST_CASE("themed: the horizon is dark at night and bright by day, and the weath
 }
 
 TEST_CASE("themed: settings JSON round-trips every face name") {
-  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
-  for (int i = 0; i < 9; ++i) {
+  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"};
+  static_assert(sizeof(kNames) / sizeof(kNames[0]) == p64::system::kClockFaceCount);
+  for (int i = 0; i < p64::system::kClockFaceCount; ++i) {
     p64::system::Settings s;
     std::string error;
     const std::string json = std::string("{\"clock\":{\"face\":\"") + kNames[i] + "\"}}";
@@ -508,6 +510,160 @@ TEST_CASE("themed: the LED cross-fades a second change in five frames of 40 ms, 
   for (int i = 0; i < 5; ++i) themed::draw_led(styles[i], themed::Moment::from(t), themed::Options{}, static_cast<themed::LedStyle>(i));
   for (int i = 0; i < 5; ++i)
     for (int j = i + 1; j < 5; ++j) CHECK_FALSE(same(styles[i], styles[j]));
+}
+
+TEST_CASE("picture: every embedded PNG decodes to its size with a 0/255 alpha") {
+  namespace assets = p64::widgets::assets;
+  namespace picture = p64::widgets::picture;
+  struct Case {
+    const assets::Png *png;
+    int w, h;
+    bool all_opaque, some_clear;
+  };
+  const Case cases[] = {
+      {&assets::kAquariumTankPng, 1024, 64, true, false},   {&assets::kAquariumFrontPng, 1024, 64, false, true},
+      {&assets::kAquariumSignPng, 27, 10, true, false},     {&assets::kAquariumLightsPng, 64, 64, false, true},
+      {&assets::kAquariumFishAPng, 160, 17, false, true},   {&assets::kAquariumFishBPng, 208, 19, false, true},
+      {&assets::kAquariumFishCPng, 112, 10, false, true},   {&assets::kHorizonRdLandPng, 64, 38, false, true},
+      {&assets::kHorizonRdLakePng, 64, 38, false, true},    {&assets::kHorizonRdLightsPng, 64, 38, false, true},
+      {&assets::kHorizonRdSunPng, 12, 12, false, true},     {&assets::kHorizonRdMoonPng, 12, 12, false, true},
+      {&assets::kHorizonRdCloudAPng, 14, 8, false, true},   {&assets::kHorizonRdCloudBPng, 18, 9, false, true},
+  };
+  for (const Case &c : cases) {
+    picture::Picture p;
+    REQUIRE(picture::decode(*c.png, p));
+    CHECK_EQ(p.w, c.w);
+    CHECK_EQ(p.h, c.h);
+    REQUIRE_EQ(p.rgba.size(), static_cast<size_t>(c.w) * c.h * 4);
+    int opaque = 0, clear = 0, other = 0;
+    for (size_t i = 3; i < p.rgba.size(); i += 4) (p.rgba[i] == 255 ? opaque : p.rgba[i] == 0 ? clear : other)++;
+    CHECK_EQ(other, 0);
+    CHECK(opaque > 0);
+    CHECK_EQ(clear == 0, c.all_opaque);
+    CHECK_EQ(clear > 0, c.some_clear);
+  }
+  // the sign's first pixel is the picture's (a wooden brown), not a blend
+  picture::Picture sign;
+  REQUIRE(picture::decode(assets::kAquariumSignPng, sign));
+  CHECK(sign.view().colour(13, 5).r > sign.view().colour(13, 5).b);
+  // a file that is not a PNG is refused and leaves nothing behind
+  static const uint8_t junk[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+  picture::Picture none;
+  CHECK_FALSE(picture::decode(assets::Png{junk, sizeof(junk)}, none));
+  CHECK_FALSE(none.ok());
+}
+
+TEST_CASE("themed: the Horizon-RD loads its art once, moves its glints every 500 ms and frees the art for another face") {
+  p64::system::Settings s;
+  s.clock.face = ClockFace::HorizonRd;
+  faces::ClockState state;
+  faces::ClockContext ctx;
+  tm t = moment(13, 0, 0);
+  ctx.time = &t;
+  Frame a, b, c;
+  CHECK_EQ(faces::draw_clock(a, s, ctx, state), 500u);
+  REQUIRE(state.horizon_rd);
+  const themed::HorizonRdArt *art = state.horizon_rd.get();
+  ctx.millis = 130;
+  CHECK_EQ(faces::draw_clock(b, s, ctx, state), 370u);
+  CHECK(same(a, b));  // the same half second: the same glints
+  CHECK_EQ(state.horizon_rd.get(), art);  // not decoded again
+  ctx.millis = 500;
+  CHECK_EQ(faces::draw_clock(c, s, ctx, state), 500u);
+  CHECK_FALSE(same(a, c));
+  // only the lake moved
+  for (int y = 0; y < 51; ++y)
+    for (int x = 0; x < 64; ++x) REQUIRE(a.get(x, y) == c.get(x, y));
+  // night: the land is darker and the cabin's windows are lit in their own colour
+  Frame night;
+  tm late = moment(1, 0, 0);
+  ctx.time = &late;
+  ctx.millis = 0;
+  faces::draw_clock(night, s, ctx, state);
+  const auto land_sum = [](const Frame &f) {
+    long sum = 0;
+    for (int y = 40; y < 56; ++y)
+      for (int x = 0; x < 64; ++x) sum += f.get(x, y).r + f.get(x, y).g + f.get(x, y).b;
+    return sum;
+  };
+  CHECK(land_sum(night) * 3 < land_sum(a));
+  CHECK(night.get(11, 55) == Rgb{255, 206, 96});
+  CHECK_FALSE(a.get(11, 55) == Rgb{255, 206, 96});
+  // the sky differs with the weather, and the skyline hides a body: the sun's row is in the sky
+  themed::HorizonRdArt own;
+  REQUIRE(own.load());
+  CHECK(own.raised > 30);
+  CHECK(own.raised < 40);
+  // another face: the art goes
+  s.clock.face = ClockFace::Nixie;
+  faces::draw_clock(b, s, ctx, state);
+  CHECK_FALSE(state.horizon_rd);
+}
+
+TEST_CASE("themed: the aquarium draws a frame every 150 ms counted from midnight, the time on its sign, a blue night") {
+  p64::system::Settings s;
+  s.clock.face = ClockFace::Aquarium;
+  faces::ClockState state;
+  faces::ClockContext ctx;
+  tm t = moment(10, 32, 37);  // 37 000 ms into the minute: 100 ms into a tank frame
+  ctx.time = &t;
+  Frame a, b, c;
+  CHECK_EQ(faces::draw_clock(a, s, ctx, state), 50u);
+  REQUIRE(state.aquarium);
+  CHECK_FALSE(state.horizon_rd);
+  ctx.millis = 50;
+  CHECK_EQ(faces::draw_clock(b, s, ctx, state), 150u);
+  CHECK_FALSE(same(a, b));  // the next frame of the tank
+  ctx.millis = 60;
+  CHECK_EQ(faces::draw_clock(c, s, ctx, state), 140u);
+  // the sign: the ink's colour spells the time and is the same pixels by night
+  const Rgb ink{255, 240, 200};
+  const auto ink_at = [&ink](const Frame &f, int x, int y) { return f.get(x, y) == ink; };
+  int day_ink = 0;
+  for (int y = 19; y < 29; ++y)
+    for (int x = 27; x < 54; ++x) day_ink += ink_at(a, x, y);
+  CHECK(day_ink > 30);
+  // (the same clock time by night at Greenwich and by day half a world away)
+  Frame night, far_day;
+  tm late = moment(22, 32, 37);
+  ctx.time = &late;
+  ctx.millis = 0;
+  faces::draw_clock(night, s, ctx, state);
+  ctx.sky.longitude = 180;
+  faces::draw_clock(far_day, s, ctx, state);
+  ctx.sky.longitude = 0;
+  CHECK_FALSE(same(night, far_day));
+  for (int y = 19; y < 29; ++y)
+    for (int x = 27; x < 54; ++x) REQUIRE_EQ(ink_at(night, x, y), ink_at(far_day, x, y));
+  long day_sum = 0, night_sum = 0, night_blue = 0, night_red = 0;
+  for (int y = 4; y < 18; ++y)
+    for (int x = 8; x < 24; ++x) {
+      day_sum += a.get(x, y).r + a.get(x, y).g + a.get(x, y).b;
+      night_sum += night.get(x, y).r + night.get(x, y).g + night.get(x, y).b;
+      night_blue += night.get(x, y).b;
+      night_red += night.get(x, y).r;
+    }
+  CHECK(night_sum * 3 < day_sum * 2);
+  CHECK(night_blue > night_red * 2);
+  // the castle's window glows at night only
+  CHECK(night.get(14, 34).r > 200);
+  CHECK(a.get(14, 34).r < 160);
+  // 12 h: the time only, no leading zero, centred on the board
+  s.clock.h24 = false;
+  tm morning = moment(9, 5, 0);
+  ctx.time = &morning;
+  Frame twelve;
+  faces::draw_clock(twelve, s, ctx, state);
+  int left = 64, right = -1;
+  for (int y = 19; y < 29; ++y)
+    for (int x = 27; x < 54; ++x)
+      if (ink_at(twelve, x, y)) left = std::min(left, x), right = std::max(right, x);
+  CHECK(left >= 31);  // "9:05" is narrower than "10:32"
+  CHECK(std::abs((left - 27) - (53 - right)) <= 2);
+  // another face: the tank's 262 KB go
+  s.clock.face = ClockFace::Digital;
+  faces::draw_clock(b, s, ctx, state);
+  CHECK_FALSE(state.aquarium);
 }
 
 }  // namespace

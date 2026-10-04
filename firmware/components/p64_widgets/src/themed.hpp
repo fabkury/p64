@@ -8,8 +8,10 @@
 #include <cstdint>
 #include <ctime>
 #include <string>
+#include <vector>
 
 #include "p64/gfx/frame.hpp"
+#include "picture.hpp"
 
 namespace p64::widgets::themed {
 
@@ -90,5 +92,35 @@ void draw_led(gfx::Frame &frame, const Moment &m, const Options &o, LedStyle sty
 // The face's clock and the glow's pulse (255 at 0, 140 two seconds later, a triangle).
 int led_ms(const Moment &m, int millis);
 int led_pulse(int ms);
+
+// 8. Horizon-RD (p076): the horizon's sky and almanac over a landscape painted by Retro
+// Diffusion. Its pictures are PNG files in the firmware, decoded by load() when the face
+// starts and freed with the art (about 30 KB, in PSRAM on the device); load() is false
+// when a picture does not decode, and the clock then draws the horizon face instead.
+// `millis` moves the lake's glints, a frame every kHorizonRdStepMs.
+constexpr uint32_t kHorizonRdStepMs = 500;
+struct HorizonRdArt {
+  static constexpr int kSkyRows = 52;
+  picture::Picture land, lake, lights, sun, moon, cloud_a, cloud_b;
+  float line[64] = {};        // the skyline's row per column, smoothed
+  float raised = 0;           // its median: the horizon the bodies rise and set on
+  std::vector<uint8_t> sky;   // scratch: the sky's colours of the frame being drawn (the lake mirrors them)
+  std::vector<uint8_t> mask;  // scratch: the lettering's outline
+  bool load();
+};
+void draw_horizon_rd(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky, HorizonRdArt &art, int millis = 0);
+
+// 9. Aquarium (p076): a goldfish tank painted by Retro Diffusion, the time on its sign; a
+// frame every kAquariumFrameMs. Its pictures as the Horizon-RD's (about 290 KB decoded:
+// the tank's sixteen frames); `sky` gives the place, for the tank's day and night.
+constexpr uint32_t kAquariumFrameMs = 150;
+struct AquariumArt {
+  static constexpr int kFishCount = 3;
+  picture::Picture tank;  // sixteen frames side by side; alpha marks what stands in front of the far fish
+  picture::Picture sign, lights;
+  picture::Picture fish[kFishCount];  // eight frames each, facing right
+  bool load();
+};
+void draw_aquarium(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky, const AquariumArt &art, int millis = 0);
 
 }  // namespace p64::widgets::themed

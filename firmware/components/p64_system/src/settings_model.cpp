@@ -103,7 +103,7 @@ const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
 const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right", "top_center", "bottom_center"};
 const char *const kWidgets[] = {"clock", "weather", "temperature", "air"};
-const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
+const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"};
 const char *const kLedStyles[] = {"red", "green", "amber", "blue", "vfd"};
 
 }  // namespace

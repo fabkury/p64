@@ -96,7 +96,11 @@ the analogue clock face followed on 2026-09-20, six themed clock faces on 2026-0
 (flip, nixie, horizon, words, hourglass, orrery) and the LED face (seven-segment, five
 styles including a VFD, `face_led.cpp`) on 2026-09-28; the air widget (air quality and UV
 from Open-Meteo, a fourth widget kind, spec 7.4; `tools/mock_air_widget.py` is its design
-reference, `firmware/docs/widget-research/` the survey it came from) on 2026-10-03; `tools/mock_clock_faces.py` is the
+reference, `firmware/docs/widget-research/` the survey it came from) on 2026-10-03; two clock faces from
+Retro Diffusion pixel art the same day (`horizon_rd`, the horizon's sky over a painted landscape, and
+`aquarium`; their art is kept as PNG files, `assets/clock-png/`, embedded as they are and decoded when
+the face starts, `picture.cpp`; the raw pictures and every paid call are in `firmware/assets/rd-source/`,
+`tools/prep_rd_clock_assets.py` cuts them offline); `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
 `tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks;

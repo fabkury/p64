@@ -11,7 +11,26 @@ struct Sprite {
   uint16_t w, h;
   const uint8_t *rgba;  // w*h*4 bytes, row-major
 };
+// A PNG file kept as it is (assets/clock-png), decoded when its face starts.
+struct Png {
+  const uint8_t *data;
+  uint32_t size;
+};
 
+extern const Png kAquariumFishAPng;  // aquarium/fish-a.png, 160x17, 2139 bytes
+extern const Png kAquariumFishBPng;  // aquarium/fish-b.png, 208x19, 3328 bytes
+extern const Png kAquariumFishCPng;  // aquarium/fish-c.png, 112x10, 1582 bytes
+extern const Png kAquariumFrontPng;  // aquarium/front.png, 1024x64, 7783 bytes
+extern const Png kAquariumLightsPng;  // aquarium/lights.png, 64x64, 145 bytes
+extern const Png kAquariumSignPng;  // aquarium/sign.png, 27x10, 241 bytes
+extern const Png kAquariumTankPng;  // aquarium/tank.png, 1024x64, 7651 bytes
+extern const Png kHorizonRdCloudAPng;  // horizon_rd/cloud-a.png, 14x8, 262 bytes
+extern const Png kHorizonRdCloudBPng;  // horizon_rd/cloud-b.png, 18x9, 255 bytes
+extern const Png kHorizonRdLakePng;  // horizon_rd/lake.png, 64x38, 195 bytes
+extern const Png kHorizonRdLandPng;  // horizon_rd/land.png, 64x38, 2226 bytes
+extern const Png kHorizonRdLightsPng;  // horizon_rd/lights.png, 64x38, 118 bytes
+extern const Png kHorizonRdMoonPng;  // horizon_rd/moon.png, 12x12, 444 bytes
+extern const Png kHorizonRdSunPng;  // horizon_rd/sun.png, 12x12, 362 bytes
 extern const Sprite kFlipDigits;  // flip/digits.png, 99x16
 extern const Sprite kFlipTile;  // flip/tile.png, 30x34
 extern const Sprite kHorizonCloud;  // horizon/cloud.png, 13x5

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "clock_assets.hpp"
+#include "horizon_sky.hpp"
 #include "p64/gfx/fonts.hpp"
 #include "solar.hpp"
 #include "sprite.hpp"
@@ -22,57 +23,14 @@ namespace {
 
 using gfx::Frame;
 using gfx::Rgb;
+using namespace horizon_sky;  // the sky's colours, sky_x, lerp, the setting's constants
 
 constexpr int kHorizonY = 46;
 
-struct Stop {
-  float elevation;
-  Rgb top, near, away;  // the top of the sky, the horizon near the sun, the horizon away from it
-};
-constexpr Stop kSky[] = {
-    {-18, {2, 4, 18}, {8, 12, 38}, {8, 12, 38}},        {-12, {5, 6, 30}, {28, 18, 60}, {12, 14, 46}},
-    {-6, {16, 16, 64}, {140, 60, 90}, {40, 30, 80}},    {-2, {30, 34, 100}, {245, 118, 60}, {90, 60, 110}},
-    {2, {48, 74, 160}, {255, 168, 84}, {150, 120, 150}}, {8, {44, 100, 205}, {240, 205, 150}, {190, 190, 210}},
-    {16, {38, 104, 226}, {165, 205, 245}, {165, 205, 245}}, {35, {30, 96, 224}, {150, 205, 250}, {150, 205, 250}},
-    {90, {24, 86, 220}, {150, 205, 250}, {150, 205, 250}},
-};
 constexpr int kStars[][2] = {{5, 4},  {14, 9},  {22, 3},  {30, 12}, {41, 6},  {50, 2},  {57, 10},
                              {9, 16}, {36, 18}, {60, 20}, {26, 22}, {47, 15}, {3, 24},  {54, 27}};
 constexpr int kCloudSpots[][2] = {{5, 20}, {40, 28}, {24, 14}, {52, 10}, {12, 32}, {34, 22}, {58, 30}};
 constexpr int kCloudsByCover[4] = {1, 2, 4, 7};
-
-Rgb lerp(Rgb a, Rgb b, float t) {
-  const auto ch = [t](uint8_t x, uint8_t y) { return static_cast<uint8_t>(std::lround(x + (y - x) * t)); };
-  return {ch(a.r, b.r), ch(a.g, b.g), ch(a.b, b.b)};
-}
-
-float clamp01(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
-
-void sky_palette(float el, Rgb &top, Rgb &near, Rgb &away) {
-  constexpr int n = sizeof(kSky) / sizeof(kSky[0]);
-  if (el <= kSky[0].elevation) {
-    top = kSky[0].top, near = kSky[0].near, away = kSky[0].away;
-    return;
-  }
-  for (int i = 0; i + 1 < n; ++i) {
-    const Stop &a = kSky[i], &b = kSky[i + 1];
-    if (el <= b.elevation) {
-      const float t = (el - a.elevation) / (b.elevation - a.elevation);
-      top = lerp(a.top, b.top, t), near = lerp(a.near, b.near, t), away = lerp(a.away, b.away, t);
-      return;
-    }
-  }
-  top = kSky[n - 1].top, near = kSky[n - 1].near, away = kSky[n - 1].away;
-}
-
-// The viewer faces the equator: the sun rises on the left and sets on the right in the
-// northern hemisphere (mirrored in the southern); the east-west component projected on the
-// view plane, so a body near the zenith stays in the middle.
-int sky_x(float az, float el, float lat) {
-  float e = std::sin(az * 3.14159265f / 180) * std::cos(el * 3.14159265f / 180);
-  if (lat < 0) e = -e;
-  return static_cast<int>(std::lround(31.5f - 25.5f * e));
-}
 
 // The sun and the moon rise and set on the far hills' line, not on the horizon row. The
 // day's arc is one curve of the elevation, the old one lifted onto a raised horizon (the
@@ -83,7 +41,6 @@ int sky_x(float az, float el, float lat) {
 // they simply hide it. The setting: at +0.7 degrees the disc rests on the line, by -0.83
 // (the almanac's sunset: the upper limb at the horizon, refraction included) it has slid
 // behind it, under a pixel a minute for the sun in New York.
-constexpr double kRests = 0.7, kSet = -0.83, kBlend = 5.0;
 constexpr int kZenithY = 18;
 
 // The far hills' top row in the frame per column, smoothed over five columns.

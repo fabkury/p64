@@ -27,7 +27,7 @@ import api_smoke
 from api_smoke import check, request
 import mock_clock_faces as mock
 
-FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"]
+FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"]
 EXACT = {"flip": mock.draw_flip, "nixie": mock.draw_nixie, "words": mock.draw_words,
          "hourglass": mock.draw_hourglass, "orrery": mock.draw_orrery}
 
@@ -101,14 +101,22 @@ def main():
             style = clock.get("led_style", "red")
             wanted = [mock.draw_led(mo, opts, ms, None, 0, style).img.tobytes() for mo in (before, after) for ms in range(0, 1000, 200)]
             check(px in wanted, "led (%s) on the device is one of the host's frames of %02d:%02d:%02d" % (style, before.hour, before.minute, before.second))
-        if face == "horizon":
+        if face in ("horizon", "horizon_rd"):
             # a sky: the top rows are not black and vary down the frame
             top = px[0:64 * 3]
             mid = px[30 * 64 * 3:31 * 64 * 3]
-            check(lit(top) > 40 and top != mid, "the horizon draws a sky")
+            check(lit(top) > 40 and top != mid, "the %s draws a sky" % face)
+        if face == "aquarium" and before:
+            # the time on the sign: its ink is drawn after the lamp's dimming, so the pixels
+            # in the ink's colour are the host's whatever the hour (the fish never are)
+            ink = bytes(mock.SIGN_INK)
+            want = mock.draw_aquarium(before, opts).img.tobytes()
+            ours = {i for i in range(0, len(px), 3) if px[i:i + 3] == ink}
+            host = {i for i in range(0, len(want), 3) if want[i:i + 3] == ink}
+            check(ours == host and len(host) > 20, "the aquarium's sign shows %02d:%02d as the host draws it (%d ink pixels)" % (before.hour, before.minute, len(host)))
     names = list(frames)
     distinct = all(frames[a] != frames[b] for i, a in enumerate(names) for b in names[i + 1:])
-    check(distinct, "the nine faces all differ")
+    check(distinct, "the %d faces all differ" % len(names))
     # the flip's minute change: with the seconds on, the rail ticks; the frame keeps changing
     settings(base, {"clock": {"face": "flip", "seconds": True}})
     time.sleep(2.5)
@@ -128,6 +136,19 @@ def main():
     time.sleep(1.2)
     b = frame(base)
     check(a != b, "the orrery redraws every second with Mercury and the blinking colon")
+    # the two faces from PNG art move on their own: the lake's glints, the tank
+    settings(base, {"clock": {"face": "horizon_rd", "seconds": False, "blink_colon": False}})
+    time.sleep(2.0)
+    a = frame(base)
+    time.sleep(0.8)
+    b = frame(base)
+    check(a != b, "the Horizon-RD's lake glints between two frames 0.8 s apart")
+    settings(base, {"clock": {"face": "aquarium"}})
+    time.sleep(2.0)
+    a = frame(base)
+    time.sleep(0.5)
+    b = frame(base)
+    check(a != b, "the aquarium moves between two frames 0.5 s apart")
     # the LED breathes (the glow) even with the seconds off, and every style draws
     settings(base, {"clock": {"face": "led", "seconds": False, "blink_colon": False}})
     time.sleep(1.5)

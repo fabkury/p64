@@ -181,6 +181,11 @@ void weather_to_sky(int wmo_code, themed::Sky &sky) {
 uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &ctx, ClockState &state) {
   using system::ClockFace;
   const gfx::fonts::Font &font = font_named(s.clock.font);
+  // The faces that keep their art as PNG decode it at their first frame and hold it in the
+  // state; any other face lets it go.
+  if (s.clock.face != ClockFace::HorizonRd) state.horizon_rd.reset();
+  if (s.clock.face != ClockFace::Aquarium) state.aquarium.reset();
+  if (s.clock.face != ClockFace::HorizonRd && s.clock.face != ClockFace::Aquarium) state.art_failed = false;
   if (!ctx.time) {
     state.phase = 0;
     state.shown = false;
@@ -297,6 +302,33 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
       remember();
       themed::draw_led(out, m, o, style, ctx.millis);
       return std::min<uint32_t>(themed::kLedPulseStepMs, to_next_second(ctx));
+    }
+    case ClockFace::HorizonRd:
+      if (!state.horizon_rd && !state.art_failed) {
+        state.horizon_rd = std::make_unique<themed::HorizonRdArt>();
+        if (!state.horizon_rd->load()) state.horizon_rd.reset(), state.art_failed = true;
+      }
+      if (!state.horizon_rd) {  // the horizon face stands in
+        themed::draw_horizon(out, m, o, ctx.sky);
+        return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
+      }
+      themed::draw_horizon_rd(out, m, o, ctx.sky, *state.horizon_rd, ctx.millis);
+      return themed::kHorizonRdStepMs - static_cast<uint32_t>(ctx.millis) % themed::kHorizonRdStepMs;
+    case ClockFace::Aquarium: {
+      if (!state.aquarium && !state.art_failed) {
+        state.aquarium = std::make_unique<themed::AquariumArt>();
+        if (!state.aquarium->load()) state.aquarium.reset(), state.art_failed = true;
+      }
+      if (!state.aquarium) {  // dark water and the time
+        out.clear({6, 18, 40});
+        const std::string text = themed::hour_text(m, o) + (themed::colon_on(m, o) ? ":" : " ") + (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
+        gfx::fonts::draw_centred(out, gfx::fonts::default_font(), 28, text, {255, 240, 200}, 2);
+        return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
+      }
+      themed::draw_aquarium(out, m, o, ctx.sky, *state.aquarium, ctx.millis);
+      // to the tank loop's next frame, counted from midnight like the drawing
+      const uint32_t into = static_cast<uint32_t>((m.second * 1000 + ctx.millis) % static_cast<int>(themed::kAquariumFrameMs));
+      return themed::kAquariumFrameMs - into;
     }
     case ClockFace::Orrery:
     default:

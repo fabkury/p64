@@ -257,7 +257,7 @@ class ClockSource : public playback::FrameSource {
       ctx.sky.longitude = s.weather.longitude;
       ctx.sky.tz_hours = tz_hours;
     }
-    if (s.clock.face == system::ClockFace::Horizon) {
+    if (s.clock.face == system::ClockFace::Horizon || s.clock.face == system::ClockFace::HorizonRd) {
       std::lock_guard<std::mutex> lock(g_mutex);
       if (g_forecast.valid && esp_timer_get_time() - g_forecast.fetched_us <= faces::kWeatherStaleUs)
         faces::weather_to_sky(g_forecast.code, ctx.sky);

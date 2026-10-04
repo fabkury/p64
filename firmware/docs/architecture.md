@@ -26,7 +26,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
-| `p64_widgets` | clock (digital, analogue, seven themed faces), weather, temperature, air; font, icon and clock-face assets | `p64_gfx`, `p64_system` | partly (`faces`, `face_air`, `analogue`, `clock_format`, `weather_model`, `air_model`, the themed faces `face_*`, `sprite`, `solar`, `clock_assets`: everything drawn) |
+| `p64_widgets` | clock (digital, analogue, nine themed faces), weather, temperature, air; font, icon and clock-face assets | `p64_gfx`, `p64_system`, `p64_decode` | partly (`faces`, `face_air`, `analogue`, `clock_format`, `weather_model`, `air_model`, the themed faces `face_*`, `sprite`, `picture`, `solar`, `clock_assets`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack, roles through hooks). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `knob_rules.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
@@ -391,7 +391,22 @@ floating point, within a tolerance, and it has been exact so far). The clock sou
 hands `draw_clock` a `ClockContext` (the time with its milliseconds, the weather location
 and the zone offset, the forecast's cover and precipitation for the horizon) and keeps a
 `ClockState` for the flip, whose minute change is ten 45 ms frames drawn from one
-per-pixel function of the tile (no tile image is kept). `solar.cpp` (NOAA's low-precision
+per-pixel function of the tile (no tile image is kept). Two faces (2026-10-03, p076:
+`horizon_rd`, the horizon's sky over a painted landscape, and `aquarium`, a goldfish
+tank on a sixteen-frame loop) are drawn from Retro Diffusion pixel art and keep it as
+PNG: the files under `assets/clock-png/<face>/` are embedded as they are (27 KB of flash
+where their pixels would be 600 KB) and `picture.cpp` decodes them with `p64_decode`'s
+PNG decoder into RGBA with a 0/1 alpha, read through `sprite::View` like a baked sprite.
+The decoded art lives in the `ClockState` (`themed::HorizonRdArt`, `AquariumArt`):
+loaded at the face's first frame, freed when another face draws or the clock source
+goes, so it costs RAM only while it shows (the aquarium 290 KB, the tank's two strips
+folded into one whose alpha marks the decor in front of the far fish; Horizon-RD 30 KB;
+all of it above malloc's internal threshold, so in PSRAM). A picture that does not
+decode makes Horizon-RD fall back to the horizon face and the aquarium to the time on
+dark water. The aquarium is integer after the sun's elevation and pixel-exact against
+the mock; Horizon-RD is floating point like the horizon. The raw pictures, every paid
+call and its price are in `assets/rd-source/`; `tools/prep_rd_clock_assets.py` cuts
+them into the PNGs offline. `solar.cpp` (NOAA's low-precision
 sun, the Astronomical Almanac's low-precision moon with its phase from the elongation) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours

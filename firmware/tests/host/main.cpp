@@ -134,7 +134,7 @@ int run_faces(int argc, char **argv) {
     std::fprintf(stderr, "usage: p64_hosttest faces <out_dir> <ref.png>...\n");
     return 2;
   }
-  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led"};
+  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"};
   const std::string out_dir = argv[2];
   int failures = 0;
   for (int i = 3; i < argc; ++i) {
@@ -151,7 +151,7 @@ int run_faces(int argc, char **argv) {
     const std::string flags = d2 == std::string::npos ? "" : name.substr(d2 + 1);
     p64::system::Settings s;
     bool known = false;
-    for (int k = 0; k < 9; ++k)
+    for (int k = 0; k < p64::system::kClockFaceCount; ++k)
       if (face == kFaces[k]) s.clock.face = static_cast<p64::system::ClockFace>(k), known = true;
     if (!known) {
       std::fprintf(stderr, "%s: unknown face\n", name.c_str());

@@ -1555,10 +1555,359 @@ def led_animation(m0, o, style="red", seconds=8):
     return seq
 
 
+# ---------------------------------------------------------------- 8. Horizon-RD (floating point)
+
+# The horizon face's sky (its colours by the sun's elevation, the glow on the sun's side,
+# the stars, the sun's and the moon's real places, the moon's phase, the weather's clouds
+# and rain) over a landscape painted by Retro Diffusion (p075, p076): mountains, a lake,
+# pines and a cabin. The land keeps its own colours by day and sinks to a blue night by
+# the daylight, warmed at the twilights; the lake mirrors the sky and glitters under the
+# sun and the moon (the glints move every RD_GLINT_MS); the cabin's windows are lit while
+# it is dark. Its pictures, and the aquarium's, are PNG files (assets/clock-png/, cut from
+# the service's outputs by tools/prep_rd_clock_assets.py) that the firmware embeds as they
+# are and decodes when the face starts.
+
+PNG_ASSETS = os.path.join(FIRMWARE, "assets", "clock-png")
+RD_LAND_Y = 26  # prep_rd_clock_assets.py's LAND_Y
+RD_LAKE_TOP = 51
+RD_SKY_ROWS = 52  # the sky's gradient ends where the lake begins
+RD_ZENITH_Y = 18
+RD_GLINT_MS = 500
+RD_GLOW = 9.5  # the radius of the sun's glow
+RD_NIGHT_LAND = (0.13, 0.19, 0.36)  # what moonless night leaves of the land's colours
+RD_CLOUD_SPOTS = [(4, 19), (38, 25), (22, 13), (50, 9), (12, 29)]
+RD_STARS = STARS + [(18, 27), (33, 6), (44, 24), (62, 4), (1, 12), (28, 30)]
+
+
+def png_asset(face, name):
+    path = os.path.join(PNG_ASSETS, face, name + ".png")
+    if not os.path.exists(path):
+        raise SystemExit(f"{path} is missing; run tools/prep_rd_clock_assets.py")
+    return Image.open(path).convert("RGBA")
+
+
+def mul(c, k):
+    """A colour scaled per channel by k (three factors)."""
+    return tuple(min(255, int(round(c[i] * k[i]))) for i in range(3))
+
+
+def hash3(x, y, t):
+    """A small 32-bit integer hash of a pixel and a tick (the lake's glints)."""
+    v = ((x * 73856093) ^ (y * 19349663) ^ (t * 83492791)) & 0xFFFFFFFF
+    v = ((v ^ (v >> 13)) * 1274126177) & 0xFFFFFFFF
+    return (v ^ (v >> 16)) & 0xFFFF
+
+
+def rd_skyline(land):
+    """The land's top row in the frame per column, smoothed over five columns."""
+    a = land.split()[-1].load()
+    tops = [next((y for y in range(land.height) if a[x, y] >= 128), land.height) + RD_LAND_Y for x in range(W)]
+    return [sum(tops[min(W - 1, max(0, x + d))] for d in range(-2, 3)) / 5 for x in range(W)]
+
+
+def rd_body_y(el, x, radius, line):
+    """body_y with this face's zenith row, the raised horizon being the skyline's median:
+    the trees and the peaks above it simply hide a body."""
+    if el <= SET:
+        return None
+    raised = sorted(line)[W // 2]
+    local = max(line[min(W - 1, max(0, x))], raised)
+    edge = raised + (local - raised) * max(0.0, 1 - (el - RESTS) / BLEND)
+    rests, hidden = edge - radius - 1, edge + radius
+    if el < RESTS:
+        return int(round(hidden + (rests - hidden) * (el - SET) / (RESTS - SET)))
+    return int(round(rests + (RD_ZENITH_Y - rests) * (min(el, 90) - RESTS) / (90 - RESTS)))
+
+
+def draw_moon_rd(frame, moon, x, y, phase, lat, dark_sky):
+    """The painted moon with its terminator: the lit side keeps the picture's craters, the
+    dark side shows faintly on a dark sky."""
+    r = moon.width / 2
+    c = math.cos(2 * math.pi * phase)
+    px = moon.load()
+    for yy in range(moon.height):
+        v = (yy + 0.5 - r) / r
+        s = math.sqrt(max(0.0, 1 - v * v))
+        for xx in range(moon.width):
+            if px[xx, yy][3] < 128:
+                continue
+            u = (xx + 0.5 - r) / r
+            uu = u if lat >= 0 else -u
+            lit = (uu > s * c) if phase < 0.5 else (uu < -s * c)
+            X, Y = x - moon.width // 2 + xx, y - moon.height // 2 + yy
+            if lit:
+                frame.set(X, Y, mul(px[xx, yy][:3], (1.25, 1.25, 1.3)))
+            elif dark_sky:
+                frame.set(X, Y, lerp(frame.get(X, Y), (60, 62, 90), 0.5))
+
+
+def draw_rd_lettering(frame, m, o):
+    """The horizon face's lettering (white ink, one outline at 75 % black), laid out for a
+    picture whose ground is worth seeing: the date small on the lake, right-aligned, clear
+    of the cabin, and the meridiem beside the time, so the sky under the time stays the
+    sun's."""
+    font = load_font("capital-hill")
+    small = load_font("everyday-slight")
+    big = load_font("everyday-vast-black")
+    hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
+    time_text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
+    gap = 1
+    spaced = text_width(big, time_text) + gap * (len(time_text) - 1)
+    mer = "" if o.h24 else m.meridiem()
+    mer_w = text_width(font, mer) + 2 if mer else 0
+    x0 = (W - spaced - mer_w) // 2
+    date = m.date(o.month_first)
+    dx = W - 1 - text_width(small, date)
+
+    def letters(target, text_c, outline):
+        x = x0
+        for ch in time_text:
+            draw_text(target, big, x, 3, ch, text_c, 1, outline=outline)
+            x += text_width(big, ch) + gap
+        if mer:
+            draw_text(target, font, x0 + spaced + 2, 8, mer, text_c, 1, outline=outline)
+        draw_text(target, small, dx, 58, date, text_c, 1, outline=outline)
+
+    mask = Frame()
+    letters(mask, MASK_TEXT, MASK_OUTLINE)
+    for y in range(H):
+        for x in range(W):
+            if mask.get(x, y) == MASK_OUTLINE:
+                frame.set(x, y, blend(frame.get(x, y), (0, 0, 0), HORIZON_OUTLINE_ALPHA))
+    letters(frame, (255, 255, 255), None)
+
+
+def draw_horizon_rd(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", millis=0):
+    h = m.hour + m.minute / 60.0
+    frame = Frame((0, 0, 0))
+    land, lake, lights = (png_asset("horizon_rd", n) for n in ("land", "lake", "lights"))
+    sun, moon = png_asset("horizon_rd", "sun"), png_asset("horizon_rd", "moon")
+    clouds = (png_asset("horizon_rd", "cloud-a"), png_asset("horizon_rd", "cloud-b"))
+    el, az = solar_position(lat, lon, tz, m.yday, h)
+    top, near_c, away_c = sky_palette(el)
+    grey = 0.22 * cover
+    top, near_c, away_c = (lerp(c, (110, 116, 130), grey) for c in (top, near_c, away_c))
+    sx = sky_x(az, el, lat)
+    glow_width = 30 if el < 12 else 60
+    sky = [[None] * RD_SKY_ROWS for _ in range(W)]
+    for x in range(W):
+        w = math.exp(-((x - sx) / glow_width) ** 2)
+        hz = lerp(away_c, near_c, w)
+        for y in range(RD_SKY_ROWS):
+            sky[x][y] = lerp(top, hz, (y / (RD_SKY_ROWS - 1)) ** 1.5)
+            frame.set(x, y, sky[x][y])
+    light = daylight(el)
+    star_k = max(0.0, min(1.0, (-el - 4) / 8)) * (1 - 0.8 * min(1, cover / 2))
+    if star_k > 0:
+        for i, (x, y) in enumerate(RD_STARS):
+            frame.set(x, y, lerp(frame.get(x, y), (232, 232, 250), star_k * (0.85 if i % 3 else 1.0)))
+            if i % 3 == 0 and star_k > 0.6:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    if 0 <= x + dx < W and 0 <= y + dy < RD_SKY_ROWS:
+                        frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
+    line = rd_skyline(land)
+    phase = moon_phase(year, m.yday, h, tz)
+    mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
+    mx = sky_x(maz, mel, lat)
+    my = rd_body_y(mel, mx, moon.width // 2, line)
+    moon_up = my is not None and el < 25
+    if moon_up:
+        draw_moon_rd(frame, moon, mx, my, phase, lat, el < -6)
+    sy = rd_body_y(el, sx, sun.width // 2, line)
+    sun_tint = lerp((255, 120, 90), (255, 255, 255), max(0.0, min(1.0, el / 6)))
+    sun_k = [v / 255 for v in sun_tint]
+    if sy is not None:
+        # a soft glow around the disc, then the disc
+        for dy in range(-9, 10):
+            for dx in range(-9, 10):
+                d = math.hypot(dx, dy)
+                if d < RD_GLOW:
+                    frame.set(sx + dx, sy + dy, lerp(frame.get(sx + dx, sy + dy), sun_tint, 0.30 * (1 - d / RD_GLOW)))
+        px = sun.load()
+        for yy in range(sun.height):
+            for xx in range(sun.width):
+                if px[xx, yy][3] >= 128:
+                    frame.set(sx - sun.width // 2 + xx, sy - sun.height // 2 + yy, mul(px[xx, yy][:3], sun_k))
+    tint = lerp((50, 52, 80), lerp((255, 255, 255), near_c, 0.35), light)
+    if cover >= 3:
+        tint = lerp((40, 42, 60), (168, 172, 186), light)
+    tint_k = [v / 255 for v in tint]
+    for i, (base_x, y) in enumerate(RD_CLOUD_SPOTS[: (1, 2, 3, 5)[cover]]):
+        cloud = clouds[i % 2]
+        x = (base_x + m.minute * 64 // 60) % (W + cloud.width) - cloud.width
+        px = cloud.load()
+        for yy in range(cloud.height):
+            for xx in range(cloud.width):
+                if px[xx, yy][3] >= 128:
+                    frame.set(x + xx, y + yy, mul(px[xx, yy][:3], tint_k))
+    if precip:
+        rng = (m.minute * 7919 + m.hour * 104729) % 65536
+        for _ in range(22):
+            rng = (rng * 1103515245 + 12345) % 2147483648
+            x, y = (rng >> 8) % W, (rng >> 4) % 50
+            if precip == "rain":
+                for k in range(3):
+                    frame.set(x, y + k, lerp(frame.get(x, y + k), (150, 190, 240), 0.7))
+            else:
+                frame.set(x, y, (240, 244, 255))
+    # the land: its own colours by day, a blue night, warmed by the twilight's glow
+    warm = [0.6 + 0.4 * v / 255 for v in near_c]
+    dusk = 0.5 * (1 - abs(2 * light - 1))
+    tick = (m.second * 1000 + millis) // RD_GLINT_MS + m.minute * 120
+    lp, kp = land.load(), lake.load()
+    for yy in range(land.height):
+        for xx in range(W):
+            if lp[xx, yy][3] < 128:
+                continue
+            c = lp[xx, yy][:3]
+            if cover:
+                g = (c[0] * 3 + c[1] * 6 + c[2]) // 10
+                c = lerp(c, (g, g, g), 0.15 * cover)
+            if precip == "snow":
+                c = lerp(c, (228, 232, 242), 0.3)
+            lit = lerp(mul(c, RD_NIGHT_LAND), c, light)
+            lit = lerp(lit, mul(c, warm), dusk)
+            y = yy + RD_LAND_Y
+            if kp[xx, yy][3] >= 128:
+                # the lake mirrors the sky, and glitters under the sun and the moon
+                lit = lerp(lit, sky[xx][max(0, RD_SKY_ROWS - 1 - (y - RD_LAKE_TOP) * 4)], 0.45)
+                spread = 1 + (y - RD_LAKE_TOP) // 4
+                roll = hash3(xx, y, tick)
+                if sy is not None and el < 30 and abs(xx - sx) <= spread and roll % 5 < 2:
+                    lit = lerp(lit, mul((255, 236, 170), sun_k), 0.5)
+                elif moon_up and el < -4 and abs(xx - mx) <= spread and roll % 5 < 2:
+                    lit = lerp(lit, (214, 220, 240), 0.4)
+                elif roll % 29 == 0:
+                    lit = lerp(lit, (255, 255, 255), 0.10 + 0.15 * light)
+            frame.set(xx, y, lit)
+    # the cabin's windows, lit while it is dark, with a faint glow around them
+    lamp = max(0.0, min(1.0, (0.35 - light) / 0.25))
+    if lamp > 0:
+        gp = lights.load()
+        spots = [(xx, yy) for yy in range(lights.height) for xx in range(W) if gp[xx, yy][3] >= 128]
+        for xx, yy in spots:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if (xx + dx, yy + dy) not in spots:
+                    X, Y = xx + dx, yy + dy + RD_LAND_Y
+                    frame.set(X, Y, lerp(frame.get(X, Y), gp[xx, yy][:3], 0.22 * lamp))
+        for xx, yy in spots:
+            frame.set(xx, yy + RD_LAND_Y, lerp(frame.get(xx, yy + RD_LAND_Y), gp[xx, yy][:3], lamp))
+    draw_rd_lettering(frame, m, o)
+    return frame
+
+
+# ---------------------------------------------------------------- 9. Aquarium (integer but for the sun)
+
+# A goldfish tank painted by Retro Diffusion: a sixteen-frame loop of the tank (the plant
+# sways, bubbles rise from the chest), three goldfish that swim from wall to wall and turn,
+# each on its own lane and wagging its tail (eight frames played forth and back), and the
+# time on the sunken sign (the time only: the board has no room for AM or PM). The far
+# fish pass behind the castle, the plant, the chest and the sign; the near one in front of
+# everything but the sign's board. The tank's lamp follows the sun: by night the water
+# goes dark blue, the castle's window and door glow, the small fish hides and the others
+# swim at half speed. Everything after the sun's elevation is integer arithmetic (the
+# daylight in 256ths), so the firmware's pixels are the mock's.
+
+TANK_FRAMES, TANK_MS = 16, 150
+BOARD_X, BOARD_Y = 27, 19
+SIGN_INK = (255, 240, 200)
+SIGN_SHADOW = (58, 38, 30)
+NIGHT_TANK = (77, 102, 179)  # in 256ths: what night leaves of red, green and blue
+NIGHT_BELOW = 77  # the daylight (of 256) under which it is night for the fish
+LAMP_FROM = 90  # the castle's lights come on under this daylight, full 64 lower
+FISH_FRAMES = 8
+# name, the lane's row, the walls it turns at (the sprite's left edge), px per second, the
+# path's phase in px, the rise and fall (px and its period in ms), in front of the decor,
+# hidden at night
+FISHES = [
+    ("fish-c", 9, 6, 40, 7, 13, 3, 5200, False, True),
+    ("fish-a", 27, 6, 35, 4, 31, 2, 7900, False, False),
+    ("fish-b", 3, 5, 29, 3, 5, 1, 9700, True, False),
+]
+
+
+def daylight256(el):
+    return int(round(daylight(el) * 256))
+
+
+def fish_pose(fish, t_ms):
+    """Where a fish is and how it looks at a time of day: (x, y, facing right, frame)."""
+    _name, y0, x_min, x_max, speed, offset, bob, bob_ms, _near, _shy = fish
+    span = x_max - x_min
+    p = (t_ms * speed // 1000 + offset) % (2 * span)
+    right = p < span
+    x = x_min + p if right else x_max - (p - span)
+    y = y0 + q_to_px(bob * sin_q((t_ms % bob_ms) * 3600 // bob_ms))
+    k = (t_ms // TANK_MS + offset) % (2 * FISH_FRAMES - 2)
+    return x, y, right, (k if k < FISH_FRAMES else 2 * FISH_FRAMES - 2 - k)
+
+
+def draw_fish(frame, fish, t_ms):
+    sheet = png_asset("aquarium", fish[0])
+    w = sheet.width // FISH_FRAMES
+    x, y, right, k = fish_pose(fish, t_ms)
+    px = sheet.load()
+    for yy in range(sheet.height):
+        for xx in range(w):
+            c = px[k * w + (xx if right else w - 1 - xx), yy]
+            if c[3] >= 128:
+                frame.set(x + xx, y + yy, c[:3])
+
+
+def draw_aquarium(m, o, lat=40.0, lon=0.0, tz=0.0, millis=0):
+    el, _az = solar_position(lat, lon, tz, m.yday, m.hour + m.minute / 60.0)
+    light = daylight256(el)
+    night = light < NIGHT_BELOW
+    t_ms = ((m.hour * 60 + m.minute) * 60 + m.second) * 1000 + millis
+    swim_ms = t_ms // 2 if night else t_ms
+    tank, front, sign, lights = (png_asset("aquarium", n) for n in ("tank", "front", "sign", "lights"))
+    k = (t_ms // TANK_MS) % TANK_FRAMES
+    frame = Frame((0, 0, 0))
+    frame.img.paste(tank.crop((k * W, 0, (k + 1) * W, H)).convert("RGB"), (0, 0))
+    frame.px = frame.img.load()
+    for fish in FISHES:
+        if not fish[8] and not (fish[9] and night):
+            draw_fish(frame, fish, swim_ms)
+    blit(frame, front.crop((k * W, 0, (k + 1) * W, H)), 0, 0)
+    for fish in FISHES:
+        if fish[8]:
+            draw_fish(frame, fish, swim_ms)
+    blit(frame, sign, BOARD_X, BOARD_Y)
+    # the lamp: everything dims to a blue night, then the castle's lights and the time glow
+    if light < 256:
+        dim = [NIGHT_TANK[i] + ((256 - NIGHT_TANK[i]) * light >> 8) for i in range(3)]
+        for y in range(H):
+            for x in range(W):
+                c = frame.get(x, y)
+                frame.set(x, y, tuple(c[i] * dim[i] >> 8 for i in range(3)))
+    lamp = max(0, min(256, (LAMP_FROM - light) * 4))
+    if lamp > 0:
+        alpha = min(255, lamp * 217 >> 8)  # 85 % at full
+        gp = lights.load()
+        for y in range(H):
+            for x in range(W):
+                if gp[x, y][3] >= 128:
+                    frame.set(x, y, blend(frame.get(x, y), gp[x, y][:3], alpha))
+    font = load_font("everyday-standard")
+    hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
+    text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
+    x = BOARD_X + (sign.width - text_width(font, text) + 1) // 2
+    draw_text(frame, font, x + 1, BOARD_Y + 3, text, tuple(v * (128 + light // 2) >> 8 for v in SIGN_SHADOW))  # a carved shadow
+    draw_text(frame, font, x, BOARD_Y + 2, text, SIGN_INK)
+    return frame
+
+
+def at_ms(m, ms):
+    """The moment `ms` milliseconds after m, and the milliseconds left over."""
+    total = m.second * 1000 + ms
+    return plus_seconds(Moment(m.hour, m.minute, 0, m.wday, m.mday, m.mon, m.yday), total // 1000), total % 1000
+
+
 # ---------------------------------------------------------------- output
 
 FACES = {"flip": draw_flip, "nixie": draw_nixie, "horizon": draw_horizon, "words": draw_words,
-         "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led}
+         "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led,
+         "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium}
 
 
 def contact_sheet(items, scale=6, gap=12, columns=None):
@@ -1578,8 +1927,8 @@ def contact_sheet(items, scale=6, gap=12, columns=None):
     return sheet
 
 
-def save_gif(path, seq, scale=1):
-    frames = [upscale(f.img, scale).quantize(colors=64, dither=Image.NONE) for f, _ in seq]
+def save_gif(path, seq, scale=1, colours=64):
+    frames = [upscale(f.img, scale).quantize(colors=colours, dither=Image.NONE) for f, _ in seq]
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=[d for _, d in seq], loop=0, optimize=False)
 
 
@@ -1607,6 +1956,13 @@ REFERENCES = [
     ("led", Moment(10, 32, 37), "sv"), ("led", Moment(21, 5, 9), "hsv"), ("led", Moment(10, 32, 37), "bv"),
     ("led", Moment(10, 33, 0), "svp2"),
     ("led", Moment(10, 32, 37), "sg"), ("led", Moment(10, 32, 37), "sa"), ("led", Moment(10, 32, 37), "su"),
+    # the two faces from Retro Diffusion art: the horizon's, floating point, within the
+    # tolerance; the aquarium pixel for pixel (day, the fish elsewhere, 12 h at dawn with
+    # the lamp half up, night with the blinking colon off, the last dark before dawn)
+    ("horizon_rd", Moment(18, 42, 0), ""), ("horizon_rd", Moment(12, 30, 0), ""), ("horizon_rd", Moment(3, 0, 0), ""),
+    ("horizon_rd", Moment(6, 20, 0), "h"), ("horizon_rd", Moment(17, 50, 7), "b"),
+    ("aquarium", Moment(10, 32, 37), ""), ("aquarium", Moment(14, 5, 12), ""), ("aquarium", Moment(6, 10, 0), "h"),
+    ("aquarium", Moment(22, 40, 11), "b"), ("aquarium", Moment(5, 50, 30), ""),
 ]
 
 
@@ -1643,7 +1999,9 @@ def write_design():
              ("words", draw_words(Moment(10, 32))),
              ("hourglass", draw_hourglass(Moment(10, 32, 37), Options(seconds=True))),
              ("orrery", draw_orrery(Moment(10, 32, 37), Options(seconds=True))),
-             ("led", draw_led(Moment(10, 32, 37), Options(seconds=True)))]
+             ("led", draw_led(Moment(10, 32, 37), Options(seconds=True))),
+             ("horizon_rd", draw_horizon_rd(Moment(18, 42), o, lat=40.7, lon=-74.0, tz=-4)),
+             ("aquarium", draw_aquarium(Moment(10, 32, 37), o, lat=40.7, lon=-74.0, tz=-4))]
     for name, fr in faces:
         fr.img.save(os.path.join(DESIGN, name + ".png"))
         upscale(fr.img, 8).save(os.path.join(DESIGN, name + "@8x.png"))
@@ -1689,9 +2047,43 @@ def write_design():
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8)
 
 
+def write_rd_design():
+    """The two faces from Retro Diffusion art: a day, the variants, the animations."""
+    o = Options()
+    ny = dict(lat=40.7, lon=-74.0, tz=-4)
+    moments = [(0, 30), (3, 0), (5, 30), (6, 20), (6, 50), (8, 0), (12, 30), (16, 30), (18, 20), (18, 50), (19, 25), (21, 0)]
+    contact_sheet([(f"{hh:02d}:{mm:02d}", draw_horizon_rd(Moment(hh, mm), o, **ny)) for hh, mm in moments], scale=4, columns=6).save(
+        os.path.join(DESIGN, "horizon_rd-day.png"))
+    variants = [("clear", draw_horizon_rd(Moment(15, 0), o, **ny)),
+                ("broken", draw_horizon_rd(Moment(15, 0), o, cover=2, **ny)),
+                ("rain", draw_horizon_rd(Moment(15, 0), o, cover=3, precip="rain", **ny)),
+                ("snow", draw_horizon_rd(Moment(15, 0), o, cover=3, precip="snow", **ny)),
+                ("12 h", draw_horizon_rd(Moment(6, 40), Options(h24=False), **ny)),
+                ("full moon", draw_horizon_rd(Moment(22, 30), o, **ny)),
+                ("half moon", draw_horizon_rd(Moment(20, 30, 0, 6, 19, 9, 261), o, **ny)),
+                ("sao paulo", draw_horizon_rd(Moment(18, 10), o, lat=-23.55, lon=-46.63, tz=-3))]
+    contact_sheet(variants, scale=4, columns=4, gap=24).save(os.path.join(DESIGN, "horizon_rd-variants.png"))
+    seq = []
+    for i in range(12):
+        mm, ms = at_ms(Moment(18, 42, 0), i * RD_GLINT_MS)
+        seq.append((draw_horizon_rd(mm, o, millis=ms, **ny), RD_GLINT_MS))
+    save_gif(os.path.join(DESIGN, "horizon_rd@8x.gif"), seq, 8, 255)
+    tank_moments = [(10, 32, 37), (10, 32, 49), (14, 5, 12), (6, 25, 0), (19, 5, 30), (22, 40, 10)]
+    contact_sheet([(f"{hh:02d}:{mi:02d}:{ss:02d}", draw_aquarium(Moment(hh, mi, ss), o, **ny)) for hh, mi, ss in tank_moments],
+                  scale=4, columns=6).save(os.path.join(DESIGN, "aquarium-moments.png"))
+    for name, start, n in (("aquarium", Moment(10, 32, 30), 96), ("aquarium-night", Moment(22, 40, 0), 64)):
+        seq = []
+        for i in range(n):
+            mm, ms = at_ms(start, i * TANK_MS)
+            seq.append((draw_aquarium(mm, o, millis=ms, **ny), TANK_MS))
+        save_gif(os.path.join(DESIGN, name + ".gif"), seq, 1, 255)
+        save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)
+
+
 def main():
     n = write_references()
     write_design()
+    write_rd_design()
     print(f"assets in {ASSETS}; {n} references in {CORPUS}; review images in {DESIGN}")
 
 

@@ -169,7 +169,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div class="clock-preview-wrap"><img id="clock-preview" class="clock-preview" alt="the panel" src="/api/v1/frame"><span class="clock-preview-tag" id="clock-preview-tag">the panel</span></div>
             <div class="clock-head-controls">
                 <label for="clock-face">Face</label>
-                <select class="sel" id="clock-face" onchange="faceControls(this.value); save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option><option value="flip">Flip</option><option value="nixie">Nixie</option><option value="horizon">Horizon</option><option value="words">Words</option><option value="hourglass">Hourglass</option><option value="orrery">Orrery</option><option value="led">LED</option></select>
+                <select class="sel" id="clock-face" onchange="faceControls(this.value); save({clock:{face:this.value}})"><option value="digital">Digital</option><option value="analogue">Analogue</option><option value="flip">Flip</option><option value="nixie">Nixie</option><option value="horizon">Horizon</option><option value="words">Words</option><option value="hourglass">Hourglass</option><option value="orrery">Orrery</option><option value="led">LED</option><option value="horizon_rd">Horizon RD</option><option value="aquarium">Aquarium</option></select>
                 <div class="setting-hint" id="clock-face-hint"></div>
                 <button class="btn hidden" id="clock-show" onclick="showClock()">Show on the panel</button>
             </div>
@@ -178,10 +178,10 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
             <div data-for="digital analogue"><label>Font</label><select class="sel" style="min-width:0" id="clock-font" onchange="save({clock:{font:this.value}})"></select></div>
             <div data-for="digital"><label>Scale</label><select class="sel" style="min-width:0" id="clock-scale" onchange="save({clock:{scale:+this.value}})"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></div>
             <div data-for="led"><label>Style</label><select class="sel" style="min-width:0" id="clock-led-style" onchange="save({clock:{led_style:this.value}})"><option value="red">Red LED</option><option value="green">Green LED</option><option value="amber">Amber LED</option><option value="blue">Blue LED</option><option value="vfd">VFD</option></select></div>
-            <div data-for="digital flip nixie horizon hourglass orrery led"><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h (AM/PM)</option></select></div>
+            <div data-for="digital flip nixie horizon hourglass orrery led horizon_rd aquarium"><label>Hours</label><select class="sel" style="min-width:0" id="clock-h24" onchange="save({clock:{h24:this.value==='24'}})"><option value="24">24 h</option><option value="12">12 h (AM/PM)</option></select></div>
             <div data-for="digital analogue flip hourglass orrery led"><label id="clock-seconds-label">Seconds</label><select class="sel" style="min-width:0" id="clock-seconds" onchange="save({clock:{seconds:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-            <div data-for="digital nixie horizon orrery led"><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
-            <div data-for="digital analogue flip nixie horizon hourglass"><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
+            <div data-for="digital nixie horizon orrery led horizon_rd aquarium"><label>Blinking colon</label><select class="sel" style="min-width:0" id="clock-blink" onchange="save({clock:{blink_colon:this.value==='on'}})"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div data-for="digital analogue flip nixie horizon hourglass horizon_rd"><label>Date order</label><select class="sel" style="min-width:0" id="clock-date" onchange="save({clock:{date_order:this.value}})"><option value="day_month">Day month</option><option value="month_day">Month day</option></select></div>
         </div>
         <div class="setting-hint hidden" id="clock-none">This face has no settings of its own.</div>
     </div>
@@ -685,7 +685,9 @@ var FACE_INFO = {
     words: 'The time spelled on a letter grid, to the five minutes, with corner dots for the minutes past. Twelve-hour by nature: AM and PM are on the grid.',
     hourglass: 'The hour as sand, the hour and the minute beside it; the seconds setting runs the stream grain by grain.',
     orrery: 'The Earth, the Moon and Mercury as the hands of a brass orrery, the time on the plaque; the seconds setting adds Mercury.',
-    led: 'A seven-segment clock, hours over minutes, in a coloured LED or a fluorescent display (the style); the glow breathes and the digits cross-fade; the seconds setting adds small seconds digits.'
+    led: 'A seven-segment clock, hours over minutes, in a coloured LED or a fluorescent display (the style); the glow breathes and the digits cross-fade; the seconds setting adds small seconds digits.',
+    horizon_rd: 'The horizon\'s sky, sun, moon and weather over a painted landscape: snow peaks, a lake that mirrors the sky and glitters, a cabin whose windows light up at night; the time on top, the date on the lake.',
+    aquarium: 'A goldfish tank: three goldfish swim between a castle, a plant and a treasure chest, and the time is on the sunken sign. The tank\'s light follows the sun over the weather location; at night the castle glows and the fish slow down.'
 };
 var SECONDS_LABEL = { analogue: 'Second hand', flip: 'Seconds rail', hourglass: 'Sand stream', orrery: 'Mercury (seconds)', led: 'Seconds digits' };
 function faceControls(face) {

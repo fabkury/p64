@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (the air widget added 2026-10-03; analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (the air widget and the Horizon-RD and aquarium faces added 2026-10-03; analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -1200,6 +1200,35 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   uptime class), the weather task's stack 5.7 KB free of 12; host tests 201 cases. The user
   then tried the widget on the panel and its section of the web UI lightly: both worked.
   Not checked: the public build's size against `check_size.py` (CI does).
+- 2026-10-03, two clock faces from Retro Diffusion art (prompts p075, p076; spec 7.1):
+  `horizon_rd` (the horizon's computed sky, sun, moon, stars and weather over a painted
+  landscape: peaks, a lake that mirrors the sky and glitters, a cabin whose windows light
+  at night) and `aquarium` (a goldfish tank on a sixteen-frame loop, three animated
+  goldfish on their lanes, the time on a sunken sign, the tank's light following the
+  sun). The art was generated with the Retro Diffusion API for $2.18 (every call, payload
+  and price in `assets/rd-source/`; `tools/prep_rd_clock_assets.py` cuts it into
+  `assets/clock-png/` offline). Decided with the user: mock-ups first (p075), then, at
+  the implementation, PNG assets for both faces instead of baked pixels, a 12 px sun and
+  moon, the time only on the sign. So the PNG files are embedded as they are
+  (`gen_clock_assets.py`, 27 KB where the pixels would be 600 KB) and decoded when the
+  face starts (`picture.cpp` on `p64_decode`'s PNG decoder: flattened over black and
+  over white to recover the 0/1 alpha the decoder does not keep); the decoded art lives
+  in the clock source's `ClockState` and is freed when another face draws. Both faces
+  were merged into `tools/mock_clock_faces.py` with ten references; the aquarium was
+  made integer after the sun's elevation and is pixel-exact, Horizon-RD within the
+  horizon's tolerance (the first comparison passed without a fix). Host: 204 cases, 59
+  references (54 exact, 5 within tolerance). Device (private build, flashed):
+  `faces_smoke` 0 failures on the second run (the first failed its LED check once, a
+  capture between two of the host's frames, not seen again; the LED face was not
+  touched), `ui_smoke`, `api_smoke` and `widgets_smoke` 0 failures; the aquarium's sign
+  on the device is the host's ink pixel for pixel. Measured with the aquarium on show
+  (6.7 fps): core 1 8.7 % busy (player 2.9 %, render 5.8 %), 222 KB of PSRAM, internal
+  heap unchanged (65.9 KB free, largest 34.8 KB), the player's stack low-water mark
+  unchanged (8.3 KB free of 12); three starts of the face made no frame late (the decode
+  of the two 1024x64 strips was not timed on its own). Horizon-RD (2 fps): core 1 4.9 %.
+  The public image went to 2,411,408 bytes, over the 2.4 MB budget, raised to 2.5 MB in
+  `budgets.json`. Open: the user's eye on the panel (night levels, the fish's speed, the
+  12 px sun and moon), and the faces under a long soak.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

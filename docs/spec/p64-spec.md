@@ -445,6 +445,20 @@ refresh of being asked so it can be shown seamlessly.
     the moon with its phase, clouds by the weather's cover drifting with the minute, rain
     or snow from the current condition, hills and a tree that darken at night; the time on
     top in outlined white, the date on the ground.
+  - Horizon RD (`horizon_rd`, 2026-10-03, p075 and p076): the horizon's sky, sun, moon,
+    stars and weather over a landscape painted with Retro Diffusion (snow peaks, a lake,
+    pines, a log cabin). The land keeps its colours by day, sinks to a blue night and is
+    warmed at the twilights; the lake mirrors the sky and glitters under the sun and the
+    moon (the glints move twice a second); the cabin's windows are lit while it is dark.
+    The time on top with AM or PM beside it, the date small on the lake. The sun and the
+    moon are 12 px discs, the moon with its computed phase over its painted craters.
+  - Aquarium (`aquarium`, same dates): a goldfish tank painted with Retro Diffusion: a
+    stone castle, a plant that sways, a treasure chest that bubbles, gravel, and a wooden
+    sign that carries the time (the time only: no date, and no AM or PM in 12 h). Three
+    goldfish swim from wall to wall and turn, two behind the decor and one in front of
+    it. The tank's light follows the sun over the weather location: by night the water
+    is dark blue, the castle's window and door glow, the small fish hides and the others
+    swim at half speed. A frame every 150 ms.
   - Words: a 12x9 letter grid behind a brushed bezel, the letters that spell the time lit
     ("IT IS HALF PAST TEN AM", to the five minutes) and four corner dots for the minutes
     past; twelve-hour by nature (AM and PM are on the grid).
@@ -812,7 +826,7 @@ All persisted unless noted. Ranges are inclusive.
 | Widgets | chosen widget (Widget state) | clock, weather, temperature, air | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0, air 0 |
 | Widgets | random clock face at clock interludes | on/off | off |
-| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led, horizon_rd, aquarium; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
