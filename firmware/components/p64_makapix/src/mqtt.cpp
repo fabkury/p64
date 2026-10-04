@@ -211,7 +211,7 @@ void publish_status(int32_t current_post_id) {
 void publish_state() {
   const std::shared_ptr<const system::Settings> s = system::settings_view();
   const bool paused = internal::g_hooks.is_paused ? internal::g_hooks.is_paused() : false;
-  const std::string text = contract::state_json(paused, s->brightness, s->rotation);
+  const std::string text = contract::state_json(paused, s->brightness, s->rotation, s->mirror);
   if (!text.empty()) publish(topic("state"), text, true);
 }
 

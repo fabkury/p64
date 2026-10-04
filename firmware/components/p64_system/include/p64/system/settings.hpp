@@ -45,6 +45,7 @@ struct Settings {
   PanelMode panel_mode = PanelMode::Quality;
   uint16_t rotation = 90;      // 0, 90, 180, 270
   bool rotation_auto = false;  // IMU decides; `rotation` is the fallback
+  bool mirror = false;         // the picture flipped left-right, as the viewer sees it
   gfx::Rgb background{0, 0, 0};
   uint8_t gain_r = 100, gain_g = 100, gain_b = 100;  // 50..100 %
   uint16_t boot_animation_ms = 3000;                 // 0 (off) or 1000..7000 (decided 2026-09-26)

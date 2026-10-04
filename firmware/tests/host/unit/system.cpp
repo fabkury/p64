@@ -66,7 +66,7 @@ TEST_CASE("settings: defaults survive their own JSON") {
 TEST_CASE("settings: every field survives a round trip") {
   Settings a = applied(R"({"display":{"brightness":77,"brightness_ceiling":200,"night":{"enabled":true,
     "start_minutes":1320,"end_minutes":420,"brightness":0},"panel_mode":"photo","rotation":270,
-    "rotation_auto":true,"background":{"r":1,"g":2,"b":3},"gains":{"r":60,"g":70,"b":80},"boot_animation_ms":0},
+    "rotation_auto":true,"mirror":true,"background":{"r":1,"g":2,"b":3},"gains":{"r":60,"g":70,"b":80},"boot_animation_ms":0},
     "show":{"main_state":"widget","auto_swap_seconds":0,"pick_mode":"recency","channel_select":"swrr",
     "clock_overlay":{"enabled":false,"font":"everyday-typical","corner":"bottom_right","h24":false,
     "colour":{"r":9,"g":8,"b":7},"border":false,"border_colour":{"r":1,"g":2,"b":3},"border_opacity":40}},"widgets":{"widget":"temperature","interlude_minutes":{"clock":10,
@@ -79,6 +79,8 @@ TEST_CASE("settings: every field survives a round trip") {
   CHECK_EQ(a.night.brightness, 0);  // 0 = panel off, allowed for the night only
   CHECK(a.panel_mode == p64::system::PanelMode::Photo);
   CHECK_EQ(a.rotation, 270);
+  CHECK(a.mirror);
+  CHECK(!Settings{}.mirror);  // off unless asked for
   CHECK(a.main_state == p64::system::MainState::Widget);
   CHECK_EQ(a.auto_swap_seconds, 0u);  // 0 = no auto-swap
   CHECK(a.clock_overlay.corner == p64::system::Corner::BottomRight);

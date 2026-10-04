@@ -260,6 +260,9 @@ void handle_command(const char *json, size_t len) {
     case contract::Command::Kind::SetRotation:
       if (g_hooks.set_rotation) g_hooks.set_rotation(c.rotation);
       break;
+    case contract::Command::Kind::SetMirror:
+      if (g_hooks.set_mirror) g_hooks.set_mirror(c.mirror);
+      break;
     case contract::Command::Kind::None:
     case contract::Command::Kind::Invalid:
       break;

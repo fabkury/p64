@@ -68,6 +68,7 @@ struct Hooks {
   std::function<void(bool paused)> set_paused;
   std::function<void(uint8_t brightness)> set_brightness;
   std::function<void(uint16_t rotation)> set_rotation;
+  std::function<void(bool mirror)> set_mirror;
   // A downloaded artwork to play now: its file (absolute path or "mem:<key>"), post id
   // (-1 for a plain URL) and a display name.
   std::function<void(const std::string &path, int32_t post_id, const std::string &name)> play_artwork;

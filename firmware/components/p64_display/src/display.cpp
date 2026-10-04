@@ -325,7 +325,7 @@ void Display::push_physical() {
 void Display::present(const gfx::Frame &frame) {
   if (!driver_) return;
   const int64_t t0 = esp_timer_get_time();
-  gfx::rotate_copy(frame, physical_, rotation_, lut_);
+  gfx::rotate_copy(frame, physical_, rotation_, mirror_, lut_);
   driver_->draw_pixels(0, 0, gfx::kPanelWidth, gfx::kPanelHeight, physical_, Hub75PixelFormat::RGB888,
                        Hub75ColorOrder::RGB, false);
   stats_.copy_us += static_cast<uint64_t>(esp_timer_get_time() - t0);

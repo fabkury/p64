@@ -114,6 +114,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="rot-row"><button class="rot-btn" data-rot="0" onclick="setRotation(0)">0&deg;</button><button class="rot-btn" data-rot="90" onclick="setRotation(90)">90&deg;</button><button class="rot-btn" data-rot="180" onclick="setRotation(180)">180&deg;</button><button class="rot-btn" data-rot="270" onclick="setRotation(270)">270&deg;</button><button class="rot-btn" id="rot-auto" onclick="save({display:{rotation_auto:!S.display.rotation_auto}})">Auto (IMU)</button></div>
         <div class="setting-hint" id="rot-hint">Auto needs one calibration: stand the panel upright, then press below. The setting is the fallback until the IMU has resolved.</div>
         <div class="toggle-row" style="margin-top:8px"><button class="btn" onclick="p64.post('/api/v1/action/calibrate_upright').then(function(d){p64.toast('Calibrated at rotation '+d.auto_rotation)}).catch(function(e){p64.toast(e.message,true)})">Panel is upright now</button></div>
+        <div class="toggle-row" style="margin-top:10px"><label class="toggle-label" for="mirror">Mirror (flip left-right)</label><label class="toggle-switch"><input type="checkbox" id="mirror" onchange="save({display:{mirror:this.checked}})"><span class="toggle-slider"></span></label></div>
+        <div class="setting-hint">For a panel seen in a mirror or through a reflection. The flip is the viewer's left-right at every rotation; the preview on the home page stays unmirrored.</div>
     </div>
     <div class="section">
         <h3>Background colour</h3>
@@ -481,6 +483,7 @@ function fill(s) {
     document.getElementById('mode-photo').classList.toggle('active', d.panel_mode === 'photo');
     document.querySelectorAll('.rot-btn[data-rot]').forEach(function (b) { b.classList.toggle('active', +b.getAttribute('data-rot') === d.rotation && !d.rotation_auto); });
     document.getElementById('rot-auto').classList.toggle('active', !!d.rotation_auto);
+    sc('mirror', !!d.mirror);
     sv('bg-r', d.background.r); sv('bg-g', d.background.g); sv('bg-b', d.background.b); bgPreview();
     sv('gain-r', d.gains.r); sv('gain-g', d.gains.g); sv('gain-b', d.gains.b);
     sv('boot-ms', d.boot_animation_ms);

@@ -112,6 +112,13 @@ and never knows the physical one. Auto reads gravity from the IMU and picks the 
 90 degrees that puts "up" up, with hysteresis so a tilted desk does not flip it; the last
 resolved value is used until the IMU reports a new stable orientation.
 
+Mirror: an on/off setting, default off, for a panel that is seen in a mirror or through a
+reflection. It flips the picture left-right as the viewer sees it: the flip is applied to
+the logical picture first and the rotation after it, so the result is the upright picture
+mirrored at every rotation, auto included. Applied in the same place as the rotation, to
+everything the panel shows; the live frame of the web UI stays unmirrored, as it stays
+unrotated. A top-bottom flip is the mirror with the rotation half a turn further.
+
 ### 3.5 Scaling
 
 Canvases are fitted into the panel preserving aspect ratio:
@@ -665,7 +672,7 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   (Promoted, All, Own, Artist with a check, Hashtag with a check, Reactions with a check).
 - Settings tabs:
   - Display: brightness (1 to 255), brightness ceiling, night schedule, panel mode,
-    rotation (including auto), background colour, RGB gains, clock overlay (on/off, font,
+    rotation (including auto), mirror, background colour, RGB gains, clock overlay (on/off, font,
     corner, 12/24 h, colour), boot animation length.
   - Widgets: main state selector (Animation show, Widget: which, Stream), per-widget
     settings (clock face and font, weather location and units, the air quality index,
@@ -732,9 +739,9 @@ p3a's client is the reference implementation. p64 uses:
   before use, and a TLS session per file would cost internal RAM the device does not
   have. `P64_MAKAPIX_VAULT_TLS` switches to HTTPS.
 - Push: MQTT over mutual TLS: commands (show artwork, play channel, play playset, next,
-  previous, pause, brightness, rotation, background colour), presence (status every 30 s
-  and a last-will "offline"), advertised capabilities (pause, brightness 1 to 255,
-  rotation values) and state. Reconnect with jittered backoff.
+  previous, pause, brightness, rotation, mirror, background colour), presence (status
+  every 30 s and a last-will "offline"), advertised capabilities (pause, brightness 1 to
+  255, rotation values, mirror none or horizontal) and state. Reconnect with jittered backoff.
 - Engagement: views reported for every artwork shown (artwork views and channel
   impressions as the server distinguishes them, at most one per 5 s); Like and unlike from
   the web UI; artwork info (title, author, date) fetched by the browser from the site as
@@ -827,6 +834,7 @@ All persisted unless noted. Ranges are inclusive.
 | Display | night schedule | enabled; start, end HH:MM; brightness 1 to 255 or off | disabled |
 | Display | panel mode | quality, photo | quality |
 | Display | rotation | 0, 90, 180, 270, auto | 90 |
+| Display | mirror | off, on (the picture flipped left-right) | off |
 | Display | background colour | RGB 0 to 255 each | 0, 0, 0 |
 | Display | RGB gains | 50 to 100 % each | 100, 100, 100 |
 | Display | boot animation length | 0 (off), or 1000 to 7000 ms | 3000 |

@@ -133,20 +133,61 @@ TEST_CASE("rotation_and_gains") {
   lut.set_gains(100, 100, 100);
   std::vector<uint8_t> out(Frame::bytes());
   auto at = [&](int x, int y) { return Rgb{out[(y * 64 + x) * 3], out[(y * 64 + x) * 3 + 1], out[(y * 64 + x) * 3 + 2]}; };
-  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R0, lut);
+  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R0, false, lut);
   CHECK(at(1, 0) == (Rgb{200, 100, 50}));
-  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R90, lut);
+  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R90, false, lut);
   CHECK(at(63, 1) == (Rgb{200, 100, 50}));
   CHECK(at(1, 0) == (Rgb{0, 0, 0}));
-  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R180, lut);
+  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R180, false, lut);
   CHECK(at(62, 63) == (Rgb{200, 100, 50}));
-  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R270, lut);
+  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R270, false, lut);
   CHECK(at(0, 62) == (Rgb{200, 100, 50}));
   lut.set_gains(50, 100, 80);
-  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R0, lut);
+  p64::gfx::rotate_copy(f, out.data(), p64::gfx::Rotation::R0, false, lut);
   CHECK(at(1, 0) == (Rgb{100, 100, 40}));
   CHECK_EQ(lut.r[255], 128);
   CHECK_EQ(lut.g[255], 255);
+}
+
+// The whole frame, every pixel distinct, against the definition: the mirror flips the logical
+// picture left-right, then the rotation turns it clockwise (spec 3.4).
+TEST_CASE("rotation_and_mirror: every pixel lands where the definition puts it") {
+  using p64::gfx::Rotation;
+  constexpr int N = 64;
+  Frame f;
+  for (int y = 0; y < N; ++y)
+    for (int x = 0; x < N; ++x) f.set(x, y, Rgb{static_cast<uint8_t>(x), static_cast<uint8_t>(y), static_cast<uint8_t>(x ^ y)});
+  p64::gfx::ChannelLut lut;
+  lut.set_gains(100, 100, 100);
+  std::vector<uint8_t> out(Frame::bytes());
+  for (Rotation r : {Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270}) {
+    for (bool mirror : {false, true}) {
+      p64::gfx::rotate_copy(f, out.data(), r, mirror, lut);
+      int wrong = 0;
+      for (int y = 0; y < N; ++y) {
+        for (int x = 0; x < N; ++x) {
+          const int mx = mirror ? N - 1 - x : x;  // where the flip puts logical (x, y)
+          int px = mx, py = y;                    // then the clockwise turn
+          if (r == Rotation::R90) px = N - 1 - y, py = mx;
+          if (r == Rotation::R180) px = N - 1 - mx, py = N - 1 - y;
+          if (r == Rotation::R270) px = y, py = N - 1 - mx;
+          const uint8_t *p = &out[(py * N + px) * 3];
+          if (p[0] != x || p[1] != y || p[2] != (x ^ y)) ++wrong;
+        }
+      }
+      CAPTURE(static_cast<int>(r));
+      CAPTURE(mirror);
+      CHECK_EQ(wrong, 0);
+    }
+  }
+  // The viewer's left-right at a quarter turn: logical (1, 0) sits at the top right of the
+  // panel at rotation 90, and the mirror moves it down the right edge, not across.
+  f.clear();
+  f.set(1, 0, Rgb{200, 100, 50});
+  p64::gfx::rotate_copy(f, out.data(), Rotation::R90, true, lut);
+  CHECK((out[(62 * N + 63) * 3] == 200 && out[(62 * N + 63) * 3 + 1] == 100));
+  p64::gfx::rotate_copy(f, out.data(), Rotation::R0, true, lut);
+  CHECK(out[(0 * N + 62) * 3] == 200);
 }
 
 

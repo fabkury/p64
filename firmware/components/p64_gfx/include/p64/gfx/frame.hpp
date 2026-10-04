@@ -55,7 +55,9 @@ struct ChannelLut {
 };
 
 // Writes `src` rotated clockwise by `rotation` into `dst` (width*height*3 bytes, physical
-// panel order), mapping every channel through `lut`. dst may not alias src.
-void rotate_copy(const Frame &src, uint8_t *dst, Rotation rotation, const ChannelLut &lut);
+// panel order), mapping every channel through `lut`. With `mirror` the picture is flipped
+// left-right first, then rotated: the upright picture as a mirror shows it, at every
+// rotation. dst may not alias src.
+void rotate_copy(const Frame &src, uint8_t *dst, Rotation rotation, bool mirror, const ChannelLut &lut);
 
 }  // namespace p64::gfx

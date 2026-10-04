@@ -98,7 +98,7 @@ void ChannelLut::set_gains(unsigned r_pct, unsigned g_pct, unsigned b_pct) {
   fill(b, b_pct);
 }
 
-void rotate_copy(const Frame &src, uint8_t *dst, Rotation rotation, const ChannelLut &lut) {
+void rotate_copy(const Frame &src, uint8_t *dst, Rotation rotation, bool mirror, const ChannelLut &lut) {
   static_assert(kPanelWidth == kPanelHeight, "rotation by 90/270 degrees needs a square panel");
   constexpr int W = kPanelWidth, H = kPanelHeight;
   const uint8_t *s = src.data();
@@ -106,32 +106,45 @@ void rotate_copy(const Frame &src, uint8_t *dst, Rotation rotation, const Channe
   //   90:  logical (x, y) -> physical (W-1-y, x)   so physical (px, py) <- logical (py, W-1-px)
   //   180: logical (x, y) -> physical (W-1-x, H-1-y)
   //   270: logical (x, y) -> physical (y, H-1-x)   so physical (px, py) <- logical (H-1-py, px)
+  // Every case is linear, lx = ax + bx*px + cx*py and ly = ay + by*px + cy*py, so the source
+  // is walked with one constant step per row and the inner loop has no branch.
+  int ax = 0, bx = 0, cx = 0, ay = 0, by = 0, cy = 0;
+  switch (rotation) {
+    case Rotation::R90:
+      cx = 1;
+      ay = W - 1;
+      by = -1;
+      break;
+    case Rotation::R180:
+      ax = W - 1;
+      bx = -1;
+      ay = H - 1;
+      cy = -1;
+      break;
+    case Rotation::R270:
+      ax = H - 1;
+      cx = -1;
+      by = 1;
+      break;
+    default:
+      bx = 1;
+      cy = 1;
+      break;
+  }
+  // The mirror flips the logical picture left-right before the turn: logical x -> W-1-x.
+  if (mirror) {
+    ax = W - 1 - ax;
+    bx = -bx;
+    cx = -cx;
+  }
+  const int step = (by * W + bx) * 3;
+  uint8_t *d = dst;
   for (int py = 0; py < H; ++py) {
-    uint8_t *d = dst + static_cast<size_t>(py) * W * 3;
-    for (int px = 0; px < W; ++px, d += 3) {
-      int lx, ly;
-      switch (rotation) {
-        case Rotation::R90:
-          lx = py;
-          ly = W - 1 - px;
-          break;
-        case Rotation::R180:
-          lx = W - 1 - px;
-          ly = H - 1 - py;
-          break;
-        case Rotation::R270:
-          lx = H - 1 - py;
-          ly = px;
-          break;
-        default:
-          lx = px;
-          ly = py;
-          break;
-      }
-      const uint8_t *p = s + (static_cast<size_t>(ly) * W + lx) * 3;
-      d[0] = lut.r[p[0]];
-      d[1] = lut.g[p[1]];
-      d[2] = lut.b[p[2]];
+    int i = ((ay + cy * py) * W + ax + cx * py) * 3;
+    for (int px = 0; px < W; ++px, d += 3, i += step) {
+      d[0] = lut.r[s[i]];
+      d[1] = lut.g[s[i + 1]];
+      d[2] = lut.b[s[i + 2]];
     }
   }
 }

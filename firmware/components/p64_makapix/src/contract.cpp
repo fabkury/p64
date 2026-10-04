@@ -9,6 +9,12 @@
 
 namespace p64::makapix::contract {
 
+namespace {
+// The site's mirror feature: the device declares the strings and gets one of them back.
+constexpr const char *kMirrorNone = "none";
+constexpr const char *kMirrorHorizontal = "horizontal";
+}  // namespace
+
 std::string str(const cJSON *obj, const char *key) {
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(obj, key);
   return (v && cJSON_IsString(v) && v->valuestring) ? v->valuestring : "";
@@ -236,8 +242,17 @@ Command parse_command(const char *json, size_t len) {
       c.ack_error = "rotation must be 0, 90, 180, or 270";
     }
   } else if (type == "set_mirror") {
-    c.kind = Command::Kind::None;
-    c.ack_status = "unsupported";
+    const std::string v = str(payload, "value");
+    if (v == kMirrorNone || v == kMirrorHorizontal) {
+      c.kind = Command::Kind::SetMirror;
+      c.mirror = v == kMirrorHorizontal;
+      c.ack_status = "ok";
+      c.republish_state = true;
+    } else {
+      c.kind = Command::Kind::None;
+      c.ack_status = "error";
+      c.ack_error = "mirror must be none or horizontal";
+    }
   } else {
     c.kind = Command::Kind::None;
     c.warning = "command " + type + ": unknown";
@@ -256,11 +271,12 @@ std::string status_json(const std::string &player_key, int32_t current_post_id, 
   return print(root);
 }
 
-std::string state_json(bool paused, uint8_t brightness, uint16_t rotation) {
+std::string state_json(bool paused, uint8_t brightness, uint16_t rotation, bool mirror) {
   cJSON *root = cJSON_CreateObject();
   cJSON_AddBoolToObject(root, "is_paused", paused);
   cJSON_AddNumberToObject(root, "brightness", brightness);
   cJSON_AddNumberToObject(root, "rotation", rotation);
+  cJSON_AddStringToObject(root, "mirror", mirror ? kMirrorHorizontal : kMirrorNone);
   return print(root);
 }
 
@@ -276,6 +292,9 @@ std::string capabilities_json(const char *firmware_version) {
   cJSON *rotation = cJSON_AddObjectToObject(features, "rotation");
   cJSON *values = cJSON_AddArrayToObject(rotation, "values");
   for (int v : {0, 90, 180, 270}) cJSON_AddItemToArray(values, cJSON_CreateNumber(v));
+  cJSON *mirror = cJSON_AddObjectToObject(features, "mirror");
+  cJSON *mirrors = cJSON_AddArrayToObject(mirror, "values");
+  for (const char *v : {kMirrorNone, kMirrorHorizontal}) cJSON_AddItemToArray(mirrors, cJSON_CreateString(v));
   return print(root);
 }
 

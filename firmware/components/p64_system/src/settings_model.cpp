@@ -173,6 +173,7 @@ std::string Settings::to_json() const {
   cJSON_AddStringToObject(d, "panel_mode", kPanelModes[static_cast<int>(panel_mode)]);
   cJSON_AddNumberToObject(d, "rotation", rotation);
   cJSON_AddBoolToObject(d, "rotation_auto", rotation_auto);
+  cJSON_AddBoolToObject(d, "mirror", mirror);
   put_rgb(d, "background", background);
   cJSON *g = obj(d, "gains");
   cJSON_AddNumberToObject(g, "r", gain_r);
@@ -311,6 +312,7 @@ bool Settings::read_json(const cJSON *root) {
   get_enum(d, "panel_mode", panel_mode, kPanelModes, 2);
   get_num(d, "rotation", rotation);
   get_bool(d, "rotation_auto", rotation_auto);
+  get_bool(d, "mirror", mirror);
   get_rgb(d, "background", background);
   const cJSON *g = sub(d, "gains");
   get_num(g, "r", gain_r);

@@ -242,6 +242,11 @@ The logical orientation of the picture on the panel: 0, 90, 180, 270 degrees clo
 auto (from the IMU). Default 90 (the shell stands the panel that way).
 _Avoid_: orientation (as a setting name)
 
+**Mirror**:
+The picture flipped left-right as the viewer sees it, on or off, applied before the rotation.
+Default off. Makapix Club knows it as the values "none" and "horizontal".
+_Avoid_: flip (as a setting name), horizontal flip
+
 **Scaling**:
 Fitting a canvas into the panel: nearest-neighbour up, box-average down, aspect ratio kept,
 bars in the background colour.

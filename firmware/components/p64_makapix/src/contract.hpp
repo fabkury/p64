@@ -29,7 +29,7 @@ std::string download_url(const content::MakapixEntry &e, const char *vault_host,
 // A command from the site, parsed. The device acts on `kind`; for the set_* commands and
 // the unknown ones the site expects an acknowledgement (`ack_status` non-empty).
 struct Command {
-  enum class Kind : uint8_t { Invalid, Next, Back, ShowArtwork, PlayPlayset, SetPaused, SetBrightness, SetRotation, None };
+  enum class Kind : uint8_t { Invalid, Next, Back, ShowArtwork, PlayPlayset, SetPaused, SetBrightness, SetRotation, SetMirror, None };
   Kind kind = Kind::Invalid;
   std::string id;    // command_id
   std::string type;  // command_type as sent
@@ -39,6 +39,7 @@ struct Command {
   bool paused = false;               // SetPaused
   uint8_t brightness = 0;            // SetBrightness
   uint16_t rotation = 0;             // SetRotation
+  bool mirror = false;               // SetMirror
   std::string ack_status;  // "ok", "error", "unsupported", or "" for no acknowledgement
   std::string ack_error;   // with "error"
   bool republish_state = false;  // the retained state changed
@@ -48,7 +49,8 @@ Command parse_command(const char *json, size_t len);
 
 // The payloads the device publishes.
 std::string status_json(const std::string &player_key, int32_t current_post_id, const char *firmware_version);
-std::string state_json(bool paused, uint8_t brightness, uint16_t rotation);
+// The mirror travels as one of the strings the capabilities declare: "none", "horizontal".
+std::string state_json(bool paused, uint8_t brightness, uint16_t rotation, bool mirror);
 std::string capabilities_json(const char *firmware_version);
 struct ViewEvent {
   int32_t post_id = 0;

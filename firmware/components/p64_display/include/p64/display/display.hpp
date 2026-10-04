@@ -83,6 +83,10 @@ class Display {
   // Logical orientation applied at present(). Takes effect on the next present().
   void set_rotation(gfx::Rotation rotation) { rotation_ = rotation; }
   gfx::Rotation rotation() const { return rotation_; }
+  // Horizontal mirror: the logical picture flipped left-right before the rotation. Takes
+  // effect on the next present().
+  void set_mirror(bool mirror) { mirror_ = mirror; }
+  bool mirror() const { return mirror_; }
 
   // Per-channel gains in percent (50..100), applied at present().
   void set_gains(unsigned r_pct, unsigned g_pct, unsigned b_pct);
@@ -123,6 +127,7 @@ class Display {
   Mode mode_ = Mode::Quality;
   uint8_t brightness_ = 0;
   gfx::Rotation rotation_ = gfx::Rotation::R0;
+  bool mirror_ = false;
   gfx::ChannelLut lut_{};
   int lcd_dma_channel_ = -1;
   double period_us_ = 0;      // refresh period from the driver (0 until begin())

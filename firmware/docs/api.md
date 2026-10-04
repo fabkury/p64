@@ -232,7 +232,10 @@ previous; press = like the Makapix artwork on the panel (nothing on a card artwo
 long press is reported in the diagnostics and does nothing. Settings `inputs.tap_enabled` and `inputs.tap_sensitivity`
 (1 firm knock .. 10 light touch: threshold 2.5 g .. 0.25 g above gravity), and
 `display.rotation_auto` (the IMU's resolved rotation drives the display once it has one;
-`display.rotation` is the fallback and the value shown before the first resolution). A
+`display.rotation` is the fallback and the value shown before the first resolution;
+`display.mirror`, a boolean, default false, flips the picture left-right as the viewer sees
+it at every rotation, and the status document reports what the display applies as
+`panel.rotation` and `panel.mirror`; the live frame is neither rotated nor mirrored). A
 single tap is "next", a double tap "previous", with a 1 s lockout. Auto-rotation needs one
 calibration (above); the direction the picture turns with the gravity angle is the Kconfig
 `P64_IMU_ROTATION_SIGN` (see PROGRESS: unverified until the panel is turned by hand).

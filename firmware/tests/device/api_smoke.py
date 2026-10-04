@@ -129,6 +129,20 @@ def main():
     check(st == 200 and j["data"]["display"]["brightness"] == 255, "PUT settings clamps 999 to 255")
     request(base, "PUT", "/api/v1/settings", {"display": {"brightness": original}})
 
+    # The mirror (spec 3.4): a boolean the display applies; the live frame stays unmirrored.
+    mirror0 = bool(j["data"]["display"].get("mirror", False))
+    st, j = request(base, "PUT", "/api/v1/settings", {"display": {"mirror": not mirror0}})
+    check(st == 200 and j["data"]["display"].get("mirror") is (not mirror0), "PUT settings display.mirror")
+    applied = None
+    for _ in range(20):
+        applied = request(base, "GET", "/api/v1/status")[1]["data"]["panel"].get("mirror")
+        if applied is (not mirror0):
+            break
+        time.sleep(0.1)
+    check(applied is (not mirror0), "the display applies the mirror (panel.mirror)")
+    st, j = request(base, "PUT", "/api/v1/settings", {"display": {"mirror": mirror0}})
+    check(st == 200 and j["data"]["display"].get("mirror") is mirror0, "mirror restored")
+
     st, png = request(base, "GET", "/api/v1/frame", raw=True)
     ok = st == 200 and png[:8] == b"\x89PNG\r\n\x1a\n"
     if ok:

@@ -1253,6 +1253,29 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   instead of two (two frames 0.7 s apart can sit either side of the pulse's trough and
   be equal: it failed once). Public image 2,449,056 bytes (budget 2.5 MB). Open: the
   user's eye on the panel.
+- 2026-10-04, the mirror (prompt p079; spec 3.4): `display.mirror`, on or off, default
+  off, flips the picture left-right as the viewer sees it, for a panel seen in a mirror
+  or through a reflection. It is part of the display's copy (`gfx::rotate_copy`): the
+  logical picture is flipped first and turned after, so the result is the upright picture
+  mirrored at every rotation, auto included, and nothing above the display knows. The
+  copy loop was rewritten for it: the eight cases (four rotations, mirrored or not) are
+  all linear, so the source is walked with one constant step per row and the switch per
+  pixel is gone. Makapix Club already had a mirror feature that p64 answered
+  "unsupported": the device now declares the capability (`none`, `horizontal`), obeys
+  `set_mirror` and reports the value in the retained state. Web UI: a switch under
+  Rotation; the status document carries `panel.mirror`; the live frame stays unmirrored,
+  as it stays unrotated. Host: 208 cases (every pixel of the eight cases against the
+  definition; the setting's round trip; the command, the state and the capabilities).
+  Device (private build): `api_smoke` (with the new mirror check) and `ui_smoke` 0
+  failures; the copy went from 8.17 ms to 7.91 ms a frame unmirrored and 7.98 ms
+  mirrored (render log, Quality mode); with the mirror on the render log shows 25.0,
+  10.0 and 60.0 fps with no late frame. `timing_smoke` passed once in four runs: the
+  other three failed one or two checks each, mirror on and off alike (25.26 fps, 9.50
+  fps, one late frame at 60 fps twice); the fps figures come from two HTTP requests that
+  are not taken at the same instant, and the late frame at 60 fps is the known limit, but
+  the same test was not run on the previous firmware today, so "no worse than before" is
+  inferred from the render log, not measured. Not verified: the picture on the panel by
+  eye (nobody looked), and the Mirror control on makapix.club (needs the site signed in).
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

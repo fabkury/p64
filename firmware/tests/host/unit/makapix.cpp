@@ -316,7 +316,14 @@ TEST_CASE("makapix commands: the set_* commands are acknowledged, ok or with the
   CHECK((c.kind == Cmd::Kind::SetRotation && c.rotation == 270));
   c = command(R"({"command_id":"f","command_type":"set_rotation","payload":{"value":45}})");
   CHECK(c.ack_error == "rotation must be 0, 90, 180, or 270");
-  CHECK(command(R"({"command_id":"g","command_type":"set_mirror","payload":{}})").ack_status == "unsupported");
+  c = command(R"({"command_id":"g","command_type":"set_mirror","payload":{"value":"horizontal"}})");
+  CHECK((c.kind == Cmd::Kind::SetMirror && c.mirror && c.ack_status == "ok" && c.republish_state));
+  c = command(R"({"command_id":"g","command_type":"set_mirror","payload":{"value":"none"}})");
+  CHECK((c.kind == Cmd::Kind::SetMirror && !c.mirror && c.ack_status == "ok"));
+  c = command(R"({"command_id":"g","command_type":"set_mirror","payload":{"value":"vertical"}})");
+  CHECK((c.kind == Cmd::Kind::None && c.ack_status == "error" && c.ack_error == "mirror must be none or horizontal"));
+  c = command(R"({"command_id":"g","command_type":"set_mirror","payload":{}})");
+  CHECK((c.kind == Cmd::Kind::None && c.ack_status == "error"));
   CHECK(command(R"({"command_id":"h","command_type":"teleport","payload":{}})").ack_status == "unsupported");
   CHECK(command(R"({"command_type":"teleport","payload":{}})").ack_status.empty());  // no id, nobody to answer
 }
@@ -342,10 +349,11 @@ TEST_CASE("makapix payloads: status, state, capabilities, view and ack") {
   CHECK(contract::status_json("7e98", 42, "0.1.0") ==
         R"({"player_key":"7e98","status":"online","current_post_id":42,"firmware_version":"0.1.0"})");
   CHECK(contract::status_json("7e98", -1, "0.1.0").find("current_post_id") == std::string::npos);
-  CHECK(contract::state_json(true, 40, 90) == R"({"is_paused":true,"brightness":40,"rotation":90})");
+  CHECK(contract::state_json(true, 40, 90, false) == R"({"is_paused":true,"brightness":40,"rotation":90,"mirror":"none"})");
+  CHECK(contract::state_json(false, 1, 0, true) == R"({"is_paused":false,"brightness":1,"rotation":0,"mirror":"horizontal"})");
   CHECK(contract::capabilities_json("0.1.0") ==
         R"({"firmware_version":"0.1.0","features":{"pause":{},"brightness":{"min":1,"max":255,"step":1},)"
-        R"("rotation":{"values":[0,90,180,270]}}})");
+        R"("rotation":{"values":[0,90,180,270]},"mirror":{"values":["none","horizontal"]}}})");
   contract::ViewEvent v;
   v.post_id = 7;
   v.timestamp = "2026-09-22T12:00:00Z";

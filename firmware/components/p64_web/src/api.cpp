@@ -243,6 +243,7 @@ cJSON *build_status() {
     cJSON_AddNumberToObject(panel, "oe_level", h.oe_level);    // the driver's output-enable level
     cJSON_AddNumberToObject(panel, "lut_scale", h.lut_scale);  // the software dimming below the floor
     cJSON_AddNumberToObject(panel, "rotation", static_cast<int>(g_hooks.display()->rotation()));
+    cJSON_AddBoolToObject(panel, "mirror", g_hooks.display()->mirror());
     cJSON_AddBoolToObject(panel, "night_active", g_hooks.night_active ? g_hooks.night_active() : false);
   }
   if (g_hooks.playback_status) cJSON_AddItemToObject(d, "playback", g_hooks.playback_status());

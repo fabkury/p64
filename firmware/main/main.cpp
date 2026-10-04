@@ -82,6 +82,7 @@ void apply_display_settings(const p64::system::Settings &s) {
   // Rotation "auto": the IMU's resolved value once it has one; the setting is the fallback.
   const uint16_t rotation = s.rotation_auto && p64::inputs::auto_rotation_resolved() ? p64::inputs::auto_rotation() : s.rotation;
   g_display.set_rotation(static_cast<p64::gfx::Rotation>(rotation));
+  g_display.set_mirror(s.mirror);
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
   const int pending = g_knob_brightness.load();
   if (pending >= 0) {
@@ -183,6 +184,7 @@ extern "C" void app_main() {
     return;
   }
   g_display.set_rotation(static_cast<p64::gfx::Rotation>(s.rotation));
+  g_display.set_mirror(s.mirror);
   g_display.set_gains(s.gain_r, s.gain_g, s.gain_b);
   g_display.set_brightness(p64::ops::effective_brightness(s));
 
@@ -260,6 +262,9 @@ extern "C" void app_main() {
   };
   mk.set_rotation = [](uint16_t r) {
     p64::system::settings_update([r](p64::system::Settings &st) { st.rotation = r; });
+  };
+  mk.set_mirror = [](bool m) {
+    p64::system::settings_update([m](p64::system::Settings &st) { st.mirror = m; });
   };
   mk.play_artwork = [](const std::string &path, int32_t post_id, const std::string &name) {
     p64::show::play_downloaded(path, "makapix", post_id, name);

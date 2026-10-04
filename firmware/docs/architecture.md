@@ -106,7 +106,10 @@ Ported from the hardware tests (`reference/hardware-tests/main/display.*`) and e
   pacing".
 - Rotation is applied in the display layer while copying the logical frame into the
   physical buffer; the driver stays at ROTATE_0. Auto rotation is a value the inputs
-  component sets.
+  component sets. The mirror (`display.mirror`) is part of the same copy: the logical
+  picture is flipped left-right before the turn, so the inputs component and everything
+  above the display never know about it. `gfx::rotate_copy` walks the source with one
+  constant step per row for all eight cases (no branch per pixel).
 - Per-channel gains are applied in the same copy. Gamma stays in the driver's LUT (2.2,
   fixed by the p64 patch).
 - Brightness pipeline: effective = min(user, ceiling, schedule) computed by the main
@@ -329,11 +332,10 @@ one artwork download, then a short sleep.
 - MQTT: esp-mqtt over mutual TLS (`mqtts://makapix.club:8883`, client id and username =
   player key, last will `offline`, keep-alive 60 s, 6 KB task stack). On connect it
   publishes status, the retained capabilities (pause, brightness 1 to 255, rotation
-  0/90/180/270) and the retained state; status every 30 s. Commands: `swap_next`,
+  0/90/180/270, mirror none/horizontal) and the retained state; status every 30 s. Commands: `swap_next`,
   `swap_back`, `show_artwork` (downloaded into `downloads/` then played as play-this),
   `play_channel` and `play_playset` (transient playsets through the show), `set_paused`,
-  `set_brightness`, `set_rotation` (acknowledged on `command/ack`), `set_mirror`
-  (unsupported). Eight refusals in a row mark the pairing invalid.
+  `set_brightness`, `set_rotation`, `set_mirror` (acknowledged on `command/ack`). Eight refusals in a row mark the pairing invalid.
 - Views: an artwork counts as viewed after 5 s on the panel (one timer, restarted on
   every swap); published on the MQTT view topic when connected, else posted over HTTPS.
   Presence carries the current post id.
