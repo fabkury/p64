@@ -3,6 +3,7 @@
 // hourglass's sand, the PNG pictures of the Horizon-RD and the aquarium and their cadence. The pixels themselves are compared with the mock's references by
 // tests/host/run.py (tests/host/corpus/clock/).
 #include "common.hpp"
+#include "dial.hpp"
 #include "faces.hpp"
 #include "picture.hpp"
 #include "solar.hpp"
@@ -427,7 +428,7 @@ TEST_CASE("themed: the horizon is dark at night and bright by day, and the weath
 }
 
 TEST_CASE("themed: settings JSON round-trips every face name") {
-  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"};
+  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
   static_assert(sizeof(kNames) / sizeof(kNames[0]) == p64::system::kClockFaceCount);
   for (int i = 0; i < p64::system::kClockFaceCount; ++i) {
     p64::system::Settings s;
@@ -664,6 +665,148 @@ TEST_CASE("themed: the aquarium draws a frame every 150 ms counted from midnight
   s.clock.face = ClockFace::Digital;
   faces::draw_clock(b, s, ctx, state);
   CHECK_FALSE(state.aquarium);
+}
+
+TEST_CASE("dial: profiles, floor division and directions are the mock's integers") {
+  namespace dial = themed::dial;
+  CHECK_EQ(dial::floor_div(7, 2), 3);
+  CHECK_EQ(dial::floor_div(-7, 2), -4);
+  CHECK_EQ(dial::floor_div(-8, 2), -4);
+  CHECK_EQ(dial::floor_div(0, 5), 0);
+  static constexpr dial::Point pts[] = {{-256, 64}, {512, 64}, {736, 198}, {960, 19}, {992, 19}};
+  const dial::Profile p = dial::profile(pts);
+  CHECK_EQ(dial::profile_width(p, -257), -1);
+  CHECK_EQ(dial::profile_width(p, -256), 64);
+  CHECK_EQ(dial::profile_width(p, 100), 64);
+  CHECK_EQ(dial::profile_width(p, 624), 131);  // half way up the spade
+  CHECK_EQ(dial::profile_width(p, 848), 108);  // half way down it: 198 + floor(-179 * 112 / 224)
+  CHECK_EQ(dial::profile_width(p, 992), 19);
+  CHECK_EQ(dial::profile_width(p, 993), -1);
+  CHECK_EQ(dial::sin_q(900), 16384);
+  CHECK_EQ(dial::sin_q(-900), -16384);
+  CHECK_EQ(dial::cos_q(3600), 16384);
+  int x, y;
+  dial::polar_px(63, 63, 0, 50, x, y);  // 25 px above 31.5
+  CHECK_EQ(x, 32);
+  CHECK_EQ(y, 7);
+  dial::polar_px(63, 63, 900, 50, x, y);
+  CHECK_EQ(x, 57);
+  CHECK_EQ(y, 32);
+  // a flat shape straight up from a centre on a pixel: its half width of one pixel on
+  // each side, the edge included, and its ten pixels of length
+  Frame f;
+  static constexpr dial::Point bar[] = {{0, 64}, {640, 64}};
+  dial::draw_shape(f, 64, 64, 0, dial::profile(bar), dial::Shade{Rgb{9, 9, 9}});
+  for (int x = 31; x <= 33; ++x) CHECK(f.get(x, 27) == Rgb{9, 9, 9});
+  CHECK(f.get(30, 27) == Rgb{0, 0, 0});
+  CHECK(f.get(34, 27) == Rgb{0, 0, 0});
+  CHECK(f.get(32, 22) == Rgb{9, 9, 9});
+  CHECK(f.get(32, 21) == Rgb{0, 0, 0});
+  CHECK(f.get(32, 33) == Rgb{0, 0, 0});  // nothing behind the pivot
+}
+
+TEST_CASE("themed: the bracket clock swings its bob every two seconds and ticks its second hand with the setting") {
+  p64::system::Settings s;
+  s.clock.face = ClockFace::Bracket;
+  faces::ClockState state;
+  faces::ClockContext ctx;
+  tm t = moment(10, 9, 36);
+  ctx.time = &t;
+  Frame a, b;
+  CHECK_EQ(faces::draw_clock(a, s, ctx, state), 100u);
+  ctx.millis = 130;
+  CHECK_EQ(faces::draw_clock(b, s, ctx, state), 70u);
+  // the bob: in the middle at the even second, at its right end half a second later, back
+  // in the middle, at its left end, and the same two seconds on
+  int x0, y0, x1, y1, x2, y2, x3, y3;
+  themed::bracket_bob(themed::Moment::from(moment(0, 0, 0)), 0, x0, y0);
+  themed::bracket_bob(themed::Moment::from(moment(0, 0, 0)), 500, x1, y1);
+  themed::bracket_bob(themed::Moment::from(moment(0, 0, 1)), 0, x2, y2);
+  themed::bracket_bob(themed::Moment::from(moment(0, 0, 1)), 500, x3, y3);
+  CHECK_EQ(x0, 63);
+  CHECK_EQ(y0, 63 - 23);
+  CHECK(x1 > 63 + 7);
+  CHECK_EQ(x2, 63);
+  CHECK_EQ(x3, 63 - (x1 - 63));
+  CHECK_EQ(y1, y3);
+  themed::bracket_bob(themed::Moment::from(moment(0, 0, 2)), 0, x1, y1);
+  CHECK_EQ(x1, x0);
+  // the frame half a second on differs only where the bob swings (under the XII)
+  Frame c;
+  ctx.millis = 500;
+  faces::draw_clock(c, s, ctx, state);
+  ctx.millis = 0;
+  CHECK_FALSE(same(a, c));
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x)
+      if (!(a.get(x, y) == c.get(x, y))) {
+        REQUIRE(y >= 17);
+        REQUIRE(y <= 24);
+        REQUIRE(x >= 22);
+        REQUIRE(x <= 41);
+      }
+  // the second hand is the setting's
+  s.clock.seconds = true;
+  Frame with;
+  faces::draw_clock(with, s, ctx, state);
+  int red = 0, red_without = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) red += with.get(x, y) == Rgb{176, 34, 30}, red_without += a.get(x, y) == Rgb{176, 34, 30};
+  CHECK(red > 20);
+  CHECK_EQ(red_without, 0);
+  // the date follows the order setting
+  s.clock.month_first = true;
+  Frame other;
+  faces::draw_clock(other, s, ctx, state);
+  CHECK_FALSE(same(with, other));
+}
+
+TEST_CASE("themed: the station clock's second hand goes round in 58.5 s and waits; the glint sets the cadence") {
+  const auto at = [](int sec) { return themed::Moment::from(moment(10, 9, sec)); };
+  CHECK_EQ(themed::station_second_angle10(at(0), 0), 0);
+  CHECK_EQ(themed::station_second_angle10(at(29), 250), 1800);  // half way at 29.25 s
+  CHECK_EQ(themed::station_second_angle10(at(58), 400), 3593);
+  CHECK_EQ(themed::station_second_angle10(at(58), 500), 0);  // at the top
+  CHECK_EQ(themed::station_second_angle10(at(59), 900), 0);  // and waiting
+  // the glint's cycle: from the hour, every twelve seconds
+  CHECK_EQ(themed::station_glint_ms(themed::Moment::from(moment(10, 0, 0)), 0), 0);
+  CHECK_EQ(themed::station_glint_ms(themed::Moment::from(moment(10, 9, 37)), 300), 1300);
+  CHECK_EQ(themed::station_glint_ms(themed::Moment::from(moment(10, 9, 47)), 0), 11000);
+  p64::system::Settings s;
+  s.clock.face = ClockFace::Station;
+  faces::ClockState state;
+  faces::ClockContext ctx;
+  Frame rest, glint, later;
+  // without the seconds: at rest until the next glint, then a frame every 100 ms
+  tm t = moment(10, 9, 41);
+  ctx.time = &t;
+  ctx.millis = 250;
+  CHECK_EQ(faces::draw_clock(rest, s, ctx, state), 12000u - 5250u);
+  t = moment(10, 9, 48);
+  ctx.millis = 0;
+  CHECK_EQ(faces::draw_clock(glint, s, ctx, state), 100u);
+  ctx.millis = 730;
+  CHECK_EQ(faces::draw_clock(glint, s, ctx, state), 70u);
+  CHECK_FALSE(same(rest, glint));
+  // the glint only lightens, and only on the dial
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) {
+      REQUIRE(glint.get(x, y).r >= rest.get(x, y).r);
+      const int dx = 2 * x - 64, dy = 2 * y - 63;
+      if (dx * dx + dy * dy > 57 * 57) REQUIRE(glint.get(x, y) == rest.get(x, y));
+    }
+  t = moment(10, 9, 49);
+  ctx.millis = 500;
+  CHECK_EQ(faces::draw_clock(later, s, ctx, state), 12000u - 1500u);
+  CHECK(same(rest, later));  // over: the dial as it was
+  // with the seconds: always a frame every 100 ms, and the red hand is there
+  s.clock.seconds = true;
+  ctx.millis = 40;
+  CHECK_EQ(faces::draw_clock(later, s, ctx, state), 60u);
+  int red = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) red += later.get(x, y) == Rgb{222, 30, 34};
+  CHECK(red > 30);
 }
 
 }  // namespace

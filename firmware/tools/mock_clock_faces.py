@@ -1903,11 +1903,262 @@ def at_ms(m, ms):
     return plus_seconds(Moment(m.hour, m.minute, 0, m.wday, m.mday, m.mon, m.yday), total // 1000), total % 1000
 
 
+# ---------------------------------------------------------------- 10. Bracket and 11. Station (integer)
+
+# Two analogue faces on dials painted by Retro Diffusion (p077, p078): the bracket clock
+# (an engraved brass plate around a cream enamel dial) and the station clock (a white dial
+# in a steel rim). Only the dials are pictures (assets/clock/bracket/dial.png and
+# station/dial.png, cut by tools/prep_rd_clock_assets.py; baked like the other sprites).
+# Everything that must be exact is drawn: markers, numerals, hands, the date, and what
+# moves. All of it in integers, so the firmware's pixels are these:
+#   - a dial's centre is in half pixels (63 = 31.5), a direction is the sine table's (Q14,
+#     tenths of a degree, 0 = 12 o'clock, clockwise);
+#   - a hand is a shape along its axis: for a pixel, `t` (along) and `s` (across) in
+#     64ths of a pixel, inked where |s| is within the profile's half width at t; the
+#     profile is straight lines between (t, half width) points;
+#   - its colour comes from which side of the axis the pixel is on (a lit edge, a dark
+#     edge), and a hand can first darken the pixels just down and right of it (a shadow).
+
+DIAL_STEP_MS = 100  # a frame every 100 ms while something moves
+
+
+def floor_div(a, b):
+    """Floor division (the firmware has a helper for it: C++ truncates)."""
+    return a // b
+
+
+def dial_asset(face):
+    path = asset_path(face, "dial")
+    if not os.path.exists(path):
+        raise SystemExit(f"{path} is missing; run tools/prep_rd_clock_assets.py")
+    return Image.open(path).convert("RGBA")
+
+
+def hand_axes(angle10):
+    """The direction of a hand and its normal, Q14."""
+    return (sin_q(angle10), -cos_q(angle10)), (cos_q(angle10), sin_q(angle10))
+
+
+def profile_width(profile, t):
+    """The half width at t (64ths of a pixel), or -1 outside the shape."""
+    if t < profile[0][0] or t > profile[-1][0]:
+        return -1
+    for (t0, w0), (t1, w1) in zip(profile, profile[1:]):
+        if t <= t1:
+            return w0 + floor_div((w1 - w0) * (t - t0), t1 - t0)
+    return profile[-1][1]
+
+
+def draw_shape(frame, cx2, cy2, angle10, profile, shade, shadow=0):
+    """A hand or a marker: `shade(s, w)` gives a pixel's colour from where it is across the
+    shape; `shadow` > 0 darkens the pixels one down and right of it by that alpha first."""
+    (ux, uy), (vx, vy) = hand_axes(angle10)
+    reach = max(abs(profile[0][0]), abs(profile[-1][0])) // 64 + 3
+    x_mid, y_mid = cx2 // 2, cy2 // 2
+    cells = []
+    for y in range(y_mid - reach, y_mid + reach + 1):
+        for x in range(x_mid - reach, x_mid + reach + 1):
+            dx, dy = 2 * x - cx2, 2 * y - cy2  # half pixels
+            t = (dx * ux + dy * uy) >> 9  # Q14 half pixels to 64ths of a pixel
+            w = profile_width(profile, t)
+            if w < 0:
+                continue
+            s = (dx * vx + dy * vy) >> 9
+            if abs(s) <= w:
+                cells.append((x, y, s, w))
+    if shadow:
+        inked = {(x, y) for x, y, _s, _w in cells}
+        for x, y, _s, _w in cells:
+            if (x + 1, y + 1) not in inked:
+                frame.set(x + 1, y + 1, blend(frame.get(x + 1, y + 1), (0, 0, 0), shadow))
+    for x, y, s, w in cells:
+        frame.set(x, y, shade(s, w))
+
+
+def polar_px(cx2, cy2, angle10, r2):
+    """The pixel at radius r2 (half pixels) in a direction, rounded to nearest."""
+    (ux, uy), _ = hand_axes(angle10)
+    return (cx2 * (1 << Q) + ux * r2 + (1 << Q)) >> (Q + 1), (cy2 * (1 << Q) + uy * r2 + (1 << Q)) >> (Q + 1)
+
+
+def polar_half(cx2, cy2, angle10, r2):
+    """The same point in half pixels (a disc's centre)."""
+    (ux, uy), _ = hand_axes(angle10)
+    return cx2 + q_to_px(ux * r2), cy2 + q_to_px(uy * r2)
+
+
+def thin_hand(frame, cx2, cy2, angle10, length2, tail2, colour):
+    """A one-pixel hand: a Bresenham line from its tail to its tip."""
+    x0, y0 = polar_px(cx2, cy2, angle10, -tail2)
+    x1, y1 = polar_px(cx2, cy2, angle10, length2)
+    frame.line(x0, y0, x1, y1, colour)
+
+
+def dial_disc(frame, cx2, cy2, d2_max, shade):
+    """A disc centred at (cx2, cy2) half pixels; d2_max is its squared radius in half
+    pixels; `shade(dx, dy)` (half pixels from the centre) gives the colour."""
+    r = int(math.isqrt(d2_max)) // 2 + 2
+    for y in range(cy2 // 2 - r, cy2 // 2 + r + 1):
+        for x in range(cx2 // 2 - r, cx2 // 2 + r + 1):
+            dx, dy = 2 * x - cx2, 2 * y - cy2
+            if dx * dx + dy * dy <= d2_max:
+                frame.set(x, y, shade(dx, dy))
+
+
+def dial_date(frame, m, o, y, ink):
+    font = load_font("everyday-slight")
+    text = m.date(o.month_first)
+    draw_text(frame, font, (W - text_width(font, text)) // 2, y, text, ink)
+
+
+def hour_angle10(m):
+    return (m.hour % 12) * 300 + m.minute * 5
+
+
+# The bracket clock: Roman cardinals (Capital Hill, whose I has serifs) and a diamond at
+# the other hours, a dot a minute, blued-steel hands with a spade on the hour hand, a
+# brass cap, the date, and a mock pendulum, as such clocks have: a curved slot under the
+# XII in which a brass bob swings once every two seconds. The seconds setting adds a thin
+# red second hand that ticks.
+
+BK_C = (63, 63)  # the enamel's centre, half pixels
+BK_INK = (46, 30, 22)
+BK_DOT = (149, 135, 114)  # a minute's dot
+BK_DATE = (117, 103, 86)
+BK_TRACK2 = 50  # the minute track's radius, half pixels
+BK_NUMERALS = (("XII", 23, 10), ("III", 36, 29), ("VI", 26, 48), ("IX", 10, 29))
+BK_BLUE, BK_BLUE_HI, BK_BLUE_LO = (30, 42, 96), (86, 112, 190), (14, 20, 52)
+BK_HOUR = ((-256, 64), (512, 64), (736, 198), (960, 19), (992, 19))  # stem, spade, point
+BK_MINUTE = ((-320, 70), (832, 70), (1472, 32), (1504, 32))
+BK_SECOND = (49, 14, (176, 34, 30))  # length and tail in half pixels
+BK_SLOT_R2, BK_SLOT_IN, BK_SLOT_OUT = 23, 392, 686  # the slot's radius; its band, squared half pixels
+BK_SLOT_CORE_IN, BK_SLOT_CORE_OUT = 450, 615  # inside these the slot is dark, outside its brass lip
+BK_SLOT_HALF10, BK_SLOT_CORE10 = 340, 290  # the slot's half angle, and its dark part's
+BK_SWING10, BK_PERIOD_MS = 240, 2000  # the bob's swing and period
+BK_SLOT_LIP, BK_SLOT_DARK = (92, 66, 30), (26, 18, 14)
+BK_SHADOW = 70
+
+
+def blued(s, w):
+    """Blued steel: a lit edge on one side, a dark edge on the other."""
+    return BK_BLUE_HI if s * 100 < -34 * w else BK_BLUE_LO if s * 2 > w else BK_BLUE
+
+
+def bracket_bob(m, millis):
+    """The bob's centre in half pixels."""
+    t = (m.second * 1000 + millis) % BK_PERIOD_MS
+    swing10 = q_to_px(BK_SWING10 * sin_q(t * 3600 // BK_PERIOD_MS))
+    return polar_half(BK_C[0], BK_C[1], swing10 % 3600, BK_SLOT_R2)
+
+
+def draw_bracket(m, o, millis=0):
+    frame = Frame()
+    blit(frame, dial_asset("bracket"), 0, 0)
+    cx2, cy2 = BK_C
+    for i in range(60):
+        x, y = polar_px(cx2, cy2, i * 60, BK_TRACK2)
+        if i % 5:
+            frame.set(x, y, BK_DOT)
+        elif i % 15:
+            for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+                frame.set(x + dx, y + dy, BK_INK)
+    font = load_font("capital-hill")
+    for text, x, y in BK_NUMERALS:
+        draw_text(frame, font, x, y, text, BK_INK)
+    # the mock pendulum's slot: a band of an arc under the XII, a brass lip around it
+    for y in range(cy2 // 2 - 14, cy2 // 2 + 1):
+        for x in range(cx2 // 2 - 9, cx2 // 2 + 11):
+            dx, dy = 2 * x - cx2, 2 * y - cy2
+            d2 = dx * dx + dy * dy
+            if dy >= 0 or not (BK_SLOT_IN <= d2 <= BK_SLOT_OUT):
+                continue
+            if abs(dx) * cos_q(BK_SLOT_HALF10) > -dy * sin_q(BK_SLOT_HALF10):
+                continue
+            core = BK_SLOT_CORE_IN <= d2 <= BK_SLOT_CORE_OUT and abs(dx) * cos_q(BK_SLOT_CORE10) <= -dy * sin_q(BK_SLOT_CORE10)
+            frame.set(x, y, BK_SLOT_DARK if core else BK_SLOT_LIP)
+    bx2, by2 = bracket_bob(m, millis)
+    dial_disc(frame, bx2, by2, 9, lambda dx, dy: (255, 232, 150) if dx + dy < -1 else (226, 172, 62))
+    dial_date(frame, m, o, 40, BK_DATE)
+    draw_shape(frame, cx2, cy2, hour_angle10(m), BK_HOUR, blued, BK_SHADOW)
+    draw_shape(frame, cx2, cy2, m.minute * 60, BK_MINUTE, blued, BK_SHADOW)
+    if o.seconds:
+        thin_hand(frame, cx2, cy2, m.second * 60, BK_SECOND[0], BK_SECOND[1], BK_SECOND[2])
+    dial_disc(frame, cx2, cy2, 21, lambda dx, dy: (255, 236, 160) if dx + dy < -2 else (150, 104, 36) if dx + dy > 3 else (222, 170, 64))
+    return frame
+
+
+# The station clock: a bar at every hour (heavier at the quarters), a tick a minute, black
+# bar hands with a lighter edge, a hub, the date in grey, and a glint that crosses the
+# glass every twelve seconds. With the seconds setting the red second hand runs the way
+# station clocks do: once round in 58.5 seconds, then it waits at the top for the minute
+# hand to jump.
+
+ST_C = (64, 63)
+ST_R2SQ = 57 * 57  # the white dial, squared half pixels
+ST_BLACK, ST_EDGE, ST_TICK, ST_DATE = (14, 14, 18), (58, 58, 66), (96, 96, 104), (118, 118, 128)
+ST_RED = (222, 30, 34)
+ST_MINUTE_TICK = ((1683, 32), (1798, 32))
+ST_HOUR_BAR = ((1408, 64), (1798, 64))
+ST_QUARTER_BAR = ((1344, 96), (1798, 96))
+ST_HOUR = ((-256, 128), (960, 128))
+ST_MINUTE = ((-320, 96), (1536, 96))
+ST_SECOND = (38, 14)  # length (the disc's centre) and tail, half pixels
+ST_SWEEP_MS = 58500
+ST_GLINT_EVERY_MS, ST_GLINT_MS = 12000, 1500
+ST_GLINT_HALF, ST_GLINT_ALPHA = 11, 70  # the band's half width along the diagonal (half pixels), its peak
+ST_SHADOW = 46
+
+
+def steel(s, w):
+    return ST_EDGE if s * 100 < -45 * w else ST_BLACK
+
+
+def station_second_angle10(m, millis):
+    return min(3600, (m.second * 1000 + millis) * 3600 // ST_SWEEP_MS) % 3600
+
+
+def station_glint_ms(m, millis):
+    """Milliseconds into the glint's cycle (it shows while this is under ST_GLINT_MS)."""
+    return ((m.minute * 60 + m.second) * 1000 + millis) % ST_GLINT_EVERY_MS
+
+
+def draw_station(m, o, millis=0):
+    frame = Frame()
+    blit(frame, dial_asset("station"), 0, 0)
+    cx2, cy2 = ST_C
+    for i in range(60):
+        if i % 5:
+            draw_shape(frame, cx2, cy2, i * 60, ST_MINUTE_TICK, lambda s, w: ST_TICK)
+        else:
+            draw_shape(frame, cx2, cy2, i * 60, ST_HOUR_BAR if i % 15 else ST_QUARTER_BAR, lambda s, w: ST_BLACK)
+    dial_date(frame, m, o, 37, ST_DATE)
+    draw_shape(frame, cx2, cy2, hour_angle10(m), ST_HOUR, steel, ST_SHADOW)
+    draw_shape(frame, cx2, cy2, m.minute * 60, ST_MINUTE, steel, ST_SHADOW)
+    dial_disc(frame, cx2, cy2, 27, lambda dx, dy: ST_BLACK)
+    if o.seconds:
+        a = station_second_angle10(m, millis)
+        thin_hand(frame, cx2, cy2, a, ST_SECOND[0], ST_SECOND[1], ST_RED)
+        tx2, ty2 = polar_half(cx2, cy2, a, ST_SECOND[0])
+        dial_disc(frame, tx2, ty2, 27, lambda dx, dy: ST_RED)
+        dial_disc(frame, cx2, cy2, 7, lambda dx, dy: ST_RED)
+    # the glint: a band of light crossing the glass from the upper left
+    t = station_glint_ms(m, millis)
+    if t < ST_GLINT_MS:
+        pos = -124 + 248 * t // ST_GLINT_MS
+        for y in range(H):
+            for x in range(W):
+                dx, dy = 2 * x - cx2, 2 * y - cy2
+                d = abs(dx + dy - pos)
+                if dx * dx + dy * dy <= ST_R2SQ and d < ST_GLINT_HALF:
+                    frame.set(x, y, blend(frame.get(x, y), (255, 255, 255), ST_GLINT_ALPHA * (ST_GLINT_HALF - d) // ST_GLINT_HALF))
+    return frame
+
+
 # ---------------------------------------------------------------- output
 
 FACES = {"flip": draw_flip, "nixie": draw_nixie, "horizon": draw_horizon, "words": draw_words,
          "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led,
-         "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium}
+         "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium, "bracket": draw_bracket, "station": draw_station}
 
 
 def contact_sheet(items, scale=6, gap=12, columns=None):
@@ -1963,11 +2214,16 @@ REFERENCES = [
     ("horizon_rd", Moment(6, 20, 0), "h"), ("horizon_rd", Moment(17, 50, 7), "b"),
     ("aquarium", Moment(10, 32, 37), ""), ("aquarium", Moment(14, 5, 12), ""), ("aquarium", Moment(6, 10, 0), "h"),
     ("aquarium", Moment(22, 40, 11), "b"), ("aquarium", Moment(5, 50, 30), ""),
+    # the two analogue faces on painted dials (flag m: the month-first date)
+    ("bracket", Moment(10, 9, 37), "s"), ("bracket", Moment(10, 9, 37), ""), ("bracket", Moment(0, 0, 0), "s"),
+    ("bracket", Moment(3, 45, 12), "s"), ("bracket", Moment(18, 30, 50), "sm"), ("bracket", Moment(23, 55, 28), ""),
+    ("station", Moment(10, 9, 37), "s"), ("station", Moment(10, 9, 37), ""), ("station", Moment(0, 0, 0), "s"),
+    ("station", Moment(3, 45, 12), "s"), ("station", Moment(18, 30, 59), "sm"), ("station", Moment(8, 20, 24), ""),
 ]
 
 
 def render_reference(face, m, flags):
-    o = Options(seconds="s" in flags, blink="b" in flags, h24="h" not in flags)
+    o = Options(seconds="s" in flags, blink="b" in flags, h24="h" not in flags, month_first="m" in flags)
     p = re.search(r"p(\d+)", flags)
     if face == "flip" and p:
         k = int(p.group(1))
@@ -2001,7 +2257,9 @@ def write_design():
              ("orrery", draw_orrery(Moment(10, 32, 37), Options(seconds=True))),
              ("led", draw_led(Moment(10, 32, 37), Options(seconds=True))),
              ("horizon_rd", draw_horizon_rd(Moment(18, 42), o, lat=40.7, lon=-74.0, tz=-4)),
-             ("aquarium", draw_aquarium(Moment(10, 32, 37), o, lat=40.7, lon=-74.0, tz=-4))]
+             ("aquarium", draw_aquarium(Moment(10, 32, 37), o, lat=40.7, lon=-74.0, tz=-4)),
+             ("bracket", draw_bracket(Moment(10, 9, 37), Options(seconds=True), 300)),
+             ("station", draw_station(Moment(10, 9, 37), Options(seconds=True), 300))]
     for name, fr in faces:
         fr.img.save(os.path.join(DESIGN, name + ".png"))
         upscale(fr.img, 8).save(os.path.join(DESIGN, name + "@8x.png"))
@@ -2080,10 +2338,30 @@ def write_rd_design():
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)
 
 
+def write_dial_design():
+    """The bracket and the station clock: six times of day, the seconds off, the
+    month-first date, and twelve seconds across a minute change."""
+    times = [(10, 9, 37), (0, 0, 0), (3, 45, 12), (6, 30, 50), (8, 20, 5), (11, 55, 28)]
+    for name, draw in (("bracket", draw_bracket), ("station", draw_station)):
+        sheet = [(f"{h:02d}:{mi:02d}", draw(Moment(h, mi, s), Options(seconds=True), 300)) for h, mi, s in times]
+        sheet += [("no seconds", draw(Moment(10, 9, 37), Options(), 300)), ("month first", draw(Moment(16, 40, 0), Options(month_first=True), 300))]
+        contact_sheet(sheet, scale=4, columns=4, gap=16).save(os.path.join(DESIGN, name + "-moments.png"))
+        seq = []
+        for i in range(120):
+            mm, ms = at_ms(Moment(10, 9, 54), i * DIAL_STEP_MS)
+            seq.append((draw(mm, Options(seconds=True), ms), DIAL_STEP_MS))
+        save_gif(os.path.join(DESIGN, name + ".gif"), seq, 1, 255)
+        save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)
+    # the station's glint, frame by frame
+    contact_sheet([(f"{ms} ms", draw_station(Moment(10, 12, 0), Options(), ms)) for ms in range(0, 1500, 300)], scale=4, columns=5).save(
+        os.path.join(DESIGN, "station-glint.png"))
+
+
 def main():
     n = write_references()
     write_design()
     write_rd_design()
+    write_dial_design()
     print(f"assets in {ASSETS}; {n} references in {CORPUS}; review images in {DESIGN}")
 
 

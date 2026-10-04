@@ -63,7 +63,7 @@ def main():
         check("p64.nav(" in html and "/static/app.js" in html, "%s uses the shared app script and navigation" % path)
         check(bodies[path].endswith(b"</html>\n") or bodies[path].endswith(b"</html>"), "%s ends cleanly (no embedded NUL)" % path)
     settings = bodies["/settings"].decode("utf-8", "replace")
-    for face in ("digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"):
+    for face in ("digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"):
         check('<option value="%s">' % face in settings, "the settings page offers the %s face" % face)
     check('id="clock-preview"' in settings and 'id="clock-show"' in settings, "the Clock section has the live preview and the Show button")
     check('data-tab="inputs"' in settings and 'id="tab-inputs"' in settings, "the settings page has the Inputs tab")

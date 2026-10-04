@@ -100,7 +100,8 @@ reference, `firmware/docs/widget-research/` the survey it came from) on 2026-10-
 Retro Diffusion pixel art the same day (`horizon_rd`, the horizon's sky over a painted landscape, and
 `aquarium`; their art is kept as PNG files, `assets/clock-png/`, embedded as they are and decoded when
 the face starts, `picture.cpp`; the raw pictures and every paid call are in `firmware/assets/rd-source/`,
-`tools/prep_rd_clock_assets.py` cuts them offline); `tools/mock_clock_faces.py` is the
+`tools/prep_rd_clock_assets.py` cuts them offline), and two analogue faces on painted dials (`bracket`,
+`station`: baked dials, hands and markers drawn in integers by `dial.cpp`); `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
 `tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks;

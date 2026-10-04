@@ -31,6 +31,7 @@ extern const Png kHorizonRdLandPng;  // horizon_rd/land.png, 64x38, 2226 bytes
 extern const Png kHorizonRdLightsPng;  // horizon_rd/lights.png, 64x38, 118 bytes
 extern const Png kHorizonRdMoonPng;  // horizon_rd/moon.png, 12x12, 444 bytes
 extern const Png kHorizonRdSunPng;  // horizon_rd/sun.png, 12x12, 362 bytes
+extern const Sprite kBracketDial;  // bracket/dial.png, 64x64
 extern const Sprite kFlipDigits;  // flip/digits.png, 99x16
 extern const Sprite kFlipTile;  // flip/tile.png, 30x34
 extern const Sprite kHorizonCloud;  // horizon/cloud.png, 13x5
@@ -54,6 +55,7 @@ extern const Sprite kOrreryMercury;  // orrery/mercury.png, 3x3
 extern const Sprite kOrreryMoon;  // orrery/moon.png, 3x3
 extern const Sprite kOrreryPlate;  // orrery/plate.png, 64x64
 extern const Sprite kOrrerySun;  // orrery/sun.png, 9x9
+extern const Sprite kStationDial;  // station/dial.png, 64x64
 extern const Sprite kWordsAlphabet;  // words/alphabet.png, 103x5
 extern const Sprite kWordsBezel;  // words/bezel.png, 64x64
 

@@ -123,4 +123,20 @@ struct AquariumArt {
 };
 void draw_aquarium(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky, const AquariumArt &art, int millis = 0);
 
+// 10. Bracket and 11. Station (p078): analogue faces on dials painted by Retro Diffusion
+// (baked sprites), their markers, hands and date drawn in integers (dial.hpp). Both move
+// in steps of kDialStepMs. The bracket clock's mock pendulum always swings; the seconds
+// setting adds its ticking second hand. The station clock's glint crosses the glass for
+// kStationGlintMs every kStationGlintEveryMs (counted from the hour); with the seconds
+// setting its second hand goes round in 58.5 s and waits at the top for the minute.
+constexpr uint32_t kDialStepMs = 100;
+constexpr uint32_t kStationGlintEveryMs = 12000, kStationGlintMs = 1500;
+void draw_bracket(gfx::Frame &frame, const Moment &m, const Options &o, int millis = 0);
+void draw_station(gfx::Frame &frame, const Moment &m, const Options &o, int millis = 0);
+// For the tests: the bob's centre in half pixels, the second hand's angle in tenths of a
+// degree, the milliseconds into the glint's cycle.
+void bracket_bob(const Moment &m, int millis, int &x2, int &y2);
+int station_second_angle10(const Moment &m, int millis);
+int station_glint_ms(const Moment &m, int millis);
+
 }  // namespace p64::widgets::themed

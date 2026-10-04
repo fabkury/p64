@@ -161,31 +161,28 @@ assets for both; a 12 px sun and a 12 px moon (the first mock had 8 and 14).
 The aquarium is integer arithmetic after the sun's elevation, so its references are
 compared pixel for pixel; Horizon-RD's within the horizon's tolerance.
 
-## Two analogue candidates on Retro Diffusion art (p077, 2026-10-03): awaiting approval
+## Two analogue faces on Retro Diffusion dials (p077 and p078, 2026-10-03)
 
-Not in the firmware yet. Drawn by `tools/mock_analogue_rd.py`: only the dial of each is
-painted (Retro Diffusion, $0.90 for the candidates; the calls are in
-`assets/rd-source/calls.json`), cut into `assets/clock-candidates/analogue_rd_N/dial.png`.
-Both dials were generated at 80x80 and the middle 64x64 kept, so that the dial fills the
-panel (asked for at 64x64, the model leaves a margin). Everything that must be exact is
-drawn by the mock as the firmware would: markers, numerals (bundled fonts, native size),
-hands as shapes along their axis with a shaded edge and a one-pixel shadow, the hub, the
-date. Decided with the user: antique brass and enamel for the first, a railway station
-clock for the second; hands by the firmware, styled and textured per dial; no painted
-numerals; the second hand with the seconds setting, the date, something alive.
+Designed here as mock-ups (p077, as "Analogue-RD-1" and "-2"), approved and implemented
+the same day (p078) under the names the user chose: the settings values `bracket` and
+`station`, `face_bracket.cpp` and `face_station.cpp` on the shared `dial.cpp`. Only the
+dial of each is painted (Retro Diffusion, $0.90 for the candidates; the calls are in
+`assets/rd-source/calls.json`): `tools/prep_rd_clock_assets.py` cuts
+`assets/clock/bracket/dial.png` and `assets/clock/station/dial.png`, baked like the other
+sprites. Both dials were generated at 80x80 and the middle 64x64 kept, so that the dial
+fills the panel (asked for at 64x64, the model leaves a margin). Everything that must be
+exact is drawn, in integers, the same in the mock and the firmware: markers, numerals
+(bundled fonts, native size), hands as shapes along their axis with a lit edge and a
+one-pixel shadow, the hub, the date. Decided with the user: antique brass and enamel for
+the first, a railway station clock for the second; hands by the firmware, styled and
+textured per dial; no painted numerals; the second hand with the seconds setting, the
+date, something alive.
 
 | Face | Idea | Asset | Text | Moves |
 |---|---|---|---|---|
-| `analogue_rd_1` | An antique bracket clock: an engraved brass plate whose corners show around a cream enamel dial. Roman cardinals, a diamond at the other hours, a dot a minute; blued-steel hands, a spade on the hour hand; a brass cap; a mock pendulum, as such clocks have: a curved slot under the XII in which a brass bob swings once every two seconds. | `dial.png` (64x64, the enamel 56 px across) | Capital Hill 6 px for the numerals (its I has serifs), Everyday Slight 5 px for the date | The bob every 100 ms; a thin red second hand that ticks, with the seconds setting |
-| `analogue_rd_2` | A railway station clock: a white dial in a steel rim, a bar at every hour (heavier at the quarters), a tick a minute, black bar hands with a lighter edge. | `dial.png` (64x64, the dial 59 px across) | Everyday Slight 5 px for the date, grey | A glint crosses the glass every 12 s; with the seconds setting the red second hand runs the way station clocks do: once round in 58.5 s, then it waits at the top for the minute hand to jump |
+| `bracket` | An antique bracket clock: an engraved brass plate whose corners show around a cream enamel dial. Roman cardinals, a diamond at the other hours, a dot a minute; blued-steel hands, a spade on the hour hand; a brass cap; a mock pendulum, as such clocks have: a curved slot under the XII in which a brass bob swings once every two seconds. | `dial.png` (64x64, the enamel 56 px across) | Capital Hill 6 px for the numerals (its I has serifs), Everyday Slight 5 px for the date | The bob every 100 ms; a thin red second hand that ticks, with the seconds setting |
+| `station` | A railway station clock: a white dial in a steel rim, a bar at every hour (heavier at the quarters), a tick a minute, black bar hands with a lighter edge. | `dial.png` (64x64, the dial 59 px across) | Everyday Slight 5 px for the date, grey | A glint crosses the glass for 1.5 s every 12 s; with the seconds setting the red second hand runs the way station clocks do: once round in 58.5 s, then it waits at the top for the minute hand to jump |
 
-`analogue_rd-both.png` shows the two at 8x, `analogue_rd_N-moments.png` six times of day,
-the seconds off and the month-first date, `analogue_rd_N.gif` (with `@8x`) twelve seconds
-across a minute change with the seconds on.
-
-Open for the review: the hour hand's spade on the first; whether the date belongs on the
-dials (the hands cross it); the glint's strength on the second. At the implementation:
-the hands are floating point in the mock (the analogue face's are integer Bresenham), so
-either a tolerance or an integer rule for the shapes; a frame every 100 ms for the bob
-and the sweeping second hand.
-
+`bracket-moments.png` and `station-moments.png` show six times of day, the seconds off and
+the month-first date; `bracket.gif` and `station.gif` (with `@8x`) twelve seconds across a
+minute change with the seconds on; `station-glint.png` the glint frame by frame.

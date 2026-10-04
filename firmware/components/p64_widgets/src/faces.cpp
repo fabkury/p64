@@ -330,6 +330,17 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
       const uint32_t into = static_cast<uint32_t>((m.second * 1000 + ctx.millis) % static_cast<int>(themed::kAquariumFrameMs));
       return themed::kAquariumFrameMs - into;
     }
+    case ClockFace::Bracket:
+      themed::draw_bracket(out, m, o, ctx.millis);
+      return themed::kDialStepMs - static_cast<uint32_t>(ctx.millis) % themed::kDialStepMs;
+    case ClockFace::Station: {
+      themed::draw_station(out, m, o, ctx.millis);
+      // a frame every step while the second hand or the glint moves; else until the next
+      // glint, which also starts every minute
+      const uint32_t glint = static_cast<uint32_t>(themed::station_glint_ms(m, ctx.millis));
+      if (o.seconds || glint < themed::kStationGlintMs) return themed::kDialStepMs - static_cast<uint32_t>(ctx.millis) % themed::kDialStepMs;
+      return themed::kStationGlintEveryMs - glint;
+    }
     case ClockFace::Orrery:
     default:
       themed::draw_orrery(out, m, o);

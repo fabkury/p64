@@ -459,6 +459,18 @@ refresh of being asked so it can be shown seamlessly.
     it. The tank's light follows the sun over the weather location: by night the water
     is dark blue, the castle's window and door glow, the small fish hides and the others
     swim at half speed. A frame every 150 ms.
+  - Bracket clock (`bracket`, 2026-10-03, p077 and p078): an analogue face on a dial
+    painted with Retro Diffusion, the face of an antique bracket clock: a cream enamel
+    dial in an engraved brass plate. Roman numerals at the quarters, a diamond at the
+    other hours, a dot a minute; blued-steel hands with a spade on the hour hand; a brass
+    cap; the date in small letters; a mock pendulum whose brass bob swings in a slot
+    under the XII once every two seconds. The seconds setting adds a thin red second
+    hand that ticks.
+  - Station clock (`station`, same dates): an analogue face on a painted railway station
+    dial, white in a steel rim: a bar at every hour, heavier at the quarters, a tick a
+    minute, black bar hands, the date in grey, a glint that crosses the glass every
+    twelve seconds. With the seconds setting the red second hand goes round in 58.5
+    seconds and waits at the top for the minute hand to jump, as station clocks do.
   - Words: a 12x9 letter grid behind a brushed bezel, the letters that spell the time lit
     ("IT IS HALF PAST TEN AM", to the five minutes) and four corner dots for the minutes
     past; twelve-hour by nature (AM and PM are on the grid).
@@ -826,7 +838,7 @@ All persisted unless noted. Ranges are inclusive.
 | Widgets | chosen widget (Widget state) | clock, weather, temperature, air | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0, air 0 |
 | Widgets | random clock face at clock interludes | on/off | off |
-| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led, horizon_rd, aquarium; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led, horizon_rd, aquarium, bracket, station; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |

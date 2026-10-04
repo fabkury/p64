@@ -204,6 +204,35 @@ def aquarium():
         save("aquarium", name, sheet)
 
 
+# ---------------------------------------------------------------- Bracket and station
+
+
+def dials():
+    """The two analogue dials, baked like the other sprites (assets/clock/). Both were
+    generated at 80x80 and the middle 64x64 is kept, so that the dial fills the panel."""
+    baked = os.path.join(FIRMWARE, "assets", "clock")
+    brass = Image.open(src("brass3_0.png")).convert("RGB").crop((8, 8, 72, 72))
+    os.makedirs(os.path.join(baked, "bracket"), exist_ok=True)
+    brass.save(os.path.join(baked, "bracket", "dial.png"), optimize=True)
+    print("bracket/dial.png 64x64 (assets/clock)")
+    station = Image.open(src("station3_1.png")).convert("RGB").crop((8, 9, 72, 73))
+    px = station.load()
+    # black outside the rim: the dark grey connected to the picture's edge
+    todo = [(x, y) for x in range(64) for y in (0, 63)] + [(x, y) for y in range(64) for x in (0, 63)]
+    seen = set()
+    while todo:
+        x, y = todo.pop()
+        if not (0 <= x < 64 and 0 <= y < 64) or (x, y) in seen or max(px[x, y]) > 58:
+            continue
+        seen.add((x, y))
+        px[x, y] = (0, 0, 0)
+        todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    os.makedirs(os.path.join(baked, "station"), exist_ok=True)
+    station.save(os.path.join(baked, "station", "dial.png"), optimize=True)
+    print("station/dial.png 64x64 (assets/clock)")
+
+
 if __name__ == "__main__":
     horizon_rd()
     aquarium()
+    dials()

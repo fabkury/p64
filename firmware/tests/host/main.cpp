@@ -134,7 +134,7 @@ int run_faces(int argc, char **argv) {
     std::fprintf(stderr, "usage: p64_hosttest faces <out_dir> <ref.png>...\n");
     return 2;
   }
-  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"};
+  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
   const std::string out_dir = argv[2];
   int failures = 0;
   for (int i = 3; i < argc; ++i) {
@@ -161,6 +161,7 @@ int run_faces(int argc, char **argv) {
     s.clock.seconds = flags.find('s') != std::string::npos;
     s.clock.blink_colon = flags.find('b') != std::string::npos;
     s.clock.h24 = flags.find('h') == std::string::npos;
+    s.clock.month_first = flags.find('m') != std::string::npos;
     // the LED face's style: g green, a amber, u blue, v vfd (red without)
     if (flags.find('g') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Green;
     if (flags.find('a') != std::string::npos) s.clock.led_style = p64::system::LedStyle::Amber;

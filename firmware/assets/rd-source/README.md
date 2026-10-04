@@ -31,7 +31,7 @@ pitfalls) is the user's `retrodiffusion-api` repository; the key never enters th
 | | `land_night`, `tank_night` (image_edit): the edit redrew both scenes instead of relighting them, so night is computed from the day picture | $0.36 |
 | | `land_subtle_0` (subtle_motion on the landscape): came back almost still (under 1 % of pixels change), so the lake's glints are computed | $0.25 |
 
-### The analogue candidates (p077, 2026-10-03)
+### The bracket and station clocks' dials (p077, p078, 2026-10-03)
 
 A further $0.90 (of a $5 budget for that task; $3.08 in all), all `rd_plus__low_res`,
 three candidates a call:

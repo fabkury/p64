@@ -24,7 +24,7 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
 | M4 | HTTP API v1, WebSocket push, live preview, minimal web UI | done | 2026-09-19: smoke test 0 failures (status, settings, frame PNG, uploads read back byte for byte, play, delete); panel modes switch in place, frame-locked; decode benchmark recorded |
 | M5 | Content: local channels, playsets, scheduler, history, auto-swap, play-this | done (Makapix channels wait for M6) | 2026-09-19: content smoke test 38 checks / 0 failures; boot to first artwork 3.3 s; 40 ms APNG at 25.0 fps with 0 late; playsets CRUD, activation, history navigation, pause/resume on the device |
 | M6 | Makapix: promoted anonymous, pairing, MQTT commands, downloads, views, likes | done (commands from the site await the user's test) | 2026-09-19: Promoted lists 290 posts anonymously and plays 1.4 s after the first download; paired with code TDPCHB, MQTT connected 2 s after the credentials; views published; likes over HTTPS next to MQTT; All (2048 entries) and hashtag/own channels walk page by page; internal RAM 25-30 KB free with MQTT up |
-| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (the air widget and the Horizon-RD and aquarium faces added 2026-10-03; analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
+| M7 | Widgets: fonts pipeline, clock overlay, clock, weather, temperature, interludes | done (the air widget and the Horizon-RD, aquarium, bracket and station faces added 2026-10-03; analogue face added 2026-09-20; six themed faces 2026-09-26; the LED face in five styles 2026-09-28; interludes as a median gap, ADR 0014, 2026-09-28) | 2026-09-19: SHTC3 read, Open-Meteo fetched, clock/weather/temperature frames captured, overlay on artworks, interludes in history |
 | M8 | Streams: DDP, raw UDP, takeover | done | 2026-09-19: both protocols pixel-exact on the device (RGB888, RGB565, indexed, 128x128 downscaled, reversed chunks), takeover and return after silence, Stream state; `tests/device/stream_smoke.py` |
 | M9 | IMU, night schedule, PIN, OTA, coredump, diagnostics, factory reset | done | 2026-09-19: reliability (reset reason, counters, core dump summary, deferred image confirmation), RTC seed, night schedule, factory reset (API and BOOT hold), task watchdog on the loops: `tests/device/ops_smoke.py` 0 failures. IMU taps and auto-rotation (`tests/device/imu_smoke.py` 0 failures; taps and the rotation sign await a hand on the shell). PIN (`tests/device/pin_smoke.py` 0 failures). OTA: check against GitHub, install of a local build over HTTP with SHA256, reboot into the other slot, confirmation, rollback (`tests/device/ota_smoke.py`) |
 | M10 | Full web UI port, acceptance tests, docs | done (instrument measurements open) | 2026-09-19: the four pages (Home, Playsets, Settings with seven tabs, Update) on p3a's stylesheet and five themes, the setup portal in the same style, PWA manifest and icons, `tests/device/ui_smoke.py`; `tests/device/soak.py` passed 10 min (120 swaps, 0 late, 0 timeouts, heap floor 11.8 KB); the crash loop from flash reads on a PSRAM stack found and fixed (flash_guard) |
@@ -1229,6 +1229,30 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   The public image went to 2,411,408 bytes, over the 2.4 MB budget, raised to 2.5 MB in
   `budgets.json`. Open: the user's eye on the panel (night levels, the fish's speed, the
   12 px sun and moon), and the faces under a long soak.
+- 2026-10-03, two analogue faces on Retro Diffusion dials (prompts p077, p078; spec
+  7.1): `bracket` (an antique bracket clock: brass plate, cream enamel, Roman cardinals,
+  blued hands, a mock pendulum that swings under the XII) and `station` (a railway
+  station clock: bar markers, black bar hands, a glint every 12 s, and with the seconds
+  setting the red second hand that goes round in 58.5 s and waits for the minute).
+  Mock-ups first as "Analogue-RD-1" and "-2" (p077, $0.90 at Retro Diffusion, $3.08 in
+  all), approved, then implemented under the names the user chose. Only the dials are
+  pictures, generated at 80x80 with the middle 64x64 kept so that they fill the panel,
+  and baked (16 KB each: small enough not to be worth a decode). The mock's hands were
+  floating point; for the firmware they became integer shapes (`dial.cpp`: half-pixel
+  centres, the sine table, profiles in 64ths of a pixel), the mock was rewritten the
+  same way and merged into `tools/mock_clock_faces.py` with twelve references, all
+  pixel-exact at the first comparison. Host: 207 cases, 71 references (66 exact, 5
+  within tolerance). Found on the device: the station clock cost the player 36.6 % of
+  core 1 at ten frames a second, because each of its 60 markers scanned the whole dial;
+  `draw_shape` now tries only the box around the shape (4.0 %), and `faces_smoke.py`
+  checks the player's share (under 15 %). Device (private build): `faces_smoke` 0
+  failures, the device's bracket and station frames equal to the host's; `ui_smoke`,
+  `api_smoke`, `widgets_smoke` 0 failures. With either face at 10 fps and the seconds on:
+  core 1 12 to 13 % busy (render 8.6 %, player 3 to 4 %), internal heap 65.5 KB free,
+  largest 32.8 KB, no late flip. The smoke's LED breathing check was made three frames
+  instead of two (two frames 0.7 s apart can sit either side of the pulse's trough and
+  be equal: it failed once). Public image 2,449,056 bytes (budget 2.5 MB). Open: the
+  user's eye on the panel.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo

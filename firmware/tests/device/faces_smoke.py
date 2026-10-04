@@ -27,7 +27,7 @@ import api_smoke
 from api_smoke import check, request
 import mock_clock_faces as mock
 
-FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium"]
+FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"]
 EXACT = {"flip": mock.draw_flip, "nixie": mock.draw_nixie, "words": mock.draw_words,
          "hourglass": mock.draw_hourglass, "orrery": mock.draw_orrery}
 
@@ -106,6 +106,17 @@ def main():
             top = px[0:64 * 3]
             mid = px[30 * 64 * 3:31 * 64 * 3]
             check(lit(top) > 40 and top != mid, "the %s draws a sky" % face)
+        if face in ("bracket", "station") and before and after:
+            # the dial faces draw every 100 ms from the start of a second (the bob, the
+            # glint): the device's frame is one of the host's for the minute
+            draw = mock.draw_bracket if face == "bracket" else mock.draw_station
+            if face == "bracket":  # the bob's two seconds
+                wanted = {draw(mock.Moment(before.hour, before.minute, sec, before.wday, before.mday, before.mon, before.yday), opts, ms).img.tobytes()
+                          for sec in (0, 1) for ms in range(0, 1000, 100)}
+            else:  # the glint's 1.5 s, and the dial at rest
+                wanted = {draw(mock.Moment(before.hour, before.minute, sec, before.wday, before.mday, before.mon, before.yday), opts, ms).img.tobytes()
+                          for sec, ms in [(0, k) for k in range(0, 1000, 100)] + [(1, k) for k in range(0, 500, 100)] + [(5, 0)]}
+            check(px in wanted, "%s on the device is one of the host's frames for %02d:%02d" % (face, before.hour, before.minute))
         if face == "aquarium" and before:
             # the time on the sign: its ink is drawn after the lamp's dimming, so the pixels
             # in the ink's colour are the host's whatever the hour (the fish never are)
@@ -149,13 +160,43 @@ def main():
     time.sleep(0.5)
     b = frame(base)
     check(a != b, "the aquarium moves between two frames 0.5 s apart")
+    settings(base, {"clock": {"face": "bracket"}})
+    time.sleep(2.0)
+    a = frame(base)
+    time.sleep(0.5)
+    b = frame(base)
+    check(a != b, "the bracket clock's bob moves between two frames 0.5 s apart")
+    settings(base, {"clock": {"face": "station", "seconds": True}})
+    time.sleep(2.0)
+    a = frame(base)
+    time.sleep(0.5)
+    b = frame(base)
+    check(a != b, "the station clock's second hand sweeps between two frames 0.5 s apart")
+    # its cost at ten frames a second: the player task's share of core 1 over five seconds
+    # (60 markers that each scanned the whole dial took 37 %, 2026-10-03)
+    def player_and_idle():
+        st, mem = request(base, "GET", "/api/v1/diag/memory")
+        tasks = {t["name"]: t["run_time"] for t in mem["data"]["tasks"]} if st == 200 else {}
+        core1 = sum(t["run_time"] for t in mem["data"]["tasks"] if t.get("core") == 1) if st == 200 else 0
+        return tasks.get("player"), core1
+    p0, c0 = player_and_idle()
+    time.sleep(5.0)
+    p1, c1 = player_and_idle()
+    if p0 is not None and p1 is not None and c1 > c0:
+        share = 100.0 * (p1 - p0) / (c1 - c0)
+        check(share < 15.0, "the station clock at 10 fps costs the player %.1f %% of core 1 (under 15)" % share)
+    settings(base, {"clock": {"seconds": False}})
     # the LED breathes (the glow) even with the seconds off, and every style draws
     settings(base, {"clock": {"face": "led", "seconds": False, "blink_colon": False}})
     time.sleep(1.5)
+    # three frames: two alone can sit either side of the pulse's peak or trough, 0.7 s
+    # apart and equal (seen 2026-10-03)
     a = frame(base)
     time.sleep(0.7)
     b = frame(base)
-    check(a != b, "the LED's glow breathes between two frames 0.7 s apart")
+    time.sleep(0.7)
+    c = frame(base)
+    check(a != b or b != c, "the LED's glow breathes across three frames 0.7 s apart")
     styled = {}
     for style in ("red", "green", "amber", "blue", "vfd"):
         s = settings(base, {"clock": {"led_style": style}})
