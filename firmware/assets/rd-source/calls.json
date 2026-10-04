@@ -1,0 +1,261 @@
+[
+ {
+  "name": "tank",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "inside a home goldfish aquarium seen from the front, no fish: clear blue water, colourful pebble gravel along the bottom, a small sunken grey stone castle on the left, an open wooden treasure chest with gold on the right, a few green water plants, a blank wooden signboard on a post standing in the gravel in the centre. The upper half is open empty blue water",
+   "prompt_style": "rd_plus__low_res",
+   "width": 64,
+   "height": 64,
+   "num_images": 2
+  },
+  "files": [
+   "tank_0.png",
+   "tank_1.png"
+  ]
+ },
+ {
+  "name": "land",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "wide side-view landscape filling only the lower third of the picture: distant blue-grey mountains, a calm blue lake in the middle, dark green pine trees on the left shore, a small wooden log cabin with a chimney and one window on the right shore, green grassy meadow along the bottom edge. The upper two thirds are completely empty sky, one flat solid white colour, no clouds, no sun, no birds",
+   "prompt_style": "rd_plus__low_res",
+   "width": 64,
+   "height": 64,
+   "num_images": 2
+  },
+  "files": [
+   "land_0.png",
+   "land_1.png"
+  ]
+ },
+ {
+  "name": "fish_a",
+  "cost": 0.03,
+  "payload": {
+   "prompt": "a single chubby orange fantail goldfish, side view, facing right, flowing tail fins, big eye, on a plain white background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "remove_bg": true
+  },
+  "files": [
+   "fish_a_0.png"
+  ]
+ },
+ {
+  "name": "moon",
+  "cost": 0.03,
+  "payload": {
+   "prompt": "the full moon, a pale grey-white disc with a few darker craters, filling the picture, on a plain black background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 1,
+   "remove_bg": true
+  },
+  "files": [
+   "moon_0.png"
+  ]
+ },
+ {
+  "name": "fish_c",
+  "cost": 0.03,
+  "payload": {
+   "prompt": "a single black moor goldfish with big telescope eyes, side view, facing right, flowing tail, on a plain white background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "remove_bg": true
+  },
+  "files": [
+   "fish_c_0.png"
+  ]
+ },
+ {
+  "name": "fish_b",
+  "cost": 0.03,
+  "payload": {
+   "prompt": "a single white and red oranda goldfish with a red cap, side view, facing right, flowing tail, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "remove_bg": true
+  },
+  "files": [
+   "fish_b_0.png"
+  ]
+ },
+ {
+  "name": "cloud",
+  "cost": 0.06,
+  "payload": {
+   "prompt": "one small fluffy white cumulus cloud, wide and flat, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 32,
+   "height": 16,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "cloud_0.png",
+   "cloud_1.png"
+  ]
+ },
+ {
+  "name": "sun",
+  "cost": 0.03,
+  "payload": {
+   "prompt": "a small round golden yellow sun disc with short rays, simple icon, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 1,
+   "remove_bg": true
+  },
+  "files": [
+   "sun_0.png"
+  ]
+ },
+ {
+  "name": "land_night",
+  "cost": 0.18,
+  "tool": "image_edit",
+  "payload": {
+   "input_image": "<image>",
+   "prompt": "Turn this daytime scene into deep night under moonlight: the mountains, trees, lake and grass become dark blue and nearly black, the cabin window glows warm yellow with lamp light and casts a small glow. Keep the exact same composition and every mountain, tree and the cabin in place. Remove the sun"
+  },
+  "files": [
+   "land_night.png"
+  ]
+ },
+ {
+  "name": "tank_night",
+  "cost": 0.18,
+  "tool": "image_edit",
+  "payload": {
+   "input_image": "<image>",
+   "prompt": "Turn this aquarium into night: the tank light is off, the water is dark deep blue, everything dim in blue moonlight, the castle windows glow faint warm yellow, the gold in the chest glints. Keep the exact same composition and every object in place"
+  },
+  "files": [
+   "tank_night.png"
+  ]
+ },
+ {
+  "name": "sun2",
+  "cost": 0.06,
+  "payload": {
+   "prompt": "the sun: a perfectly round bright golden yellow disc with a lighter centre and eight short pointed rays, simple clean icon, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 16,
+   "height": 16,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "sun2_0.png",
+   "sun2_1.png"
+  ]
+ },
+ {
+  "name": "tank_subtle",
+  "cost": 0.25,
+  "payload": {
+   "prompt": "the green water plant sways gently in place, the gold in the chest sparkles, a few small bubbles rise from the chest. The castle, the sign, the gravel and the glass stay perfectly still, same size, shape and position. The scene does not rotate or drift, nothing enters or leaves the picture",
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "input_image": "<image>"
+  },
+  "files": [
+   "tank_subtle_0.gif"
+  ]
+ },
+ {
+  "name": "fish_a_idle",
+  "cost": 0.14,
+  "payload": {
+   "prompt": "the goldfish swims in place, its tail and fins waving gently side to side, body stays in the same position",
+   "prompt_style": "rd_advanced_animation__idle",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "frames_duration": 8,
+   "input_image": "<image>"
+  },
+  "files": [
+   "fish_a_idle_0.gif"
+  ]
+ },
+ {
+  "name": "land_subtle",
+  "cost": 0.25,
+  "payload": {
+   "prompt": "the lake water ripples and shimmers gently in place, small glints of light move on the water. The mountains, the trees, the cabin, the grass and the white sky stay perfectly still, same size, shape and position. The scene does not rotate or drift, nothing enters or leaves the picture",
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "frames_duration": 8,
+   "bypass_prompt_expansion": true,
+   "input_image": "<image>"
+  },
+  "files": [
+   "land_subtle_0.gif"
+  ]
+ },
+ {
+  "name": "fish_b_idle",
+  "cost": 0.14,
+  "payload": {
+   "prompt": "the goldfish swims in place, its tail and fins waving gently side to side, body stays in the same position",
+   "prompt_style": "rd_advanced_animation__idle",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "frames_duration": 8,
+   "input_image": "<image>"
+  },
+  "files": [
+   "fish_b_idle_0.gif"
+  ]
+ },
+ {
+  "name": "fish_d",
+  "cost": 0.06,
+  "payload": {
+   "prompt": "a single small lemon yellow comet goldfish with a white belly, slim body, side view, facing right, long forked tail, dark eye, on a plain dark blue background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 32,
+   "height": 32,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "fish_d_0.png",
+   "fish_d_1.png"
+  ]
+ },
+ {
+  "name": "fish_d_idle",
+  "cost": 0.14,
+  "payload": {
+   "prompt": "the goldfish swims in place, its tail and fins waving gently side to side, body stays in the same position",
+   "prompt_style": "rd_advanced_animation__idle",
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "frames_duration": 8,
+   "input_image": "<image>"
+  },
+  "files": [
+   "fish_d_idle_0.gif"
+  ]
+ }
+]

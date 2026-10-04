@@ -135,3 +135,31 @@ are pixel-exact.
 `led-vfd.png` and `led-vfd@8x.png` the VFD style; `led-styles.png` the five styles;
 `led-moments.png` six times of day in 12 h; `led.gif` and `led-vfd.gif` (and `@8x`) eight
 seconds from 10:31:57 across the minute change, frame by frame as the firmware draws them.
+
+## Two candidates from Retro Diffusion art (p075, 2026-10-03): awaiting approval
+
+Not in the firmware yet. Both are drawn by `tools/mock_rd_clock_faces.py` from pixel art
+generated with the Retro Diffusion API; the raw pictures, every call's payload and price
+are in `assets/rd-source/` ($1.85 spent), `tools/prep_rd_clock_assets.py` cuts them into
+`assets/clock-candidates/` (kept out of `assets/clock/` so the baker does not pick them
+up before they are approved). Decisions taken with the user before drawing: the horizon's
+computed sky over painted land; a goldfish tank with decor, the time small on a sign, the
+light following day and night; full-frame animation allowed, flash size not a concern for
+now.
+
+| Face | Idea | Assets | Text | Moves |
+|---|---|---|---|---|
+| `horizon-rd` | The horizon face's sky and almanac (colours by the sun's elevation, glow on the sun's side, stars, the sun and the moon where they are, the moon's phase, the weather's clouds, rain and snow) over a painted landscape: snow peaks, a lake, pines and a log cabin. The land keeps its colours by day, sinks to a blue night and is warmed at the twilights; the lake mirrors the sky and glitters under the sun and the moon; the cabin's two windows are lit while it is dark. | `land.png` (64x38, at row 26), `lake.png` (the water's mask), `lights.png` (the windows), `sun.png` (8x8), `moon.png` (14x14, the phase's terminator is computed over it), `cloud-a.png`, `cloud-b.png` | Everyday Vast Black 11 px for the time, Capital Hill for AM/PM beside it, Everyday Slight 5 px for the date at the bottom right, on the lake, clear of the cabin; one outline at 75 % black | The lake's glints every 500 ms, the rest every minute |
+| `aquarium` | A goldfish tank: a stone castle, a plant, an open treasure chest, gravel, and a wooden sign that carries the time. Three goldfish swim from wall to wall and turn, each on its lane, wagging its tail: a small yellow one and an orange one behind the decor, a large red and white one in front of everything but the sign. By night (from the sun's elevation) the water goes dark blue, the castle's window and door glow, the yellow fish hides and the others swim at half speed. | `tank.png` (16 frames of 64x64: the plant sways, bubbles rise from the chest), `front.png` (the same frames, only what stands in front of the far fish), `sign.png` (27x10), `lights.png`, `fish-a.png` (20x17), `fish-b.png` (26x19), `fish-c.png` (14x10), eight frames each | Everyday Standard 6 px on the sign, cream with a carved shadow | Every 150 ms |
+
+`horizon-rd-day.png` is one day in New York (the same twelve moments as `horizon-day.png`),
+`horizon-rd-variants.png` the weather, 12 h, the full moon, Tromso in December and Sao
+Paulo, `horizon-rd@8x.gif` six seconds of the lake; `aquarium-moments.png` six moments,
+`aquarium.gif` and `aquarium-night.gif` (with `@8x`) fourteen and ten seconds of the tank.
+
+Open for the review: the 14 px moon against the 8 px sun; the date in the small font; the
+aquarium shows no date and, in 12 h, no AM/PM (the sign is 25 px wide inside); the night
+levels on the real panel. To be decided at implementation: the frame rate the show can
+give a clock face (the LED face runs at 5 fps; the tank loop wants 6.7), the assets'
+storage (the tank's two strips are 2 x 262 KB as RGBA; RGB565 or a palette would halve or
+quarter that), and test references (the mock writes none yet).
