@@ -31,6 +31,18 @@ pitfalls) is the user's `retrodiffusion-api` repository; the key never enters th
 | | `land_night`, `tank_night` (image_edit): the edit redrew both scenes instead of relighting them, so night is computed from the day picture | $0.36 |
 | | `land_subtle_0` (subtle_motion on the landscape): came back almost still (under 1 % of pixels change), so the lake's glints are computed | $0.25 |
 
+### The analogue candidates (p077, 2026-10-03)
+
+A further $0.90 (of a $5 budget for that task; $3.08 in all), all `rd_plus__low_res`,
+three candidates a call:
+
+| Call | Result | Price |
+|---|---|---|
+| `brass` at 64x64 | good plates, but the enamel only 46 px across (not used; `unused/brass_*.png`) | $0.18 |
+| `station` and `station2` at 64x64 | blank dials 46 px across in a wide margin, one with painted hands (not used) | $0.36 |
+| `station3` at 80x80 | `station3_1` used: the middle 64x64 has a 59 px dial | $0.18 |
+| `brass3` at 80x80 | `brass3_0` used: the middle 64x64 has a 56 px enamel dial and the plate's corners | $0.18 |
+
 What the service taught here, beyond the notes in `retrodiffusion-api`:
 
 - `image_edit` does not keep a 64x64 composition pixel-aligned, whatever the prompt says;
@@ -40,5 +52,8 @@ What the service taught here, beyond the notes in `retrodiffusion-api`:
 - `rd_advanced_animation__idle` animates a fish on a flat colour well (the flat colour
   comes back exact and keys out); 32 px is the smallest input, and the free k-centroid
   downscale of the whole strip to 20 px cells keeps the frames consistent.
+- A round subject asked to "fill the picture" at 64x64 still comes with a margin; generating
+  at 80x80 and keeping the middle 64x64 gives a dial that fills the panel, at the same pixel size.
+- "No numerals, no hands" holds in about two pictures of three; ask for three.
 - `rd_fast__low_res` goes down to 16x16; how much of the canvas the subject fills follows the
   prompt ("fills almost the whole picture" gave a 12 px disc, without it 8 px).

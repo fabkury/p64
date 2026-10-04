@@ -306,5 +306,85 @@
    "sun3_1.png",
    "sun3_2.png"
   ]
+ },
+ {
+  "name": "brass",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "front view of the face of an antique bracket clock filling the whole square picture: a square engraved brass plate with ornate scrollwork spandrels in the four corners, a large round cream-white enamel dial in the middle with a thin polished brass bezel ring around it. The enamel dial is completely blank and empty: no numbers, no numerals, no hour marks, no clock hands, no text. Flat, straight-on, symmetric",
+   "prompt_style": "rd_plus__low_res",
+   "width": 64,
+   "height": 64,
+   "num_images": 3
+  },
+  "files": [
+   "brass_0.png",
+   "brass_1.png",
+   "brass_2.png"
+  ]
+ },
+ {
+  "name": "station",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "front view of a round railway station clock filling the whole picture: a large plain white dial with a thick dark brushed steel rim and a subtle soft grey shadow inside the rim, on a plain black background. The white dial is completely blank and empty: no numbers, no numerals, no hour marks, no clock hands, no text. Flat, straight-on, symmetric",
+   "prompt_style": "rd_plus__low_res",
+   "width": 64,
+   "height": 64,
+   "num_images": 3
+  },
+  "files": [
+   "station_0.png",
+   "station_1.png",
+   "station_2.png"
+  ]
+ },
+ {
+  "name": "station2",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "front view of a big round railway station clock, the circle touches all four edges of the square picture: a large plain flat white dial inside a thick dark anthracite steel rim with a thin lighter highlight ring, on a plain black background. The white dial is completely blank and empty: no numbers, no numerals, no hour marks, no clock hands, no text, no reflections. Flat, straight-on, perfectly circular, symmetric",
+   "prompt_style": "rd_plus__low_res",
+   "width": 64,
+   "height": 64,
+   "num_images": 3
+  },
+  "files": [
+   "station2_0.png",
+   "station2_1.png",
+   "station2_2.png"
+  ]
+ },
+ {
+  "name": "station3",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "front view of a big round railway station clock: a large plain flat white dial inside a thick dark anthracite steel rim with a thin lighter highlight ring, on a plain black background. The white dial is completely blank and empty: no numbers, no numerals, no hour marks, no clock hands, no text, no reflections. Flat, straight-on, perfectly circular, symmetric",
+   "prompt_style": "rd_plus__low_res",
+   "width": 80,
+   "height": 80,
+   "num_images": 3
+  },
+  "files": [
+   "station3_0.png",
+   "station3_1.png",
+   "station3_2.png"
+  ]
+ },
+ {
+  "name": "brass3",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "front view of the face of an antique bracket clock filling the whole square picture: a square engraved brass plate with ornate scrollwork spandrels in the four corners, a very large round cream-white enamel dial in the middle with a thin polished brass bezel ring around it. The enamel dial is completely blank and empty: no numbers, no numerals, no hour marks, no clock hands, no hub, no text. Flat, straight-on, symmetric",
+   "prompt_style": "rd_plus__low_res",
+   "width": 80,
+   "height": 80,
+   "num_images": 3
+  },
+  "files": [
+   "brass3_0.png",
+   "brass3_1.png",
+   "brass3_2.png"
+  ]
  }
 ]
