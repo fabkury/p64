@@ -1275,8 +1275,8 @@ shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.m
   are not taken at the same instant, and the late frame at 60 fps is the known limit, but
   the same test was not run on the previous firmware today, so "no worse than before" is
   inferred from the render log, not measured. The user saw the mirrored picture on the
-  panel during these tests: it worked. Not verified: the Mirror control on makapix.club
-  (needs the site signed in).
+  panel during these tests: it worked. The user also tested the Mirror control on
+  makapix.club: the device responded correctly.
 - Remaining: the acceptance measurements that need instruments (camera at 240 fps, a
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
