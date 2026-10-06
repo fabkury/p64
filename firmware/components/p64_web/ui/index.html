@@ -31,6 +31,9 @@ body { justify-content: flex-start; overflow-x: hidden; }
 .artwork-info-row { line-height: 1.4; word-break: break-word; font-size: 0.95rem; color: var(--c-text); }
 .artwork-info-label { font-weight: 600; margin-right: 4px; }
 .artwork-info-row a { color: var(--c-primary); }
+.artwork-info-spinner { width: 10px; height: 10px; border-radius: 50%; background: var(--c-primary); opacity: 0; flex-shrink: 0; margin-top: 6px; }
+.artwork-info-spinner.loading { animation: info-spinner-pulse 1.1s ease-in-out infinite; opacity: 1; }
+@keyframes info-spinner-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
 .now-playing {
     width: min(420px, 100%); background: var(--c-primary); border-radius: var(--r-md); font-size: 0.8rem;
     color: var(--c-on-primary); box-shadow: 0 6px 16px color-mix(in srgb, var(--c-primary) 35%, transparent); overflow: hidden;
@@ -129,6 +132,7 @@ body { justify-content: flex-start; overflow-x: hidden; }
     <span class="live-tag" id="live-tag">LIVE</span>
 </div>
 <div class="artwork-info-area" id="artwork-info" hidden>
+    <div class="artwork-info-spinner" id="artwork-info-spinner" aria-hidden="true"></div>
     <div class="artwork-info-rows" id="artwork-info-rows"></div>
 </div>
 <div class="now-playing collapsed" id="now-playing">
@@ -201,7 +205,15 @@ p64.nav('home');
 })();
 
 function toggleNowPlaying() { document.getElementById('now-playing').classList.toggle('collapsed'); }
-function toggleInfo() { infoOpen = !infoOpen; renderInfo(); }
+function toggleInfo() {
+    infoOpen = !infoOpen;
+    if (infoOpen) {
+        // The box holds the artwork: a fresh auto-swap countdown, so it does not swap
+        // out from under the reader (p3a's reset_dwell_timer). Best effort.
+        p64.post('/api/v1/action/reset_timer').catch(function () {});
+    }
+    renderInfo();
+}
 function togglePause() { p64.post('/api/v1/action/' + (paused ? 'resume' : 'pause')).catch(function (e) { p64.toast(e.message, true); }); }
 function toggleLike() {
     if (!current || current.post_id == null) return;
@@ -229,25 +241,123 @@ function renderLike() {
     b.classList.toggle('ghost', !show);
     b.classList.toggle('active', !!(current && current.liked));
 }
+// ── The info box: what is playing, looked up on demand ──
+// Title, Author, Date, Channel and a link to the post. The channel comes with the status
+// document; the rest is fetched when the box opens, by the source's own API: a Makapix
+// post browser-direct by its sqid or storage key (/api/player/p/{sqid} and
+// /api/player/post/{storage_key} answer cross-origin; p3a does the same), any other
+// provider's item through the device at
+// GET /api/v1/<provider>/item?id=<item id> (202 while the device fetches it, polled;
+// api.md "Show"). A card file has only its name. Missing fields read '—'.
+var EM_DASH = '\u2014', infoKey = null, infoMeta = null, infoLoading = false, infoPoll = null;
+function artworkKey(a) {
+    if (!a) return null;
+    if (a.sqid) return 'makapix:' + a.sqid;
+    if (a.provider && a.post_id != null) return a.provider + ':' + a.post_id;
+    return 'file:' + (a.path || a.name || '');
+}
+function artworkDate(raw) {
+    if (raw == null) return null;
+    var m = String(raw).trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : null;
+}
+function epochDate(e) {
+    if (!e) return null;
+    var d = new Date(e * 1000);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function stopInfoPoll() { if (infoPoll) { clearTimeout(infoPoll); infoPoll = null; } }
+// By sqid when the listing carried one, else by the storage key (the cache names the
+// file after it; p3a looks posts up that way); both player endpoints answer cross-origin.
+function makapixStorageKey(a) {
+    var m = String(a.name || '').match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\./i);
+    return m ? m[1] : null;
+}
+function fetchMakapixMeta(sqid, storageKey) {
+    var url = sqid ? 'https://makapix.club/api/player/p/' + encodeURIComponent(sqid)
+                   : 'https://makapix.club/api/player/post/' + encodeURIComponent(storageKey);
+    return fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { if (!r.ok) throw new Error('makapix ' + r.status); return r.json(); })
+        .then(function (post) {
+            var owner = (post && post.owner) || {};
+            var handle = typeof owner.handle === 'string' ? owner.handle.trim() : '';
+            var id = sqid || (post && post.public_sqid);
+            return { title: post && post.title ? String(post.title) : null, author: handle ? '@' + handle : null,
+                     date: artworkDate(post && post.created_at),
+                     link: id ? 'https://makapix.club/p/' + encodeURIComponent(id) : null, link_label: 'open on Makapix Club' };
+        });
+}
+// The device answers 202 while its worker asks the provider's cloud: poll every 700 ms, up to 20 s.
+function fetchProviderMeta(provider, id, key) {
+    var url = '/api/v1/' + encodeURIComponent(provider) + '/item?id=' + encodeURIComponent(id), started = Date.now();
+    return new Promise(function (resolve, reject) {
+        function attempt() {
+            fetch(url, { headers: { 'Accept': 'application/json' } }).then(function (r) {
+                if (infoKey !== key) return reject(new Error('moved on'));
+                if (r.status === 202) {
+                    if (Date.now() - started > 20000) return reject(new Error('no answer in time'));
+                    infoPoll = setTimeout(attempt, 700);
+                    return;
+                }
+                return r.json().then(function (j) {
+                    if (!r.ok || !j.ok) throw new Error((j && j.error) || ('HTTP ' + r.status));
+                    var d = j.data || {};
+                    resolve({ title: d.title || null, author: d.author || null, date: epochDate(d.date_epoch) });
+                });
+            }).catch(reject);
+        }
+        attempt();
+    });
+}
+function fetchMeta(a, key) {
+    if (a.sqid) return fetchMakapixMeta(a.sqid, null);
+    if (a.provider && a.provider !== 'makapix' && a.post_id != null) return fetchProviderMeta(a.provider, a.post_id, key);
+    if (a.provider === 'makapix') {
+        var storageKey = makapixStorageKey(a);
+        return storageKey ? fetchMakapixMeta(null, storageKey) : Promise.reject(new Error('no sqid or storage key for this post'));
+    }
+    // A card file: its name without the extension, nothing else to ask.
+    return Promise.resolve({ title: String(a.name || '').replace(/\.[A-Za-z0-9]+$/, '') || null, author: null, date: null });
+}
+function loadInfo(a) {
+    var key = artworkKey(a);
+    infoKey = key; infoMeta = null; infoLoading = true;
+    stopInfoPoll();
+    fetchMeta(a, key).then(function (meta) {
+        if (infoKey !== key) return;
+        infoMeta = meta; infoLoading = false; renderInfo();
+    }, function (e) {
+        if (infoKey !== key) return;
+        console.warn('artwork info:', e && e.message);
+        infoMeta = { title: null, author: null, date: null, error: e && e.message }; infoLoading = false; renderInfo();
+    });
+}
 function renderInfo() {
-    var area = document.getElementById('artwork-info');
-    if (!infoOpen || !S) { area.hidden = true; return; }
+    var area = document.getElementById('artwork-info'), spinner = document.getElementById('artwork-info-spinner');
+    if (!infoOpen || !S) { area.hidden = true; spinner.classList.remove('loading'); infoKey = null; stopInfoPoll(); return; }
     var p = S.playback || {}, a = p.artwork, rows = '';
-    function row(label, value) { rows += '<div class="artwork-info-row"><span class="artwork-info-label">' + label + ':</span><span>' + value + '</span></div>'; }
+    function row(label, value) { rows += '<div class="artwork-info-row"><span class="artwork-info-label">' + label + ':</span><span>' + (value || EM_DASH) + '</span></div>'; }
     if (a) {
-        row('Title', p64.esc(a.name));
-        row('Format', p64.esc(a.format) + ' ' + a.width + 'x' + a.height + (a.animated ? ', animated' : ', still') + ', ' + p64.fmtBytes(a.bytes));
-        row('Channel', a.channel ? p64.esc(a.channel) : (a.source === 'play_this' ? 'play from...' : p64.esc(a.source || '')));
-        if (a.post_id != null) row('Makapix', 'post ' + a.post_id + (a.sqid ? ' <a href="https://makapix.club/p/' + p64.esc(a.sqid) + '" target="_blank" rel="noopener">open</a>' : ''));
-        row('Shown', p64.relative(a.since_s) + (a.frames_decoded ? ' · ' + a.frames_decoded + ' frames' : ''));
+        if (artworkKey(a) !== infoKey) loadInfo(a);  // first open, or the artwork swapped while open
+        var m = infoMeta || {};
+        row('Title', m.title ? p64.esc(m.title) : null);
+        row('Author', m.author ? p64.esc(m.author) : null);
+        row('Date', m.date ? p64.esc(m.date) : null);
+        row('Channel', a.channel ? p64.esc(a.channel) : (a.source === 'play_this' ? 'play from...' : null));
+        if (m.link) row('Link', '<a href="' + p64.esc(m.link) + '" target="_blank" rel="noopener">' + p64.esc(m.link_label || 'open') + '</a>');
+        if (m.error) row('Lookup', p64.esc(m.error));
     } else if (p.widget) {
+        infoKey = null;
         row('Widget', p64.esc(p.widget));
     } else if (p.stream_up) {
+        infoKey = null;
         var st = S.stream || {};
         row('Stream', p64.esc(st.protocol) + ' ' + st.width + 'x' + st.height + ' from ' + p64.esc(st.sender) + ' at ' + (st.fps || 0).toFixed(1) + ' fps');
     } else {
+        infoKey = null;
         row('Panel', paused ? 'paused' : (p.no_artwork || 'status screen'));
     }
+    spinner.classList.toggle('loading', !!(a && infoLoading));
     document.getElementById('artwork-info-rows').innerHTML = rows;
     area.hidden = false;
 }

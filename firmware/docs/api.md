@@ -67,6 +67,22 @@ second.
 | `/api/v1/channels` | GET | | the active playset's channels: `{playset, scanning, version, last_scan_ms, channels:[{index, kind, identifier, display_name, weight, offset, entries, available, status, share, credit, cursor}]}` (provider channels, Makapix and external, add `provider`, `cached`, `last_refresh`, `oversized`, `unchecked`, `refreshing`, `error`) |
 | `/api/v1/folders` | GET | | folders that can be local channels: `[{folder, name, files}]` |
 
+The home page's info box (2026-10-06) shows Title, Author, Date, Channel and a link for
+the artwork playing. The channel comes with the status document; the rest is looked up
+when the box opens, by the source's own API: a Makapix post browser-direct by its sqid
+(`https://makapix.club/api/player/p/{sqid}`) or, when the listing carried none, by the
+storage key the cache file is named after (`/api/player/post/{storage_key}`; the frozen
+player endpoints that answer cross-origin, the same calls p3a makes), and any other
+provider's item through the
+device by the **provider item-info convention**: `GET /api/v1/<provider>/item?id=<item
+id>` (the `provider` and `post_id` of the status document's artwork), answering 200 with
+`{title, author, date_epoch, ...}` (`caption`, `likes`, `views` when the source has them),
+202 `{"pending":true}` while the device fetches it (the page polls every 700 ms, up to
+20 s) and 503 when the lookup failed. A provider offers the route or not; the page shows
+'—' for what it cannot learn. Opening the box also posts `reset_timer`, so the artwork is
+not swapped out from under the reader. A card file shows its name without the extension
+as the title.
+
 ## Playsets (M5)
 
 | Route | Method | What |
