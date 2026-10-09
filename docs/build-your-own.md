@@ -5,10 +5,11 @@ This is the walk-through for building a p64 from the parts list in the
 screwdriver and a command line. No soldering: the two boards plug together and the
 power lead goes into screw terminals.
 
-The state of things on 2026-09-21: the firmware is complete for version 1 and runs
+The state of things on 2026-10-09: the firmware is complete for version 1 and runs
 daily on one device, but there is no ready-made firmware image yet, so step 3 compiles it
-from source. The shell in the photos is version 1; the current design (v7) is not printed
-yet. Both are covered below. p64 comes in two variants: **p64a** without rotary knobs
+from source. The current shell, v7, is printed in both variants and the p64a one is
+assembled and in use; the p64b one waits for its soldered wiring. The shell in the older
+photos is version 1. Both are covered below. p64 comes in two variants: **p64a** without rotary knobs
 (no soldering at all) and **p64b** with two knobs on the back (soldered wiring, see
 `docs/hardware/`); pick one before printing, the shells differ.
 

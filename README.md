@@ -107,19 +107,21 @@ The firmware is the same; p64a simply has no knobs to read.
 
 p64 is a working prototype. One device runs the firmware every day, and every feature in
 [the specification](docs/spec/p64-spec.md) is implemented and checked on it. What is not
-there yet, as of 2026-09-21:
+there yet, as of 2026-10-09:
 
 - **No firmware release yet.** Building one today means compiling from source with
   ESP-IDF. A first GitHub release with a ready-to-flash image is planned; the updater is
   already in the firmware and waits for it.
-- **The shell in the photos is v1.** The current design, v7, adds a window for the USB-C
-  cables (and, in p64b, mounts for the two knobs) and is not printed yet. v1 is proven,
-  archived under `enclosure/archive/pre-v7/`, and needs a right-angle USB-C cable instead.
+- **The p64b shell is printed but not assembled.** Both v7 shells are printed
+  (2026-10-09). The p64a shell is assembled and in daily use: it is the device in the
+  photos under `docs/images/photos/2026-10-09/`, fully solder-less. The p64b shell waits
+  for the soldered encoder wiring, which is not done yet. The earlier photos above show
+  the v1 shell, archived under `enclosure/archive/pre-v7/`, which needs a right-angle
+  USB-C cable instead of the adapters.
 - **The two knobs work on the bench, not yet in a shell.** Both are wired to the board's
   GPIO socket on a breadboard and accepted (2026-10-01): one turns the brightness and
   pauses, the other steps through the artworks and likes on Makapix Club. The permanent
-  harness and the p64b shell are still to come; the wiring projects are in
-  `docs/hardware/`.
+  harness is still to come; the wiring projects are in `docs/hardware/`.
 - **Some acceptance measurements** in the specification still need instruments.
 
 ## Repository map
