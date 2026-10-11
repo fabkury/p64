@@ -38,6 +38,10 @@ off-the-shelf Waveshare boards, no soldering.
 
 ![A short clip of an animation playing in the shell](docs/images/photos/p64-playing.gif)
 
+![One artwork giving way to the next, with no blank frame in between](docs/images/photos/p64-artwork-change.gif)
+
+The second clip is the change from one artwork to the next: no blank frame, no flicker.
+
 The web UI, on a phone:
 
 | ![Home page](docs/images/web-ui-home.png) | ![Playsets page](docs/images/web-ui-playsets.png) | ![Settings page](docs/images/web-ui-settings.png) |
