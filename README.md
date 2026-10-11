@@ -6,7 +6,7 @@ card and from [Makapix Club](https://makapix.club), shows a clock, the weather a
 temperature, and takes live pixel streams from your computer. Open source, built from two
 off-the-shelf Waveshare boards, no soldering.
 
-![p64 on a desk, playing an animation with the clock overlay](docs/images/photos/p64-hero.jpg)
+![p64 in its printed shell on a desk next to a laptop, playing an artwork with the clock overlay](docs/images/photos/p64-hero.jpg)
 
 ## What it does
 
@@ -32,11 +32,11 @@ off-the-shelf Waveshare boards, no soldering.
 - **Updates itself.** Firmware updates come from GitHub Releases with a verified install
   and rollback. Nothing is downloaded or installed without you pressing the button.
 
-| ![Analogue clock face](docs/images/photos/p64-clock-face.jpg) | ![An artwork with the time overlay](docs/images/photos/p64-artwork.jpg) | ![Next to a laptop, for scale](docs/images/photos/p64-on-the-desk.jpg) |
+| ![The digital clock face with the date over a painted landscape](docs/images/photos/p64-clock.jpg) | ![A synthwave sunset artwork](docs/images/photos/p64-synthwave.jpg) | ![The shell seen from the side, a thin wedge](docs/images/photos/p64-side.jpg) |
 |---|---|---|
-| The analogue clock face | Time overlay on an artwork | 128 mm square, for scale |
+| A clock face, with the date | An artwork | From the side |
 
-![A short clip of an animation playing with the clock overlay](docs/images/photos/p64-playing.gif)
+![A short clip of an animation playing in the shell](docs/images/photos/p64-playing.gif)
 
 The web UI, on a phone:
 
@@ -46,13 +46,13 @@ The web UI, on a phone:
 
 More photos:
 
-| ![The bare panel on the bench, showing its first animation](docs/images/photos/p64-bare-panel-first-light.jpg) | ![The empty v1 shell seen from above](docs/images/photos/p64-shell-v1-empty-top.jpg) | ![The driver board and its leads behind the panel](docs/images/photos/p64-panel-back-wiring.jpg) |
+| ![The back of the shell: vent slots, the USB-C window and the cable with its inline switch](docs/images/photos/p64-back.jpg) | ![The back of the shell held in one hand](docs/images/photos/p64-back-in-hand.jpg) | ![An artwork with the time overlay, next to a laptop](docs/images/photos/p64-mummy-laptop.jpg) |
 |---|---|---|
-| First light, before the shell | The v1 shell, empty | The driver board behind the panel |
-| ![The first artwork in the shell](docs/images/photos/p64-first-artwork-in-shell.jpg) | ![p64 held in one hand](docs/images/photos/p64-in-hand.jpg) | ![An artwork in a dark room](docs/images/photos/p64-artwork-in-a-dark-room.jpg) |
-| First artwork in the shell | In the hand | Lights off |
-| ![The weather widget](docs/images/photos/p64-brick-wall-weather.jpg) | ![A mosaic of small artworks](docs/images/photos/p64-brick-wall-artwork-mosaic.jpg) | ![The whole desk, p64 at the left](docs/images/photos/p64-desk-wide.jpg) |
-| The weather widget | A mosaic artwork | On the desk |
+| The back: vents and the USB-C window | In the hand | Time overlay on an artwork |
+| ![A red car artwork in a dark room](docs/images/photos/p64-night-car.jpg) | ![A monochrome artwork in a dark room](docs/images/photos/p64-night-monochrome.jpg) | ![Another artwork with the time overlay, next to a laptop](docs/images/photos/p64-yoshi-laptop.jpg) |
+| Lights off | Lights off, monochrome | Next to a laptop |
+| ![The bare panel on the bench, showing its first animation](docs/images/photos/p64-bare-panel-first-light.jpg) | ![The empty v1 shell seen from above](docs/images/photos/p64-shell-v1-empty-top.jpg) | ![The first artwork in the v1 shell](docs/images/photos/p64-first-artwork-in-shell.jpg) |
+| History: first light, before any shell | History: the v1 shell, empty | History: the first artwork in the v1 shell |
 
 The rest are in [`docs/images/photos/`](docs/images/photos/). There is also a 50-second
 concept video of p64b rendered from the enclosure model (the shell as designed, the
