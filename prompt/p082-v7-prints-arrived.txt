@@ -1,0 +1,1 @@
+I have great news: the v7a and v7b (p64a and p64b respectively) prints have arrived, and I've assembled v7a with success. v7b is pending the soldering work it requires, before being assembled.
