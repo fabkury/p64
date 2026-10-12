@@ -42,3 +42,7 @@ __pycache__/
 
 # Private outreach log (posts, metrics, feedback); kept local on purpose
 docs/outreach.md
+
+# Phone originals of the photos under docs/images/photos/<date>/: full size, with their
+# EXIF (location included) and the videos; the committed copies are downsized and stripped
+docs/images/photos/originals/
