@@ -3,8 +3,8 @@
 [Home](../README.md) · [Owner's guide](using-p64.md) · [Project status](status.md)
 
 This guide builds **p64a**, with no soldering. You need basic command-line skills, a
-printer or print service, and hand tools. Assembly includes trimming the plastic
-panel frame. **p64b** uses the same firmware and adds soldered encoder wiring;
+printer or print service, and hand tools. **p64b** uses the same firmware and adds
+soldered encoder wiring;
 its extra parts and steps are marked below.
 
 [Parts](#1-parts-and-tools) → [Print](#2-print-the-shell) →
@@ -19,7 +19,7 @@ on 2026-09-21, in US dollars, excluding shipping and tax.
 |---|---|---|
 | 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | Controller, $24.99. Includes the panel power lead (VH4 plug to bare wires). |
 | 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | GOB panel, $31.99. Standard non-GOB P2 64×64 also fits ($28.99 recorded). |
-| 1 | [PSU-27W-USB-C-B](https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775), or a 5 V USB-C supply rated at least 3 A | Recorded price $6.99. Laptop power may be insufficient for bright content. |
+| 1 | [PSU-27W-USB-C-C](https://www.waveshare.com/psu-27w-usb-c-c.htm), or a 5 V USB-C supply rated at least 3 A | Laptop power may be insufficient for bright content. |
 | 2 | Right-angle USB-C male-to-female adapters | Compatible options below. |
 | 1 | USB data cable for the computer; power cable if the supply needs one | A charge-only cable cannot flash firmware. |
 | 6 | M3×10 screws, socket or pan head | **Buy separately.** Heads 6 mm or smaller; no countersunk heads. |
@@ -28,9 +28,10 @@ on 2026-09-21, in US dollars, excluding shipping and tax.
 | Optional | microSD card | Recommended for local files and persistent caches. |
 
 Tools: a long PH1 or matching hex driver (the deepest screw heads sit 17 mm inside),
-a tool for trimming the plastic frame, and a computer with Git and ESP-IDF.
+and a computer with Git and ESP-IDF.
 
-The controller, GOB panel and supply totalled $63.97. Printing, adapters, screws,
+The controller, GOB panel and previous PSU-27W-USB-C-B ($6.99) totalled $63.97
+at the recorded prices. This is not a price for the recommended PSU-C. Printing, adapters, screws,
 cables and shipping are extra. The earlier v1 shell cost $18.83 delivered from JLC3DP;
 that is a historical example, not a quote for v7.
 
