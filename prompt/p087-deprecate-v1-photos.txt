@@ -1,0 +1,1 @@
+I am seeing v1 photos on the documentation, but v1 photos should be deprecated. Examples of v1 photos: "An analogue face", "Weather at a glance". Please substitute v1 photos with proper v7a photos.
