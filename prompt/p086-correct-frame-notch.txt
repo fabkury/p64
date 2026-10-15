@@ -1,0 +1,1 @@
+Yes, the panel's plastic frame is completely unmodified and both USB-C adapters are fully seated. Please correct the documentation, then commit and push.
