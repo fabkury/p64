@@ -28,6 +28,8 @@ account. For other channels, likes and sending artwork from the site, open
 
 ## Make a playset
 
+![Channels with weights feed a playset, which picks artwork or shows a widget interlude](images/illustrations/playsets.svg)
+
 A channel supplies artworks; a playset mixes channels. For example, mix a local folder
 with Makapix's Promoted channel:
 
@@ -62,7 +64,15 @@ Orrery, LED, Horizon-RD, Aquarium, Bracket and Station. LED has red, green, ambe
 blue and VFD styles. The separate **clock overlay** is under **Settings → Display**;
 it shows time over artwork.
 
+![Eleven themed clock faces and the LED face in VFD style](images/illustrations/clock-faces.svg)
+
+Reference renders, enlarged without smoothing. Digital and Analogue are also
+available. Colours on the LED panel depend on brightness and camera exposure;
+see [photos of the device](gallery.md).
+
 ## Controls
+
+<img src="images/web-ui-home.png" alt="Home screen with live preview, playset selector, previous, pause and next controls" width="300">
 
 Home provides previous, next, pause/resume, artwork information and Makapix reactions.
 Pause blanks the panel; resume restores playback. Previous walks through history;
@@ -84,6 +94,8 @@ Quality mode is for normal viewing; Photo mode raises refresh for cameras and is
 The brightness ceiling limits both manual controls and schedules.
 
 ## Send a live stream
+
+![A computer sends DDP or raw p64 pixels over Wi-Fi; playback returns after the silence timeout](images/illustrations/stream.svg)
 
 From the repository root, with Python installed:
 

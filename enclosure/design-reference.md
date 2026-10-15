@@ -115,6 +115,10 @@ inserted before closing the shell.
 
 ## USB-C: the adapters, the window and the cradle insert
 
+![CAD section through the p64a USB-C window, adapters and cradle](output/p64a/v7a/render_section_win.png)
+
+CAD cutaway of the adapter window; dimensions and fit assumptions follow below.
+
 - **Hardware** (hand-measured on 2026-09-19, `input/measurements.md`, photos in
   `input/usb-c-90-degree-adapter/`): a generic 19.3 x 12.7 x 8.0 mm aluminium-shelled
   male-to-female right-angle USB-C adapter; the male plug leaves the wide face with its

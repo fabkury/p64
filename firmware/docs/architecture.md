@@ -89,6 +89,8 @@ The esp-mqtt task is pinned to core 0 by `CONFIG_MQTT_TASK_CORE_SELECTION_ENABLE
 
 ## 3. Frame flow
 
+![Core 0 loader to core 1 player, ready ring, renderer and HUB75 DMA](../../docs/images/illustrations/frame-flow.svg)
+
 ```
 file bytes (PSRAM)  -> Decoder -> canvas RGB888 (canvas size, PSRAM)
                     -> Scaler  -> logical Frame 64x64 (internal RAM)

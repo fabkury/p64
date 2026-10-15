@@ -8,6 +8,12 @@ Both variants share a parametric OpenSCAD source and a separately printed cradle
 
 ## Choose the files
 
+| p64a · no knobs | p64b · two knobs |
+|---|---|
+| ![CAD rear view of p64a](output/p64a/v7a/render_product_back.png) | ![CAD rear view of p64b with two knobs](output/p64b/v7b/render_product_back.png) |
+
+Design renders. p64b is not yet assembled.
+
 | Variant | Source | Ready-to-print files |
 |---|---|---|
 | p64a, no knobs | [v7a](src/p64_enclosure_v7a.scad) | [output/p64a/v7a](output/p64a/v7a/) |

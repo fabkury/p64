@@ -127,9 +127,19 @@ before assembly. For later flashes after OTA, see the [firmware guide](../firmwa
    strip below the real ports, about 27.4 mm wide, leaving the outer frame wall intact.
    See the [notch geometry](../enclosure/design-reference.md#usb-c-the-adapters-the-window-and-the-cradle-insert).
    Keep tools and debris clear of the electronics.
+
+   <img src="../enclosure/output/p64a/v7a/render_frame_notch.png" alt="p64a CAD close-up: the red strip below the ports is the material to remove" width="520">
+
+   CAD view: remove the red strip; preserve the outer wall below it.
+
 3. Push both adapters fully onto the ports, bodies toward the frame edge. Dry-fit the
    panel, adapters and insert. The insert sits between its rails, flat against the
    inside back wall, around the adapter bodies.
+
+   <img src="../enclosure/output/p64a/v7a/render_insert.png" alt="CAD view of the separate U-shaped USB-C cradle insert and its flat sole" width="420">
+
+   The separately printed cradle insert (CAD view).
+
 4. Attach the insert with a thin bead of cyanoacrylate along its sole's outer edge,
    away from the opening, or double-sided tape. Seat the panel with the adapters
    positioning the insert, fit two screws and let the adhesive set.
@@ -140,6 +150,12 @@ before assembly. For later flashes after OTA, see the [firmware guide](../firmwa
    Fit all six M3×10 screws from the back.
 7. Connect the supply to **POWER**, on the left viewed from behind. **USB**, on the
    right, is marked by a groove and remains accessible for programming.
+
+![Rear port orientation: POWER left, USB right, with a groove beside USB](images/illustrations/rear-ports.svg)
+
+<img src="images/photos/p64-back.jpg" alt="Assembled v7a viewed from behind, with a cable in POWER and the USB port accessible" width="600">
+
+The assembled p64a: supply connected to POWER, USB free for programming.
 
 **Check:** the panel seats without force, the adapters stay in place when a cable is
 connected, and the device stands securely. Default image rotation is 90° for the shell.

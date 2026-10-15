@@ -36,6 +36,9 @@ These records describe dated work, not necessarily current instructions:
 
 ## Maintaining the docs
 
+[Illustration choices and regeneration](images/illustrations/README.md) cover visual
+sources, placements and remaining photo opportunities.
+
 Keep each fact in one main place. Other pages should summarize it and link here:
 
 | Fact | Main document |
