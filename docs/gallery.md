@@ -2,8 +2,7 @@
 
 [Project homepage](../README.md)
 
-The current assembled device is p64a in its v7a shell. The three entries marked
-History show the earlier prototype.
+All device photos and playback clips on this page show p64a in its v7a shell.
 
 | ![The digital clock face with the date over a painted landscape](images/photos/p64-clock.jpg) | ![A synthwave sunset artwork](images/photos/p64-synthwave.jpg) | ![The shell seen from the side, a thin wedge](images/photos/p64-side.jpg) |
 |---|---|---|
@@ -28,10 +27,9 @@ More photos:
 | The back: vents and the USB-C window | In the hand | Time overlay on an artwork |
 | ![A red car artwork in a dark room](images/photos/p64-night-car.jpg) | ![A monochrome artwork in a dark room](images/photos/p64-night-monochrome.jpg) | ![Another artwork with the time overlay, next to a laptop](images/photos/p64-yoshi-laptop.jpg) |
 | Lights off | Lights off, monochrome | Next to a laptop |
-| ![The bare panel on the bench, showing its first animation](images/photos/p64-bare-panel-first-light.jpg) | ![The empty v1 shell seen from above](images/photos/p64-shell-v1-empty-top.jpg) | ![The first artwork in the v1 shell](images/photos/p64-first-artwork-in-shell.jpg) |
-| History: first light, before any shell | History: the v1 shell, empty | History: the first artwork in the v1 shell |
 
-More images are in the [photo collection](images/photos/). The
+The [photo index](images/photos/README.md) identifies the current v7a photos.
+Older prototype photos are retained for history and deprecated for current guides. The
 [video pipeline](video/README.md) generates a 50-second p64b concept video from the
 model. It is a rendering of the design, not footage of an assembled p64b; the MP4
 is generated locally and not committed.

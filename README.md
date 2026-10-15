@@ -14,9 +14,9 @@ acceptance testing remains open. [Project status](docs/status.md)
 **[Build one](docs/build-your-own.md)** · **[Use it](docs/using-p64.md)** ·
 **[Develop it](firmware/README.md)** · **[Documentation](docs/README.md)**
 
-| ![Landscape clock on the finished p64](docs/images/photos/p64-clock.jpg) | ![Analogue clock on p64](docs/images/photos/p64-brick-wall-analogue-clock.jpg) | ![Weather forecast on p64](docs/images/photos/p64-brick-wall-weather.jpg) |
+| ![Landscape clock on the finished p64](docs/images/photos/p64-clock.jpg) | ![Time overlay on mummy artwork on the assembled v7a](docs/images/photos/p64-mummy-laptop.jpg) | ![The assembled v7a held in one hand, viewed from behind](docs/images/photos/p64-back-in-hand.jpg) |
 |---|---|---|
-| A landscape clock | An analogue face | Weather at a glance |
+| A landscape clock | Time over artwork | The v7a shell in hand |
 
 ## What it does
 
@@ -38,7 +38,7 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 814 Hz for cameras. Clocks require NTP after each boot. See the
 [owner's guide](docs/using-p64.md) for operating limits.
 
-| ![Synthwave pixel art on p64](docs/images/photos/p64-synthwave.jpg) | ![Jellyfish artwork with the time overlay](docs/images/photos/p64-brick-wall-jellyfish.jpg) | ![Car artwork photographed in low light](docs/images/photos/p64-night-car.jpg) |
+| ![Synthwave pixel art on p64](docs/images/photos/p64-synthwave.jpg) | ![Yoshi artwork with the time overlay on v7a](docs/images/photos/p64-yoshi-laptop.jpg) | ![Car artwork photographed in low light](docs/images/photos/p64-night-car.jpg) |
 |---|---|---|
 | Colourful pixel art | Artwork with the time overlay | In low light |
 

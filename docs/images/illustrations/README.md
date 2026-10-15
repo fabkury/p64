@@ -5,7 +5,7 @@ reference renders for clock faces, and diagrams where relationships need explain
 
 | Area | Choice |
 |---|---|
-| Homepage | Nine photos and a playback clip show clocks, artwork, weather, and the finished shell. Link to the clock comparison. |
+| Homepage | Nine photos and a playback clip show a clock, artwork, time overlays, and the finished v7a shell. Link to the clock comparison. |
 | Owner's guide | Clock comparison for choosing a face; Home screenshot for finding controls; diagrams for playsets and streaming. |
 | Build guide | A CAD close-up explains the insert. A port diagram and assembled rear photo establish orientation. |
 | Enclosure | Side-by-side rear renders distinguish the variants. The design reference embeds the adapter cutaway. Label CAD views explicitly. |
@@ -13,6 +13,10 @@ reference renders for clock faces, and diagrams where relationships need explain
 | API and specification | Keep precise contracts and settings in searchable text and tables; the owner and architecture guides supply the visual overview. |
 | Encoder wiring | Retain the existing circuit drawings and wiring tables. A synthetic assembly image would not establish actual wiring. |
 | Status, decisions and history | Keep text-focused; decoration adds little and can obscure dated evidence. |
+
+Use only the verified v7a set in the [photo index](../photos/README.md) for current
+documentation. v1 photos are deprecated, including the brick-wall analogue clock,
+weather and jellyfish images.
 
 ## Regenerate
 
