@@ -1,0 +1,9 @@
+It's time to revamp p64's documentation. We're going to focus on 2 groups of things in sequence:
+ 1. Appropriateness, briefness and completeness
+ 2. Illustration and decoration
+
+We need to be organized about this.
+
+Remember that this project's homepage is its GitHub repository's README.
+
+Please go over this project's documentation and identify weaknesses with regards to the group of things #1 above. Identify weaknesses and propose improvements. Don't make any edits yet, just report back to me for now.
