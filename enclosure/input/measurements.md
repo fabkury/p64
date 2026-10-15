@@ -78,6 +78,10 @@ Checked on the panel the same day:
   shell design (v7) therefore assumes a notch cut through the plate strip below the
   ports, see `README.md` (v6).
 
+**Assembly update, 2026-10-15:** the owner confirmed that the assembled v7a has a
+completely unmodified panel frame and both USB-C adapters fully seated. This
+supersedes the notch assumption above; the earlier observation remains as history.
+
 ## Adafruit 5880 rotary encoder breakout (p64b)
 
 The shell's numbers for the board come from Adafruit's EagleCAD file

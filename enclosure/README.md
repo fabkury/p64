@@ -32,7 +32,7 @@ lies on its back; print the insert sole down. Expect about 82 g plus under 2 g.
 ## Assembly
 
 Follow the [build guide](../docs/build-your-own.md#4-assemble), including the adapter
-fit check and frame notch before gluing. Buy six M3×10 screws separately; the board
+fit check before gluing. The assembled v7a needs no panel-frame modification. Buy six M3×10 screws separately; the board
 does not include them. p64b also needs the
 [two-encoder wiring guide](../docs/hardware/encoders-soldered.md).
 

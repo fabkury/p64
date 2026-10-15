@@ -50,7 +50,7 @@ Contents:
 |---|---|
 | `src/p64_enclosure_v7.scad` | The parametric OpenSCAD source (OpenSCAD 2021.01+): the whole shell, the cradle insert, the mock-ups and the section views. Everything below is a parameter. Rendered on its own it gives p64b. |
 | `src/p64_enclosure_v7a.scad`, `src/p64_enclosure_v7b.scad` | The variant files: include the source and set `encoders`. Render these, not the source, so the output lands in the right folder. |
-| `output/p64a/v7a/`, `output/p64b/v7b/` | One folder per variant and version, identical file names inside: `p64_enclosure_print.stl` / `.3mf` (ready to slice, print orientation), `p64_enclosure_service.stl` (0.45 mm fit clearance instead of 0.3, for MJF/SLA bureaus), `p64_cradle_insert.stl` (the second print), and the renders: `render_back.png`, `render_assembly.png` (with the mock-ups), `render_print.png`, `render_product.png` / `render_product_back.png` (standing on a table), `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line), `render_window.png` (straight at the window: the two socket faces with the insert's sole around them), `render_insert.png` (the insert alone), `render_frame_notch.png` (where to notch the panel frame, in red), `render_section_edge.png` (the wall profile through x = 33: the edge chamfer and fillets); p64b adds `render_section_enc.png` (through an encoder). |
+| `output/p64a/v7a/`, `output/p64b/v7b/` | One folder per variant and version, identical file names inside: `p64_enclosure_print.stl` / `.3mf` (ready to slice, print orientation), `p64_enclosure_service.stl` (0.45 mm fit clearance instead of 0.3, for MJF/SLA bureaus), `p64_cradle_insert.stl` (the second print), and the renders: `render_back.png`, `render_assembly.png` (with the mock-ups), `render_print.png`, `render_product.png` / `render_product_back.png` (standing on a table), `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line), `render_window.png` (straight at the window: the two socket faces with the insert's sole around them), `render_insert.png` (the insert alone), `render_frame_notch.png` (historical proposed frame cut, in red; not required by the verified v7a build), `render_section_edge.png` (the wall profile through x = 33: the edge chamfer and fillets); p64b adds `render_section_enc.png` (through an encoder). |
 | `input/measurements.md` | Hand measurements of parts that have no drawing: the v1 print, the 90-degree USB-C adapter. |
 | `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter; one has the hand measurements drawn on it. |
 | `input/PXL_20260918_*.jpg` | Photos of the v1 print, alone and assembled. |
@@ -143,16 +143,13 @@ CAD cutaway of the adapter window; dimensions and fit assumptions follow below.
   at the inner face (the chamfer outline comes 1.68 mm close on the surface), 2.05 mm to
   the nearest vent slot. The microphone is about 10 mm behind the wall, so the hole is a
   sound vent and the offset changes nothing audible.
-- **Frame notch (hand work):** the bodies reach 1.1 mm in front of the frame's back face,
-  and right there the frame's back plate has a 3.9 mm strip between its opening (58.4 mm
-  from the centre at the ports) and its 1.6 mm outer wall. Cut that strip away through the
-  plate, 27.4 mm wide centred on the **real** ports (1 mm each side of the pair); the outer
-  wall stays. Measured from the frame instead of the ports, the whole position budget needs
-  29.4 mm: in the panel's own orientation (arrows up, seen from the back) x = -62.3..-58.4,
-  y = -15.0..+14.4 mm, which is what `render_frame_notch.png` shows in red. On 2026-09-19
-  an adapter on the uncut plate stopped about 1 mm short of seating; after cutting, check
-  that both seat fully and that the bodies clear the wall (that check also verifies the
-  downward side of the budget, see below).
+- **Frame notch (superseded assembly assumption):** the CAD mock-up predicted
+  interference at the strip between the frame opening and outer wall. Its proposed
+  cut is retained in `render_frame_notch.png` as design history, not an assembly
+  instruction. Earlier notes recorded an adapter stopping about 1 mm short on
+  2026-09-19. On 2026-10-15, the owner confirmed that the assembled v7a has a completely
+  unmodified panel frame and both adapters fully seated. No cut is needed for that
+  build; check the actual adapter fit rather than infer interference from the mock-up.
 - **Cradle insert** (`part = "insert"`, `p64_cradle_insert.stl`): a 34 x 7 x 6 mm second
   print: a U (1.2 mm bottom wall, 2 mm side walls up to the bodies' top face, open towards
   the controller) around the last 6 mm of the bodies, standing on a 1.2 mm sole that lies
@@ -208,7 +205,7 @@ Window clearance: x = 1.0 + 0.2 + 0.25 = 1.45 per side; up = 1.0 + 0.5 + 0.2 + 0
 1.95; down = 0.41 + 0.25 + 0.1 = 0.76, because one bound is physical: the bodies cannot
 hang lower than the frame's outer wall (inner face at y = -62.3, from the drawing), or the
 adapters would not seat on the ports at all. So downwards the shell needs only the print
-allowance beyond those 0.41 mm, and "do both adapters seat fully after the notch is cut"
+allowance beyond those 0.41 mm, and "do both adapters seat fully with the frame unmodified"
 verifies the whole downward side for free. Not absorbed: a port lower than the frame's
 wall allows (a hardware collision, found at that check); a socket depth beyond +-1.1 mm
 (only the well's depth changes, the cable still plugs in); the microphone position itself
@@ -220,7 +217,7 @@ an adapter body into the wall (`archive/pre-v7/`, v6).
 
 ### Shrinking the budget (measure later)
 
-Once the notch is cut and both adapters are seated on the real panel, three caliper
+Once both adapters are seated on the unmodified real panel, three caliper
 measurements pin the inputs down; after them `tol_pos` can drop to the residual (0.3 mm
 is realistic for calipers) and the window shrinks accordingly, the insert unchanged:
 
@@ -331,7 +328,7 @@ an accurate fit. With `edge_back_c`, `edge_rim_r`, `edge_base_r` and `cb_chamfer
 
 Before the first assembly, once:
 
-1. Cut the frame notch (see the window section), push an adapter onto each port (it only
+1. Leave the panel frame unmodified. Push an adapter onto each port (it only
    goes one way, body towards the frame's edge) and check that both seat fully with their
    bodies clear of the frame's wall.
 2. Dry-fit: panel with adapters into the shell, the bodies through the insert's U and the
@@ -398,7 +395,7 @@ the plastic frame ("JXS-P2-128*128 bottom case") and the LED mask, not the PCB. 
 | Six M3 inserts | (0, +-56.85), (+-56.85, +-44), M3, on dia 9.8 faces | same to 0.01 mm; boss dia 10.5 |
 | Frame outline | 127.8 x 127.8, sharp corners, 12 mm deep, no draft | pocket 128.4 (0.3 mm per side), corner r 0.6, lip 12 |
 | Outer wall / rim for the ledge | 1.6 mm thick (inner face at +-62.3) | ledge 1.6 mm, sits fully on the wall; the wall is the physical bound of the adapter bodies |
-| Back opening | +-51.9, widening to ~+-58.4 for y within +-16 | USB-C ports fall inside the wide part; the frame notch cuts the plate strip between 58.4 and the wall |
+| Back opening | +-51.9, widening to ~+-58.4 for y within +-16 | USB-C ports fall inside the wide part; the historical mock-up proposed cutting the plate strip between 58.4 and the wall; the assembled v7a needed no cut |
 | Corner screw recesses | dia 6 at (+-56, +-56), M1 x 6 screws | inside the cavity, 3.7 mm from the ledge |
 | Pins | dia 3 x 3 mm at (+-56, -29) | inside the cavity, clear of ledge and bosses |
 
@@ -410,7 +407,7 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 |---|---|---|---|
 | Centre of the panel's HUB75 IN header | (-35.0, +5.4) mm from the panel centre, panel arrows up, seen from the back | `hub75_in_native` | From the product photo, +-1 mm. The pin holes (3 mm), mic holes (3.5 mm) and the USB-C window (`tol_pos`) are sized to absorb that error. With this value the chip's edge overhangs the frame rim by 0.8 mm, which fits the photo. v1 print: its 30 mm base pocket landed exactly on the two USB-C ports; whether the pin and mic holes land over the buttons and mics is not checked yet. |
 | Height of the controller PCB's back face above the frame's back face | 0.5 mm | `z_chip` | Must be 0 or more because the chip edge overhangs the rim; 0 to 1 mm is budgeted (`tol_z`). v1 print: with the panel seated there is a visible gap between the controller and the back wall, so the value is safe. |
-| 90-degree adapter: boot gap between its body and the receptacle face | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; +-0.5 mm is budgeted (`tol_gap`). Measure the seated adapter after notching the frame. |
+| 90-degree adapter: boot gap between its body and the receptacle face | 1.2 mm | `ad_gap` | 7.7 mm plug protrusion minus a 6.5 mm plug shell, from the measured photo. Sets how far below the ports the bodies hang; +-0.5 mm is budgeted (`tol_gap`). Measure the seated adapter on the unmodified frame. |
 | 90-degree adapter: corner radius of the body cross-section | 3.0 mm | `ad_r` | From the photos, looks like 3.5 to 4. A smaller value in the model only makes the insert's and the window's corners tighter than needed. |
 | FDM print allowance | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the printed v7 window against the model. |
 | LED board / mask outline | 128.0 mm | `board` | Waveshare's quoted panel size; the drawing has the frame (127.8) and not the board. The rim runs 1.5 mm beside the board with 0.2 mm clearance per side (`board_clr`). Measure the board and the mask at their widest; if over 128.0, set `board` and the pocket steps out (the wall there drops below 2 mm past 128.0, the echo warns). |
@@ -487,7 +484,8 @@ openscad -o output/p64b/v7b/render_insert.png       -D "part=\"insert\""       -
 openscad -o output/p64b/v7b/render_window.png       -D "part=\"assembly\""     --imgsize=1600,1200 --projection=o --colorscheme=Metallic --camera=0.3,-57,21,-6,0,0,60 src/p64_enclosure_v7b.scad
 ```
 
-`render_frame_notch.png` looks straight at the back of the panel (orthographic);
+`render_frame_notch.png` preserves the superseded proposed cut, not a required step.
+It looks straight at the back of the panel (orthographic);
 `render_section_edge.png` looks at the cut face from +X (the base on the left, the back
 face on top); `render_window.png` uses the gimbal camera form, straight at the back face
 around the window, the mic1 hole at the top right. `part = "product"` stands the assembled

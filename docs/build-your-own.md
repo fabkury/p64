@@ -120,19 +120,13 @@ before assembly. For later flashes after OTA, see the [firmware guide](../firmwa
 
 ## 4. Assemble
 
+Leave the panel's plastic frame unmodified. In the assembled v7a, both USB-C
+adapters seat fully without cutting the frame. Check the fit of your adapters
+before attaching the insert.
+
 1. With power disconnected, plug the controller onto **HUB75 IN**. Connect the power
    lead: VH4 to the panel, red to **5V**, ground to **GND** at the screw terminals.
-2. Cut the plastic notch shown for [p64a](../enclosure/output/p64a/v7a/render_frame_notch.png)
-   or [p64b](../enclosure/output/p64b/v7b/render_frame_notch.png): remove the back-plate
-   strip below the real ports, about 27.4 mm wide, leaving the outer frame wall intact.
-   See the [notch geometry](../enclosure/design-reference.md#usb-c-the-adapters-the-window-and-the-cradle-insert).
-   Keep tools and debris clear of the electronics.
-
-   <img src="../enclosure/output/p64a/v7a/render_frame_notch.png" alt="p64a CAD close-up: the red strip below the ports is the material to remove" width="520">
-
-   CAD view: remove the red strip; preserve the outer wall below it.
-
-3. Push both adapters fully onto the ports, bodies toward the frame edge. Dry-fit the
+2. Push both adapters fully onto the ports, bodies toward the frame edge. Dry-fit the
    panel, adapters and insert. The insert sits between its rails, flat against the
    inside back wall, around the adapter bodies.
 
@@ -140,15 +134,15 @@ before assembly. For later flashes after OTA, see the [firmware guide](../firmwa
 
    The separately printed cradle insert (CAD view).
 
-4. Attach the insert with a thin bead of cyanoacrylate along its sole's outer edge,
+3. Attach the insert with a thin bead of cyanoacrylate along its sole's outer edge,
    away from the opening, or double-sided tape. Seat the panel with the adapters
    positioning the insert, fit two screws and let the adhesive set.
-5. **p64b:** complete the [bench test and permanent harness](hardware/encoders-soldered.md).
+4. **p64b:** complete the [bench test and permanent harness](hardware/encoders-soldered.md).
    Fit boards on their pegs, shafts through the back, then washers, nuts and knobs.
    Leave room for push-switch travel. Connect the harness before final panel seating.
-6. Seat the panel with the controller at the **bottom**, ports toward the wedge.
+5. Seat the panel with the controller at the **bottom**, ports toward the wedge.
    Fit all six M3×10 screws from the back.
-7. Connect the supply to **POWER**, on the left viewed from behind. **USB**, on the
+6. Connect the supply to **POWER**, on the left viewed from behind. **USB**, on the
    right, is marked by a groove and remains accessible for programming.
 
 ![Rear port orientation: POWER left, USB right, with a groove beside USB](images/illustrations/rear-ports.svg)

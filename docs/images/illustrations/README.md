@@ -7,7 +7,7 @@ reference renders for clock faces, and diagrams where relationships need explain
 |---|---|
 | Homepage | Nine photos and a playback clip show clocks, artwork, weather, and the finished shell. Link to the clock comparison. |
 | Owner's guide | Clock comparison for choosing a face; Home screenshot for finding controls; diagrams for playsets and streaming. |
-| Build guide | Existing CAD close-ups explain the notch and insert. A port diagram and assembled rear photo establish orientation. |
+| Build guide | A CAD close-up explains the insert. A port diagram and assembled rear photo establish orientation. |
 | Enclosure | Side-by-side rear renders distinguish the variants. The design reference embeds the adapter cutaway. Label CAD views explicitly. |
 | Firmware architecture | A frame-flow diagram introduces the detailed pipeline and task tables. |
 | API and specification | Keep precise contracts and settings in searchable text and tables; the owner and architecture guides supply the visual overview. |
@@ -41,6 +41,7 @@ documents when behavior changes. CAD images come from the
 ## Future photos
 
 Useful additions when the hardware is available: the installed cradle before panel
-seating, a close-up of the completed notch, and p64b's finished harness and knobs.
+seating, a close-up of the fully seated adapters on the unmodified frame, and
+p64b's finished harness and knobs.
 Keep p64b renders labelled until assembly photos exist. New AI-generated product
 photos or decorative artwork are unnecessary for this documentation style.

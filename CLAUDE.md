@@ -351,10 +351,12 @@ through two three-line variant files that include it and set `encoders`:
 files, never the source, so a change is made once and both folders are regenerated. What
 v7 is: two small 90-degree USB-C adapters stay on the controller's ports behind one window
 in the back face, sized by a named tolerance budget (the port position is only known to
-+-1 mm, from a photo; the frame's own wall bounds the downward side), a hand-cut notch in
-the panel frame's back plate, the seating ledge relieved below the ports, and the cradle
++-1 mm, from a photo; the frame's own wall bounds the downward side),
+the seating ledge relieved below the ports, and the cradle
 as a separate small print (`p64_cradle_insert.stl`) glued in on the real adapters at the
-first assembly. Every output folder has the same file names (`p64_enclosure_print.stl`/
+first assembly. The owner confirmed on 2026-10-15 that v7a uses an unmodified panel
+frame with both adapters fully seated; the proposed frame notch is historical, not
+an assembly requirement. Every output folder has the same file names (`p64_enclosure_print.stl`/
 `.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for bureaus, the insert,
 `render_*.png`). The exact `openscad` commands are in `enclosure/design-reference.md`, together with
 the design rationale, the budget, the verified dimensions and the list of things that
