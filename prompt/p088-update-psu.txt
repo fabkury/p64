@@ -1,0 +1,1 @@
+This is a better PSU for p64 than the current link: https://www.waveshare.com/psu-27w-usb-c-c.htm. Please update the link, commit and push.
