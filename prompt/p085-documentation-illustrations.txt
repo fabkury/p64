@@ -1,0 +1,14 @@
+Thanks.
+
+Now let's get to "group of items" 2:
+ 2. Illustration and decoration
+
+I don't love how few pictures of p64 are available in the landing page (README.md). That page should be enticing to the reader, hence have many well-chosen photos.
+
+Besides adding more photos to the README.md, the documentation as a whole needs to be assessed for its illustration and decoration needs. In other words, we need to brainstorm what images could be generated to go where, and then go ahead and generate and add those images.
+
+Please take care of both now:
+ - First add photos to the README.md, commit and push,
+ - Then proceed to the longer task of illustrating and decorating this project's documentation as appropriate and feasible.
+
+Always feel free to ask me questions, but if possible try to ask your questions first and then act, instead of asking questions as you go (but feel free to ask questions as you go if new ideas or things come up).
