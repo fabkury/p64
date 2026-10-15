@@ -14,6 +14,10 @@ acceptance testing remains open. [Project status](docs/status.md)
 **[Build one](docs/build-your-own.md)** · **[Use it](docs/using-p64.md)** ·
 **[Develop it](firmware/README.md)** · **[Documentation](docs/README.md)**
 
+| ![Landscape clock on the finished p64](docs/images/photos/p64-clock.jpg) | ![Analogue clock on p64](docs/images/photos/p64-brick-wall-analogue-clock.jpg) | ![Weather forecast on p64](docs/images/photos/p64-brick-wall-weather.jpg) |
+|---|---|---|
+| A landscape clock | An analogue face | Weather at a glance |
+
 ## What it does
 
 - **Plays pixel art:** GIF, PNG/APNG, WebP and BMP, with transparency and pixel-aware
@@ -34,6 +38,10 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 814 Hz for cameras. Clocks require NTP after each boot. See the
 [owner's guide](docs/using-p64.md) for operating limits.
 
+| ![Synthwave pixel art on p64](docs/images/photos/p64-synthwave.jpg) | ![Jellyfish artwork with the time overlay](docs/images/photos/p64-brick-wall-jellyfish.jpg) | ![Car artwork photographed in low light](docs/images/photos/p64-night-car.jpg) |
+|---|---|---|
+| Colourful pixel art | Artwork with the time overlay | In low light |
+
 ![An animation playing in the shell](docs/images/photos/p64-playing.gif)
 
 [More photos, playback clips and the web UI](docs/gallery.md)
@@ -49,6 +57,10 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.
+
+| ![Side view showing the p64 shell's wedge profile](docs/images/photos/p64-side.jpg) | ![Back of the assembled p64a with vents and two USB-C adapters](docs/images/photos/p64-back.jpg) |
+|---|---|
+| A slim tabletop shell | The assembled p64a, from behind |
 
 ## Build one
 
