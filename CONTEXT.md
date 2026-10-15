@@ -1,9 +1,21 @@
-# p64
+# p64 glossary
 
 p64 is a desktop 64x64 RGB LED matrix that plays pixel art: a Waveshare ESP32-S3 HUB75
 driver board on a P2 64x64 panel in a printed shell. This glossary fixes the words the
-product, its specification, its firmware and its web UI use. The specification is
-`docs/spec/p64-spec.md`; decisions are in `docs/adr/`.
+product, its specification, its firmware and its web UI use. See the [specification](docs/spec/p64-spec.md), [owner's guide](docs/using-p64.md),
+and [decisions](docs/adr/).
+
+
+Contents:
+
+- [Content](#content)
+- [Sources and selection](#sources-and-selection)
+- [Playback](#playback)
+- [Widgets and interludes](#widgets-and-interludes)
+- [Stream](#stream)
+- [Panel and picture](#panel-and-picture)
+- [Device and network](#device-and-network)
+- [Makapix Club](#makapix-club)
 
 ## Language
 

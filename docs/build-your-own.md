@@ -1,147 +1,160 @@
 # Build your own p64
 
-This is the walk-through for building a p64 from the parts list in the
-[README](../README.md). It assumes you can use a 3D printer or a print bureau, a
-screwdriver and a command line. No soldering: the two boards plug together and the
-power lead goes into screw terminals.
+[Home](../README.md) · [Owner's guide](using-p64.md) · [Project status](status.md)
 
-The state of things on 2026-10-09: the firmware is complete for version 1 and runs
-daily on one device, but there is no ready-made firmware image yet, so step 3 compiles it
-from source. The current shell, v7, is printed in both variants and the p64a one is
-assembled and in use; the p64b one waits for its soldered wiring. The shell in the README's
-photos is v7a, except the three marked as history, which show version 1. Both are covered below. p64 comes in two variants: **p64a** without rotary knobs
-(no soldering at all) and **p64b** with two knobs on the back (soldered wiring, see
-`docs/hardware/`); pick one before printing, the shells differ.
+This guide builds **p64a**, with no soldering. You need basic command-line skills, a
+printer or print service, and hand tools. Assembly includes trimming the plastic
+panel frame. **p64b** uses the same firmware and adds soldered encoder wiring;
+its extra parts and steps are marked below.
 
-## 1. Order the parts
+[Parts](#1-parts-and-tools) → [Print](#2-print-the-shell) →
+[Flash](#3-build-and-flash) → [Assemble](#4-assemble) → [First run](#5-first-run)
 
-| Part | Notes |
-|---|---|
-| Waveshare ESP32-S3-RGB-Matrix | The driver board. Ships with the panel power lead (VH4 plug to bare wires), a 4-pin SH1.0 cable, screws and a small speaker that p64 does not use. |
-| Waveshare RGB-Matrix-P2-64x64-B (or the standard RGB-Matrix-P2-64x64) | The 128 x 128 mm panel. The "-B" GOB version has a protective layer over the LEDs; both fit the shell. |
-| A 5 V USB-C power supply, 3 A or more | Waveshare's PSU-27W-USB-C-B or any good phone charger. A laptop's USB port also powers it, but not at full brightness on bright content: full white at brightness 255 draws close to the panel's 15 W. |
-| A USB-C cable | To power the device and, the first time, to flash it from a computer. For the v1 shell it must be a right-angle ("up/down angled") plug; for v7 any cable, plus two small 90-degree USB-C adapters (19.3 x 12.7 x 8 mm aluminium body, hand-measured in `enclosure/input/measurements.md`) and a drop of cyanoacrylate for the insert. |
-| Six M3 x 10 screws | Into the panel's brass inserts. The heads sit 17 mm deep, so a long PH1 or hex driver is needed. |
-| microSD card (optional) | FAT32. For your own files and for the Makapix cache; the device also runs without one. |
+## 1. Parts and tools
+
+This is the main shopping list. Prices are historical Waveshare list prices recorded
+on 2026-09-21, in US dollars, excluding shipping and tax.
+
+| Qty | Part | Notes |
+|---|---|---|
+| 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | Controller, $24.99. Includes the panel power lead (VH4 plug to bare wires). |
+| 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | GOB panel, $31.99. Standard non-GOB P2 64×64 also fits ($28.99 recorded). |
+| 1 | [PSU-27W-USB-C-B](https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775), or a 5 V USB-C supply rated at least 3 A | Recorded price $6.99. Laptop power may be insufficient for bright content. |
+| 2 | Right-angle USB-C male-to-female adapters | Compatible options below. |
+| 1 | USB data cable for the computer; power cable if the supply needs one | A charge-only cable cannot flash firmware. |
+| 6 | M3×10 screws, socket or pan head | **Buy separately.** Heads 6 mm or smaller; no countersunk heads. |
+| 1 each | Printed shell and cradle insert | Files below. |
+| Small amount | Cyanoacrylate or double-sided tape | Attaches the insert. |
+| Optional | microSD card | Recommended for local files and persistent caches. |
+
+Tools: a long PH1 or matching hex driver (the deepest screw heads sit 17 mm inside),
+a tool for trimming the plastic frame, and a computer with Git and ESP-IDF.
+
+The controller, GOB panel and supply totalled $63.97. Printing, adapters, screws,
+cables and shipping are extra. The earlier v1 shell cost $18.83 delivered from JLC3DP;
+that is a historical example, not a quote for v7.
+
+### USB-C adapters
+
+The maintainer bought [this adapter](https://www.amazon.com/dp/B0H3JNGX1D) and confirms
+[this alternative](https://www.amazon.com/dp/B0B2NJ3P3L) also works (2026-10-15).
+Other adapters may fit. The design uses a 19.3×12.7×8.0 mm body and 7.7 mm plug
+protrusion; both adapters must seat together with sockets facing the back window.
+Compare the [measurements and photos](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
+when substituting a different shape. Dry-fit before gluing.
+
+### Additional parts for p64b
+
+| Qty | Part | Purpose |
+|---|---|---|
+| 2 | Adafruit 5880 I2C QT encoder boards | Bridge A0 on board B for address 0x37. |
+| 2 | Adafruit 5528 knobs, or compatible 6 mm-bore knobs | The model uses 20 mm diameter knobs. |
+| 1 each | Adafruit 4209 and 4397 cables | Cross the GPIO pin order to STEMMA QT by function. |
+| 1 | Adafruit 4401, 200 mm JST-SH cable | Connect the boards inside the shell. |
+| 2 | 2.2 kΩ resistors | Pull SDA and SCL up to 3.3 V. |
+| As needed | Insulation, soldering equipment, breadboard and jumper pins | Test and permanent harness options are in the wiring guide. |
+| 1 | 2 mm hex key | Knob set screws. |
+
+Follow the [two-encoder wiring guide](hardware/encoders-soldered.md). The GPIO and
+STEMMA QT pin orders differ: do not connect them with a straight cable. The
+[one-encoder experiment](hardware/encoders-solderless.md) is not the p64a build.
 
 ## 2. Print the shell
 
-Everything is in `enclosure/`; its [README](../enclosure/README.md) explains the design.
-Two versions matter:
+Choose [p64a/v7a](../enclosure/output/p64a/v7a/) or
+[p64b/v7b](../enclosure/output/p64b/v7b/). Print `p64_enclosure_print.stl` (or `.3mf`)
+and `p64_cradle_insert.stl`. The shell is already oriented; print the insert sole down.
+Both shells are printed; p64a is in daily use and p64b awaits soldering and assembly.
 
-- **v7, the current design:** `p64_enclosure_print.stl` (or `.3mf`) plus the small
-  `p64_cradle_insert.stl`, a second print that is glued inside at the first assembly,
-  both from `enclosure/output/p64a/v7a/` (no knobs) or `enclosure/output/p64b/v7b/` (two
-  knobs). Cables plug into two 90-degree USB-C adapters that stay on the board's ports,
-  reached through one window in the back face. It needs a small notch cut by hand in the
-  panel's plastic frame (marked in red in `render_frame_notch.png` next to the STL). v7
-  has not been printed yet; its window has room for the measurement errors the design
-  carries, see the enclosure README.
-- **v1, the proven one:** `enclosure/archive/pre-v7/output/v1/p64_enclosure_print.stl`. Printed by
-  JLC3DP in black PLA for $18.83 including shipping, and verified to fit. The cable is a right-angle USB-C plug pushed up into the port from
-  underneath, laid in a groove to a notch at the back. No knob mounts.
+Use PLA or PETG, 0.2 mm layers, 3–4 perimeters, 20% infill, no supports, and a bed at
+least 140×140 mm. Allow about 82 g plus under 2 g for the insert. Enable 0.1–0.2 mm
+elephant-foot compensation. For MJF/SLA use the larger-clearance
+`p64_enclosure_service.stl`; for FDM use `_print.stl`.
 
-Print settings: the file already lies on its back face, no supports; 0.2 mm layers,
-3 to 4 perimeters, 20 % infill, PLA or PETG, about 80 g; bed at least 140 x 140 mm;
-enable elephant-foot compensation (0.1 to 0.2 mm) so the counterbores stay clean. For a
-bureau printing in MJF or SLA use the `_service.stl` file with its larger clearance; for
-FDM stick to `_print.stl`.
+**Check:** holes are clear, the panel seats without force, and the insert fits around
+the adapters. See the [design reference](../enclosure/design-reference.md) for
+tolerances, or the [legacy v1 notes](../enclosure/archive/pre-v7/build-v1.md) for an older shell.
 
-## 3. Build and flash the firmware
+## 3. Build and flash
 
-The firmware is under `firmware/`, built with ESP-IDF v5.5 (Espressif's SDK) in C++.
+The documented installation builds from source with **ESP-IDF v5.5.4**.
+Windows/PowerShell is the documented hardware workflow; Linux builds run in CI.
+macOS and Linux hardware flashing have not been verified by the maintainer.
 
-1. Install ESP-IDF v5.5.x for the ESP32-S3 target with Espressif's installer (EIM) or
-   the [official instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
-2. Clone this repository.
-3. On Windows, in PowerShell 7, from `firmware/`: edit the paths at the top of
-   `tools/env.ps1` if ESP-IDF is not under `C:\esp\v5.5.4`, then
+1. Install Git, PowerShell 7 (Windows), and ESP-IDF v5.5.4 for ESP32-S3 using
+   [Espressif's instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
+2. Clone and enter the firmware folder:
 
+   ```powershell
+   git clone https://github.com/fabkury/p64.git
+   cd p64/firmware
    ```
+
+3. Connect the computer to **USB**, the port nearer the board's middle. **POWER**
+   cannot carry data. Flash before assembly for easier access to ports and buttons.
+4. On Windows, adjust the three installation paths in [tools/env.ps1](../firmware/tools/env.ps1)
+   (`IDF_PATH`, `IDF_TOOLS_PATH`, `IDF_PYTHON_ENV_PATH`) to your install, then run:
+
+   ```powershell
    .\tools\build.ps1
    .\tools\flash.ps1
+   .\tools\monitor.ps1
    ```
 
-   The scripts load the ESP-IDF environment themselves and find the board's serial port
-   by its USB ID. On Linux or macOS the same project builds with the standard commands
-   after sourcing ESP-IDF's `export.sh`, untested by the author so far:
+   The scripts load ESP-IDF and detect the port. Exit the monitor with Ctrl+].
+   If detection fails, use `.\tools\flash.ps1 -Port COM7`, replacing `COM7` with your
+   port. To enter download mode manually, hold BOOT, tap RESET, then release BOOT.
 
-   ```
+   On Linux/macOS, source ESP-IDF v5.5.4's `export.sh`, then from `firmware/`:
+
+   ```sh
    idf.py set-target esp32s3
    idf.py build
-   idf.py -p /dev/ttyACM0 flash
+   idf.py -p /dev/ttyACM0 flash monitor
    ```
 
-4. Connect the computer to the board's **USB** port (the one nearer the middle of the
-   board; the other, **POWER**, is power only). No button dance is needed; if flashing
-   refuses, hold BOOT, tap RESET, release BOOT.
+   Replace `/dev/ttyACM0` with your port.
 
-You can flash before or after assembly. Flashing later is fine too: the USB port stays
-reachable in the shell.
+**Check:** flashing completes and the monitor shows p64 starting. Disconnect power
+before assembly. For later flashes after OTA, see the [firmware guide](../firmware/README.md).
 
 ## 4. Assemble
 
-1. Plug the driver board onto the panel's **HUB75 IN** header (the panel has two headers,
-   IN and OUT; Waveshare's product photos show which).
-2. Connect the power lead: the VH4 plug into the panel's power socket, the bare wires into
-   the board's 5 V and GND screw terminals, red to 5V.
-3. v7 only: push a 90-degree adapter onto each of the board's USB-C ports, body towards
-   the frame's edge, after cutting the frame notch. At the first assembly, glue the
-   cradle insert to the inside of the back wall while the adapters carry it (the
-   enclosure README's Assembly section has the steps). p64b: fit the two encoder boards
-   on their pegs and nuts before the panel goes in.
-4. Slide the panel into the shell from the front with the board at the **bottom**, so the
-   USB-C ports point at the wedge. It seats on the ledge and the six bosses.
-5. Fit the six M3 x 10 screws from the back.
-6. v1: push the right-angle USB-C plug up into the port from underneath and lay the cable in
-   the groove towards the back notch. v7: plug the cable into the adapter through the back
-   window.
+1. With power disconnected, plug the controller onto **HUB75 IN**. Connect the power
+   lead: VH4 to the panel, red to **5V**, ground to **GND** at the screw terminals.
+2. Cut the plastic notch shown for [p64a](../enclosure/output/p64a/v7a/render_frame_notch.png)
+   or [p64b](../enclosure/output/p64b/v7b/render_frame_notch.png): remove the back-plate
+   strip below the real ports, about 27.4 mm wide, leaving the outer frame wall intact.
+   See the [notch geometry](../enclosure/design-reference.md#usb-c-the-adapters-the-window-and-the-cradle-insert).
+   Keep tools and debris clear of the electronics.
+3. Push both adapters fully onto the ports, bodies toward the frame edge. Dry-fit the
+   panel, adapters and insert. The insert sits between its rails, flat against the
+   inside back wall, around the adapter bodies.
+4. Attach the insert with a thin bead of cyanoacrylate along its sole's outer edge,
+   away from the opening, or double-sided tape. Seat the panel with the adapters
+   positioning the insert, fit two screws and let the adhesive set.
+5. **p64b:** complete the [bench test and permanent harness](hardware/encoders-soldered.md).
+   Fit boards on their pegs, shafts through the back, then washers, nuts and knobs.
+   Leave room for push-switch travel. Connect the harness before final panel seating.
+6. Seat the panel with the controller at the **bottom**, ports toward the wedge.
+   Fit all six M3×10 screws from the back.
+7. Connect the supply to **POWER**, on the left viewed from behind. **USB**, on the
+   right, is marked by a groove and remains accessible for programming.
 
-The firmware rotates the picture 90 degrees by default to match the shell. If you stand
-the panel some other way, change the rotation in Settings, or set it to "auto" and the IMU
-keeps the picture upright.
+**Check:** the panel seats without force, the adapters stay in place when a cable is
+connected, and the device stands securely. Default image rotation is 90° for the shell.
 
 ## 5. First run
 
-1. Power on. A boot animation plays. Once the device is online it plays Makapix Club's
-   Promoted channel, which needs no account; with a card that has files, those play first.
-2. With no Wi-Fi network saved, after about a minute the device opens an open Wi-Fi network
-   called **p64-setup**. Join it from a phone or laptop; a setup page opens by itself (or
-   go to `http://192.168.4.1`). Pick your network from the list, enter the password,
-   optionally give the device a name, and save. The device reboots and joins your network.
-3. Open `http://p64.local` (or `http://p64-<name>.local`) in a browser. If your network
-   does not resolve `.local` names, the device's IP address is in your router's client
-   list.
+1. Optional: with power off, insert a FAT32 card with a test artwork in `p64/animations/`.
+2. Power on. With no working network saved, **p64-setup** appears after about a minute.
+   Join it; open [192.168.4.1](http://192.168.4.1) if the setup page does not appear.
+3. Select a **2.4 GHz** network, enter its password, optionally name the device, and
+   save. Rejoin your normal network after the device reboots.
+4. Open [p64.local](http://p64.local), or `http://p64-<name>.local` for a named device.
+   If `.local` fails, use the IP from your router's client list.
+5. Set your time zone in **Settings → Network**. Choose **Local** for card files or
+   **Promoted** for Makapix without an account. New downloads wait for Wi-Fi and NTP.
 
-From here everything is in the web UI:
-
-- **Your own files:** upload from the Home page, or copy them onto the microSD card under
-  `p64/animations/` and put the card in the slot (the device creates the folders on first
-  use). GIF, PNG, APNG, WebP and BMP up to 256 x 256 pixels and 5 MB.
-- **Makapix Club:** in Settings, the Makapix tab, press Pair. A six-character code shows
-  on the panel; enter it on [makapix.club](https://makapix.club) within 15 minutes. The
-  device then plays the channels you choose, and the site can send artworks to it.
-- **Playsets:** group channels (your folders, Makapix channels, the clock and the other
-  widgets) and choose what plays when.
-- **Widgets:** the clock overlay, the clock faces, the weather (set your location) and
-  the temperature, on the Widgets tab.
-- **Streams:** from a computer with Python and Pillow,
-  `python firmware/tools/stream_send.py p64.local image.gif` sends an image or animation,
-  `... screen` mirrors your screen, `... test --ddp` sends a DDP test pattern. The panel
-  returns to normal playback a few seconds after the stream stops.
-- **Panel:** brightness, the night schedule, rotation, the Quality and Photo modes and the
-  colour gains on the Display tab.
-
-## 6. If something goes wrong
-
-- **Dim or flickering at high brightness on laptop power:** the USB port cannot supply the
-  panel at full white. Use the 27 W supply on the POWER port, or lower the brightness.
-- **Cannot reach `p64.local`:** use the IP address from your router, or check the serial
-  console (`.\tools\monitor.ps1`, or `idf.py monitor`) where the device prints it at boot.
-- **Wrong network saved:** hold BOOT for 10 seconds at power-on. The panel counts down
-  the last 3 seconds and the device resets to factory state, including Wi-Fi.
-- **After a firmware update the device boots the old version:** an update that fails to
-  boot rolls back on its own; the Update page shows both versions and lets you roll back
-  by hand.
-- Anything else: `firmware/docs/api.md` documents the HTTP API, and
-  `http://p64.local/api/v1/status` reports what the device thinks is going on.
+**Check:** artwork appears and Home's next/pause controls respond. Continue with the
+[owner's guide](using-p64.md) and [troubleshooting](using-p64.md#troubleshooting).

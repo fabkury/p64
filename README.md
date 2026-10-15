@@ -1,155 +1,87 @@
 # p64
 
-A small pixel-art display for your desk: 64 x 64 RGB LEDs behind a 3D-printed shell,
-powered over USB-C, controlled from a browser. It plays animated pixel art from a microSD
-card and from [Makapix Club](https://makapix.club), shows a clock, the weather and the room
-temperature, and takes live pixel streams from your computer. Open source, built from two
-off-the-shelf Waveshare boards, no soldering.
+A small pixel-art display for your desk: 64×64 RGB LEDs in a 3D-printed shell,
+powered over USB-C and controlled from a browser. Play animated artwork from a
+microSD card or [Makapix Club](https://makapix.club), show clocks and widgets, or
+stream pixels from your computer. The firmware and enclosure are open source.
 
-![p64 in its printed shell on a desk next to a laptop, playing an artwork with the clock overlay](docs/images/photos/p64-hero.jpg)
+![p64 in its printed shell on a desk next to a laptop](docs/images/photos/p64-hero.jpg)
+
+**Working prototype:** p64a is assembled and in daily use. p64b is printed and awaits
+its soldered wiring. Building currently follows the source-build guide; full
+acceptance testing remains open. [Project status](docs/status.md)
+
+**[Build one](docs/build-your-own.md)** · **[Use it](docs/using-p64.md)** ·
+**[Develop it](firmware/README.md)** · **[Documentation](docs/README.md)**
 
 ## What it does
 
-- **Plays pixel art the way it was drawn.** GIF, PNG/APNG, WebP and BMP, static or animated,
-  with transparency. Small canvases are scaled up by whole numbers so pixels stay square;
-  large ones are scaled down cleanly. Every frame is shown, none skipped.
-- **Looks right.** 11-bit colour per channel at a 264 Hz refresh, gamma 2.2, seamless
-  changes from one artwork to the next: no blank frame, no flicker, no brightness step.
-  A "Photo" mode raises the refresh to 814 Hz for cameras.
-- **Runs on its own.** Put files on a microSD card, or pair it with Makapix Club and it
-  plays channels of community pixel art, refreshing its cache over Wi-Fi. Playsets group
-  channels; a scheduler picks what plays when. Offline, it keeps playing what it has.
-- **Is a clock too.** A time overlay on artworks, nine clock faces (digital, analogue, and seven themed ones: split-flap, nixie tubes, a landscape that follows the real sun, a word clock, an hourglass, an orrery and a seven-segment LED or VFD clock),
-  weather from Open-Meteo, the room temperature from the board's own sensor, and a night
-  schedule that dims or blanks the panel.
-- **Takes a live feed.** Send pixels over UDP with DDP (LedFx, xLights, WLED tooling) or
-  the raw p64 format; a bundled script mirrors any image, animation or a region of your
-  screen to the panel.
-- **Is controlled from a browser.** A mobile-friendly web UI on `http://p64.local`
-  (five colour themes, installable as a web app), a documented HTTP API with WebSocket
-  push, an optional PIN. A tap on the shell skips to the next artwork; the IMU turns the
-  picture upright whichever way you stand it.
-- **Updates itself.** Firmware updates come from GitHub Releases with a verified install
-  and rollback. Nothing is downloaded or installed without you pressing the button.
+- **Plays pixel art:** GIF, PNG/APNG, WebP and BMP, with transparency and pixel-aware
+  scaling. Demanding animations slow down rather than skip frames.
+- **Plays community artwork:** Makapix's Promoted channel needs no account. Pair for
+  more channels, likes and sending artwork from the site. A card keeps cached art
+  available offline; playsets mix channels.
+- **Shows useful information:** clock faces and a time overlay, weather, air quality,
+  UV, and the board's temperature sensor. A night schedule dims or blanks the panel.
+- **Accepts live pixels:** DDP or raw p64 UDP from a computer, including screen capture
+  with the bundled sender.
+- **Offers browser controls:** mobile-friendly UI, live preview, optional PIN and a
+  documented HTTP API. Tap gestures, auto-rotation and optional knobs add local control.
+- **Supports firmware updates over Wi-Fi:** user-initiated installs with checksum
+  verification and rollback.
 
-| ![The digital clock face with the date over a painted landscape](docs/images/photos/p64-clock.jpg) | ![A synthwave sunset artwork](docs/images/photos/p64-synthwave.jpg) | ![The shell seen from the side, a thin wedge](docs/images/photos/p64-side.jpg) |
+Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to about
+814 Hz for cameras. Clocks require NTP after each boot. See the
+[owner's guide](docs/using-p64.md) for operating limits.
+
+![An animation playing in the shell](docs/images/photos/p64-playing.gif)
+
+[More photos, playback clips and the web UI](docs/gallery.md)
+
+## Choose a variant
+
+| | p64a | p64b |
 |---|---|---|
-| A clock face, with the date | An artwork | From the side |
+| Controls | Browser and tap gestures | Same, plus two rotary knobs |
+| Soldering | None | Required for the encoder wiring |
+| Shell | v7a | v7b |
+| Assembly status | In daily use | Printed; soldering and assembly pending |
 
-![A short clip of an animation playing in the shell](docs/images/photos/p64-playing.gif)
-
-![One artwork giving way to the next, with no blank frame in between](docs/images/photos/p64-artwork-change.gif)
-
-The second clip is the change from one artwork to the next: no blank frame, no flicker.
-
-The web UI, on a phone:
-
-| ![Home page](docs/images/web-ui-home.png) | ![Playsets page](docs/images/web-ui-playsets.png) | ![Settings page](docs/images/web-ui-settings.png) |
-|---|---|---|
-| Home: live preview, controls, channels | Playsets: your mixes and the built-ins | Settings: display, widgets, network, Makapix |
-
-More photos:
-
-| ![The back of the shell: vent slots, the USB-C window and the cable with its inline switch](docs/images/photos/p64-back.jpg) | ![The back of the shell held in one hand](docs/images/photos/p64-back-in-hand.jpg) | ![An artwork with the time overlay, next to a laptop](docs/images/photos/p64-mummy-laptop.jpg) |
-|---|---|---|
-| The back: vents and the USB-C window | In the hand | Time overlay on an artwork |
-| ![A red car artwork in a dark room](docs/images/photos/p64-night-car.jpg) | ![A monochrome artwork in a dark room](docs/images/photos/p64-night-monochrome.jpg) | ![Another artwork with the time overlay, next to a laptop](docs/images/photos/p64-yoshi-laptop.jpg) |
-| Lights off | Lights off, monochrome | Next to a laptop |
-| ![The bare panel on the bench, showing its first animation](docs/images/photos/p64-bare-panel-first-light.jpg) | ![The empty v1 shell seen from above](docs/images/photos/p64-shell-v1-empty-top.jpg) | ![The first artwork in the v1 shell](docs/images/photos/p64-first-artwork-in-shell.jpg) |
-| History: first light, before any shell | History: the v1 shell, empty | History: the first artwork in the v1 shell |
-
-The rest are in [`docs/images/photos/`](docs/images/photos/). There is also a 50-second
-concept video of p64b rendered from the enclosure model (the shell as designed, the
-mock-ups, an exploded view with a look inside the shell, the two knobs at work, the panel
-playing animations and the widgets): the pipeline is in
-[`docs/video/`](docs/video/README.md), the MP4 is regenerated with one command and is not
-committed.
-
-## What you need
-
-Three parts from Waveshare plug together, plus a print and a handful of screws. List
-prices on waveshare.com on 2026-09-21, before shipping:
-
-| Part | What it is | Price |
-|---|---|---|
-| [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | The driver board: ESP32-S3 with 32 MB flash and 16 MB PSRAM, Wi-Fi, HUB75 header, two USB-C ports, IMU, real-time clock, temperature sensor, microSD slot. Ships with the power lead and screws. [Wiki](https://docs.waveshare.com/ESP32-S3-RGB-Matrix). | $24.99 |
-| [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | The panel: 4096 RGB LEDs at a 2 mm pitch, 128 x 128 mm, GOB version (a protective layer over the LEDs). The [standard version](https://www.waveshare.com/rgb-matrix-p2-64x64.htm) without the layer is $28.99 and fits the same shell. [Wiki](https://docs.waveshare.com/RGB-Matrix-Px-64x64). | $31.99 |
-| [PSU-27W-USB-C-B](https://www.waveshare.com/psu-27w-usb-c-b.htm?sku=27775) | A 5.1 V USB-C supply; any good 5 V 3 A USB-C supply works. US, EU and UK plugs. | $6.99 |
-| The shell | One support-free 3D print, about 80 g of PLA or PETG on a 140 x 140 mm bed, or a print bureau, plus a 2 g insert. Files in `enclosure/output/p64a/` or `p64b/`. The v1 shell in the photos was printed by JLC3DP in black PLA for $18.83, shipping included. | $18.83 at a bureau, a few dollars of filament at home |
-| Small parts | Six M3 x 10 screws, a USB-C cable; for the current shell version two small 90-degree USB-C adapters. A microSD card is optional. | a few dollars |
-
-About $64 in electronics plus the print, so a little over $80 before the electronics'
-shipping. You also need a computer with a USB-C cable to
-flash the firmware the first time; after that the device updates itself over Wi-Fi.
-
-## Two variants
-
-p64 comes in two variants, both supported for good (decided 2026-09-22):
-
-- **p64a, solder-less:** no rotary encoders. Two boards plug together, the power lead goes
-  into screw terminals, the shell is `enclosure/output/p64a/`.
-- **p64b, with soldering:** two rotary encoder knobs on the back of the shell
-  (`enclosure/output/p64b/`), wired to the board's GPIO socket as in `docs/hardware/`.
-
-The firmware is the same; p64a simply has no knobs to read.
+Both variants use the same firmware and remain supported. The build guide defaults
+to p64a and links the extra p64b steps.
 
 ## Build one
 
-[docs/build-your-own.md](docs/build-your-own.md) is the step-by-step guide. In short:
+You need a Waveshare ESP32-S3-RGB-Matrix controller, a P2 64×64 panel, a suitable USB-C
+supply, the printed shell and insert, two right-angle USB-C adapters, and six M3×10
+screws bought separately. A microSD card is optional. You also need a computer and a
+USB data cable for the first flash.
 
-1. Order the parts above and print `p64_enclosure_print.stl` plus the small
-   `p64_cradle_insert.stl` from `enclosure/output/p64a/v7a/` (no knobs, no soldering) or
-   `enclosure/output/p64b/v7b/` (two knobs, soldered wiring); see the two variants above.
-2. Install ESP-IDF v5.5, build the firmware from `firmware/` and flash it over the
-   board's USB port.
-3. Plug the board onto the panel, connect the power lead, slide the panel into the shell
-   and fit the six screws.
-4. Power it on. It opens a `p64-setup` Wi-Fi network; join it, pick your network in the
-   portal, and open `http://p64.local` in a browser.
+For scale, the three main electronics parts totalled about **US$64** at the recorded
+September 2026 prices. Printing, adapters, screws, shipping and optional p64b parts
+are extra. The [build guide](docs/build-your-own.md#1-parts-and-tools) has the shopping
+list and dated prices.
 
-## Status
+[Follow the build guide →](docs/build-your-own.md)
 
-p64 is a working prototype. One device runs the firmware every day, and every feature in
-[the specification](docs/spec/p64-spec.md) is implemented and checked on it. What is not
-there yet, as of 2026-10-09:
+## Documentation
 
-- **No firmware release yet.** Building one today means compiling from source with
-  ESP-IDF. A first GitHub release with a ready-to-flash image is planned; the updater is
-  already in the firmware and waits for it.
-- **The p64b shell is printed but not assembled.** Both v7 shells are printed
-  (2026-10-09). The p64a shell is assembled and in daily use: it is the device in the
-  photos under `docs/images/photos/2026-10-09/`, fully solder-less. The p64b shell waits
-  for the soldered encoder wiring, which is not done yet. The earlier photos above show
-  the v1 shell, archived under `enclosure/archive/pre-v7/`, which needs a right-angle
-  USB-C cable instead of the adapters.
-- **The two knobs work on the bench, not yet in a shell.** Both are wired to the board's
-  GPIO socket on a breadboard and accepted (2026-10-01): one turns the brightness and
-  pauses, the other steps through the artworks and likes on Makapix Club. The permanent
-  harness is still to come; the wiring projects are in `docs/hardware/`.
-- **Some acceptance measurements** in the specification still need instruments.
-
-## Repository map
-
-| Path | What it is |
+| I want to… | Read |
 |---|---|
-| `firmware/` | The product firmware: ESP-IDF v5.5, C++20, on a patched `esp-hub75` driver. Its README has the build, flash and test commands; `firmware/docs/` has the architecture, the API and the progress log. |
-| `enclosure/` | The OpenSCAD shell (one source, two variant files), with ready-to-print STL/3MF and renders under `enclosure/output/p64a/` and `p64b/`. Its README has the design rationale and the print settings; the earlier versions are under `enclosure/archive/pre-v7/`. |
-| `docs/spec/p64-spec.md`, `CONTEXT.md`, `docs/adr/` | What the device does (the specification), the vocabulary, and the decisions that are hard to reverse. |
-| `docs/build-your-own.md`, `docs/images/` | The build guide, the photos (`photos/`) and the web UI screenshots. |
-| `docs/hardware/` | Wiring projects for the two rotary encoders, with schematics. |
-| `firmware/reference/hardware-tests/` | The test firmware that brought up the board and panel; the technical reference for what the hardware taught (pin map, driver patch, frame pacing, DMA). |
-| `prompt/` | The task prompt of each development session, in order. |
+| Assemble and set up a device | [Build guide](docs/build-your-own.md) |
+| Add artwork, choose widgets or recover a device | [Owner's guide](docs/using-p64.md) |
+| Check readiness and known limits | [Project status](docs/status.md) |
+| Build or change the firmware | [Firmware guide](firmware/README.md) |
+| Print or modify the shell | [Enclosure guide](enclosure/README.md) |
+| Write a client | [HTTP API](firmware/docs/api.md) |
+| Find specifications, decisions and history | [Documentation index](docs/README.md) |
 
 ## About
 
 p64 is a sibling of [p3a](https://github.com/fabkury/p3a), the same author's ESP32-P4
-pixel-art player, and a "player" for [Makapix Club](https://makapix.club), a community
-site for pixel art whose [server](https://github.com/fabkury/makapix) is open source too.
-The firmware, the shell and the documentation were developed with Claude Code, session by
-session; the prompts are committed under `prompt/`, and every hardware finding was
-verified on the device.
+pixel-art player, and a player for [Makapix Club](https://makapix.club).
+Development history includes the [session prompts](prompt/) and
+[hardware test records](firmware/reference/hardware-tests/README.md).
 
-Licensed under the [Apache License 2.0](LICENSE). Bundled fonts are VEXED's Capital Hill,
-Everyday Slight, Standard, Typical and Ample, and High Birth (CC BY 4.0); the LED driver is
-[esp-hub75](https://github.com/esphome/esp-hub75) with a local patch, the GIF decoder is
-bitbank2's AnimatedGIF, and libpng and libwebp decode the rest.
+Project code and documentation use [Apache 2.0](LICENSE). Third-party components and
+assets retain their own licenses; see [credits](docs/credits.md).

@@ -2,16 +2,56 @@
 
 The device's own API (spec section 12, ADR 0002): `http://<hostname>.local/api/v1/...`,
 JSON bodies, p3a's envelope `{"ok":true,"data":...}` / `{"ok":false,"error":"...","code":"..."}`.
-Actions answer at once; the work happens on the main task. No authentication yet (PIN
-comes with M9). `tests/device/api_smoke.py` and `tests/device/content_smoke.py` exercise
-everything below against a live device.
+Authentication is optional. When a PIN is set, protected requests need a session cookie,
+Bearer session token, or `X-P64-Pin` header; see [PIN](#pin). UDP streams are outside
+the PIN gate. See the [testing guide](testing.md) for device checks and their effects.
+
+## Quick start
+
+These examples use PowerShell 7. Replace the hostname if you named your device.
+
+```powershell
+$p64Url = 'http://p64.local'
+Invoke-RestMethod "$p64Url/api/v1/status"
+```
+
+If a PIN is enabled, read it without placing it in command history, then log in:
+
+```powershell
+$p64Pin = Read-Host 'Device PIN' -MaskInput
+$p64Login = @{ pin = $p64Pin } | ConvertTo-Json
+Invoke-RestMethod "$p64Url/api/v1/auth/login" -Method Post -ContentType 'application/json' -Body $p64Login -SessionVariable p64Session
+```
+
+Read or change a setting (omit `-WebSession` when no PIN is set):
+
+```powershell
+Invoke-RestMethod "$p64Url/api/v1/status" -WebSession $p64Session
+Invoke-RestMethod "$p64Url/api/v1/settings" -Method Put -ContentType 'application/json' -Body '{"display":{"brightness":64}}' -WebSession $p64Session
+```
+
+Successful JSON responses wrap the result in `data`. Errors carry `ok: false`,
+`error`, and `code`; for example, 401 `UNAUTHORIZED` means authentication is required.
+PowerShell throws on HTTP errors; inspect the response body for the device's error code.
+An accepted action can finish later: watch status or WebSocket updates for its outcome.
+Some routes, such as likes, wait for network work; see each route's description.
+
+File paths are relative to the configured p64 storage root: `animations/demo.gif`
+means `p64/animations/demo.gif` on a card using the default root. URL-encode query values.
+PNG, raw-frame and log responses are not JSON envelopes.
+
+Jump to [status](#status-and-settings), [show](#show), [playsets](#playsets),
+[Makapix](#makapix-club), [widgets](#widgets), [updates](#updates), [PIN](#pin),
+[operations](#operations), [streams](#streams), [files](#files),
+[network](#network-and-time), or [diagnostics](#diagnostics).
 
 ## Web UI
 
 `/` (Home), `/playsets`, `/settings` (tabs by `#display`, `#widgets`, `#stream`,
-`#network`, `#storage`, `#makapix`, `#system`), `/update`, `/static/common.css`,
+`#network`, `#inputs`, `#storage`, `#makapix`, `#system`), `/update`, `/static/common.css`,
 `/static/theme.js`, `/static/app.js`, `/manifest.json`, `/static/icon-192.png`,
-`/static/icon-512.png`, `/favicon.png`: embedded in the image, open (no PIN), served
+`/static/icon-512.png`, `/favicon.png`: embedded in the image. Static pages load without a PIN; protected API calls
+require authentication when a PIN is set. Static assets are served
 with an `ETag` of the firmware version (`If-None-Match` answers 304).
 
 ## Status and settings
@@ -49,7 +89,7 @@ pairing, the card, the files). The Home page refetches `/api/v1/channels` on the
 and at most every 2 s, `/api/v1/playsets` on the second; the Playsets page reloads on the
 second.
 
-## Show (M5)
+## Show
 
 | Route | Method | Body | What |
 |---|---|---|---|
@@ -83,7 +123,7 @@ id>` (the `provider` and `post_id` of the status document's artwork), answering 
 not swapped out from under the reader. A card file shows its name without the extension
 as the title.
 
-## Playsets (M5)
+## Playsets
 
 | Route | Method | What |
 |---|---|---|
@@ -109,7 +149,7 @@ Settings page links to it). Makapix Club
 is listed as `makapix` with no offered channels (its channels are kinds of their own);
 the public firmware lists nothing else.
 
-## Makapix Club (M6)
+## Makapix Club
 
 | Route | Method | Body | What |
 |---|---|---|---|
@@ -152,7 +192,7 @@ A minimum above the maximum (after snapping) is refused with 400 `INVALID_SETTIN
 malformed JSON stays 400 `INVALID_JSON`. Play-this and the site's commands are not
 limited by them (only by the 256x256 canvas).
 
-## Widgets (M7)
+## Widgets
 
 The status document carries `sensor {valid, temperature_c, humidity, trend_c_per_hour}`
 and `weather {valid, error, age_s, temperature, units, humidity, code, condition, is_day,
@@ -175,7 +215,7 @@ refresh_minutes), `air` (index: `us` or `european`) and `temperature`
 border_opacity 1..255) and `widgets` (widget: `clock`, `weather`, `temperature` or `air`,
 interlude_minutes {clock, weather, temperature, air}: the median gap in minutes between
 interludes of that kind, 0 = never, else 5..1440; ADR 0014; interlude_random_clock_face:
-every clock interlude draws one of the nine faces at random, never the previous one
+every clock interlude draws one of the available faces at random, never the previous one
 again). With the clock on the panel, `playback.widget_face` names the face shown (an
 interlude's random face, else the setting's), and history items of kind `interlude`
 carry `face` when one was drawn. `GET /api/v1/fonts` lists the bundled fonts in table order, the
@@ -184,7 +224,7 @@ first being the default: `[{name, label, size, overlay}]`; `name` is the value o
 other name, or an unknown one, draws the default). History items of kind
 `interlude` carry `widget`.
 
-## Updates (M9, spec 15.2)
+## Updates
 
 | Route | Method | What |
 |---|---|---|
@@ -201,7 +241,7 @@ boot; a crash before that rolls back automatically. Releases: tag `v<MAJOR.MINOR
 at the repository in `P64_OTA_GITHUB_REPO` with the assets `tools/release_assets.py`
 produces (`p64-firmware.bin` and `p64-firmware.bin.sha256`).
 
-## PIN (M9, spec 10.3)
+## PIN
 
 | Route | Method | What |
 |---|---|---|
@@ -219,7 +259,7 @@ PIN itself in an `X-P64-Pin` header (for scripts; counted like a login attempt).
 UDP streams. Sessions live in RAM (up to 8; a reboot signs every browser out); the PIN is
 stored as a salted SHA-256 in NVS and erased by the factory reset.
 
-## Operations (M9)
+## Operations
 
 The status document carries `time {synced, source ("ntp" once an NTP server answered in
 this boot, else "none"), local (while synced), last_sync_s (seconds since the last
@@ -256,7 +296,7 @@ single tap is "next", a double tap "previous", with a 1 s lockout. Auto-rotation
 calibration (above); the direction the picture turns with the gravity angle is the Kconfig
 `P64_IMU_ROTATION_SIGN` (see PROGRESS: unverified until the panel is turned by hand).
 
-## Streams (M8)
+## Streams
 
 No HTTP routes: pixels arrive over UDP (spec 8, ADR 0007). The status document carries
 `stream {active, protocol, width, height, frames, incomplete, rejected, lost, datagrams,
@@ -307,11 +347,11 @@ has up. With takeover off, frames are counted but ignored outside the Stream sta
 the Stream state a waiting screen (hostname, IP, ports) shows between streams. Streams
 never enter history and the clock overlay is not drawn over them.
 
-## Files (M4)
+## Files
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/files?path=<rel>` | GET | list a folder (relative to the card root) |
+| `/api/v1/files?path=<rel>` | GET | list a folder (relative to the configured p64 storage root) |
 | `/api/v1/files?path=<rel>` | POST | upload the raw body as that file (sniffed and trial-decoded first; 5 MB cap) |
 | `/api/v1/files/get?path=<rel>` | GET | download a file |
 | `/api/v1/files?path=<rel>` | DELETE | delete a file or empty folder (the p64 folders are protected) |
@@ -321,7 +361,7 @@ never enter history and the clock overlay is not drawn over them.
 
 Changes under `animations/` make the show rescan its local channels (2 s debounce).
 
-## Network and time (M3/M4)
+## Network and time
 
 | Route | Method | What |
 |---|---|---|
@@ -330,7 +370,7 @@ Changes under `animations/` make the show rescan its local channels (2 s debounc
 | `/api/v1/wifi/erase` | POST | forget the network, restart in setup mode |
 | `/api/v1/timezones` | GET | the IANA zone names the device knows |
 
-## Diagnostics (M4)
+## Diagnostics
 
 | Route | Method | What |
 |---|---|---|

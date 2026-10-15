@@ -1,7 +1,9 @@
 # p64 product specification
 
-Version 1.0, 2026-09-19. Source of truth for what the p64 device does. Words are used as
-defined in `CONTEXT.md`; hard-to-reverse choices and their reasons are in `docs/adr/`.
+Version 1 specification, maintained with the firmware. Source of truth for product
+behavior and limits; implementation and acceptance status are tracked separately in
+[project status](../status.md). Words are defined in the [glossary](../../CONTEXT.md);
+hard-to-reverse choices and their reasons are in the [ADRs](../adr/).
 This document says what the device does and what its limits are; how the firmware is
 built to do it is the architecture's job and is not written here.
 
@@ -12,16 +14,41 @@ Sources referred to as "p3a" are the user's ESP32-P4 player firmware (v1.2.3, cl
 `firmware/reference/p3a`); "the server" is Makapix Club (cloned at
 `firmware/reference/makapix`); "the hardware tests" are `firmware/reference/hardware-tests/`.
 
+
+Contents:
+
+- [1. Product](#1-product)
+- [2. Hardware](#2-hardware)
+- [3. Panel and picture](#3-panel-and-picture)
+- [4. Artworks and playback](#4-artworks-and-playback)
+- [5. Content model](#5-content-model)
+- [6. States](#6-states)
+- [7. Widgets](#7-widgets)
+- [8. Streams](#8-streams)
+- [9. Inputs](#9-inputs)
+- [10. Network](#10-network)
+- [11. Web UI](#11-web-ui)
+- [12. HTTP API](#12-http-api)
+- [13. Makapix Club](#13-makapix-club)
+- [14. Storage](#14-storage)
+- [15. Operations](#15-operations)
+- [16. Settings reference](#16-settings-reference)
+- [17. Limits reference](#17-limits-reference)
+- [18. Acceptance criteria](#18-acceptance-criteria)
+- [19. Non-goals and deferred items](#19-non-goals-and-deferred-items)
+- [20. Risks and open technical questions](#20-risks-and-open-technical-questions)
+- [21. References](#21-references)
+
 ## 1. Product
 
 p64 is a self-contained desktop pixel-art player: a 64x64 RGB LED panel in a printed
 shell, powered over USB-C, controlled from a browser on the same Wi-Fi network and from
 Makapix Club. It plays animated and static pixel art from the owner's microSD card and
-from Makapix Club channels, shows a clock, the weather and the room temperature as
+from Makapix Club channels, shows clocks, weather, air quality, UV and room temperature as
 widgets, and accepts pixel streams from the network.
 
 Posture: a public, open-source, do-it-yourself product (Apache-2.0), the same as p3a:
-`main` is production, devices update over the air from GitHub Releases, and every feature
+devices support updates over the air from GitHub Releases, and every feature
 must work for a stranger who assembled the device from the parts list. English only.
 
 Principles, in priority order:
@@ -41,7 +68,7 @@ Principles, in priority order:
 | Driver board | Waveshare ESP32-S3-RGB-Matrix: ESP32-S3-WROOM-2-N32R16V, 32 MB octal flash, 16 MB octal PSRAM, HUB75 header, two USB-C (POWER, USB), BOOT button, IMU (6-axis), RTC, temperature/humidity sensor, audio codec with two microphones, speaker output, TF slot. Native USB Serial/JTAG on the USB port. | Panel, BOOT, IMU, temperature/humidity sensor, TF slot, USB console (the RTC has no battery and is not used, ADR 0011) |
 | Panel | Waveshare RGB-Matrix-P2-64x64: 4096 RGB LEDs, 2 mm pitch, 1/32 scan, HUB75E, 5 V, 15 W max, 128x128 mm. | Yes |
 | Power | Waveshare PSU-27W-USB-C-B on the POWER port; the USB port takes a computer for console and flashing. Full white at brightness 255 draws close to the panel's 15 W; a USB-only rig cannot supply that (see brightness ceiling). | Yes |
-| Shell | `enclosure/` v4: panel turned 90 degrees clockwise, two rotary encoders on the back planned, panel-mount USB-C sockets. | Rotation default 90; encoders reserved |
+| Shell | [v7 enclosure](../../enclosure/README.md): panel turned 90 degrees clockwise from the front; two right-angle USB-C adapters and a cradle insert. p64a has no knobs; p64b has two Adafruit 5880 encoders. | Rotation default 90; shared firmware for both variants |
 | Not used in v1 | Audio codec, speaker, microphones, Bluetooth. | Extension points only |
 
 Firmware platform: ESP-IDF v5.5, C++, the vendored and patched `esp-hub75` driver from
@@ -53,7 +80,7 @@ one configuration property read everywhere, never literal numbers.
 
 ### 3.1 Panel modes
 
-| Mode | Bit planes | Refresh (measured at 20 MHz pixel clock, 2026-09-20) | Codes per channel | Light at full white | Use |
+| Mode | Bit planes | Refresh (driver timing at 20 MHz; Quality updated 2026-10-02) | Codes per channel | Light at full white | Use |
 |---|---|---|---|---|---|
 | Quality (default) | 11 | 263.9 Hz (transition bit 5, 37 transmissions per row; low windows 1 2 4 8 16 31 clocks) | 2048 (243 distinct after the gamma 2.2 fit, 51 in the darkest quarter) | 100 % (1984 of 2368 pixel clocks per frame lit) | Normal viewing: dark tones keep their steps |
 | Photo | 8 | 813.8 Hz (transition bit 4, 12 transmissions per row) | 256 | about 76 % of Quality (491 of 768 clocks lit, at three times the rate) | Being photographed or filmed: no rolling-shutter banding |
@@ -210,7 +237,7 @@ small note in the web UI's artwork info.
 
 Decoding is live (frame by frame from the file) for every artwork; the device does not
 cache decoded frames. The first milestone of the firmware is a decode benchmark of every
-format at 64x64, 128x128 and 256x256 on the device, recorded in `firmware/README.md`; the
+format at 64x64, 128x128 and 256x256 on the device, recorded in [benchmarks](../../firmware/docs/benchmarks.md); the
 guaranteed envelope above must hold on that benchmark's worst case.
 
 ### 4.5 Auto-swap and swaps
@@ -379,7 +406,7 @@ Plays the active playset as in section 4, with:
   previous never trigger an interlude; next during an interlude ends it;
   `action/interlude` plays a widget as an interlude now. Until 2026-09-28 the setting
   was a per-swap percentage, default 0. Random clock face (off by default; p057,
-  2026-09-28): every clock interlude, rolled or asked for, draws one of the nine faces
+  2026-09-28): every clock interlude, rolled or asked for, draws one of the available faces
   at random, never the previous interlude's face twice running, with the configured LED
   style; the Clock widget keeps its configured face; a revisit through history shows
   the face the interlude had.
@@ -603,9 +630,11 @@ diagnostics.
 - IMU: a single firm tap on the shell is next; a double tap is previous; a sensitivity
   setting (1 to 10) and a 1 s lockout; tap gestures can be disabled. Auto-rotation as in
   3.4.
-- Rotary encoders: reserved. The firmware exposes an input abstraction so the two
-  encoders planned for the shell plug in without touching the states; their roles are
-  decided when the shell exists.
+- Rotary encoders (p64b): knob A (0x36) adjusts brightness by 7 per detent and presses
+  to pause/resume; knob B (0x37) turns to next/previous and presses to like the current
+  Makapix artwork when paired. Long press is unassigned. Settings can disable the
+  actions, swap roles, or reverse the direction. Wiring and bench evidence are in the
+  [encoder guide](../hardware/encoders-soldered.md).
 - Everything else is the web UI, the API and Makapix commands.
 
 ## 10. Network
@@ -681,6 +710,7 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
   - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
     server with the NTP status, PIN, erase Wi-Fi and restart in setup mode.
+  - Inputs: tap gestures and sensitivity, encoder enable, role swap, direction and detected boards.
   - Storage: card status and space, the Makapix cache size and last sweep, root folder,
     the file manager (browse folders, upload,
     create folder, rename, delete, play now), explicit format with confirmation.
@@ -852,6 +882,7 @@ All persisted unless noted. Ranges are inclusive.
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
 | Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; on, 4064 |
 | Inputs | tap gestures; sensitivity | on/off; 1 to 10 | on; 5 |
+| Inputs | encoders enabled; swap roles; invert direction | on/off each | on; off; off |
 | Network | Wi-Fi SSID, password | strings (NVS, separate) | unset |
 | Network | device name | up to 16 chars `[a-z0-9-]`, no edge hyphen | empty |
 | Network | time zone; NTP server | IANA name; host | UTC; pool.ntp.org |
@@ -884,8 +915,8 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | Device name | 16 characters |
 | PIN | 4 to 8 digits |
 | Downloads folder | capped by setting, default 64 MB |
-| Fonts bundled | 6 (5 offered for the clock overlay) |
-| Clock faces | 9 (digital, analogue and seven themed; the LED in five styles) |
+| Fonts bundled | 7 (5 offered for the clock overlay); enumerate with `/api/v1/fonts` |
+| Clock faces | 13 (digital, analogue and eleven themed; the LED in five styles) |
 
 ## 18. Acceptance criteria
 
@@ -936,22 +967,22 @@ Art-Net/E1.31; Giphy, Klipy and museum sources; multi-device synchronisation;
 per-artwork dwell from Makapix metadata; audio, microphones, Bluetooth; multiple saved
 networks; static IP; HTTPS on the device; multi-panel geometry; exFAT.
 
-Planned for v1.x: URL list channels; pinned lists; encoder roles;
+Planned for v1.x: URL list channels; pinned lists;
 a temperature line on the clock face; screen-saver style blanking when idle beyond the
 night schedule.
 
 ## 20. Risks and open technical questions
 
-1. Decode throughput on the ESP32-S3 for 128x128 WebP and APNG at 60 fps is unmeasured;
-   the first milestone measures it. The no-drop rule bounds the damage to slow motion.
-2. Internal RAM: the 10-plane panel buffers, the persistent mutual-TLS MQTT session and a
-   concurrent download session must coexist; the hardware tests ran out with two TLS
-   sessions and 8-bit buffers. Mitigations: TLS buffers in PSRAM (throughput cost
-   accepted), one download at a time, dynamic TLS buffers.
+1. The [decode benchmark](../../firmware/docs/benchmarks.md) measured 35 to 45 fps for
+   its 128x128 animated samples. A 60 fps file may play slowly under the no-drop rule;
+   results depend on the file and concurrent work (acceptance criterion 4).
+2. Internal RAM remains constrained by the 11-plane display and network tasks.
+   [Resource budgets](../../firmware/budgets.json) set the checked floors; the
+   [architecture](../../firmware/docs/architecture.md) records allocation and TLS rules.
 3. IMU tap detection through a printed shell on a desk may be unreliable; sensitivity
    setting and lockout are the knobs; the feature can be disabled.
 4. The photo-mode refresh figure (813.8 Hz) comes from the driver's timing, not from a
-   camera; the acceptance threshold is 600 Hz. Photo mode gives about 74 % of Quality's
+   camera; the acceptance threshold is 600 Hz. Photo mode gives about 76 % of Quality's
    light (3.1).
 5. The server plans daily caps on its anonymous endpoints; the Promoted channel without
    pairing depends on them staying generous.

@@ -6,7 +6,8 @@ firmware's own assets: the panel plays four animations from the host-test GIF co
 clock and weather faces are drawn with the firmware's bundled pixel fonts and weather
 icons, and a plasma stands in for a live stream. Made on 2026-09-24 for the public: what
 p64 is, what is inside it, and what it does. The device on screen is the model, not a
-photo: nothing of v7 has been printed yet (see `enclosure/README.md`).
+photo. Both v7 shells have since been printed; p64a is assembled and p64b awaits
+soldering. See [current status](../status.md).
 
 The video itself (`docs/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent; `-audio.mp4`
 with the music bed) is

@@ -1,4 +1,9 @@
-# Solderless option: one rotary encoder, no soldering
+# One-encoder experiment (historical)
+
+This is a development reference, not the standard p64a build. Its alternative
+boards and in-shell options are proposals, not verified builds. For current assembly
+use the [build guide](../build-your-own.md) or [two-encoder guide](encoders-soldered.md).
+The dated notes below retain the original assumptions and parts inventory.
 
 Written 2026-09-21, before anything was built. Both options belong to **p64b**, the variant with encoders; p64a has none. This is the complete project for one
 Adafruit 5880 encoder on the p64, from the parts on the table to a working knob inside
@@ -271,7 +276,7 @@ already there).
   loop handles them exactly as it handles `/api/v1/action/next`, `previous` and `pause`.
 - Settings: `encoders.enabled`, `encoders.invert` (swap the turn direction).
 - Docs: `firmware/docs/architecture.md`, `api.md`, `PROGRESS.md`; the wiring and the
-  bench numbers into `firmware/reference/hardware-tests/README.md` (board facts) and `enclosure/README.md`.
+  bench numbers into `firmware/reference/hardware-tests/README.md` (board facts) and [enclosure design reference](../../enclosure/design-reference.md).
 
 ## 7. In-shell assembly, solderless
 
@@ -353,7 +358,7 @@ sits under the knob and is simply left off. The appendix has its wiring and firm
    USB-C adapters, and keep it off the encoder board's solder side.
 8. Connect the harness to the GPIO socket while the panel is still outside the shell,
    then slide the panel in (controller at the bottom) and fit the six M3 x 10 screws, as
-   in `enclosure/README.md`, "Assembly". The pin stubs under the board reach 3.0 mm into
+   in [enclosure design reference](../../enclosure/design-reference.md), "Assembly". The pin stubs under the board reach 3.0 mm into
    the 4.1 mm left to the panel frame, so the panel seats clear of them.
 9. Run `encoders_smoke.py` once more with the shell closed.
 
@@ -418,5 +423,5 @@ breadboard, and the harness of section 7.1 is the whole wiring.
 - Adafruit 5528 knob (6 mm bore, 2 mm hex set screw): https://www.adafruit.com/product/5528
 - ESP32-S3 datasheet, VIH min 0.75 VDD; strapping pins IO45/IO46.
 - Shell numbers: `enclosure/src/p64_enclosure_v7.scad` (rendered as
-  `src/p64_enclosure_v7b.scad`) and `enclosure/README.md` ("Encoders (p64b only)" and
+  `src/p64_enclosure_v7b.scad`) and [enclosure design reference](../../enclosure/design-reference.md) ("Encoders (p64b only)" and
   "Assembly").

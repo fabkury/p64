@@ -11,8 +11,9 @@ folders of work live here, each with its own README that is the detailed referen
 - `firmware/`: the p64 product firmware, started from zero on 2026-09-19. Its behaviour is
   fixed by the product specification `docs/spec/p64-spec.md` (settled with the user on
   2026-09-19, settings and limits tables included) and the decisions in `docs/adr/`; the
-  vocabulary is `CONTEXT.md`. Its design is `firmware/docs/architecture.md`, its state of
-  progress `firmware/docs/PROGRESS.md` (read that first when resuming), its API
+  vocabulary is `CONTEXT.md`. Its design is `firmware/docs/architecture.md`, its current
+  status `docs/status.md` (read first when resuming), its historical evidence
+  `firmware/docs/PROGRESS.md`, its API
   `firmware/docs/api.md`. The "Firmware" section below has the commands. Do not carry
   code or patterns over from the hardware tests on your own initiative.
 - `firmware/reference/hardware-tests/`: the former `firmware/` (renamed on 2026-09-19,
@@ -33,13 +34,15 @@ folders of work live here, each with its own README that is the detailed referen
 - `docs/hardware/`: wiring projects for the two rotary encoders of p64b
   (`encoders-solderless.md`, `encoders-soldered.md`, schematics drawn by
   `tools/draw_encoders.py` with schemdraw),
-  written 2026-09-21 before any encoder was wired; the bench records in them are blank
-  until measured.
+  the two-encoder guide is current; the one-encoder guide is historical. Dated bench
+  measurements and purchasing history are in `docs/hardware/encoder-history.md`.
 
-The repository README is written for newcomers (what p64 is, photos under `docs/images/photos/`,
-the parts list with dated Waveshare prices, an honest status) and `docs/build-your-own.md`
-is the step-by-step build guide; keep both truthful when the status changes (first
-release, v7 printed, encoders wired).
+The repository README is the homepage: a brief introduction, readiness summary and
+links to build, use and development. `docs/README.md` maps the documentation and its
+maintenance rules. `docs/build-your-own.md` owns the parts list and assembly (p64a by
+default, p64b additions linked); `docs/using-p64.md` covers operation; `docs/status.md`
+tracks implementation, evidence, assembly and release readiness separately. Preserve
+history in the logs; do not copy stale milestone qualifications into current guides.
 
 p64 has two variants, supported for good (decided 2026-09-22): **p64a**, solder-less,
 without rotary encoders; **p64b**, with soldering, with the two rotary encoders. The
@@ -52,7 +55,7 @@ Also: `firmware/reference/` is git-ignored upstream clones (the one tracked exce
 `p3a/` (the user's production ESP32-P4 pixel-art player, github.com/fabkury/p3a, the
 reference for module boundaries, web UI and Makapix client) and `makapix/` (the Makapix
 Club server, github.com/fabkury/makapix, the device contract in its `docs/player/` and
-`docs/mqtt-api/`); re-clone commands are in `firmware/README.md`. `firmware/private/` is
+`docs/mqtt-api/`); re-clone commands are in `firmware/docs/extensions-and-references.md`. `firmware/private/` is
 the **private area** (ADR 0012, since 2026-09-24): a separate, unpublished repository,
 github.com/fabkury/p64-private, mounted there and git-ignored here (a local pre-commit
 hook refuses its paths); the user's own components, first a private source of channels.
@@ -85,7 +88,7 @@ the development device is paired as player 7e983c9a...), the widgets (bundled
 fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 `tools/gen_weather_icons.py`, SHTC3 temperature, interludes, main states) and the
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
-`tools/stream_send.py` sends). M9 is in progress: reliability (reset counters, core dump
+`tools/stream_send.py` sends). M9 delivered reliability (reset counters, core dump
 summary, deferred image confirmation), night schedule, factory reset (API and BOOT
 hold), the IMU (taps, auto-rotation with an upright calibration), the PIN (route
 gate, sessions, lockout) and OTA (GitHub releases, SHA256-verified install, rollback)
@@ -104,7 +107,7 @@ the face starts, `picture.cpp`; the raw pictures and every paid call are in `fir
 `station`: baked dials, hands and markers drawn in integers by `dial.cpp`); `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
 `tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
-need instruments, long soaks, the hands-on checks;
+need instruments, long soaks, the hands-on checks; see `docs/status.md`;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
 
@@ -353,9 +356,10 @@ the panel frame's back plate, the seating ledge relieved below the ports, and th
 as a separate small print (`p64_cradle_insert.stl`) glued in on the real adapters at the
 first assembly. Every output folder has the same file names (`p64_enclosure_print.stl`/
 `.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for bureaus, the insert,
-`render_*.png`). The exact `openscad` commands are in `enclosure/README.md`, together with
+`render_*.png`). The exact `openscad` commands are in `enclosure/design-reference.md`, together with
 the design rationale, the budget, the verified dimensions and the list of things that
-could not be verified. Versions v1 to v6 (v1 is the only printed one, the fit evidence)
+could not be verified. Both v7 variants are printed; v7a is assembled and in daily
+use, and v7b awaits soldering. Versions v1 to v6 (including the original v1 fit evidence)
 live in `enclosure/archive/pre-v7/` with their own README; do not bring their features
 back without asking. Rules that have held across versions: every wall or rib 2 mm or
 thicker (the insert's glued 1.2 mm sole and bottom wall are the named exceptions; 1.2 is also JLC3DP's thin-wall line); check any

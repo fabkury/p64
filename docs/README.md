@@ -1,0 +1,58 @@
+# p64 documentation
+
+The [repository README](../README.md) is p64's homepage.
+
+| Audience | Start here | Details |
+|---|---|---|
+| Prospective builder | [Build guide](build-your-own.md) | Parts, printing, assembly, first setup |
+| Owner | [Using p64](using-p64.md) | Artwork, playsets, widgets, controls, recovery |
+| Contributor | [Firmware guide](../firmware/README.md) | [Testing](../firmware/docs/testing.md), [architecture](../firmware/docs/architecture.md) |
+| Client developer | [API](../firmware/docs/api.md) | Authentication, routes, WebSocket and UDP |
+| Enclosure designer | [Enclosure guide](../enclosure/README.md) | [Geometry and evidence](../enclosure/design-reference.md) |
+
+## Product references
+
+- [Status](status.md): assembly, implementation, release readiness and outstanding checks.
+- [Specification](spec/p64-spec.md): behavior, settings, limits and acceptance criteria.
+- [Glossary](../CONTEXT.md): shared terminology.
+- [Architecture decisions](adr/): reasons for consequential choices.
+- [Encoder wiring](hardware/encoders-soldered.md): p64b's two-knob build.
+- [Credits](credits.md): licenses and asset sources.
+- [Gallery](gallery.md): existing photos, clips and UI screenshots.
+
+## History and research
+
+These records describe dated work, not necessarily current instructions:
+
+- [Firmware log](../firmware/docs/PROGRESS.md) and [decode benchmark](../firmware/docs/benchmarks.md).
+- [Hardware bring-up](../firmware/reference/hardware-tests/README.md) and
+  [September architecture review](review-2026-09/README.md).
+- [Earlier enclosures](../enclosure/archive/pre-v7/README.md),
+  [one-encoder experiment](hardware/encoders-solderless.md), and
+  [encoder development record](hardware/encoder-history.md).
+- [Widget research](../firmware/docs/widget-research/README.md),
+  [clock design studies](../firmware/docs/design/clock-candidates/README.md),
+  [video pipeline](video/README.md), [outreach log](outreach.md), and [session prompts](../prompt/).
+
+## Maintaining the docs
+
+Keep each fact in one main place. Other pages should summarize it and link here:
+
+| Fact | Main document |
+|---|---|
+| Shopping list and assembly procedure | Build guide |
+| Everyday operation and recovery | Owner's guide |
+| Implemented, tested, assembled or released | Status, linked to dated evidence |
+| Product behavior, defaults and limits | Specification |
+| Interface contract | API reference |
+| Module ownership and runtime rules | Architecture |
+| Dimensions, assumptions and measurements | Enclosure design reference and measurement records |
+
+When behavior changes, update the specification and affected user/API instructions in
+the same change. Add an ADR when reversing an architectural decision. Preserve dated
+results as history; update status when evidence closes an outstanding check. Keep
+homepage summaries brief and use relative links so they work on GitHub.
+
+Before finishing, check local links and headings, commands and working directories,
+settings against the implementation, and the path from the homepage to first artwork.
+Review historical prices as dated examples rather than current quotes.

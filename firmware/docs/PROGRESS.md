@@ -1,19 +1,13 @@
-# p64 firmware: progress log
+# p64 firmware: engineering history
 
-Read this first when resuming. Newest entry at the bottom of "Log"; the milestone table
-shows where things stand. Spec: `docs/spec/p64-spec.md`. Design: `architecture.md`.
+For current readiness and outstanding acceptance checks, read [project status](../../docs/status.md).
+For setup and commands, read the [developer guide](../README.md).
 
-## How to resume
+The table and log below preserve dated development evidence. Pending items and
+measurements in older entries describe that point in time; later entries may supersede
+them. Newest entries are at the bottom of [Log](#log).
 
-1. Read `architecture.md` and the milestone table below.
-2. Build and flash from `firmware/` in PowerShell 7: `.\tools\build.ps1`,
-   `.\tools\flash.ps1`, `.\tools\monitor.ps1` (or `tools\serial_peek.py` for a
-   non-interactive read of the console; the board is COM13 on this laptop).
-3. Check the device: `http://p64.local/api/v1/status` once the web layer exists; the
-   hardware-tests firmware answered `/status` and `/debug` before that.
-4. Continue with the first unchecked item of the current milestone. Commit per step.
-
-## Milestones
+## Original milestone record
 
 | # | Milestone | Status | Verified on device |
 |---|---|---|---|
