@@ -1,0 +1,3 @@
+I am ready to proceed with p64b (v7b), the with-knobs version of p64.
+
+Please guide me on where does p64b stand, and what are the next steps towards finalizing it.
