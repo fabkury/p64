@@ -53,7 +53,7 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 | Controls | Browser and tap gestures | Same, plus two rotary knobs |
 | Soldering | None | Required for the encoder wiring |
 | Shell | v7a | v7b |
-| Assembly status | In daily use | Printed; soldering and assembly pending |
+| Assembly status | Assembled 2026-10-09, in daily use | Assembled 2026-10-17, knobs working through the closed shell |
 
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.
