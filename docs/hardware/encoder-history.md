@@ -87,6 +87,11 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
   pin to socket, not spliced (decided 2026-10-01). Then the shell (section 7): the v7b
   print is ordered and awaited (2026-10-01); when it arrives, lay the washer and nut in a
   spot-face before anything else (their diameter is still unmeasured).
+- 2026-10-17, the v7b print, dry fit: both encoder boards were pushed onto their four
+  pegs in the printed shell without trouble; the 2.2 mm FDM pegs fit the 2.5 mm holes as
+  designed, no trimming. Not yet checked: the full assembly with the panel and the
+  driver board in the shell (the pin stubs' 1 mm clearance to the frame, the harness
+  route). The washer and nut diameters are still not written down. Next: tier 2.
 
 
 ## Original bench measurements

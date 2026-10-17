@@ -8,7 +8,7 @@ that day; test results below are existing records, not a new acceptance run.
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a assembled and in daily use; no soldering | Maintainer confirmation, 2026-10-15 |
-| p64b | v7b printed; permanent wiring and assembly await soldering | Both knobs passed the breadboard acceptance on 2026-10-01; [bench record](hardware/encoder-history.md) |
+| p64b | v7b printed, encoder boards fit its pegs (2026-10-17); permanent wiring and assembly await the tier 2 soldering | Both knobs passed the breadboard acceptance on 2026-10-01; [bench record](hardware/encoder-history.md) |
 | Firmware | Core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
 | Installation | The documented installation path builds from source with ESP-IDF v5.5.4 | No first firmware release recorded in the project documentation; check [GitHub Releases](https://github.com/fabkury/p64/releases) for published images |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
