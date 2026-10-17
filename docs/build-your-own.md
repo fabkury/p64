@@ -23,7 +23,7 @@ the full per-build totals with parts, shipping and tax separated.
 | 1 | [PSU-27W-USB-C-C](https://www.waveshare.com/psu-27w-usb-c-c.htm), or a 5 V USB-C supply rated at least 3 A | $6.99. Laptop power may be insufficient for bright content. |
 | 2 | Right-angle USB-C male-to-female adapters | Compatible options below. |
 | 1 | USB data cable for the computer; power cable if the supply needs one | A charge-only cable cannot flash firmware. |
-| 6 | M3×10 screws, socket or pan head | **Buy separately.** Heads 6 mm or smaller; no countersunk heads. |
+| 6 | M3×10 screws, socket or pan head | **Buy separately.** Heads 6 mm or smaller; no countersunk heads. The maintainer's: a 50-pack of button-head hex socket screws, $5.99 on 2026-09-18. |
 | 1 each | Printed shell and cradle insert | Files below. |
 | Small amount | Cyanoacrylate or double-sided tape | Attaches the insert. |
 | Optional | microSD card | Recommended for local files and persistent caches. |
@@ -35,15 +35,14 @@ What one unit cost the maintainer, from the invoices in [build costs](costs.md):
 
 | Build | Parts | Shipping | Tax (New York) | Delivered |
 |---|---:|---:|---:|---:|
-| p64a | $80.26 | $31.84 | $0.44 | $112.54 |
-| p64b | $109.07 | $37.66 | $3.51 | $150.24 |
+| p64a | $86.25 | $31.84 | $0.97 | $119.06 |
+| p64b | $115.06 | $37.66 | $4.04 | $156.76 |
 
 Parts are the controller, panel and supply ($63.97), the JLC3DP shell and insert
-($11.30 for v7a, $11.17 for v7b), the adapters and, for p64b, the encoder parts and the
-resistor pack. Shipping is dominated by the $25.60 Waveshare freight to New York; a
+($11.30 for v7a, $11.17 for v7b), the adapters, the screw pack and, for p64b, the
+encoder parts and the resistor pack. Shipping is dominated by the $25.60 Waveshare freight to New York; a
 single shell printed alone ships for more than the half-order share used here (the v1
-shell cost $18.83 delivered). Screws, glue, a microSD card and the USB cable are not
-counted.
+shell cost $18.83 delivered). Glue, a microSD card and the USB cable are not counted.
 
 ### USB-C adapters
 
