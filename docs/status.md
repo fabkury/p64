@@ -26,6 +26,11 @@ The latest [firmware log](../firmware/docs/PROGRESS.md#log) still leaves these o
 - Remaining v7 dimensional checks in
   the [enclosure reference](../enclosure/design-reference.md#things-that-could-not-be-verified),
   and the encoder washer and nut diameters (they seat in the 14 mm spot-face, unmeasured).
+- Makapix views refused with HTTP 429 are retried at the next swap, one TLS session each
+  when MQTT is down; honour the server's Retry-After and pause the views instead (found
+  by the 2026-10-17 soak, which failed its core 0 budget on that alone: Makapix task 31 %).
+- `soak.py` should print the Makapix state (MQTT, last error, views sent) with its
+  verdict, so a server-side refusal is readable from the report.
 
 These are verification gaps, not a claim that the features fail. Shorter successful
 tests do not close longer acceptance requirements.

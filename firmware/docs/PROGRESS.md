@@ -1275,3 +1275,20 @@ them. Newest entries are at the bottom of [Log](#log).
   power meter), a 12 h and a 24 h soak (`soak.py --minutes 720` when the device can be
   left alone), and the hands-on checks (taps, rotation direction, BOOT hold, the Photo
   mode picture).
+- 2026-10-17, p64b assembled (prompt p090): the two 2.2 k pull-ups soldered on board A
+  (1.76 k each to VIN, 3.52 k SDA to SCL), the breadboard retired, both boards on the v7b
+  print's pegs, the panel seated clear of the pin stubs, six screws. With the shell
+  closed: `encoders_smoke --expect 2` 0 failures twice (90 s and 60 s watches), clicks
+  counted through the caps, 0 read errors, 0 losses, internal heap 49.6 to 64.9 KB free,
+  largest block 32 KB; the encoder poll task costs 7.5 to 7.9 % of core 0 with two
+  boards (20 ms polls at 100 kHz). No firmware change. A 15-minute soak then passed
+  every check but core 0 (50.8 % against the 10 % budget) and a 3-minute repeat with a
+  per-task diff put the Makapix task at 31 %, idle outside the soak: makapix.club was
+  refusing the device (every view event "HTTP 429 Too many failed authentication
+  attempts", the per-IP lockout after 60 rejected bearer tokens in an hour; the MQTT
+  handshake failing every 23 s, esp-tls 0x801a), so with MQTT down each 5 s swap paid a
+  fresh TLS session for a refused view. From the laptop, broker port 8883 presented a
+  certificate for dev.makapix.club issued by the Makapix Dev CA. Decided: re-pair the
+  device (unpair, pair, code T99UWF issued at once, so registration works) and note two
+  follow-ups rather than build them now: honour Retry-After on a refused view, and
+  print the Makapix state in the soak report (`docs/status.md`).
