@@ -12,9 +12,9 @@ its extra parts and steps are marked below.
 
 ## 1. Parts and tools
 
-This is the main shopping list. Prices are in US dollars, excluding shipping and tax.
-Board and panel prices were recorded on 2026-09-21; the maintainer confirmed the
-PSU-C price on 2026-10-15.
+This is the main shopping list. Prices are in US dollars, excluding shipping and tax,
+as paid by the maintainer on the dates in the [build costs](costs.md) page, which has
+the full per-build totals with parts, shipping and tax separated.
 
 | Qty | Part | Notes |
 |---|---|---|
@@ -31,14 +31,25 @@ PSU-C price on 2026-10-15.
 Tools: a long PH1 or matching hex driver (the deepest screw heads sit 17 mm inside),
 and a computer with Git and ESP-IDF.
 
-The controller, GOB panel and PSU-C total $63.97 at these prices. Printing, adapters, screws,
-cables and shipping are extra. The earlier v1 shell cost $18.83 delivered from JLC3DP;
-that is a historical example, not a quote for v7.
+What one unit cost the maintainer, from the invoices in [build costs](costs.md):
+
+| Build | Parts | Shipping | Tax (New York) | Delivered |
+|---|---:|---:|---:|---:|
+| p64a | $80.26 | $31.84 | $0.44 | $112.54 |
+| p64b | $109.07 | $37.66 | $3.51 | $150.24 |
+
+Parts are the controller, panel and supply ($63.97), the JLC3DP shell and insert
+($11.30 for v7a, $11.17 for v7b), the adapters and, for p64b, the encoder parts and the
+resistor pack. Shipping is dominated by the $25.60 Waveshare freight to New York; a
+single shell printed alone ships for more than the half-order share used here (the v1
+shell cost $18.83 delivered). Screws, glue, a microSD card and the USB cable are not
+counted.
 
 ### USB-C adapters
 
-The maintainer bought [this adapter](https://www.amazon.com/dp/B0H3JNGX1D) and confirms
-[this alternative](https://www.amazon.com/dp/B0B2NJ3P3L) also works (2026-10-15).
+The maintainer bought [this 4-pack](https://www.amazon.com/dp/B0H3JNGX1D) ($6.99 on
+2026-10-10) and confirms [this alternative](https://www.amazon.com/dp/B0B2NJ3P3L) also
+works (2026-10-15; $4.99 on 2026-10-17, the better buy for a single p64).
 Other adapters may fit. The design uses a 19.3×12.7×8.0 mm body and 7.7 mm plug
 protrusion; both adapters must seat together with sockets facing the back window.
 Compare the [measurements and photos](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
@@ -48,13 +59,16 @@ when substituting a different shape. Dry-fit before gluing.
 
 | Qty | Part | Purpose |
 |---|---|---|
-| 2 | Adafruit 5880 I2C QT encoder boards | Bridge A0 on board B for address 0x37. |
-| 2 | Adafruit 5528 knobs, or compatible 6 mm-bore knobs | The model uses 20 mm diameter knobs. |
-| 1 each | Adafruit 4209 and 4397 cables | Cross the GPIO pin order to STEMMA QT by function. |
-| 1 | Adafruit 4401, 200 mm JST-SH cable | Connect the boards inside the shell. |
-| 2 | 2.2 kΩ resistors | Pull SDA and SCL up to 3.3 V. |
-| As needed | Insulation, soldering equipment, breadboard and jumper pins | Test and permanent harness options are in the wiring guide. |
+| 2 | Adafruit 5880 I2C QT encoder boards, $7.95 each | Bridge A0 on board B for address 0x37. |
+| 2 | Adafruit 5528 knobs ($2.95 each; the blue 5529 is the same knob), or compatible 6 mm-bore knobs | The model uses 20 mm diameter knobs. |
+| 1 each | Adafruit 4209 and 4397 cables, $0.95 each | Cross the GPIO pin order to STEMMA QT by function. |
+| 1 | Adafruit 4401, 200 mm JST-SH cable, $1.25 | Connect the boards inside the shell. |
+| 2 | 2.2 kΩ resistors (smallest pack found: 40 for $3.99) | Pull SDA and SCL up to 3.3 V. |
+| As needed | Insulation (tape, or an optional heat-shrink pack, Adafruit 1649, $4.95), soldering equipment, breadboard and jumper pins | Test and permanent harness options are in the wiring guide. |
 | 1 | 2 mm hex key | Knob set screws. |
+
+Adafruit prices as paid on 2026-09-11 (the 4401 in late September 2026); the p64b row
+of the cost table above includes them.
 
 Follow the [two-encoder wiring guide](hardware/encoders-soldered.md). The GPIO and
 STEMMA QT pin orders differ: do not connect them with a straight cable. The

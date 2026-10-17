@@ -17,6 +17,8 @@ The [repository README](../README.md) is p64's homepage.
 - [Glossary](../CONTEXT.md): shared terminology.
 - [Architecture decisions](adr/): reasons for consequential choices.
 - [Encoder wiring](hardware/encoders-soldered.md): p64b's two-knob build.
+- [Build costs](costs.md): what one p64a and one p64b cost, parts, shipping and tax
+  apart, with the dated order log.
 - [Credits](credits.md): licenses and asset sources.
 - [Gallery](gallery.md): existing photos, clips and UI screenshots.
 
@@ -44,6 +46,7 @@ Keep each fact in one main place. Other pages should summarize it and link here:
 | Fact | Main document |
 |---|---|
 | Shopping list and assembly procedure | Build guide |
+| Prices paid, shipping and tax, per-build totals | Build costs |
 | Everyday operation and recovery | Owner's guide |
 | Implemented, tested, assembled or released | Status, linked to dated evidence |
 | Product behavior, defaults and limits | Specification |

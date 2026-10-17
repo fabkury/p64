@@ -69,10 +69,11 @@ supply, the printed shell and insert, two right-angle USB-C adapters, and six M3
 screws bought separately. A microSD card is optional. You also need a computer and a
 USB data cable for the first flash.
 
-For scale, the three main electronics parts totalled about **US$64** at the recorded
-September 2026 prices. Printing, adapters, screws, shipping and optional p64b parts
-are extra. The [build guide](docs/build-your-own.md#1-parts-and-tools) has the shopping
-list and dated prices.
+For scale, one p64a cost the maintainer about **US$112 delivered** (parts $80, shipping
+$32, tax under $1) and one p64b about **US$150** (parts $109, shipping $38, tax $4), at
+the September and October 2026 prices paid, with shipping to New York. The
+[build guide](docs/build-your-own.md#1-parts-and-tools) has the shopping list and the
+[build costs](docs/costs.md) page every invoice line.
 
 [Follow the build guide →](docs/build-your-own.md)
 
