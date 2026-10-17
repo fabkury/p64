@@ -21,8 +21,8 @@ The design is **v7**, in one OpenSCAD file, and p64 comes in two variants that s
 The two variant files are three lines each: they include `src/p64_enclosure_v7.scad`, the
 geometry, and set `encoders` to false or true. Both variants are supported for good, so a
 change to the shell is made once, in `p64_enclosure_v7.scad`, and both output folders are
-regenerated. Both v7 variants are printed (2026-10-09); v7a is assembled and in use, v7b
-waits for the soldered encoder wiring. The fit of the pocket, ledge and bosses, unchanged
+regenerated. Both v7 variants are printed (2026-10-09), assembled and in daily use (v7a since
+2026-10-09, v7b since 2026-10-17). The fit of the pocket, ledge and bosses, unchanged
 since the first version, was verified on the v1 print (see below); the v7 window and
 insert have not been measured against the model yet. The earlier
 versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/README.md).

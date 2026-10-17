@@ -21,8 +21,8 @@ Design renders. Both variants are assembled (p64a 2026-10-09, p64b 2026-10-17).
 
 Print `p64_enclosure_print.stl` (or `.3mf`) and `p64_cradle_insert.stl`. For MJF/SLA
 services, use the larger-clearance `p64_enclosure_service.stl`. Both v7 shells are
-printed and assembled; p64a is in daily use, p64b was closed on 2026-10-17 with
-its two encoder boards on the pegs and the panel seated clear of them.
+printed, assembled and in daily use; p64b was closed on 2026-10-17 with its two
+encoder boards on the pegs and the panel seated clear of them.
 
 ## Printing
 

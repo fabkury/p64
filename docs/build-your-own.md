@@ -78,7 +78,7 @@ STEMMA QT pin orders differ: do not connect them with a straight cable. The
 Choose [p64a/v7a](../enclosure/output/p64a/v7a/) or
 [p64b/v7b](../enclosure/output/p64b/v7b/). Print `p64_enclosure_print.stl` (or `.3mf`)
 and `p64_cradle_insert.stl`. The shell is already oriented; print the insert sole down.
-Both shells are printed and assembled; p64a is in daily use, p64b was assembled on 2026-10-17.
+Both shells are printed, assembled and in daily use (p64a since 2026-10-09, p64b since 2026-10-17).
 
 Use PLA or PETG, 0.2 mm layers, 3–4 perimeters, 20% infill, no supports, and a bed at
 least 140×140 mm. Allow about 82 g plus under 2 g for the insert. Enable 0.1–0.2 mm

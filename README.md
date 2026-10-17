@@ -7,8 +7,8 @@ stream pixels from your computer. The firmware and enclosure are open source.
 
 ![p64 in its printed shell on a desk next to a laptop](docs/images/photos/p64-hero.jpg)
 
-**Working prototype:** both variants are assembled and working: p64a since 2026-10-09
-and in daily use, p64b (the two knobs) since 2026-10-17. Building currently follows
+**Working prototype:** both variants are assembled and in daily use: p64a since
+2026-10-09, p64b (the two knobs) since 2026-10-17. Building currently follows
 the source-build guide; full acceptance testing remains open. [Project status](docs/status.md)
 
 **[Build one](docs/build-your-own.md)** · **[Use it](docs/using-p64.md)** ·
@@ -53,7 +53,7 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 | Controls | Browser and tap gestures | Same, plus two rotary knobs |
 | Soldering | None | Required for the encoder wiring |
 | Shell | v7a | v7b |
-| Assembly status | Assembled 2026-10-09, in daily use | Assembled 2026-10-17, knobs working through the closed shell |
+| Assembly status | Assembled 2026-10-09, in daily use | Assembled 2026-10-17, in daily use |
 
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.

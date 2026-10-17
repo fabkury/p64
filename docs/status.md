@@ -8,7 +8,7 @@ that day; test results below are existing records, not a new acceptance run.
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a assembled and in daily use; no soldering | Maintainer confirmation, 2026-10-15 |
-| p64b | v7b assembled 2026-10-17: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
+| p64b | v7b assembled 2026-10-17 and in daily use: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
 | Firmware | Core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
 | Installation | The documented installation path builds from source with ESP-IDF v5.5.4 | No first firmware release recorded in the project documentation; check [GitHub Releases](https://github.com/fabkury/p64/releases) for published images |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
