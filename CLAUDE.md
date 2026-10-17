@@ -84,7 +84,7 @@ wiring, `show.cpp` the state machine, `loader.cpp` the card I/O worker). Milesto
 to M8 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
 mode, API v1 with WebSocket and web UI, the content model (playsets, channels,
 scheduler, history), Makapix Club (pairing, indexes, cache, MQTT commands, views, likes;
-the development device is paired as player 7e983c9a...), the widgets (bundled
+the development device is paired as player 9da5eeaa... since the re-pairing of 2026-10-17; the earlier 7e983c9a pairing was refused by the server), the widgets (bundled
 fonts via `tools/gen_fonts.py`, clock overlay, clock, weather with icons via
 `tools/gen_weather_icons.py`, SHTC3 temperature, interludes, main states) and the
 streams (DDP on UDP 4048, raw p64 on UDP 4064, takeover with the silence timeout;
