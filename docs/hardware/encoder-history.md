@@ -101,6 +101,9 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
 | 3V3 / GND pin colours on the 4209 | red / black (keyed plug, 2026-09-26) | |
 | Rows 5 and 10, resistors only | ~2.7 V | |
 | Rows 5 and 10, both boards | ~2.86 V | |
+| Board 1 after tier 2, SDA to VIN and SCL to VIN, unpowered | ~1.8 k (2.2 k in parallel with the board's 10 k) | 1.76 k and 1.76 k (2026-10-17, Klein MM325, 2k range) |
+| Board 1 after tier 2, SDA to SCL, unpowered | ~3.6 k (the two pull-ups meeting at VIN) | 3.52 k (2026-10-17, 20k range) |
+| Board 1 after tier 2, VIN to GND and every adjacent pair of header holes | no beep | no beep anywhere (2026-10-17) |
 | A0 continuity on board 2 | beep | beep (2026-09-27, Klein MM325) |
 | A0 to the A1 pads on board 2 | no beep | top A1 pad beeps, bottom does not; top A2 to top A1 beeps, bottom to bottom does not: the top row is the jumpers' shared rail, the chip-side pads are clear (2026-09-27) |
 | A1 pads on board 2 | no beep | no beep |
