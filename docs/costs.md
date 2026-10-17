@@ -39,7 +39,7 @@ Everything in the p64a column, with the v7b shell in place of v7a, plus the enco
 | 2 × Adafruit 5528 silver 20 mm knobs, $2.95 each | 5.90 | | 0.52 | Adafruit, 2026-09-11 |
 | Adafruit 4209 cable (SH to male headers, 150 mm) | 0.95 | | 0.08 | Adafruit, 2026-09-11 |
 | Adafruit 4397 cable (SH to female sockets, 150 mm) | 0.95 | | 0.08 | Adafruit, 2026-09-11 |
-| Adafruit 4401 cable (SH to SH, 200 mm, between the boards) | 1.25 | | 0.11 | Adafruit, late September 2026 |
+| Adafruit 4401 cable (SH to SH, 200 mm, between the boards) | 1.25 | | 0.11 | Adafruit, 2026-09-27 |
 | Adafruit shipping (USPS Ground Advantage, one order) | | 5.82 | 0.52 | the first Adafruit order; see the note below |
 | 2.2 kΩ ½ W resistors, pack of 40 (a build uses two) | 3.99 | 0.00 | 0.35 | Amazon, 2026-09-17 |
 | **Total** | **109.07** | **37.66** | **3.51** | **150.24 delivered** |
@@ -88,7 +88,7 @@ that shared an Amazon order are left out, and their share of that order's tax wi
 | 2026-09-11 | Adafruit | 2 × 5880 boards 15.90, 2 × 5528 silver knobs 5.90, 4209 0.95, 4397 0.95, 4399 50 mm cable 0.95 | 24.65 | 5.82 | 2.70 | 33.17 |
 | 2026-09-17 | Amazon | 2.2 kΩ resistors, 40-pack 3.99; three 400-point breadboards 5.98 (bench test only) | 9.97 | 0.00 | 0.88 | 10.85 |
 | 2026-09-28 | JLC3DP | v7a shell 10.23, v7b shell 10.10, 3 × cradle insert 3.21 (received 2026-10-09); payment fee 0.50 counted as shipping | 23.54 | 12.47 | 0.00 | 36.01 |
-| late Sep 2026 | Adafruit | 3 × 5880 boards 23.85 (one replaced the board killed on the bench, two spare), 2 × 5529 blue knobs 5.90 (spare set), 2 × 4401 200 mm cables 2.50, 4209 0.95, 4397 0.95, heat-shrink pack 1649 4.95; received by 2026-10-01 | 39.10 | 6.33 | 4.03 | 49.46 |
+| 2026-09-27 | Adafruit | 3 × 5880 boards 23.85 (one replaced the board killed on the bench, two spare), 2 × 5529 blue knobs 5.90 (spare set), 2 × 4401 200 mm cables 2.50, 4209 0.95, 4397 0.95, heat-shrink pack 1649 4.95; received 2026-10-01 | 39.10 | 6.33 | 4.03 | 49.46 |
 | 2026-10-10 | Amazon | 2 × 4-packs of right-angle USB-C adapters, 6.99 each (free shipping) | 13.98 | 0.00 | 1.24 | 15.22 |
 | | **Total spent on p64 parts and prints** | | | | | **253.11** |
 

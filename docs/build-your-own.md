@@ -67,7 +67,7 @@ when substituting a different shape. Dry-fit before gluing.
 | As needed | Insulation (tape, or an optional heat-shrink pack, Adafruit 1649, $4.95), soldering equipment, breadboard and jumper pins | Test and permanent harness options are in the wiring guide. |
 | 1 | 2 mm hex key | Knob set screws. |
 
-Adafruit prices as paid on 2026-09-11 (the 4401 in late September 2026); the p64b row
+Adafruit prices as paid on 2026-09-11 (the 4401 on 2026-09-27); the p64b row
 of the cost table above includes them.
 
 Follow the [two-encoder wiring guide](hardware/encoders-soldered.md). The GPIO and
