@@ -102,8 +102,14 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
   0 failures with both knobs turned and clicked (A 42 detents net, B 24 the other way,
   2 presses each, 0 read errors, 0 losses); the settings round trip (acting, swap,
   invert) passed; internal heap 49.6 KB free, largest block 32 KB, with both boards
-  polled. Tier 2 is accepted. Next: the harness (4209 pins mated into the 4397 sockets,
-  wrapped), then the in-shell assembly with the panel (section 7).
+  polled. Tier 2 is accepted.
+- 2026-10-17, in-shell assembly (section 7): harness mated pin to socket, both boards on
+  the v7b print's pegs with washer, nut and cap, panel slid in and seated with no
+  interference from the pin stubs or the resistor bodies, six screws in. With the shell
+  closed: `encoders_smoke.py --expect 2 --watch 60` 0 failures; after a reboot the
+  counters read A 27 detents and 2 presses, B 7 detents and 1 press, 0 read errors and
+  0 losses on both, so the clicks register through the caps. Internal heap 64.9 KB free,
+  largest block 32 KB. p64b is assembled.
 
 
 ## Original bench measurements

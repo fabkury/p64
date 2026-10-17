@@ -360,8 +360,8 @@ an assembly requirement. Every output folder has the same file names (`p64_enclo
 `.3mf`, `p64_enclosure_service.stl` with 0.45 mm clearance for bureaus, the insert,
 `render_*.png`). The exact `openscad` commands are in `enclosure/design-reference.md`, together with
 the design rationale, the budget, the verified dimensions and the list of things that
-could not be verified. Both v7 variants are printed; v7a is assembled and in daily
-use, and v7b awaits soldering. Versions v1 to v6 (including the original v1 fit evidence)
+could not be verified. Both v7 variants are printed and assembled: v7a since 2026-10-09
+and in daily use, v7b since 2026-10-17 (knobs working through the closed shell). Versions v1 to v6 (including the original v1 fit evidence)
 live in `enclosure/archive/pre-v7/` with their own README; do not bring their features
 back without asking. Rules that have held across versions: every wall or rib 2 mm or
 thicker (the insert's glued 1.2 mm sole and bottom wall are the named exceptions; 1.2 is also JLC3DP's thin-wall line); check any

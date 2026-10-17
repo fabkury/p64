@@ -7,9 +7,9 @@ stream pixels from your computer. The firmware and enclosure are open source.
 
 ![p64 in its printed shell on a desk next to a laptop](docs/images/photos/p64-hero.jpg)
 
-**Working prototype:** p64a is assembled and in daily use. p64b is printed and awaits
-its soldered wiring. Building currently follows the source-build guide; full
-acceptance testing remains open. [Project status](docs/status.md)
+**Working prototype:** both variants are assembled and working: p64a since 2026-10-09
+and in daily use, p64b (the two knobs) since 2026-10-17. Building currently follows
+the source-build guide; full acceptance testing remains open. [Project status](docs/status.md)
 
 **[Build one](docs/build-your-own.md)** · **[Use it](docs/using-p64.md)** ·
 **[Develop it](firmware/README.md)** · **[Documentation](docs/README.md)**

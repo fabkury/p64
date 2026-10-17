@@ -95,7 +95,7 @@ on 2026-09-22. Measured with calipers on one of the user's two boards the same d
 | PCB top face (component side) to the bushing base | 6.5 | 6.5 | `enc_body_h` |
 | PCB thickness | 1.6 | 1.6 | `enc_board_t` |
 | Washer + nut stacked, height | 2.5 | 2.5 | `enc_nut_h` |
-| Washer outer diameter, nut across corners | under 14 (the spot-face) | not measured | the 14 mm spot-face; an M7 nut and washer are about 11 to 12 mm, so a check, not a worry |
+| Washer outer diameter, nut across corners | under 14 (the spot-face) | not measured; both seat in the spot-face on the v7b print (2026-10-17) | the 14 mm spot-face; an M7 nut and washer are about 11 to 12 mm, so a check, not a worry |
 | Tallest feature below the PCB (pin stubs, solder) | 0 (not modelled) | about 3.0 | the room there is 4.1 mm (board bottom 7.2 mm behind the frame's back face, ledge top at 3.1): clear by 1 mm |
 | Mounting hole diameter | 2.5 | 2.5 | `enc_hole_d` (the 2.2 mm pegs) |
 | Mounting hole spacing | 20.32 | not measured (board file) | `enc_hole_p` |

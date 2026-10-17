@@ -412,7 +412,7 @@ The controller's own dimensions come from `input/ESP32-S3-RGB-Matrix-2D.pdf` (1:
 | FDM print allowance | 0.25 mm per side of an opening | `print_clr` | A guess from the v1 print (outside +0.3 mm per side, holes "clean"). Measure the printed v7 window against the model. |
 | LED board / mask outline | 128.0 mm | `board` | Waveshare's quoted panel size; the drawing has the frame (127.8) and not the board. The rim runs 1.5 mm beside the board with 0.2 mm clearance per side (`board_clr`). Measure the board and the mask at their widest; if over 128.0, set `board` and the pocket steps out (the wall there drops below 2 mm past 128.0, the echo warns). |
 | LED board + mask thickness in front of the frame | 2.5 mm | `panel_stack` | From the v1 print, where the mask stood 2.5 mm proud of a rim that ended at the frame. Sets the lip together with `proud`. |
-| Encoder washer outer diameter and nut across corners (p64b) | under 14 mm | `enc_spot_d` | Not measured yet; the 14 mm spot-face must take both. Everything else about the 5880 was measured on 2026-09-22 (`input/measurements.md`). |
+| Encoder washer outer diameter and nut across corners (p64b) | under 14 mm | `enc_spot_d` | Not measured, but both seat in the spot-face on the v7b print (2026-10-17). Everything else about the 5880 was measured on 2026-09-22 (`input/measurements.md`). |
 
 ## Verified with the v1 print
 

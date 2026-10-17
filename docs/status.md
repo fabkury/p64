@@ -8,7 +8,7 @@ that day; test results below are existing records, not a new acceptance run.
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a assembled and in daily use; no soldering | Maintainer confirmation, 2026-10-15 |
-| p64b | v7b printed, encoder boards fit its pegs, tier 2 pull-ups soldered and accepted (2026-10-17); the harness and the in-shell assembly remain | Both knobs passed the breadboard acceptance on 2026-10-01; [bench record](hardware/encoder-history.md) |
+| p64b | v7b assembled 2026-10-17: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
 | Firmware | Core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
 | Installation | The documented installation path builds from source with ESP-IDF v5.5.4 | No first firmware release recorded in the project documentation; check [GitHub Releases](https://github.com/fabkury/p64/releases) for published images |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
@@ -23,8 +23,9 @@ The latest [firmware log](../firmware/docs/PROGRESS.md#log) still leaves these o
 - Full 12-hour seamless-playback and 24-hour reliability acceptance soaks.
 - Hands-on checks of shell taps, rotation direction, BOOT hold and the Photo-mode picture.
 - Final visual checks and longer runs for the newer clock faces.
-- v7b permanent harness and assembled operation; remaining v7 dimensional checks in
-  the [enclosure reference](../enclosure/design-reference.md#things-that-could-not-be-verified).
+- Remaining v7 dimensional checks in
+  the [enclosure reference](../enclosure/design-reference.md#things-that-could-not-be-verified),
+  and the encoder washer and nut diameters (they seat in the 14 mm spot-face, unmeasured).
 
 These are verification gaps, not a claim that the features fail. Shorter successful
 tests do not close longer acceptance requirements.

@@ -170,10 +170,11 @@ then inspect Settings → Inputs and `GET /api/v1/diag/encoders`.
 
 ### 5.1 Current build status
 
-Both knobs passed the breadboard test on 2026-10-01 and, with the pull-ups soldered onto
-board 1 (tier 2), again on 2026-10-17 without the breadboard. The v7b shell is printed
-and both boards fit its pegs (dry fit, 2026-10-17). Next: wrap the cable joints into the
-permanent harness, then the in-shell assembly with the panel (section 7). The [dated record](encoder-history.md)
+Done. Both knobs passed the breadboard test on 2026-10-01 and, with the pull-ups
+soldered onto board 1 (tier 2), again on 2026-10-17 without the breadboard. The same day
+the harness was mated, both boards went onto the v7b print's pegs, the panel seated
+clear of the pin stubs and resistors, and `encoders_smoke.py` passed with the shell
+closed, both knobs turning and clicking through the caps. p64b is assembled. The [dated record](encoder-history.md)
 preserves the measurements and replacement-board investigation.
 
 ## 6. Soldering, tier 2: the permanent harness
