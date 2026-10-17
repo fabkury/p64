@@ -92,6 +92,18 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
   designed, no trimming. Not yet checked: the full assembly with the panel and the
   driver board in the shell (the pin stubs' 1 mm clearance to the frame, the harness
   route). The washer and nut diameters are still not written down. Next: tier 2.
+- 2026-10-17, tier 2 on board 1: the two 2.2 k pull-ups soldered into the VIN, SDA and
+  SCL header holes on the board's back, leads clipped. Meter, unpowered: SDA to VIN
+  1.76 k, SCL to VIN 1.76 k, SDA to SCL 3.52 k, no continuity VIN to GND or between any
+  adjacent header holes.
+- 2026-10-17, both boards on the permanent pull-ups, the breadboard gone: green and blue
+  identify at boot; `GET /api/v1/diag/encoders?scan=1` lists 0x36 and 0x37, both lines
+  idle at 1, hardware id 0x55 on each; `encoders_smoke.py --expect 2 --watch 90`
+  0 failures with both knobs turned and clicked (A 42 detents net, B 24 the other way,
+  2 presses each, 0 read errors, 0 losses); the settings round trip (acting, swap,
+  invert) passed; internal heap 49.6 KB free, largest block 32 KB, with both boards
+  polled. Tier 2 is accepted. Next: the harness (4209 pins mated into the 4397 sockets,
+  wrapped), then the in-shell assembly with the panel (section 7).
 
 
 ## Original bench measurements

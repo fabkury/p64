@@ -170,9 +170,10 @@ then inspect Settings → Inputs and `GET /api/v1/diag/encoders`.
 
 ### 5.1 Current build status
 
-Both knobs passed the breadboard test on 2026-10-01. The v7b shell is printed and both
-boards fit its pegs (dry fit, 2026-10-17); the permanent harness and the assembly with
-the panel await the tier 2 soldering. Next: complete tier 2, then assemble. The [dated record](encoder-history.md)
+Both knobs passed the breadboard test on 2026-10-01 and, with the pull-ups soldered onto
+board 1 (tier 2), again on 2026-10-17 without the breadboard. The v7b shell is printed
+and both boards fit its pegs (dry fit, 2026-10-17). Next: wrap the cable joints into the
+permanent harness, then the in-shell assembly with the panel (section 7). The [dated record](encoder-history.md)
 preserves the measurements and replacement-board investigation.
 
 ## 6. Soldering, tier 2: the permanent harness
