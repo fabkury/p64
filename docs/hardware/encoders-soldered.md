@@ -3,8 +3,8 @@
 [Build guide](../build-your-own.md) · [Project status](../status.md) · [Bench history](encoder-history.md)
 
 Wire two Adafruit 5880 boards, verify them on a breadboard, then install the permanent
-harness in the v7b shell. The firmware is already implemented. The permanent harness
-and assembled v7b device are not yet verified.
+harness in the v7b shell. The firmware is already implemented, and the assembled v7b
+device is verified (section 5.1).
 
 1. [Prepare parts](#1-parts) and read the [pin mapping](#2-electrical-summary).
 2. [Bridge A0 on board B](#3-soldering-tier-1-the-a0-bridge-on-board-2).
@@ -207,6 +207,10 @@ pull-ups use.
 
 Board 2 gets no resistors: one pair per bus.
 
+<img src="../images/photos/p64b-pullups-soldered.jpg" alt="Board 1 on the bench with the two pull-up resistors standing on its header pads, soldered to VIN, SDA and SCL" width="600">
+
+Board 1 as built on 2026-10-17: the two 1/2 W resistors standing on the header pads.
+
 ### 6.2 The cables
 
 Two acceptable ways; the first needs no soldering at all and is what the author
@@ -284,6 +288,10 @@ closes the shell's open front.
 
 To take a board out: panel out, knob off, nut and washer off, then the board lifts off
 its pegs.
+
+| <img src="../images/photos/p64b-boards-on-pegs.jpg" alt="Both encoder boards on their pegs inside the open v7b shell, the harness and the inter-board cable plugged in" width="400"> | <img src="../images/photos/p64b-back.jpg" alt="The closed p64b from behind: two knobs beside the vent slots" width="400"> |
+|---|---|
+| Both boards on the pegs, cables in, before the panel (step 5) | The result: the two knobs through the back wall |
 
 Fitting the caps: push each cap on until about 1 mm of shaft shows above the nut, not
 all the way down. The push switch travels less than a millimetre, and a cap resting on

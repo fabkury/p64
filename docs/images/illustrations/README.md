@@ -45,7 +45,7 @@ documents when behavior changes. CAD images come from the
 ## Future photos
 
 Useful additions when the hardware is available: the installed cradle before panel
-seating, a close-up of the fully seated adapters on the unmodified frame, and
-p64b's finished harness and knobs.
-Keep p64b renders labelled until assembly photos exist. New AI-generated product
+seating and a close-up of the fully seated adapters on the unmodified frame. p64b's
+boards on their pegs and its knobs are photographed (`photos/p64b-*.jpg`, 2026-10-17).
+New AI-generated product
 photos or decorative artwork are unnecessary for this documentation style.
