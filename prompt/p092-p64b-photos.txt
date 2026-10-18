@@ -1,0 +1,1 @@
+I have taken many photos of p64b, including a few of it during its development (assembly) process. The photos are in "C:\Users\fab\Downloads\Photos-1-001 (7).zip". Please bring those photos into the repository (but downscale and strip geolocation information), commit and push.
