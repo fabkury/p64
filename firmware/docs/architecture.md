@@ -592,9 +592,11 @@ internal pull-ups on top of the external 2.2 k; the wiring and the levels are in
 `docs/hardware/encoders-soldered.md`). `seesaw_wire.hpp` is the pure wire format
 (module + register addressing, big-endian 32-bit values, the switch on seesaw pin 24
 with its pull-up, the NeoPixel on pin 6, the reset), `seesaw.cpp` the traffic: a read is
-the register address with a STOP, a 250 us pause and a separate receive, because the
-board's firmware needs the pause to fetch the value (a repeated start returns stale
-bytes). `EncoderTracker` (`encoder_model.cpp`) turns the board's own detent counter into
+the register address with a STOP, a pause and a separate receive, because the
+board's firmware needs the pause (250 us) to fetch the value (a repeated start returns
+stale bytes); the pause is a two-tick sleep, not a busy wait, since 2026-10-17 (as a
+busy wait it cost 5 % of core 0 with two boards polled, 7.1 % for the task against 2.7 %
+asleep), and the bus runs at 400 kHz since the same day. `EncoderTracker` (`encoder_model.cpp`) turns the board's own detent counter into
 "turned N" events (wrap-safe, sign by invert), and the raw switch level into press,
 release and long press (700 ms) with a two-sample debounce. `encoders.cpp` polls both
 boards at 50 Hz from a task on core 0 (stack in PSRAM, no flash access), lights knob A's

@@ -10,8 +10,10 @@ namespace p64::inputs::seesaw {
 namespace {
 
 constexpr const char *TAG = "seesaw";
-constexpr uint32_t kSpeedHz = 100000;  // 300 mm of cable: 100 kHz first, 400 kHz once everything else is verified
+constexpr uint32_t kSpeedHz = 400000;  // 400 kHz since 2026-10-17: at 100 kHz the poll task cost 7.9 % of core 0 with two
+                                       // boards (soak over the 10 % budget); the wiring was verified at 100 kHz first
 constexpr int kTimeoutMs = 20;
+constexpr TickType_t kReadPauseTicks = 2;  // >= 1 ms at the 1 kHz tick, the seesaw wants 250 us (kReadDelayUs)
 
 }  // namespace
 
@@ -21,11 +23,13 @@ bool Board::write(const uint8_t *data, size_t len) {
 
 // A seesaw read is two transactions: the register address with a STOP, a pause the
 // firmware on the board needs to fetch the value, then the read. A combined
-// write-then-read (repeated start) leaves no time and returns stale bytes.
+// write-then-read (repeated start) leaves no time and returns stale bytes. The pause
+// sleeps the task (two ticks: at least 1 ms, above the 250 us the board needs); as a
+// busy wait it cost 5 % of core 0 with two boards polled at 50 Hz (2026-10-17).
 bool Board::read(uint8_t module, uint8_t reg, uint8_t *out, size_t len) {
   const auto a = reg_address(module, reg);
   if (!write(a.data(), a.size())) return false;
-  esp_rom_delay_us(kReadDelayUs);
+  vTaskDelay(kReadPauseTicks);
   return i2c_master_receive(dev_, out, len, kTimeoutMs) == ESP_OK;
 }
 

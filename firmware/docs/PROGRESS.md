@@ -1292,3 +1292,20 @@ them. Newest entries are at the bottom of [Log](#log).
   device (unpair, pair, code T99UWF issued at once, so registration works) and note two
   follow-ups rather than build them now: honour Retry-After on a refused view, and
   print the Makapix state in the soak report (`docs/status.md`).
+- 2026-10-17, later (p090): re-paired, the device plays Makapix again (player 9da5eeaa,
+  MQTT up at once, `makapix_smoke --paired` 0 failures, a 10-minute soak with 10
+  downloads and every check green but core 0 at 16.6 %). That remainder was the
+  encoder poll task: 7.5 to 7.9 % of core 0 with two boards, unchanged at 400 kHz
+  (7.1 %), because each seesaw read spun 250 us in `esp_rom_delay_us` between the
+  address write and the receive, 200 times a second. The pause is a two-tick sleep now
+  (`seesaw.cpp`, `kReadPauseTicks`; the 1 kHz tick makes it at least 1 ms) and the bus
+  stays at 400 kHz: task 2.7 %, device idle 6.7 % busy on core 0, `encoders_smoke` 0
+  failures, soak 11.5 % with heap floor 50.6 KB and 0 late flips. The core 0 budget
+  was set with the socket empty, so it rises from 10 to 14 % for the two polled boards
+  (`budgets.json`, reason there). Flashing note: the status document's `built` date
+  comes from ESP-IDF's app descriptor and does not change on an incremental build, so
+  it cannot confirm a flash; `/api/v1/update` names the running slot. The pairing
+  poll also drew "HTTP 429 Too many credential requests" from the server for 25 s
+  before the code was accepted, so the device asks too often while pairing: a third
+  follow-up beside the two in `docs/status.md`.
+
