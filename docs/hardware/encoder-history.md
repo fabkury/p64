@@ -110,6 +110,13 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
   counters read A 27 detents and 2 presses, B 7 detents and 1 press, 0 read errors and
   0 losses on both, so the clicks register through the caps. Internal heap 64.9 KB free,
   largest block 32 KB. p64b is assembled.
+- 2026-10-17, later, the poll task's cost: a 10-minute soak on the assembled p64b failed
+  only its core 0 budget (16.6 % against 10 %; the clean soaks of September ran with the
+  socket empty at 7.8 to 8.5 %), and a per-task sample put the encoder poll task at 7.5
+  to 7.9 %. Moving the bus to 400 kHz changed nothing (7.1 %, 0 read errors), so the cost
+  was not bit time: it was the 250 us busy wait inside every seesaw read, 200 of them a
+  second with two boards. With the pause a two-tick sleep the task costs 2.7 %, the
+  soak 11.5 %; `encoders_smoke` 0 failures on both builds; the budget is 14 % since.
 
 
 ## Original bench measurements

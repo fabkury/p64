@@ -163,8 +163,9 @@ cycles).
 
 ### 3.5 Bus speed and cable length
 
-150 + 150 mm of cable at 100 kHz is comfortable. The firmware starts at 100 kHz and tries
-400 kHz only after everything else is verified.
+150 + 150 mm of cable at 100 kHz is comfortable. The firmware started at 100 kHz and
+moved to 400 kHz on 2026-10-17, once the two-board p64b chain was verified in the shell
+(0 read errors at either speed).
 
 ## 4. Bench build
 
@@ -246,7 +247,8 @@ already there).
 - **Seesaw driver** (`p64_inputs/src/seesaw.*`): the protocol is a two-byte register
   address (module, register), a STOP, a pause of about 250 µs, then the read. That pause
   is the one thing that trips people using the new I2C driver; it belongs in the driver,
-  not the callers. Registers used (from Adafruit's `Adafruit_seesaw.h`):
+  not the callers, and it must sleep the task rather than spin: as a busy wait it cost
+  5 % of core 0 with two boards polled at 50 Hz (2026-10-17). Registers used (from Adafruit's `Adafruit_seesaw.h`):
   - STATUS 0x00 / HW_ID 0x01: Adafruit's header says 0x87 for the ATtiny817; the 5880
     on the bench answered 0x55 (2026-09-26); the probe logs what it reads.
   - STATUS 0x00 / SWRST 0x7F: software reset at start.

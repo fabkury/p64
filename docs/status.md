@@ -31,6 +31,9 @@ The latest [firmware log](../firmware/docs/PROGRESS.md#log) still leaves these o
   by the 2026-10-17 soak, which failed its core 0 budget on that alone: Makapix task 31 %).
 - `soak.py` should print the Makapix state (MQTT, last error, views sent) with its
   verdict, so a server-side refusal is readable from the report.
+- While pairing, the device polls the server for its credentials often enough to draw
+  "HTTP 429 Too many credential requests" (25 s of them on 2026-10-17); space the polls
+  to what the server allows.
 
 These are verification gaps, not a claim that the features fail. Shorter successful
 tests do not close longer acceptance requirements.
