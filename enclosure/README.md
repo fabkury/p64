@@ -26,13 +26,17 @@ encoder boards on the pegs and the panel seated clear of them.
 
 ## Printing
 
+No printer? The [build guide](../docs/build-your-own.md#b-order-the-shell-from-jlc3dp)
+walks through ordering both parts from JLC3DP (FDM, PLA-P, black), which is how the
+maintainer's shells were made.
+
 PLA or PETG, 0.2 mm layers, 3–4 perimeters, 20% infill, no supports. Use a bed of at
 least 140×140 mm and 0.1–0.2 mm elephant-foot compensation. The shell file already
 lies on its back; print the insert sole down. Expect about 82 g plus under 2 g.
 
 ## Assembly
 
-Follow the [build guide](../docs/build-your-own.md#4-assemble), including the adapter
+Follow the [build guide](../docs/build-your-own.md#c-assemble), including the adapter
 fit check before gluing. The assembled v7a needs no panel-frame modification. Buy six M3×10 screws separately; the board
 does not include them. p64b also needs the
 [two-encoder wiring guide](../docs/hardware/encoders-soldered.md).

@@ -7,7 +7,7 @@ reference renders for clock faces, and diagrams where relationships need explain
 |---|---|
 | Homepage | Nine photos and a playback clip show a clock, artwork, time overlays, and the finished v7a shell. Link to the clock comparison. |
 | Owner's guide | Clock comparison for choosing a face; Home screenshot for finding controls; diagrams for playsets and streaming. |
-| Build guide | A CAD close-up explains the insert. A port diagram and assembled rear photo establish orientation. |
+| Build guide | A CAD close-up explains the insert. A port diagram and assembled rear photo establish orientation. The p64b section shows a board's jumper pads and the soldered resistors. |
 | Enclosure | Side-by-side rear renders distinguish the variants. The design reference embeds the adapter cutaway. Label CAD views explicitly. |
 | Firmware architecture | A frame-flow diagram introduces the detailed pipeline and task tables. |
 | API and specification | Keep precise contracts and settings in searchable text and tables; the owner and architecture guides supply the visual overview. |
@@ -47,5 +47,7 @@ documents when behavior changes. CAD images come from the
 Useful additions when the hardware is available: the installed cradle before panel
 seating and a close-up of the fully seated adapters on the unmodified frame. p64b's
 boards on their pegs and its knobs are photographed (`photos/p64b-*.jpg`, 2026-10-17).
+Still missing for the p64b soldering steps: a close-up of a finished A0 bridge on board B,
+and the mated 4209-to-4397 harness with its four wrapped joints.
 New AI-generated product
 photos or decorative artwork are unnecessary for this documentation style.

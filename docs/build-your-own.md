@@ -1,113 +1,299 @@
 # Build your own p64
 
-[Home](../README.md) · [Owner's guide](using-p64.md) · [Project status](status.md)
+[Home](../README.md) · [Owner's guide](using-p64.md) · [Project status](status.md) ·
+[Build costs](costs.md)
 
-This guide builds **p64a**, with no soldering. You need basic command-line skills, a
-printer or print service, and hand tools. **p64b** uses the same firmware and adds
-soldered encoder wiring;
-its extra parts and steps are marked below.
+Building a p64 is four steps, three of them shopping and waiting:
 
-[Parts](#1-parts-and-tools) → [Print](#2-print-the-shell) →
-[Flash](#3-build-and-flash) → [Assemble](#4-assemble) → [First run](#5-first-run)
+- **A. [Buy the parts online](#a-buy-the-parts)**: three items from Waveshare, two from
+  Amazon. p64b adds a handful of Adafruit parts.
+- **B. [Order the shell from JLC3DP](#b-order-the-shell-from-jlc3dp)**: upload two files,
+  choose a material and a colour, pay. No printer needed.
+- **C. [Assemble](#c-assemble)**: p64a is a screwdriver job. p64b first needs three small
+  soldering jobs, then the same assembly. No breadboard; a multimeter is optional.
+- **D. [Put the firmware on it](#d-put-the-firmware-on-it)**: the one computer step. Until
+  a firmware release is published it means building from source, about an hour the
+  first time.
 
-## 1. Parts and tools
+Then the [first run](#e-first-run): join its Wi-Fi setup network and it plays.
 
-This is the main shopping list. Prices are in US dollars, excluding shipping and tax,
-as paid by the maintainer on the dates in the [build costs](costs.md) page, which has
-the full per-build totals with parts, shipping and tax separated.
+**p64a** has no soldering and no knobs; **p64b** has two rotary knobs and three solder
+joints. Both use the same firmware and both are assembled and in daily use (p64a since
+2026-10-09, p64b since 2026-10-17). This guide builds p64a and marks the p64b additions.
 
-| Qty | Part | Notes |
-|---|---|---|
-| 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) | Controller, $24.99. Includes the panel power lead (VH4 plug to bare wires). |
-| 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) | GOB panel, $31.99. Standard non-GOB P2 64×64 also fits ($28.99 recorded). |
-| 1 | [PSU-27W-USB-C-C](https://www.waveshare.com/psu-27w-usb-c-c.htm), or a 5 V USB-C supply rated at least 3 A | $6.99. Laptop power may be insufficient for bright content. |
-| 2 | Right-angle USB-C male-to-female adapters | Compatible options below. |
-| 1 | USB data cable for the computer; power cable if the supply needs one | A charge-only cable cannot flash firmware. |
-| 6 | M3×10 screws, socket or pan head | **Buy separately.** Heads 6 mm or smaller; no countersunk heads. The maintainer's: a 50-pack of button-head hex socket screws, $5.99 on 2026-09-18. |
-| 1 each | Printed shell and cradle insert | Files below. |
-| Small amount | Cyanoacrylate or double-sided tape | Attaches the insert. |
-| Optional | microSD card | Recommended for local files and persistent caches. |
+## A. Buy the parts
 
-Tools: a long PH1 or matching hex driver (the deepest screw heads sit 17 mm inside),
-and a computer with Git and ESP-IDF.
+Every link is the listing the maintainer bought from or recommends; prices are what
+the listing showed on the date given, in US dollars, before shipping and tax. The
+[build costs](costs.md) page has the invoices and the per-build totals.
 
-What one unit cost the maintainer, from the invoices in [build costs](costs.md):
+### A.1 p64a and p64b alike
 
-| Build | Parts | Shipping | Tax (New York) | Delivered |
+| Qty | Part | Where | Price seen |
+|---|---|---|---|
+| 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) controller board (SKU 34422) | Waveshare | $24.99, 2026-09-02. The box includes the panel power lead and a short 4-pin cable. |
+| 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) panel, GOB version (SKU 33838) | Waveshare | $31.99, 2026-09-02. The standard (non-GOB) version, SKU 23706, fits the same shell. |
+| 1 | [PSU-27W-USB-C](https://www.waveshare.com/psu-27w-usb-c-c.htm) power supply; pick the US, EU or UK plug on the page | Waveshare | $6.99, 2026-09-02. Any 5 V USB-C supply rated 3 A or more also works. |
+| 2 | [Right-angle USB-C male-to-female adapters, 2-pack](https://www.amazon.com/dp/B0B2NJ3P3L) (AreMe, metallic purple) | Amazon | $4.99, 2026-10-19. [This 4-pack](https://www.amazon.com/dp/B0H3JNGX1D), $6.99 on 2026-10-10, is what the maintainer's own units use. |
+| 6 | [M3 × 10 mm button-head hex screws, 50-pack](https://www.amazon.com/dp/B0GJK7Z9DH) (MoyoCodi, black stainless; choose size "M3 x 10mm") | Amazon | $5.99, 2026-10-19. The pack includes the 2 mm hex key that drives them. |
+| 1 | USB-C data cable | any | For the first flash. A charge-only cable cannot flash. The supply's own cable powers the device. |
+| a dab | Cyanoacrylate glue or double-sided tape | any | Holds the printed cradle insert. |
+| optional | microSD card, FAT32 | any | Local artwork files and a persistent cache. |
+
+Order the Waveshare items together: their freight to New York was $25.60 for the three
+parts in one box (2026-09-02).
+
+Why these adapters: the shell's back window is sized for a 19.3 × 12.7 × 8.0 mm adapter
+body with a 7.7 mm plug. Both linked listings fit (confirmed 2026-10-15). A different
+shape needs the [measurements](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
+checked first.
+
+### A.2 p64b only
+
+| Qty | Part | Where | Price seen |
+|---|---|---|---|
+| 2 | [Adafruit 5880](https://www.adafruit.com/product/5880) I2C QT rotary encoder breakout, with the encoder soldered on | Adafruit | $7.95 each, 2026-09-11. One becomes knob A, the other knob B. Each encoder brings its own nut and washer. |
+| 2 | [Adafruit 5528](https://www.adafruit.com/product/5528) 20 mm silver aluminium knob ([5529](https://www.adafruit.com/product/5529) is the same knob in blue) | Adafruit | $2.95 each, 2026-09-11. Any knob with a 6 mm bore fits; the shell was drawn for 20 mm. |
+| 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into the controller. |
+| 1 | [Adafruit 4397](https://www.adafruit.com/product/4397) STEMMA QT cable to female sockets, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into board A; its sockets take the 4209's pins. |
+| 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm | Adafruit | $1.25, 2026-09-27. Board A to board B. |
+| 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. The maintainer's build used ½ W ones from a 40-pack ($3.99, 2026-09-17); ¼ W lie flatter. |
+| some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack | any | Wraps the four cable joints. |
+
+Tools for p64b: a soldering iron with a fine tip and electronics solder, flux if you
+have it, small side cutters, and the 2 mm hex key from the screw pack (it also fits
+the knobs' set screws). A multimeter is optional and recommended.
+
+### A.3 What it costs
+
+From the maintainer's invoices, shipped to New York (details in [build costs](costs.md)):
+
+| Build | Parts | Shipping | Tax | Delivered |
 |---|---:|---:|---:|---:|
 | p64a | $86.25 | $31.84 | $0.97 | $119.06 |
 | p64b | $115.06 | $37.66 | $4.04 | $156.76 |
 
-Parts are the controller, panel and supply ($63.97), the JLC3DP shell and insert
-($11.30 for v7a, $11.17 for v7b), the adapters, the screw pack and, for p64b, the
-encoder parts and the resistor pack. Shipping is dominated by the $25.60 Waveshare freight to New York; a
-single shell printed alone ships for more than the half-order share used here (the v1
-shell cost $18.83 delivered). Glue, a microSD card and the USB cable are not counted.
+## B. Order the shell from JLC3DP
 
-### USB-C adapters
+The shell is two printed parts: the shell itself and a small cradle insert. The
+maintainer had both printed by [JLC3DP](https://jlc3dp.com) in black PLA, twice; the
+v7 shells of 2026-09-28 arrived on 2026-10-09, eleven days after ordering, and cost
+$10.23 (p64a shell) or $10.10 (p64b shell) plus $1.07 for the insert, before shipping.
+Nothing below needs a 3D printer or any experience with one.
 
-The maintainer bought [this 4-pack](https://www.amazon.com/dp/B0H3JNGX1D) ($6.99 on
-2026-10-10) and confirms [this alternative](https://www.amazon.com/dp/B0B2NJ3P3L) also
-works (2026-10-15; $4.99 on 2026-10-17, the better buy for a single p64).
-Other adapters may fit. The design uses a 19.3×12.7×8.0 mm body and 7.7 mm plug
-protrusion; both adapters must seat together with sockets facing the back window.
-Compare the [measurements and photos](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
-when substituting a different shape. Dry-fit before gluing.
+**1. Download the two files.** Pick your variant and save both files to your computer
+(each link opens the file on GitHub; use its **Download raw file** button, the icon
+with the arrow at the top right of the file view):
 
-### Additional parts for p64b
-
-| Qty | Part | Purpose |
+| | Shell | Cradle insert |
 |---|---|---|
-| 2 | Adafruit 5880 I2C QT encoder boards, $7.95 each | Bridge A0 on board B for address 0x37. |
-| 2 | Adafruit 5528 knobs ($2.95 each; the blue 5529 is the same knob), or compatible 6 mm-bore knobs | The model uses 20 mm diameter knobs. |
-| 1 each | Adafruit 4209 and 4397 cables, $0.95 each | Cross the GPIO pin order to STEMMA QT by function. |
-| 1 | Adafruit 4401, 200 mm JST-SH cable, $1.25 | Connect the boards inside the shell. |
-| 2 | 2.2 kΩ resistors (smallest pack found: 40 for $3.99) | Pull SDA and SCL up to 3.3 V. |
-| As needed | Insulation (tape, or an optional heat-shrink pack, Adafruit 1649, $4.95), soldering equipment, breadboard and jumper pins | Test and permanent harness options are in the wiring guide. |
-| 1 | 2 mm hex key | Knob set screws. |
+| p64a | [p64_enclosure_print.stl](../enclosure/output/p64a/v7a/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64a/v7a/p64_cradle_insert.stl) |
+| p64b | [p64_enclosure_print.stl](../enclosure/output/p64b/v7b/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64b/v7b/p64_cradle_insert.stl) |
 
-Adafruit prices as paid on 2026-09-11 (the 4401 on 2026-09-27); the p64b row
-of the cost table above includes them.
+The folders also hold a `.3mf` copy of the shell (for home printers) and
+`p64_enclosure_service.stl` (a looser fit, for nylon and resin processes); do not
+upload those.
 
-Follow the [two-encoder wiring guide](hardware/encoders-soldered.md). The GPIO and
-STEMMA QT pin orders differ: do not connect them with a straight cable. The
-[one-encoder experiment](hardware/encoders-solderless.md) is not the p64a build.
+**2. Open the quote page.** Go to [jlc3dp.com](https://jlc3dp.com) and click
+**Order Now** at the top right. The page "Online 3D Printing Quote" opens with the
+**3D Printing** product tile selected.
 
-## 2. Print the shell
+**3. Upload.** Click **Upload 3D models** and choose both `.stl` files. Each appears
+as a line in the list, with a price.
 
-Choose [p64a/v7a](../enclosure/output/p64a/v7a/) or
-[p64b/v7b](../enclosure/output/p64b/v7b/). Print `p64_enclosure_print.stl` (or `.3mf`)
-and `p64_cradle_insert.stl`. The shell is already oriented; print the insert sole down.
-Both shells are printed, assembled and in daily use (p64a since 2026-10-09, p64b since 2026-10-17).
+**4. Set the options for each file.** Click **Edit Specifications** on a line and
+choose, top to bottom:
 
-Use PLA or PETG, 0.2 mm layers, 3–4 perimeters, 20% infill, no supports, and a bed at
-least 140×140 mm. Allow about 82 g plus under 2 g for the insert. Enable 0.1–0.2 mm
-elephant-foot compensation. For MJF/SLA use the larger-clearance
-`p64_enclosure_service.stl`; for FDM use `_print.stl`.
+| Option | Choose |
+|---|---|
+| 3D Technology | **FDM(Plastic)** |
+| Material | **PLA-P** (JLC3DP's name for plain PLA since 2026; the page says the rename changed nothing) |
+| Color | **Black** |
+| Thread | **No** |
+| Package Box | either |
+| Qty | **1** |
+| Product Desc | "Enclosure, Block, Plate, Cylinder" category, if the form asks for one |
 
-**Check:** holes are clear, the panel seats without force, and the insert fits around
-the adapters. See the [design reference](../enclosure/design-reference.md) for
-tolerances, or the [legacy v1 notes](../enclosure/archive/pre-v7/build-v1.md) for an older shell.
+Click **Save**, then repeat for the second file. Both parts print without supports and
+need no finishing. The insert's 1.2 mm sole is at the service's minimum wall; their
+file check accepted it (a thinner draft was flagged).
 
-## 3. Build and flash
+**5. Order.** On the right, leave **Build Time** at **Standard**, tick **I agree to
+JLC3DP's terms of use** and click **Submit Order**. You need a JLC3DP account (sign in or
+create one when asked), then it asks for a shipping address and a shipping method (choose the
+cheapest tracked one; the maintainer's two-shell order paid $11.97 of shipping and a
+$0.50 payment fee), then for payment.
 
-The documented installation builds from source with **ESP-IDF v5.5.4**.
-Windows/PowerShell is the documented hardware workflow; Linux builds run in CI.
-macOS and Linux hardware flashing have not been verified by the maintainer.
+**If you have your own printer** instead: PLA or PETG, 0.2 mm layers, 3 to 4
+perimeters, 20 % infill, no supports, a bed of at least 140 × 140 mm, 0.1 to 0.2 mm
+elephant-foot compensation. The shell file already lies in its print orientation;
+print the insert sole down. About 82 g plus 2 g. The
+[enclosure guide](../enclosure/README.md) and
+[design reference](../enclosure/design-reference.md) have the rest.
 
-1. Install Git, PowerShell 7 (Windows), and ESP-IDF v5.5.4 for ESP32-S3 using
-   [Espressif's instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
-2. Clone and enter the firmware folder:
+**When it arrives:** check that the six screw holes are clear, the insert sits between
+its two rails on the inside of the back wall, and (p64b) the two round holes in the
+back are open.
+
+<img src="../enclosure/output/p64a/v7a/render_insert.png" alt="CAD view of the separate U-shaped USB-C cradle insert and its flat sole" width="420">
+
+The cradle insert, the second of the two prints (CAD view).
+
+## C. Assemble
+
+Everything here is done with the power unplugged. The firmware step (D) can come
+before or after this one: the controller's USB port stays reachable through the back
+window once the shell is closed. **For p64b, do D first:** the firmware's start-up
+lights are how you check the soldering.
+
+### C.1 p64a: screwdriver only
+
+1. Plug the controller onto the panel's **HUB75 IN** connector (the connector at the
+   panel's edge; the controller's pins and the connector's key only fit one way).
+2. Connect the panel's power lead that came in the controller's box: the white VH4
+   plug into the panel, the red wire into **5V** and the black wire into **GND** at
+   the controller's screw terminals.
+3. Push one right-angle adapter fully onto each of the controller's two USB-C ports,
+   bodies toward the edge of the panel frame. Leave the panel's plastic frame as it
+   is; nothing needs cutting.
+4. Dry-fit: lower the panel into the shell with the controller at the **bottom** and
+   the adapters pointing at the back window. The insert goes between its two rails,
+   flat against the inside of the back wall, around the adapter bodies. Everything
+   should seat without force. Take the panel out again.
+5. Glue the insert: a thin bead of cyanoacrylate along the outer edge of its sole,
+   away from the opening (or double-sided tape). Seat the panel again, letting the
+   adapters position the insert, fit two screws and leave the glue to set.
+6. Fit all six M3 × 10 screws from the back with the hex key from the pack. Snug, not
+   tight.
+7. Plug the supply into **POWER**, the left port viewed from behind. **USB**, on the
+   right, has a groove beside it and is the one the computer uses.
+
+![Rear port orientation: POWER left, USB right, with a groove beside USB](images/illustrations/rear-ports.svg)
+
+<img src="images/photos/p64-back.jpg" alt="Assembled v7a viewed from behind, with a cable in POWER and the USB port accessible" width="600">
+
+The assembled p64a: supply in POWER, USB free for the computer.
+
+**Check:** the panel sits flat, the adapters stay put when a cable is plugged and
+unplugged, and the device stands on its own. The firmware's default image rotation
+already matches the shell.
+
+### C.2 p64b: solder three things, then assemble
+
+The two encoder boards talk to the controller over its spare 4-pin "GPIO" socket. The
+wiring needs exactly three solder jobs, all on the boards, none on the controller, and
+the cables join by plugging into each other. Full detail, the reasons, the optional
+meter checks and the troubleshooting table are in the
+[two-encoder guide](hardware/encoders-soldered.md); this is the short form.
+
+Decide which board is **A** (brightness and pause) and which is **B** (next artwork
+and like); a dot of marker on B's edge saves confusion later.
+
+**Job 1: one blob of solder on board B.** On the back of each board (the side without
+the encoder) are three pairs of tiny pads labelled **A0**, **A1**, **A2**. On board B
+only, join the two **A0** pads with a small bead of solder: touch the hot, tinned tip
+flat across both pads for a second, lift straight up. The result is a shiny bridge
+across the A0 gap and nothing touching A1. That gives board B a different address
+from board A, so the firmware can tell them apart. Board A's pads stay untouched.
+
+<img src="images/photos/p64b-board-back-jumpers.jpg" alt="The back of an encoder board: the A0, A1 and A2 jumper pads at the left edge, the VIN to INT header holes at the right edge" width="500">
+
+The back of a board: the A0, A1, A2 pads are at the left edge, the six header holes
+(VIN, 3Vo, GND, SCL, SDA, INT) at the right. This is board A, with its resistors
+already fitted; board B gets the A0 bridge and no resistors.
+
+**Job 2: two resistors on board A.** Along one edge of the board are six plated holes
+labelled **VIN, 3Vo, GND, SCL, SDA, INT**. On board A only, solder one 2.2 kΩ
+resistor between **VIN** and **SDA** and the other between **VIN** and **SCL**: bend
+the leads, push them through from the encoder side, solder each on the back (touch
+pad and lead, feed solder for a second, lift), cut the leads flush. The two leads
+that share the VIN hole go in from opposite sides, or get twisted together first.
+Nothing on board B.
+
+<img src="images/photos/p64b-pullups-soldered.jpg" alt="Board A on the bench with the two pull-up resistors standing on its header pads, soldered to VIN, SDA and SCL" width="600">
+
+Board A as built on 2026-10-17: the two resistors standing on the header holes.
+
+**Job 3: plug the two cables into each other** (no solder). The controller's socket
+and the boards' sockets use different pin orders, so a plain cable between them
+would be wrong. Instead, push each pin of the 4209 cable into one socket of the 4397
+cable, **crossing the two signal colours**:
+
+| 4209 pin (controller end) | into 4397 socket (board end) |
+|---|---|
+| yellow | **blue** |
+| blue | **yellow** |
+| red | red |
+| black | black |
+
+Wrap each of the four joints in tape or heat-shrink so no two touch. Mark the
+cable's 4209 end "controller". If you would rather solder the wires than mate the
+pins, the [long guide](hardware/encoders-soldered.md#5-the-cables)
+describes the splice.
+
+**Test it** (needs the firmware, step D): plug the 4209's plug into the controller's
+4-pin GPIO socket on the controller's right edge; the keyed plug fits one way, and the
+black wire lands on the pin marked GND. Plug the 4397's plug into board A, the 4401
+from board A's other socket to board B, and power the controller from USB. Within a
+few seconds board A's small colour LED flashes **green** and board B's flashes
+**blue**. Both green means job 1 did not take; one dark means its cable; the
+[troubleshooting table](hardware/encoders-soldered.md#9-what-can-go-wrong) has the
+rest. Optional meter checks are in the long guide's
+[section 8](hardware/encoders-soldered.md#8-optional-checks-with-a-multimeter-or-a-breadboard).
+
+**Fit the boards** (power off, before the panel goes in):
+
+1. Inside the shell, each of the two round holes in the back wall has four small pegs
+   around it. Board **A** (the one with the resistors) goes to the **right-hand** hole
+   seen from the back, nearest the controller's socket; board B to the left. Plug the
+   cables into the boards first: once mounted, the sockets face up and down, 4.5 mm
+   from the side wall.
+2. Turn each board so its two cable sockets point up and down and its six header
+   holes face the centre of the shell (the only way it fits), and push it onto its
+   pegs with the shaft through the hole, until the threaded bushing sits flat on the
+   wall. A tight peg gets a light trim, not force.
+3. From outside: washer, then nut, finger-tight.
+4. Knob on, with about **1 mm of shaft showing above the nut**, and tighten its set
+   screw onto the flat of the shaft with the 2 mm hex key. A knob pushed all the way
+   down rests on the nut and its click never registers.
+5. Route the harness: from the controller's socket to board A, slack coiled flat
+   against the back wall away from the power lead and the adapters; the 4401 from
+   board A down along the bottom of the cavity, above the adapters, and up into
+   board B.
+
+| <img src="images/photos/p64b-boards-on-pegs.jpg" alt="Both encoder boards on their pegs inside the open v7b shell, the harness and the inter-board cable plugged in" width="400"> | <img src="images/photos/p64b-back.jpg" alt="The closed p64b from behind: two knobs beside the vent slots" width="400"> |
+|---|---|
+| Both boards on their pegs, cables in, before the panel | The result: two knobs through the back wall |
+
+Then connect the 4209 to the controller and continue with the p64a steps above
+(controller onto the panel, power lead, adapters, insert, six screws). Finally turn
+each knob a few clicks and press it: brightness and pause on A, next artwork on B.
+
+## D. Put the firmware on it
+
+No firmware release is published yet, so the firmware is built from source; this is
+the one step that needs a computer with developer tools. Allow an hour the first time,
+most of it the ESP-IDF installer. Check
+[GitHub Releases](https://github.com/fabkury/p64/releases) first: once a release with a
+flashable image exists, this step shrinks to one flashing command.
+
+1. Install Git, PowerShell 7 (Windows) and **ESP-IDF v5.5.4** for the ESP32-S3,
+   following [Espressif's instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
+   Windows is the workflow the maintainer uses; Linux builds run in CI; macOS and
+   Linux flashing have not been tried by the maintainer.
+2. Clone the repository and enter the firmware folder:
 
    ```powershell
    git clone https://github.com/fabkury/p64.git
    cd p64/firmware
    ```
 
-3. Connect the computer to **USB**, the port nearer the board's middle. **POWER**
-   cannot carry data. Flash before assembly for easier access to ports and buttons.
-4. On Windows, adjust the three installation paths in [tools/env.ps1](../firmware/tools/env.ps1)
-   (`IDF_PATH`, `IDF_TOOLS_PATH`, `IDF_PYTHON_ENV_PATH`) to your install, then run:
+3. Connect the computer to the controller's **USB** port with the data cable (on the
+   assembled device: the right-hand port from behind, with the groove). **POWER**
+   carries no data.
+4. On Windows, set the three installation paths at the top of
+   [tools/env.ps1](../firmware/tools/env.ps1) (`IDF_PATH`, `IDF_TOOLS_PATH`,
+   `IDF_PYTHON_ENV_PATH`) to your install, then run:
 
    ```powershell
    .\tools\build.ps1
@@ -115,11 +301,12 @@ macOS and Linux hardware flashing have not been verified by the maintainer.
    .\tools\monitor.ps1
    ```
 
-   The scripts load ESP-IDF and detect the port. Exit the monitor with Ctrl+].
-   If detection fails, use `.\tools\flash.ps1 -Port COM7`, replacing `COM7` with your
-   port. To enter download mode manually, hold BOOT, tap RESET, then release BOOT.
+   The scripts load ESP-IDF and find the port. Ctrl+] leaves the monitor. If the port
+   is not found, name it: `.\tools\flash.ps1 -Port COM7`. If flashing does not start,
+   hold BOOT, tap RESET, release BOOT (both buttons are on the controller; on a closed
+   shell this needs the panel out, which is why p64b flashes before assembly).
 
-   On Linux/macOS, source ESP-IDF v5.5.4's `export.sh`, then from `firmware/`:
+   On Linux or macOS, source ESP-IDF v5.5.4's `export.sh`, then from `firmware/`:
 
    ```sh
    idf.py set-target esp32s3
@@ -127,58 +314,26 @@ macOS and Linux hardware flashing have not been verified by the maintainer.
    idf.py -p /dev/ttyACM0 flash monitor
    ```
 
-   Replace `/dev/ttyACM0` with your port.
+   with your port in place of `/dev/ttyACM0`.
 
-**Check:** flashing completes and the monitor shows p64 starting. Disconnect power
-before assembly. For later flashes after OTA, see the [firmware guide](../firmware/README.md).
+**Check:** the monitor shows p64 starting. Later updates arrive over Wi-Fi through the
+web UI's Update page; the [firmware guide](../firmware/README.md) covers rebuilding.
 
-## 4. Assemble
+## E. First run
 
-Leave the panel's plastic frame unmodified. In the assembled v7a, both USB-C
-adapters seat fully without cutting the frame. Check the fit of your adapters
-before attaching the insert.
+1. Optional: with the power off, insert a FAT32 microSD card with an artwork in
+   `p64/animations/`.
+2. Power on. With no known network, a Wi-Fi network named **p64-setup** appears
+   within about a minute. Join it; open [192.168.4.1](http://192.168.4.1) if the setup
+   page does not open by itself.
+3. Choose your **2.4 GHz** network, type its password, optionally name the device,
+   save. The device reboots; rejoin your own network.
+4. Open [p64.local](http://p64.local) (or `http://p64-<name>.local` for a named
+   device). If `.local` does not resolve, use the address from your router's client
+   list.
+5. Set the time zone under **Settings → Network**. Choose **Local** to play card files
+   or **Promoted** for Makapix artwork without an account; downloads start once Wi-Fi
+   and the time sync are up.
 
-1. With power disconnected, plug the controller onto **HUB75 IN**. Connect the power
-   lead: VH4 to the panel, red to **5V**, ground to **GND** at the screw terminals.
-2. Push both adapters fully onto the ports, bodies toward the frame edge. Dry-fit the
-   panel, adapters and insert. The insert sits between its rails, flat against the
-   inside back wall, around the adapter bodies.
-
-   <img src="../enclosure/output/p64a/v7a/render_insert.png" alt="CAD view of the separate U-shaped USB-C cradle insert and its flat sole" width="420">
-
-   The separately printed cradle insert (CAD view).
-
-3. Attach the insert with a thin bead of cyanoacrylate along its sole's outer edge,
-   away from the opening, or double-sided tape. Seat the panel with the adapters
-   positioning the insert, fit two screws and let the adhesive set.
-4. **p64b:** complete the [bench test and permanent harness](hardware/encoders-soldered.md).
-   Fit boards on their pegs, shafts through the back, then washers, nuts and knobs.
-   Leave room for push-switch travel. Connect the harness before final panel seating.
-5. Seat the panel with the controller at the **bottom**, ports toward the wedge.
-   Fit all six M3×10 screws from the back.
-6. Connect the supply to **POWER**, on the left viewed from behind. **USB**, on the
-   right, is marked by a groove and remains accessible for programming.
-
-![Rear port orientation: POWER left, USB right, with a groove beside USB](images/illustrations/rear-ports.svg)
-
-<img src="images/photos/p64-back.jpg" alt="Assembled v7a viewed from behind, with a cable in POWER and the USB port accessible" width="600">
-
-The assembled p64a: supply connected to POWER, USB free for programming.
-
-**Check:** the panel seats without force, the adapters stay in place when a cable is
-connected, and the device stands securely. Default image rotation is 90° for the shell.
-
-## 5. First run
-
-1. Optional: with power off, insert a FAT32 card with a test artwork in `p64/animations/`.
-2. Power on. With no working network saved, **p64-setup** appears after about a minute.
-   Join it; open [192.168.4.1](http://192.168.4.1) if the setup page does not appear.
-3. Select a **2.4 GHz** network, enter its password, optionally name the device, and
-   save. Rejoin your normal network after the device reboots.
-4. Open [p64.local](http://p64.local), or `http://p64-<name>.local` for a named device.
-   If `.local` fails, use the IP from your router's client list.
-5. Set your time zone in **Settings → Network**. Choose **Local** for card files or
-   **Promoted** for Makapix without an account. New downloads wait for Wi-Fi and NTP.
-
-**Check:** artwork appears and Home's next/pause controls respond. Continue with the
-[owner's guide](using-p64.md) and [troubleshooting](using-p64.md#troubleshooting).
+**Check:** artwork plays and Home's next and pause controls respond. Continue with the
+[owner's guide](using-p64.md) and its [troubleshooting](using-p64.md#troubleshooting).

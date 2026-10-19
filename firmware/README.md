@@ -3,7 +3,7 @@
 ESP-IDF v5.5.4, C++20, for the Waveshare ESP32-S3-RGB-Matrix and P2 64×64 panel.
 The same firmware supports p64a and p64b.
 
-[First build and flash](../docs/build-your-own.md#3-build-and-flash) ·
+[First build and flash](../docs/build-your-own.md#d-put-the-firmware-on-it) ·
 [Testing](docs/testing.md) · [API](docs/api.md) · [Architecture](docs/architecture.md)
 
 ## Build and flash

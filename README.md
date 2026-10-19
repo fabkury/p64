@@ -64,15 +64,18 @@ to p64a and links the extra p64b steps.
 
 ## Build one
 
-You need a Waveshare ESP32-S3-RGB-Matrix controller, a P2 64×64 panel, a suitable USB-C
-supply, the printed shell and insert, two right-angle USB-C adapters, and six M3×10
-screws bought separately. A microSD card is optional. You also need a computer and a
-USB data cable for the first flash.
+No printer, no breadboard, no custom boards. A p64 is four steps:
+
+1. **Buy the parts online**: three items from Waveshare (controller, panel, supply)
+   and two from Amazon (USB-C adapters, screws). p64b adds a few Adafruit parts.
+2. **Order the shell from JLC3DP**: upload two files, choose black PLA, pay.
+3. **Assemble**: p64a with a hex key; p64b after three small solder joints.
+4. **Put the firmware on it**: built from source until a release is published.
 
 For scale, one p64a cost the maintainer about **US$119 delivered** (parts $86, shipping
 $32, tax $1) and one p64b about **US$157** (parts $115, shipping $38, tax $4), at
 the September and October 2026 prices paid, with shipping to New York. The
-[build guide](docs/build-your-own.md#1-parts-and-tools) has the shopping list and the
+[build guide](docs/build-your-own.md#a-buy-the-parts) has every link and the
 [build costs](docs/costs.md) page every invoice line.
 
 [Follow the build guide →](docs/build-your-own.md)
