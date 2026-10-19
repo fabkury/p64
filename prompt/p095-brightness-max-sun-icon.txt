@@ -1,0 +1,13 @@
+Great.
+
+Below is your task.
+
+Context:
+ - When the user turns the brightness knob all the way to the maximu, it's somewhat difficult to tell you've arrived at the end of the range.
+ - Therefore we want to display a little "sun" icon on the middle of the screen, very briefly, to let the user know brightness is already maximum.
+
+Task:
+ - Generate a "sun icon", with transparency, using RetroDiffusion.
+ - Implement it as a very brief image that appears overlaid on the screen whenever the user is turning the brightness knob past its maximum.
+
+Feel free to spend up to $2 on RetroDiffusion for this task.
