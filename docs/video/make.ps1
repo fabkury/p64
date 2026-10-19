@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $openscad = "C:\Program Files\OpenSCAD\openscad.com"
 $blender  = "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
-New-Item -ItemType Directory -Force build | Out-Null
+New-Item -ItemType Directory -Force build, output | Out-Null
 
 $pieces = "frame","board","mask","hub75","pwr","chip_pcb","chip_usb","chip_module","chip_headers","chip_socket",
           "ad_body","ad_plug","insert","enc_board","enc_sockets","enc_body","enc_metal","enc_nut","enc_knob","screws"
@@ -20,7 +20,7 @@ $samples = if ($Quick) { 16 } else { 96 }
 Remove-Item build\frames\*.png -ErrorAction SilentlyContinue
 & $blender -b -P scene.py -- --step $step --samples $samples
 
-$out = if ($Quick) { "..\p64b-concept-preview.mp4" } else { "..\p64b-concept-v4.mp4" }
+$out = if ($Quick) { "output\p64b-concept-preview.mp4" } else { "output\p64b-concept-v4.mp4" }
 python compose.py --step $step --out $out
 
 $withAudio = $out -replace "\.mp4$", "-audio.mp4"

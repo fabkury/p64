@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes the video's soundtrack: a warm, slow ambient synth bed with subtle sound effects.
 
-    python audio.py [--out build/audio.wav] [--mux ../p64b-concept-v4.mp4 ../p64b-concept-v4-audio.mp4]
+    python audio.py [--out build/audio.wav] [--mux output/p64b-concept-v4.mp4 output/p64b-concept-v4-audio.mp4]
 
 Synthesised from scratch (no samples, nothing to license): filtered detuned sawtooth pads,
 a sine sub bass, a sparse plucked motif, a soft pulse under the explosion and the finale,

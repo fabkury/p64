@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Composes the rendered frames into the video: LED bloom, fades, captions, the end card.
 
-    python compose.py [--out ../p64b-concept-v2.mp4] [--captions v1|v2] [--step N] [--frames a,b,c]
+    python compose.py [--out output/p64b-concept-v4.mp4] [--captions v1|v2] [--step N] [--frames a,b,c]
 
 Reads build/frames/f_NNNN.png (from scene.py), writes build/comp/c_NNNN.png and encodes
 them with ffmpeg (H.264, yuv420p, 30 fps). --frames composes only those frames, for a
@@ -166,7 +166,7 @@ def compose_frame(f):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(HERE, "..", "p64b-concept-v4.mp4"))
+    ap.add_argument("--out", default=os.path.join(HERE, "output", "p64b-concept-v4.mp4"))
     ap.add_argument("--captions", choices=("v4",), default="v4")
     ap.add_argument("--frames", default=None)
     ap.add_argument("--step", type=int, default=1)
@@ -174,6 +174,7 @@ def main():
     global CAPTIONS
     CAPTIONS = sb.CAPTIONS
     os.makedirs(COMP, exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     if a.frames:
         frames = [int(x) for x in a.frames.split(",")]
         for f in frames:

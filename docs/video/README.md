@@ -9,12 +9,13 @@ p64 is, what is inside it, and what it does. The device on screen is the model, 
 photo. Both v7 shells have since been printed; p64a is assembled and p64b awaits
 soldering. See [current status](../status.md).
 
-The video itself (`docs/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent; `-audio.mp4`
-with the music bed) is
-not committed, to keep the repository small; this folder holds everything that makes it,
-so one command regenerates it. `build/` is git-ignored.
+The video itself (`output/p64b-concept-v4.mp4`, 1920 x 1080, 30 fps, H.264, silent; `-audio.mp4`
+with the music bed) is the one rendered MP4 that is committed, since the repository README links
+it (since 2026-10-19); every other render in `output/` is git-ignored, to keep the repository small,
+and this folder holds everything that makes them, so one command regenerates them. `build/` is
+git-ignored.
 
-Versions so far, all kept side by side in `docs/` (git-ignored): **v1**, the first cut
+Versions so far, all kept side by side in `output/` (moved there from `docs/` on 2026-10-19): **v1**, the first cut
 (twelve captions of 1.5 to 3 s, two lines each); **v2**, the same render after the user
 found v1's text too much and too brief (seven captions of 3 to 4.6 s, one line each);
 **v3** (`p64b-concept-v3-draft*.mp4`, 15 fps drafts), a new render: the explosion flies out
@@ -50,9 +51,9 @@ The steps, if you want one of them alone:
 | 1 | `openscad -o build/values.echo -D piece="values" pieces.scad` and one `-o build/<piece>.stl -D piece="<piece>"` per piece | `pieces.scad` includes the enclosure source with `encoders = true` and exports each mock-up (panel frame, LED board, controller, adapters, cradle insert, encoder boards, knobs, screws) as its own STL in the shell's design coordinates, plus the numbers Blender needs. |
 | 2 | `python bake_leds.py` | One 64 x 64 PNG per video frame in `build/leds/` (what the panel shows, from `storyboard.PANEL`), and the LED aperture mask. |
 | 3 | `blender -b -P scene.py -- [--start N --end N] [--step N] [--samples N] [--frames a,b,c]` | Builds the scene (the committed `enclosure/output/p64b/v7b/p64_enclosure_print.stl` un-printed back into design coordinates, the pieces, the LED face with the baked sequence, a dark studio, the camera and the explosion from `storyboard.py`), saves `build/p64b.blend`, renders `build/frames/`. |
-| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). ||| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `../p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). |
+| 4 | `python compose.py [--frames a,b,c]` | Bloom around the LEDs, the virtual screen of the knob scene, fades, captions, the end card; encodes `output/p64b-concept-v4.mp4` with ffmpeg (about 13 min for the 1500 frames). |
 
-| 5 | `python audio.py --mux ../p64b-concept-v4.mp4 ../p64b-concept-v4-audio.mp4` | The soundtrack: a warm, slow ambient synth bed synthesised from scratch (filtered detuned sawtooth pads over eight added-ninth chords in D, a sine sub bass, a sparse plucked motif, a soft pulse under the explosion and the finale, a synthetic reverb; no samples, nothing to license) with subtle effects from `storyboard.py` (a filtered whoosh as the parts fly out and back, clicks on every knob detent and press, a small chime on the like), normalised to -18 LUFS with ffmpeg's loudnorm and muxed into a copy of the silent video (the video stream is copied). The silent MP4 stays; the one with sound is `docs/p64b-concept-v4-audio.mp4`. A first, lo-fi chiptune version with a drum kit was discarded the same day (2026-09-25) at the user's request. |
+| 5 | `python audio.py --mux output/p64b-concept-v4.mp4 output/p64b-concept-v4-audio.mp4` | The soundtrack: a warm, slow ambient synth bed synthesised from scratch (filtered detuned sawtooth pads over eight added-ninth chords in D, a sine sub bass, a sparse plucked motif, a soft pulse under the explosion and the finale, a synthetic reverb; no samples, nothing to license) with subtle effects from `storyboard.py` (a filtered whoosh as the parts fly out and back, clicks on every knob detent and press, a small chime on the like), normalised to -18 LUFS with ffmpeg's loudnorm and muxed into a copy of the silent video (the video stream is copied). The silent MP4 stays; the one with sound is `output/p64b-concept-v4-audio.mp4`. A first, lo-fi chiptune version with a drum kit was discarded the same day (2026-09-25) at the user's request. |
 
 `storyboard.py` is the one place with every time: the camera beats, the explosion, what
 the panel shows, the captions. Change it and rerun from step 2 (the panel) or 3 (camera,
