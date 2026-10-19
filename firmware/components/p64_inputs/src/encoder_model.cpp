@@ -7,7 +7,11 @@ EncoderEvent EncoderTracker::feed(uint32_t t_ms, int32_t position, bool down) {
   if (have_position_) {
     // Two's-complement subtraction wraps correctly across INT32_MAX / INT32_MIN.
     const auto delta = static_cast<int32_t>(static_cast<uint32_t>(position) - static_cast<uint32_t>(last_position_));
-    ev.turned = invert_ ? -delta : delta;
+    // The seesaw counts up when the shaft turns clockwise seen from the board, and the
+    // p64b boards sit behind the back face, so a turn the user feels as clockwise (device
+    // facing them, hand reaching behind) counts down on the board: the sign is flipped
+    // here (since 2026-10-19; the knobs felt reversed before) and `invert` flips it back.
+    ev.turned = invert_ ? delta : -delta;
     detents_ += ev.turned;
   }
   have_position_ = true;

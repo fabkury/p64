@@ -1309,3 +1309,10 @@ them. Newest entries are at the bottom of [Log](#log).
   before the code was accepted, so the device asks too often while pairing: a third
   follow-up beside the two in `docs/status.md`.
 
+- 2026-10-19 (p093): both knobs felt reversed in the closed p64b shell, because the
+  seesaw boards sit behind the back face and the user turns them with the device
+  facing them. The tracker (`encoder_model.cpp`) now negates the board's counter by
+  default, so a turn felt as clockwise counts up (brightness up, next artwork) with
+  `encoders_invert` still off; invert gives the board's own sign back. The presses are
+  untouched. Host test updated; the bench note in `docs/hardware/encoder-history.md`
+  says why a board on the desk counts the other way.

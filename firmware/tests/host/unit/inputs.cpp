@@ -165,30 +165,32 @@ TEST_CASE("encoder tracker") {
   auto ev = t.feed(0, 100, false);
   CHECK(!ev.any());
   CHECK_EQ(t.position(), 100);
-  // Detents are position differences; several between polls arrive together.
+  // Detents are position differences, counted down: the board's counter rises on a turn
+  // the user feels as counter-clockwise (the boards face backwards, 2026-10-19). Several
+  // detents between polls arrive together.
   ev = t.feed(20, 101, false);
-  CHECK_EQ(ev.turned, 1);
+  CHECK_EQ(ev.turned, -1);
   ev = t.feed(40, 104, false);
-  CHECK_EQ(ev.turned, 3);
+  CHECK_EQ(ev.turned, -3);
   ev = t.feed(60, 102, false);
-  CHECK_EQ(ev.turned, -2);
-  CHECK_EQ(t.detents(), 2);
+  CHECK_EQ(ev.turned, 2);
+  CHECK_EQ(t.detents(), -2);
   // Wrap-safe across the 32-bit boundary.
   EncoderTracker w;
   w.feed(0, INT32_MAX, false);
-  CHECK_EQ(w.feed(20, INT32_MIN, false).turned, 1);
-  CHECK_EQ(w.feed(40, INT32_MAX, false).turned, -1);
-  // Invert flips the sign of the turn and of the running count.
+  CHECK_EQ(w.feed(20, INT32_MIN, false).turned, -1);
+  CHECK_EQ(w.feed(40, INT32_MAX, false).turned, 1);
+  // Invert flips the sign of the turn and of the running count (back to the board's own).
   EncoderTracker inv;
   inv.set_invert(true);
   inv.feed(0, 0, false);
-  CHECK_EQ(inv.feed(20, 5, false).turned, -5);
-  CHECK_EQ(inv.detents(), -5);
+  CHECK_EQ(inv.feed(20, 5, false).turned, 5);
+  CHECK_EQ(inv.detents(), 5);
   // A resync after a board reset does not count the jump back to zero.
   t.resync();
   ev = t.feed(80, 0, false);
   CHECK_EQ(ev.turned, 0);
-  CHECK_EQ(t.detents(), 2);
+  CHECK_EQ(t.detents(), -2);
   // The switch: one sample of a level is bounce, two make a press; the release the same.
   EncoderTracker s;
   s.feed(0, 0, false);

@@ -280,7 +280,9 @@ Inputs (spec 9): the status document carries `inputs {imu_present, auto_rotation
 auto_rotation, calibrated, encoders_present}` (the last is how many of the two p64b
 rotary encoder boards answer). The p64b knobs: settings `inputs.encoders_enabled` (the
 knobs act; they are always polled), `inputs.encoders_swap` (knob A takes knob B's role
-and vice versa) and `inputs.encoders_invert` (clockwise counts down). Knob A (0x36):
+and vice versa) and `inputs.encoders_invert` (reverses the turn direction; off means a
+turn the user feels as clockwise, device facing them, counts up: the boards sit behind
+the back face, so the firmware negates their counter since 2026-10-19). Knob A (0x36):
 turn = brightness, 7 per detent (an even step of perceived lightness, 37 detents from 1 to 255; `knob_rules.hpp`),
 applied to the panel at once and written to the setting 800 ms after the last detent;
 press = pause / resume. Knob B (0x37): turn clockwise = next, counter-clockwise =

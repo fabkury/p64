@@ -1,6 +1,7 @@
 // p64 -- what a rotary encoder's raw readings mean (pure, host-tested): the seesaw
 // counts detents itself and hands over a 32-bit position, so a poll turns a position
-// difference into "turned N detents" (wrap-safe, sign by the invert setting) and the
+// difference into "turned N detents" (wrap-safe, counting down on the board's counter
+// because the boards face backwards, then by the invert setting) and the
 // switch level into press, release and long-press events with a two-sample debounce.
 #pragma once
 
@@ -9,7 +10,7 @@
 namespace p64::inputs {
 
 struct EncoderEvent {
-  int32_t turned = 0;       // detents since the last poll, positive = clockwise (once invert is right)
+  int32_t turned = 0;       // detents since the last poll, positive = clockwise as the user feels it
   bool pressed = false;     // the switch went down at this poll
   bool released = false;    // the switch came up at this poll
   bool long_press = false;  // held for kLongPressMs (reported once per hold, before the release)

@@ -47,7 +47,9 @@ helping-hands clip (tape holds the board), spare tips, a silicone mat.
 - Knob A: accepted on the bench. Stage B: 10 detents clockwise counted +10 and 10 back
   landed on exactly 0, two presses and a long press registered, no read errors, clockwise
   positive (so `encoders_invert` stays off). Stage C: see the progress log for what was
-  verified on the device.
+  verified on the device. In the closed shell (2026-10-19) the knobs felt reversed: the
+  boards face backwards, so the firmware now negates the board's counter by default and
+  `encoders_invert` stays off; a bench board on the desk counts the other way round.
 - The knob cap (2026-09-27): with the cap pushed fully down the shaft, three clicks
   registered nothing (`presses` stayed 0, no read errors, the switch pin steady at
   released); with the cap off, three clicks counted 3 and toggled the pause. The shaft's

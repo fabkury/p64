@@ -276,7 +276,9 @@ already there).
   actions do); press = pause / resume. A long press is reported but unassigned.
 - Plumbing: the encoder events join `inputs::Hooks` next to the tap gestures; the show
   loop handles them exactly as it handles `/api/v1/action/next`, `previous` and `pause`.
-- Settings: `encoders.enabled`, `encoders.invert` (swap the turn direction).
+- Settings: `encoders.enabled`, `encoders.invert` (swap the turn direction). The default
+  sign is the user's, device facing them: the firmware negates the board's counter
+  because the boards face backwards (2026-10-19).
 - Docs: `firmware/docs/architecture.md`, `api.md`, `PROGRESS.md`; the wiring and the
   bench numbers into `firmware/reference/hardware-tests/README.md` (board facts) and [enclosure design reference](../../enclosure/design-reference.md).
 
