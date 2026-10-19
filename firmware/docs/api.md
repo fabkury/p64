@@ -240,7 +240,9 @@ slot while the panel keeps playing, its SHA256 read back from flash and compared
 the slot is made bootable; the user reboots. The new image confirms itself 30 s after
 boot; a crash before that rolls back automatically. Releases: tag `v<MAJOR.MINOR.PATCH>`
 at the repository in `P64_OTA_GITHUB_REPO` with the assets `tools/release_assets.py`
-produces (`p64-firmware.bin` and `p64-firmware.bin.sha256`).
+collects (`p64-firmware.bin` and `p64-firmware.bin.sha256` are the ones the updater
+reads; the rest serve USB flashing), published by CI when the tag is pushed
+([release-build.md](release-build.md)).
 
 ## PIN
 

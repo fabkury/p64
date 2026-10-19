@@ -3,7 +3,7 @@
 ESP-IDF v5.5.4, C++20, for the Waveshare ESP32-S3-RGB-Matrix and P2 64×64 panel.
 The same firmware supports p64a and p64b.
 
-[First build and flash](../docs/build-your-own.md#d-put-the-firmware-on-it) ·
+[Flash a release](../docs/flash-firmware.md) · [First build from source](../docs/build-your-own.md#building-from-source-instead) ·
 [Testing](docs/testing.md) · [API](docs/api.md) · [Architecture](docs/architecture.md)
 
 ## Build and flash
@@ -66,7 +66,9 @@ not need to regenerate them.
 - Asset tools: [fonts](tools/gen_fonts.py), [weather icons](tools/gen_weather_icons.py),
   [UI icons](tools/gen_ui_icons.py), [clock assets](tools/gen_clock_assets.py).
   Python tools document their inputs; image generators use Pillow.
-- [Release asset builder](tools/release_assets.py) and [update contract](docs/api.md#updates).
+- [Release build](docs/release-build.md): assets, the tag-driven CI release, the audit of
+  development resources in the image; [asset collector](tools/release_assets.py),
+  [update contract](docs/api.md#updates), [web flasher](../docs/web-flasher/README.md).
 - [CPU and heap sampling](tools/cpu_sample.py), [decode benchmark](docs/benchmarks.md).
 - [Specification](../docs/spec/p64-spec.md), [glossary](../CONTEXT.md), [ADRs](../docs/adr/).
 - [Current readiness](../docs/status.md) and [engineering history](docs/PROGRESS.md).

@@ -1,0 +1,76 @@
+# p64 firmware release (2026-10-19, firmware/docs/release-build.md).
+#
+# Pushing a tag v<MAJOR.MINOR.PATCH> builds the public firmware (no private area, no
+# sdkconfig.secrets: the same image CI builds on every push) in the espressif/idf
+# container, checks the size budgets, collects the release assets with
+# tools/release_assets.py and publishes them as a GitHub release of that tag. The
+# device's updater looks for p64-firmware.bin and its .sha256 there; the other files
+# are what a USB flash needs (docs/flash-firmware.md, docs/web-flasher/).
+#
+# The tag must equal "v" + PROJECT_VER in firmware/CMakeLists.txt, or the job fails
+# before building. A tag with a suffix (v0.3.0-rc1) becomes a pre-release, which the
+# updater ignores (it asks GitHub for the latest release) and the web flasher labels.
+#
+# A release created with GITHUB_TOKEN raises no "release" event for other workflows,
+# so the Pages deployment is called from here as the last job.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tag matches PROJECT_VER
+        working-directory: firmware
+        run: python3 tools/release_assets.py --check-tag "${GITHUB_REF_NAME}" --only-check
+      - name: Build the public firmware
+        working-directory: firmware
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py build
+      - name: Size budgets
+        working-directory: firmware
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          python tools/check_size.py
+      - name: Collect the release assets
+        working-directory: firmware
+        run: python3 tools/release_assets.py --check-tag "${GITHUB_REF_NAME}"
+      - name: Publish the release
+        working-directory: firmware/build/release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          {
+            echo "Flash it from the browser: https://fabkury.github.io/p64/web-flasher/"
+            echo "Or from the command line: https://github.com/fabkury/p64/blob/main/docs/flash-firmware.md"
+            echo "Devices already running p64 install this release from their Update page."
+            echo
+          } > notes.md
+          gh release create "$TAG" --title "p64 $TAG" --notes-file notes.md --generate-notes $prerelease \
+            p64-firmware.bin p64-firmware.bin.sha256 bootloader.bin partition-table.bin ota_data_initial.bin \
+            flash_args SHA256SUMS
+
+  pages:
+    needs: release
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
