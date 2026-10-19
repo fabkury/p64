@@ -44,7 +44,7 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 
 ![An animation playing in the shell](docs/images/photos/p64-playing.gif)
 
-[More photos, playback clips and the web UI](docs/gallery.md) · [Clock-face comparison](docs/using-p64.md#clocks-and-widgets)
+[More photos, playback clips and the web UI](docs/gallery.md) · [Clock-face comparison](docs/using-p64.md#clocks-and-widgets) · [Concept video of p64b](docs/video/output/p64b-concept-v4.mp4) (45 s, rendered from the enclosure source; [how it is made](docs/video/README.md))
 
 ## Choose a variant
 
