@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>p64 web flasher</title>
+<meta name="description" content="Put the p64 firmware on a Waveshare ESP32-S3-RGB-Matrix board from your browser">
+<link rel="icon" href="p64-logo-64.png" type="image/png">
+<style>
+:root {
+    --bg: #14131a;
+    --card: #1f1e27;
+    --card-2: #27262f;
+    --text: #ece9f1;
+    --muted: #a39fae;
+    --line: #3a3845;
+    --accent: #ff9f1c;
+    --accent-text: #1a1206;
+    --ok: #52c47b;
+    --bad: #ef5d5d;
+    --info: #5aa9ff;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.container { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.header { text-align: center; padding: 8px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.logo { width: 64px; height: 64px; image-rendering: pixelated; }
+.header h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2rem); font-weight: 300; letter-spacing: 0.08em; }
+.header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.card h2 { margin: 0 0 10px; font-size: 0.95rem; font-weight: 600; }
+.card p { margin: 0 0 10px; font-size: 0.88rem; line-height: 1.45; }
+.card p:last-child { margin-bottom: 0; }
+.hint { color: var(--muted); }
+.warning { border-color: var(--bad); }
+.warning h3 { color: var(--bad); margin: 0 0 8px; font-size: 0.95rem; }
+.warning ul { margin: 0 0 8px; padding-left: 20px; font-size: 0.88rem; }
+select {
+    width: 100%; padding: 10px 12px; font-size: 0.95rem; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--card-2); color: var(--text);
+}
+select:focus { outline: none; border-color: var(--accent); }
+.release-meta { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+.badge { background: var(--accent); color: var(--accent-text); padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+.release-notes {
+    margin-top: 8px; padding: 10px 12px; background: var(--card-2); border-radius: 8px;
+    font-size: 0.8rem; line-height: 1.45; white-space: pre-wrap; max-height: 140px; overflow-y: auto; color: var(--text);
+}
+.file-table { margin-top: 10px; font-size: 0.78rem; color: var(--muted); font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; }
+.btn {
+    width: 100%; padding: 13px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active:not(:disabled) { transform: scale(0.99); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: var(--accent-text); }
+.btn-secondary { background: var(--card-2); color: var(--text); border: 1px solid var(--line); }
+.status { margin-top: 10px; font-size: 0.85rem; }
+.status-ok { color: var(--ok); }
+.status-off { color: var(--muted); }
+label.check { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; margin: 0 0 12px; cursor: pointer; line-height: 1.4; }
+label.check input { margin-top: 3px; accent-color: var(--accent); }
+.file-item { margin-bottom: 10px; }
+.file-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; }
+.file-address { color: var(--muted); font-family: monospace; }
+.bar { height: 6px; background: var(--card-2); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--info); transition: width 0.15s; }
+.fill.complete { background: var(--ok); }
+.file-status { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+.file-status.complete { color: var(--ok); }
+.file-status.error { color: var(--bad); }
+.overall { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.overall .bar { height: 10px; }
+.overall .fill { background: var(--accent); }
+.overall-text { text-align: center; margin-top: 6px; font-size: 0.85rem; font-weight: 600; }
+details.card summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+#log-output {
+    margin: 12px 0 0; padding: 12px; background: #0d0c12; color: #9ce89a; border-radius: 8px;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.7rem; line-height: 1.4;
+    max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+}
+.toast {
+    position: fixed; top: clamp(48px, 12vh, 80px); left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; display: none; z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4); max-width: 90%; text-align: center; color: #fff;
+}
+.toast.success { background: #2f8d52; }
+.toast.error { background: #c33c3c; }
+.toast.info { background: #2f6fb8; }
+.footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 16px; padding: 12px 0; }
+.footer a { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+.footer a:hover { color: var(--text); }
+a { color: var(--info); }
+code { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.85em; background: var(--card-2); padding: 1px 5px; border-radius: 4px; }
+@media (max-width: 480px) { body { padding: 12px 8px; } .card { padding: 14px; } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="p64-logo-64.png" alt="p64" class="logo">
+        <h1>p64 web flasher</h1>
+        <p>Puts the firmware on the controller over USB. No tools to install.</p>
+    </div>
+
+    <div class="card warning" id="browser-warning" style="display:none">
+        <h3>This browser cannot flash</h3>
+        <p>Flashing uses the Web Serial API. Use one of:</p>
+        <ul>
+            <li>Google Chrome 89 or newer</li>
+            <li>Microsoft Edge 89 or newer</li>
+        </ul>
+        <p>Firefox and Safari do not offer it. The <a href="https://github.com/fabkury/p64/blob/main/docs/flash-firmware.md">command-line guide</a> works everywhere.</p>
+    </div>
+
+    <div class="card" id="release-card">
+        <h2>1. Choose the firmware</h2>
+        <select id="release-select"><option value="">Loading releases...</option></select>
+        <div id="release-info"></div>
+    </div>
+
+    <div class="card" id="connect-card">
+        <h2>2. Connect the controller</h2>
+        <p class="hint">Plug a USB-C <strong>data</strong> cable into the controller's <strong>USB</strong> port (on an assembled p64: the right-hand port from behind, the one with the groove). The POWER port carries no data. The panel may stay powered from its supply.</p>
+        <p class="hint">In the browser's dialog pick the <strong>USB JTAG/serial debug unit</strong> (Windows may show it as <strong>USB Serial Device</strong> or a COM number).</p>
+        <button class="btn btn-primary" id="connect-btn">Connect</button>
+        <div class="status" id="connection-status"><span class="status-off">Not connected</span></div>
+    </div>
+
+    <div class="card" id="flash-card">
+        <h2>3. Flash</h2>
+        <label class="check">
+            <input type="checkbox" id="erase-check">
+            <span><strong>Erase everything first.</strong> Starts from a blank chip: the Wi-Fi network, every setting, the Makapix Club pairing and the PIN are lost and the setup network <code>p64-setup</code> appears again. Leave it off to update a working device and keep its settings.</span>
+        </label>
+        <button class="btn btn-primary" id="flash-btn" disabled>Flash the firmware</button>
+    </div>
+
+    <div class="card" id="progress-card" style="display:none">
+        <h2>Progress</h2>
+        <div id="file-list"></div>
+        <div class="overall">
+            <div class="bar"><div class="fill" id="overall-fill"></div></div>
+            <div class="overall-text" id="overall-text">0%</div>
+        </div>
+    </div>
+
+    <div class="card" id="done-card" style="display:none">
+        <h2>Done</h2>
+        <p>The controller restarts with the new firmware. On a device that has never been set up (or after an erase) a Wi-Fi network named <code>p64-setup</code> appears within about a minute: join it to choose your network. A device that was already set up simply comes back on its network at <a href="http://p64.local">p64.local</a>.</p>
+        <p class="hint">Later updates install over Wi-Fi from the web UI's Update page; this flasher is only needed the first time or to recover a device.</p>
+    </div>
+
+    <details class="card" id="log-card">
+        <summary>Console log</summary>
+        <pre id="log-output"></pre>
+    </details>
+
+    <div class="footer">
+        <a href="https://github.com/fabkury/p64">GitHub</a>
+        <a href="https://github.com/fabkury/p64/blob/main/docs/flash-firmware.md">Command-line guide</a>
+        <a href="https://github.com/fabkury/p64/releases">Releases</a>
+        <a href="https://github.com/fabkury/p64/blob/main/docs/build-your-own.md">Build your own</a>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { ESPLoader, Transport } from './esptool-bundle.js';
+
+// The controller is Waveshare's ESP32-S3-RGB-Matrix: ESP32-S3-WROOM-2-N32R16V, 32 MB
+// octal flash. The bootloader header already carries the flash mode, frequency and size
+// the firmware was built with (firmware/sdkconfig.defaults), so every parameter is "keep".
+const CONFIG = {
+    CHIP: 'ESP32-S3',
+    BAUD_RATE: 460800,
+    FLASH_MODE: 'keep',
+    FLASH_FREQ: 'keep',
+    FLASH_SIZE: 'keep',
+    INDEX: './firmware/index.json',
+    // Images with an ESP image header: the first byte is the magic 0xE9.
+    ESP_IMAGES: ['bootloader.bin', 'p64-firmware.bin'],
+};
+
+const state = { releases: [], selected: null, transport: null, esploader: null, connected: false, flashing: false, port: null };
+
+const el = {};
+for (const id of ['release-select', 'release-info', 'connect-btn', 'connection-status', 'flash-btn', 'erase-check',
+                  'progress-card', 'file-list', 'overall-fill', 'overall-text', 'done-card', 'log-output', 'toast',
+                  'browser-warning']) {
+    el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = document.getElementById(id);
+}
+
+function log(message) {
+    const t = new Date().toLocaleTimeString();
+    el.logOutput.textContent += `[${t}] ${message}\n`;
+    el.logOutput.scrollTop = el.logOutput.scrollHeight;
+    console.log(`[p64-flasher] ${message}`);
+}
+
+function toast(message, kind = 'info') {
+    el.toast.textContent = message;
+    el.toast.className = `toast ${kind}`;
+    el.toast.style.display = 'block';
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { el.toast.style.display = 'none'; }, 6000);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function hex(n) { return '0x' + n.toString(16); }
+
+// ---- releases: firmware/index.json, written by build_site.py at deployment ----
+async function loadReleases() {
+    const response = await fetch(CONFIG.INDEX, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`HTTP ${response.status} loading ${CONFIG.INDEX}`);
+    const index = await response.json();
+    return index.releases || [];
+}
+
+function fileUrl(release, name) { return `./firmware/${release.tag}/${name}`; }
+
+async function fetchBinary(release, name) {
+    const url = fileUrl(release, name);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status} downloading ${name}`);
+    return new Uint8Array(await response.arrayBuffer());
+}
+
+function populateReleases(releases) {
+    el.releaseSelect.innerHTML = '';
+    if (releases.length === 0) {
+        el.releaseSelect.innerHTML = '<option value="">No release published yet</option>';
+        el.releaseInfo.innerHTML = '<p class="hint" style="margin-top:8px">The firmware has not been released yet. Check <a href="https://github.com/fabkury/p64/releases">GitHub Releases</a> or build it from source.</p>';
+        return;
+    }
+    for (const r of releases) {
+        const option = document.createElement('option');
+        option.value = r.tag;
+        option.textContent = r.tag + (r.prerelease ? ' (pre-release)' : '');
+        el.releaseSelect.appendChild(option);
+    }
+    // The newest release (a pre-release only when nothing else exists) is preselected.
+    const first = releases.find(r => !r.prerelease) || releases[0];
+    el.releaseSelect.value = first.tag;
+    selectRelease(first);
+}
+
+function selectRelease(release) {
+    state.selected = release;
+    el.flashBtn.disabled = !state.connected || !release;
+    if (!release) { el.releaseInfo.innerHTML = ''; return; }
+    const date = release.published_at ? new Date(release.published_at).toLocaleDateString() : '';
+    let html = `<div class="release-meta"><span>${escapeHtml(release.title)}</span><span>${date}</span>` +
+               (release.prerelease ? '<span class="badge">pre-release</span>' : '') + '</div>';
+    if (release.notes) {
+        const notes = release.notes.length > 600 ? release.notes.substring(0, 600) + '...' : release.notes;
+        html += `<div class="release-notes">${escapeHtml(notes)}</div>`;
+    }
+    const total = release.files.reduce((s, f) => s + f.size, 0);
+    html += `<div class="file-table">${release.files.map(f => `${hex(f.address).padEnd(9)} ${f.name} (${(f.size / 1024).toFixed(0)} KB)`).join('<br>')}` +
+            `<br>${(total / 1024 / 1024).toFixed(2)} MB in total</div>`;
+    el.releaseInfo.innerHTML = html;
+    log(`Selected ${release.tag}: ${release.files.map(f => f.name).join(', ')}`);
+}
+
+// ---- device ----
+function checkBrowser() {
+    if (!('serial' in navigator)) {
+        el.browserWarning.style.display = 'block';
+        el.connectBtn.disabled = true;
+        el.flashBtn.disabled = true;
+        return false;
+    }
+    return true;
+}
+
+function setConnected(connected, chip = '') {
+    state.connected = connected;
+    el.connectBtn.textContent = connected ? 'Disconnect' : 'Connect';
+    el.connectionStatus.innerHTML = connected
+        ? `<span class="status-ok">Connected: ${escapeHtml(chip)}</span>`
+        : '<span class="status-off">Not connected</span>';
+    el.flashBtn.disabled = !connected || !state.selected;
+}
+
+const terminal = { clean() {}, writeLine: (d) => log(d), write: (d) => { if (d.trim()) log(d.trim()); } };
+
+async function connect() {
+    state.port = await navigator.serial.requestPort();
+    state.transport = new Transport(state.port, true);
+    state.esploader = new ESPLoader({ transport: state.transport, baudrate: CONFIG.BAUD_RATE, terminal, romBaudrate: 115200, enableTracing: false });
+    const chip = await state.esploader.main();
+    log(`Detected chip: ${chip}`);
+    if (!chip.toLowerCase().replace(/[^a-z0-9]/g, '').includes('esp32s3')) {
+        log(`Warning: expected ${CONFIG.CHIP}, detected "${chip}"`);
+        toast(`Detected ${chip}; p64 runs on an ${CONFIG.CHIP}`, 'error');
+    }
+    return chip;
+}
+
+async function disconnect() {
+    if (state.transport) await state.transport.disconnect();
+    state.transport = null; state.esploader = null; state.port = null;
+}
+
+async function resetDevice() {
+    const l = state.esploader;
+    if (!l) return;
+    if (typeof l.after === 'function') await l.after('hard_reset');
+    else if (typeof l.hardReset === 'function') await l.hardReset();
+    else if (state.transport && typeof state.transport.setDTR === 'function') {
+        await state.transport.setDTR(false); await new Promise(r => setTimeout(r, 100)); await state.transport.setDTR(true);
+    } else throw new Error('no reset method; press RESET on the controller');
+}
+
+// ---- progress ----
+function initProgress(files) {
+    el.progressCard.style.display = 'block';
+    el.doneCard.style.display = 'none';
+    el.fileList.innerHTML = files.map((f, i) => `
+        <div class="file-item">
+            <div class="file-header"><span>${escapeHtml(f.name)}</span><span class="file-address">${hex(f.address)}</span></div>
+            <div class="bar"><div class="fill" id="file-fill-${i}"></div></div>
+            <div class="file-status" id="file-status-${i}">Waiting</div>
+        </div>`).join('');
+    setOverall(0);
+}
+
+function setFile(i, percent, status, complete = false, error = false) {
+    const fill = document.getElementById(`file-fill-${i}`);
+    const st = document.getElementById(`file-status-${i}`);
+    if (fill) { fill.style.width = `${percent}%`; fill.classList.toggle('complete', complete); }
+    if (st) { st.textContent = status; st.className = 'file-status' + (complete ? ' complete' : '') + (error ? ' error' : ''); }
+}
+
+function setOverall(percent) {
+    el.overallFill.style.width = `${percent}%`;
+    el.overallText.textContent = `${Math.round(percent)}%`;
+}
+
+function setFlashing(flashing) {
+    state.flashing = flashing;
+    el.flashBtn.disabled = flashing || !state.connected || !state.selected;
+    el.flashBtn.textContent = flashing ? 'Flashing...' : 'Flash the firmware';
+    el.connectBtn.disabled = flashing;
+    el.releaseSelect.disabled = flashing;
+    el.eraseCheck.disabled = flashing;
+}
+
+// ---- events ----
+el.releaseSelect.addEventListener('change', (e) => {
+    selectRelease(state.releases.find(r => r.tag === e.target.value) || null);
+});
+
+el.connectBtn.addEventListener('click', async () => {
+    if (state.connected) {
+        try { await disconnect(); setConnected(false); log('Disconnected'); }
+        catch (error) { log(`Disconnect error: ${error.message}`); toast('Disconnect failed: ' + error.message, 'error'); }
+        return;
+    }
+    try {
+        log('Connecting...');
+        const chip = await connect();
+        setConnected(true, chip);
+        toast('Connected to ' + chip, 'success');
+    } catch (error) {
+        log(`Connection error: ${error.message}`);
+        if (error.name === 'NotFoundError') toast('No port chosen', 'info');
+        else toast('Connection failed: ' + error.message + '. Hold BOOT, tap RESET, release BOOT, then try again.', 'error');
+        try { await disconnect(); } catch (_) {}
+        setConnected(false);
+    }
+});
+
+el.flashBtn.addEventListener('click', async () => {
+    const release = state.selected;
+    if (!release) { toast('Choose a firmware version first', 'error'); return; }
+    if (!state.connected) { toast('Connect the controller first', 'error'); return; }
+    const eraseAll = el.eraseCheck.checked;
+    setFlashing(true);
+    try {
+        const files = [...release.files].sort((a, b) => a.address - b.address);
+        initProgress(files);
+        const fileArray = [];
+        for (let i = 0; i < files.length; i++) {
+            setFile(i, 0, 'Downloading');
+            const data = await fetchBinary(release, files[i].name);
+            if (data.length !== files[i].size) throw new Error(`${files[i].name}: got ${data.length} bytes, expected ${files[i].size}`);
+            if (CONFIG.ESP_IMAGES.includes(files[i].name) && data[0] !== 0xE9) throw new Error(`${files[i].name} is not an ESP image (first byte ${hex(data[0])})`);
+            log(`Downloaded ${files[i].name}: ${data.length} bytes`);
+            fileArray.push({ data, address: files[i].address });
+            setFile(i, 100, 'Ready');
+        }
+
+        if (eraseAll) log('Erasing the whole flash first (settings and pairing are lost)...');
+        log(`Writing ${files.length} files at ${CONFIG.BAUD_RATE} baud...`);
+        const totalBytes = fileArray.reduce((s, f) => s + f.data.length, 0);
+        let current = 0, done = 0;
+        await state.esploader.writeFlash({
+            fileArray,
+            flashSize: CONFIG.FLASH_SIZE, flashMode: CONFIG.FLASH_MODE, flashFreq: CONFIG.FLASH_FREQ,
+            eraseAll, compress: true,
+            reportProgress: (index, written, total) => {
+                if (index !== current) {
+                    for (let i = current; i < index; i++) { done += fileArray[i].data.length; setFile(i, 100, 'Written', true); }
+                    current = index;
+                }
+                const percent = (written / total) * 100;
+                setFile(index, percent, `${Math.round(percent)}%`);
+                setOverall(((done + written) / totalBytes) * 100);
+            },
+        });
+        for (let i = 0; i < files.length; i++) setFile(i, 100, 'Written', true);
+        setOverall(100);
+
+        log('Resetting the controller...');
+        try {
+            await resetDevice();
+            toast('Flashed. The controller is restarting.', 'success');
+        } catch (error) {
+            log(`Reset: ${error.message}`);
+            toast('Flashed. Press RESET on the controller (or unplug and replug it).', 'success');
+        }
+        log('Flash complete');
+        el.doneCard.style.display = 'block';
+        try { await disconnect(); } catch (_) {}
+        setConnected(false);
+    } catch (error) {
+        log(`Flash error: ${error.message}`);
+        toast('Flashing failed: ' + error.message, 'error');
+        const items = document.querySelectorAll('.file-status');
+        items.forEach((st, i) => { if (!st.classList.contains('complete')) setFile(i, 0, 'Failed', false, true); });
+    } finally {
+        setFlashing(false);
+    }
+});
+
+// ---- start ----
+(async () => {
+    const supported = checkBrowser();
+    log(supported ? 'Web Serial available' : 'Web Serial not available in this browser');
+    try {
+        state.releases = await loadReleases();
+        log(`${state.releases.length} release(s) listed`);
+        populateReleases(state.releases);
+    } catch (error) {
+        log(`Could not load the release list: ${error.message}`);
+        el.releaseSelect.innerHTML = '<option value="">Release list unavailable</option>';
+        toast('Could not load the release list', 'error');
+    }
+})();
+</script>
+</body>
+</html>

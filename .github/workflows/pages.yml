@@ -1,0 +1,54 @@
+# The p64 web flasher on GitHub Pages (2026-10-19, docs/web-flasher/README.md).
+#
+# docs/web-flasher/build_site.py assembles the site: the page, the logo, and for every
+# GitHub release the flash files (downloaded from the release's assets, because release
+# assets cannot be fetched cross-origin from a browser) plus firmware/index.json, the
+# list the page reads. Nothing is committed: the site is rebuilt from the releases and
+# deployed with actions/deploy-pages, so main never carries binaries.
+#
+# Runs when the release workflow calls it (a release created with GITHUB_TOKEN raises no
+# "release" event), when a release is published, edited or deleted by hand, when the
+# page itself changes on main, and on request. Pages must be set to deploy from GitHub
+# Actions (done on 2026-10-19 through the API: build_type "workflow").
+
+name: pages
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  release:
+    types: [published, edited, deleted]
+  push:
+    branches: [main]
+    paths:
+      - "docs/web-flasher/**"
+      - "docs/images/logo/p64-logo-64.png"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v5
+      - name: Assemble the site from the releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 docs/web-flasher/build_site.py --out _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
