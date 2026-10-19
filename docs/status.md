@@ -5,14 +5,16 @@
 Documentation reviewed 2026-10-15, updated 2026-10-19. Physical status was confirmed by
 the maintainer on 2026-10-15; test results below are existing records, not a new
 acceptance run. The development device runs firmware 0.2.0-dev (the private build,
-`0.2.0-dev+private`), flashed 2026-10-19; no firmware release is published yet.
+`0.2.0-dev+private`, flashed 2026-10-19 before the version became 0.2.0). The release tooling exists since 2026-10-19
+(tag-driven CI release, web flasher, command-line guide); the first release, v0.2.0, is
+published once its tag is pushed, so check [GitHub Releases](https://github.com/fabkury/p64/releases).
 
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a assembled and in daily use; no soldering | Maintainer confirmation, 2026-10-15 |
 | p64b | v7b assembled 2026-10-17 and in daily use: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell; turn direction reversed to match the hand on 2026-10-19 (0.2.0-dev), confirmed by the maintainer | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
-| Firmware | 0.2.0-dev: core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
-| Installation | The documented installation path builds from source with ESP-IDF v5.5.4 | No first firmware release recorded in the project documentation; check [GitHub Releases](https://github.com/fabkury/p64/releases) for published images |
+| Firmware | 0.2.0: core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
+| Installation | Pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | The release process and the audit of what the image carries: [release build](../firmware/docs/release-build.md). Not yet verified on hardware: the esptool command and the browser flasher against a real board (the board was not on USB on 2026-10-19); the first field OTA from v0.2.0 to its successor |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
 | Acceptance | Incomplete | See the outstanding checks below |
 

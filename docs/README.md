@@ -4,9 +4,9 @@ The [repository README](../README.md) is p64's homepage.
 
 | Audience | Start here | Details |
 |---|---|---|
-| Prospective builder | [Build guide](build-your-own.md) | Parts, printing, assembly, first setup |
+| Prospective builder | [Build guide](build-your-own.md) | Parts, printing, assembly, [flashing](flash-firmware.md), first setup |
 | Owner | [Using p64](using-p64.md) | Artwork, playsets, widgets, controls, recovery |
-| Contributor | [Firmware guide](../firmware/README.md) | [Testing](../firmware/docs/testing.md), [architecture](../firmware/docs/architecture.md) |
+| Contributor | [Firmware guide](../firmware/README.md) | [Testing](../firmware/docs/testing.md), [architecture](../firmware/docs/architecture.md), [releases](../firmware/docs/release-build.md) |
 | Client developer | [API](../firmware/docs/api.md) | Authentication, routes, WebSocket and UDP |
 | Enclosure designer | [Enclosure guide](../enclosure/README.md) | [Geometry and evidence](../enclosure/design-reference.md) |
 
@@ -48,6 +48,8 @@ Keep each fact in one main place. Other pages should summarize it and link here:
 | Shopping list and assembly procedure | Build guide |
 | Prices paid, shipping and tax, per-build totals | Build costs |
 | Everyday operation and recovery | Owner's guide |
+| Flashing a pre-built release over USB | Flashing guide (the web flasher's hosting: docs/web-flasher) |
+| Release contents, how a release is cut, what the image carries for development | Release build (firmware/docs) |
 | Implemented, tested, assembled or released | Status, linked to dated evidence |
 | Product behavior, defaults and limits | Specification |
 | Interface contract | API reference |

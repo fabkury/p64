@@ -32,7 +32,7 @@ the source-build guide; full acceptance testing remains open. [Project status](d
 - **Offers browser controls:** mobile-friendly UI, live preview, optional PIN and a
   documented HTTP API. Tap gestures, auto-rotation and optional knobs add local control.
 - **Supports firmware updates over Wi-Fi:** user-initiated installs with checksum
-  verification and rollback.
+  verification and rollback. Pre-built releases flash from the browser.
 
 Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to about
 814 Hz for cameras. Clocks require NTP after each boot. See the
@@ -70,7 +70,9 @@ No printer, no breadboard, no custom boards. A p64 is four steps:
    and two from Amazon (USB-C adapters, screws). p64b adds a few Adafruit parts.
 2. **Order the shell from JLC3DP**: upload two files, choose black PLA, pay.
 3. **Assemble**: p64a with a hex key; p64b after three small solder joints.
-4. **Put the firmware on it**: built from source until a release is published.
+4. **Put the firmware on it**: from the browser with the
+   [web flasher](https://fabkury.github.io/p64/web-flasher/), or with one esptool
+   command ([flashing guide](docs/flash-firmware.md)). No ESP-IDF needed.
 
 For scale, one p64a cost the maintainer about **US$119 delivered** (parts $86, shipping
 $32, tax $1) and one p64b about **US$157** (parts $115, shipping $38, tax $4), at

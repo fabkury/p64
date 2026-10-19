@@ -144,6 +144,16 @@ light plan, spec 3.2) against the live device, and
 development device answers at http://p64.local; its IP is in the boot log; give the
 timing-sensitive tests the IP, since the first mDNS lookup of a process can take 3 s).
 
+Releases (since 2026-10-19, `firmware/docs/release-build.md`): pushing a tag `v<PROJECT_VER>`
+makes `.github/workflows/release.yml` build the public firmware, collect the assets with
+`tools/release_assets.py` (`p64-firmware.bin` + `.sha256` are the OTA contract; bootloader,
+partition table, OTA data, `flash_args`, `SHA256SUMS` serve USB flashing) and publish the
+GitHub release, then call `pages.yml`, which rebuilds the web flasher site
+(`docs/web-flasher/`, `build_site.py`, served at fabkury.github.io/p64/web-flasher/) from
+every release's assets without committing binaries. `docs/flash-firmware.md` is the esptool
+guide. The published image is the development image: the audit of 2026-10-19 found no
+dev-only resource with a measurable runtime cost (release-build.md section 3).
+
 Facts that bite: `sdkconfig.defaults` is the source of truth and a changed default needs
 `firmware/sdkconfig` deleted; Wi-Fi credentials live only in the git-ignored
 `firmware/sdkconfig.secrets` (`CONFIG_P64_DEV_WIFI_SSID/PASSWORD`, seeded into NVS when

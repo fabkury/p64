@@ -11,9 +11,8 @@ Building a p64 is four steps, three of them shopping and waiting:
   choose a material and a colour, pay. No printer needed.
 - **C. [Assemble](#c-assemble)**: p64a is a screwdriver job. p64b first needs three small
   soldering jobs, then the same assembly. No breadboard; a multimeter is optional.
-- **D. [Put the firmware on it](#d-put-the-firmware-on-it)**: the one computer step. Until
-  a firmware release is published it means building from source, about an hour the
-  first time.
+- **D. [Put the firmware on it](#d-put-the-firmware-on-it)**: the one computer step,
+  from the browser or with one command; no developer tools.
 
 Then the [first run](#e-first-run): join its Wi-Fi setup network and it plays.
 
@@ -272,11 +271,28 @@ each knob a few clicks and press it: brightness and pause on A, next artwork on 
 
 ## D. Put the firmware on it
 
-No firmware release is published yet, so the firmware is built from source; this is
-the one step that needs a computer with developer tools. Allow an hour the first time,
-most of it the ESP-IDF installer. Check
-[GitHub Releases](https://github.com/fabkury/p64/releases) first: once a release with a
-flashable image exists, this step shrinks to one flashing command.
+The firmware comes pre-built from [GitHub Releases](https://github.com/fabkury/p64/releases);
+no developer tools are needed. Connect the computer to the controller's **USB** port
+with the data cable (on the assembled device: the right-hand port from behind, with the
+groove; **POWER** carries no data), then either:
+
+- open the [web flasher](https://fabkury.github.io/p64/web-flasher/) in Chrome or Edge,
+  choose the newest release, click **Connect**, pick the board in the dialog, click
+  **Flash the firmware**; or
+- follow the [command-line guide](flash-firmware.md): download the release's four files
+  and run one `esptool` command.
+
+If flashing does not start, hold BOOT, tap RESET, release BOOT (both buttons are on the
+controller; on a closed shell this needs the panel out, which is why p64b flashes before
+assembly). Re-flashing keeps the settings; the guides say how to erase instead.
+
+**Check:** the panel shows p64 starting. Later updates arrive over Wi-Fi through the
+web UI's Update page.
+
+### Building from source instead
+
+For developers, or until a release exists for a change you need. Allow an hour the
+first time, most of it the ESP-IDF installer.
 
 1. Install Git, PowerShell 7 (Windows) and **ESP-IDF v5.5.4** for the ESP32-S3,
    following [Espressif's instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
@@ -289,9 +305,7 @@ flashable image exists, this step shrinks to one flashing command.
    cd p64/firmware
    ```
 
-3. Connect the computer to the controller's **USB** port with the data cable (on the
-   assembled device: the right-hand port from behind, with the groove). **POWER**
-   carries no data.
+3. Connect the controller's **USB** port as above.
 4. On Windows, set the three installation paths at the top of
    [tools/env.ps1](../firmware/tools/env.ps1) (`IDF_PATH`, `IDF_TOOLS_PATH`,
    `IDF_PYTHON_ENV_PATH`) to your install, then run:
@@ -303,9 +317,7 @@ flashable image exists, this step shrinks to one flashing command.
    ```
 
    The scripts load ESP-IDF and find the port. Ctrl+] leaves the monitor. If the port
-   is not found, name it: `.\tools\flash.ps1 -Port COM7`. If flashing does not start,
-   hold BOOT, tap RESET, release BOOT (both buttons are on the controller; on a closed
-   shell this needs the panel out, which is why p64b flashes before assembly).
+   is not found, name it: `.\tools\flash.ps1 -Port COM7`.
 
    On Linux or macOS, source ESP-IDF v5.5.4's `export.sh`, then from `firmware/`:
 
@@ -317,8 +329,8 @@ flashable image exists, this step shrinks to one flashing command.
 
    with your port in place of `/dev/ttyACM0`.
 
-**Check:** the monitor shows p64 starting. Later updates arrive over Wi-Fi through the
-web UI's Update page; the [firmware guide](../firmware/README.md) covers rebuilding.
+**Check:** the monitor shows p64 starting. The [firmware guide](../firmware/README.md)
+covers rebuilding.
 
 ## E. First run
 
