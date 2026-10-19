@@ -1,0 +1,13 @@
+Going over p64's documentation, I feel a lack of awareness of how simple the project can be in the end.
+
+An user interested in building their own p64 has a few rather easy steps to complete:
+ A. Purchase parts online from Waveshare and Amazon.
+ B. Purchase a 3D print online at JLC3DP.
+ C. Once all components have arrived, either just assemble them (p64a) or solder then assemble (p64b). No breadboard should be required (tests with a multimeter are optional but recommended).
+
+
+When instructing the user about a component that needs to be bought online, we should provide the clickable link to it. If you can't obtain the clickable links for each component, ask me for it and I'll provide them.
+
+When instructing the user about printing something at JLC3DP, include a very succinct "how-to guide". Specify in general terms what needs to be done, exactly what files to upload to JLC3DP, and exactly what materials/options to select at JLC3DP. Assume the user has never 3D printed something before. The closer your descriptions can be to the actual buttons and links at JLC3DP, the better.
+
+When instructing the user about the soldering job, try to keep it as simple as possible. Actual schematics are actually secondary, because the primary goal is to just tell the user what to solder where and ideally also show photos of the process (if we have photos available).
