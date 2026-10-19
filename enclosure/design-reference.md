@@ -378,6 +378,8 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
 - For FDM use the 0.3 mm `p64_enclosure_print.stl`: the 0.45 mm `_service.stl` printed in
   PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
+  Both v7 shells (v7a and v7b, JLC3DP FDM PLA, order of 2026-09-28) were printed from
+  `_print.stl` and the panel seats without force in both (maintainer, 2026-10-19).
 - Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores and the
   grooves stay clean on the first layer.
 - p64b: the pegs are 2.2 mm pins; MJF nylon prints them fine, for FDM check the fit and
