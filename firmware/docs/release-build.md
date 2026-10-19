@@ -56,6 +56,11 @@ a public release only knowingly (`private_build` in the update document).
    installs it (`tests/device/ota_smoke.py` ends with a rollback); the web flasher
    lists the release; `docs/status.md` records the release.
 
+Repository settings the workflows rely on (set on 2026-10-19 through the API): Pages
+deploys from GitHub Actions, and the `github-pages` environment's deployment policy
+allows `v*` tags besides `main` (the first run of the tag was refused by that policy;
+the publish job runs on a plain runner because the ESP-IDF container has no `gh`).
+
 A release built locally for a check (`.\tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON
 build`, then `python tools\release_assets.py --build-dir build_public`) produces the
 same asset set in `build_public/release/`; `gh release create v0.2.0 build_public/release/*`

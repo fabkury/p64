@@ -5,16 +5,16 @@
 Documentation reviewed 2026-10-15, updated 2026-10-19. Physical status was confirmed by
 the maintainer on 2026-10-15; test results below are existing records, not a new
 acceptance run. The development device runs firmware 0.2.0-dev (the private build,
-`0.2.0-dev+private`, flashed 2026-10-19 before the version became 0.2.0). The release tooling exists since 2026-10-19
-(tag-driven CI release, web flasher, command-line guide); the first release, v0.2.0, is
-published once its tag is pushed, so check [GitHub Releases](https://github.com/fabkury/p64/releases).
+`0.2.0-dev+private`, flashed 2026-10-19 before the version became 0.2.0). The first firmware release,
+[v0.2.0](https://github.com/fabkury/p64/releases/tag/v0.2.0), was published by CI on
+2026-10-19, and the [web flasher](https://fabkury.github.io/p64/web-flasher/) lists it.
 
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a assembled and in daily use; no soldering | Maintainer confirmation, 2026-10-15 |
 | p64b | v7b assembled 2026-10-17 and in daily use: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell; turn direction reversed to match the hand on 2026-10-19 (0.2.0-dev), confirmed by the maintainer | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
 | Firmware | 0.2.0: core product features implemented, including encoders, Air, 13 clock faces, PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
-| Installation | Pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | The release process and the audit of what the image carries: [release build](../firmware/docs/release-build.md). Not yet verified on hardware: the esptool command and the browser flasher against a real board (the board was not on USB on 2026-10-19); the first field OTA from v0.2.0 to its successor |
+| Installation | v0.2.0 published 2026-10-19; pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | Verified 2026-10-19 on the development board: the published v0.2.0 files flashed with the guide's esptool command over native USB (21 s, self-reset, booted 0.2.0, Wi-Fi settings kept), and the device's update check found the release and its checksum (`up_to_date`). Not yet verified: a flash through the browser page (it needs a hand on the port picker) and the first field OTA from v0.2.0 to its successor. Process and image audit: [release build](../firmware/docs/release-build.md) |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
 | Acceptance | Incomplete | See the outstanding checks below |
 
