@@ -26,6 +26,8 @@ The verified **v7b** (p64b) photos, taken on 2026-10-17 and 2026-10-18:
 - `p64b-pullups-soldered.jpg`: board 1 with the two pull-up resistors soldered
 - `p64b-boards-on-pegs.jpg`, `p64b-shell-open-bench.jpg`: the boards on the v7b pegs
   before the panel went in
+- `p64b-board-front-header.jpg`, `p64b-board-back-jumpers.jpg` (added 2026-10-19): the
+  two sides of a 5880 board, the header holes and the A0/A1/A2 pads, for the wiring guide
 
 They are named copies from the dated [2026-10-17 collection](2026-10-17/), which holds
 all twenty-one photos of the assembly evening and the next morning, p64b's first day.
