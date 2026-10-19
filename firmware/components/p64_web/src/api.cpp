@@ -392,6 +392,22 @@ esp_err_t diag_encoders(httpd_req_t *req) {
   return reply_ok(req, inputs::encoders_json(scan));
 }
 
+// A turn of the brightness knob by hand of the API: {"detents": N} (positive = up),
+// through the same hook the encoder poller calls (p095). 501 without the hook.
+esp_err_t diag_encoders_turn(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *n = cJSON_GetObjectItemCaseSensitive(body, "detents");
+  const int detents = cJSON_IsNumber(n) ? n->valueint : 0;
+  cJSON_Delete(body);
+  if (detents == 0 || detents < -100 || detents > 100) return reply_error(req, "400 Bad Request", "INVALID_DETENTS", "detents must be -100..100, not 0");
+  if (!g_hooks.brightness_knob) return reply_error(req, "501 Not Implemented", "NO_KNOB", "no brightness knob hook");
+  g_hooks.brightness_knob(detents);
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddNumberToObject(d, "detents", detents);
+  return reply_ok(req, d);
+}
+
 // "The panel is upright now": {"rotation": 0|90|180|270} (default: the current display
 // rotation) becomes the reference for auto-rotation.
 esp_err_t action_calibrate_upright(httpd_req_t *req) {
@@ -722,6 +738,7 @@ void init(const Hooks &hooks) {
       {"/api/v1/diag/coredump/erase", HTTP_POST, diag_coredump_erase, nullptr, false, false, nullptr},
       {"/api/v1/diag/imu", HTTP_GET, diag_imu, nullptr, false, false, nullptr},
       {"/api/v1/diag/encoders", HTTP_GET, diag_encoders, nullptr, false, false, nullptr},
+      {"/api/v1/diag/encoders/turn", HTTP_POST, diag_encoders_turn, nullptr, false, false, nullptr},
       {"/api/v1/update", HTTP_GET, update_get, nullptr, false, false, nullptr},
       {"/api/v1/update/check", HTTP_POST, update_check, nullptr, false, false, nullptr},
       {"/api/v1/update/install", HTTP_POST, update_install, nullptr, false, false, nullptr},

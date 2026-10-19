@@ -1,7 +1,9 @@
 // Host unit tests: the clock text, the weather model and the analogue face.
 #include "common.hpp"
 #include "faces.hpp"
+#include "p64/widgets/notice.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -509,4 +511,46 @@ TEST_CASE("faces: every font fits the digital clock; a date too wide falls back 
       CHECK_EQ(lit_rect(f, 0, 63, 63, 63), 0);
     }
   }
+}
+
+TEST_CASE("brightness notice: the sun centred with its white ring (p095)") {
+  using p64::gfx::Frame;
+  using p64::gfx::Rgb;
+  namespace notice = p64::widgets::notice;
+  Frame f;
+  f.clear(Rgb{0, 0, 0});
+  notice::draw_sun(f, 0);
+  int lit = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) lit += f.get(x, y) != Rgb{0, 0, 0};
+  CHECK_EQ(lit, 0);  // alpha 0 draws nothing
+  notice::draw_sun(f, 255);
+  // The 20 px sun with a 1 px ring occupies a 22 px box centred on the panel (21..42).
+  int minx = 64, maxx = -1, miny = 64, maxy = -1, sun = 0, ring = 0;
+  for (int y = 0; y < 64; ++y)
+    for (int x = 0; x < 64; ++x) {
+      const Rgb c = f.get(x, y);
+      if (c == Rgb{0, 0, 0}) continue;
+      minx = std::min(minx, x), maxx = std::max(maxx, x), miny = std::min(miny, y), maxy = std::max(maxy, y);
+      if (c.r == 191 && c.g == 191 && c.b == 191) ++ring;  // white at 75 % over black
+      else if (c.r > 200 && c.g > 100 && c.b < 100) ++sun;  // the sun's yellows and oranges
+      else FAIL("unexpected colour at ", x, ",", y, ": ", int(c.r), " ", int(c.g), " ", int(c.b));
+    }
+  CHECK_EQ(minx, 21);
+  CHECK_EQ(maxx, 42);
+  CHECK_EQ(miny, 21);
+  CHECK_EQ(maxy, 42);
+  CHECK_EQ(sun, 240);  // every inked pixel of assets/clock/notice/sun.png
+  CHECK(ring > 60);    // the ring follows the rays' outline
+  CHECK(f.get(32, 32).r > 200);  // the disc's middle is sun, not ring
+  // Half opacity over a mid grey: the sun pixel blends, the ring is 3/8 white over grey.
+  Frame g;
+  g.clear(Rgb{100, 100, 100});
+  notice::draw_sun(g, 128);
+  const Rgb mid = g.get(32, 32);
+  CHECK(mid.r > 150);
+  CHECK(mid.r < 240);
+  CHECK(mid.b < 100);
+  CHECK_EQ(notice::ring_alpha(128), 96);
+  CHECK_EQ(notice::ring_alpha(255), 191);
 }

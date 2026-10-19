@@ -12,4 +12,14 @@ uint8_t brightness_after(uint8_t current, int32_t detents) {
   return static_cast<uint8_t>(value);
 }
 
+uint8_t notice_alpha(int64_t elapsed_us) {
+  if (elapsed_us < 0) return 0;
+  if (elapsed_us < kNoticeHoldUs) return 255;
+  const int64_t into = elapsed_us - kNoticeHoldUs;
+  if (into >= kNoticeFadeUs) return 0;
+  // Step i (0-based) of the fade: 255 * (steps - i) / (steps + 1): 204, 153, 102, 51.
+  const int i = static_cast<int>(into * kNoticeFadeSteps / kNoticeFadeUs);
+  return static_cast<uint8_t>(255 * (kNoticeFadeSteps - i) / (kNoticeFadeSteps + 1));
+}
+
 }  // namespace p64::inputs

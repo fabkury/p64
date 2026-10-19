@@ -1249,6 +1249,7 @@ void tick() { tick_impl(); }
 int64_t wait_us() { return wait_us_impl(); }
 
 bool overlay_allowed() { return g_artwork_up.load() && !g_stream_up.load() && show_active(); }
+bool notice_allowed() { return !g_stream_up.load(); }
 bool is_paused() { return st.paused; }
 
 int32_t current_post_id() {

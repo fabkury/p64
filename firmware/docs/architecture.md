@@ -51,7 +51,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
 | `private/components/*` | the private area (ADR 0012): the user's own components from the separate `p64-private` repository, present only on the user's checkout; `p64_private` provides `p64::priv::start()` | anything public | what its `tests/host/manifest.json` names |
-| `p64_widgets` | clock (digital, analogue, eleven themed faces), weather, temperature, air; font, icon and clock-face assets | `p64_gfx`, `p64_system`, `p64_decode` | partly (`faces`, `face_air`, `analogue`, `clock_format`, `weather_model`, `air_model`, the themed faces `face_*`, `sprite`, `picture`, `dial`, `solar`, `clock_assets`: everything drawn) |
+| `p64_widgets` | clock (digital, analogue, eleven themed faces), weather, temperature, air; the brightness notice; font, icon and clock-face assets | `p64_gfx`, `p64_system`, `p64_decode` | partly (`faces`, `face_air`, `analogue`, `clock_format`, `weather_model`, `air_model`, the themed faces `face_*`, `sprite`, `picture`, `dial`, `solar`, `clock_assets`, `notice`: everything drawn) |
 | `p64_stream` | DDP and raw UDP listeners, assembly by offset, conversion and scaling, the latest-frame source, silence timer | `p64_gfx`, `p64_playback`, `p64_system`, lwIP | yes (`protocol.cpp`: parsers, assembler, conversion) |
 | `p64_inputs` | QMI8658 sampler (250 Hz polling, PSRAM stack), tap gestures, gravity auto-rotation with an upright calibration; the p64b rotary encoders (two seesaw boards on the external I2C bus, 50 Hz poll, PSRAM stack, roles through hooks). The BOOT button lives in `main/ops` | `p64_system`, IDF | yes (`tap.cpp`, `orientation.cpp`, `encoder_model.cpp`, `knob_rules.cpp`, `seesaw_wire.hpp`) |
 | `p64_ota` | the release check, the SHA256-verified install, rollback (factory reset and the reliability counters live in `main/ops` and `p64_system`) | IDF | partly (`version`, `release`: the version rule, GitHub's release document, the checksum file) |
@@ -618,6 +618,13 @@ and `like`; `next` and `previous` are the tap hooks reused. `main.cpp` implement
 the brightness step goes to the display at once through `ops::effective_brightness()`
 (ceiling and night window as for the setting) and the setting is written by a one-shot
 esp_timer 800 ms after the last detent, so a spin costs one NVS write and the poll task
+(the brightness notice, p095, 2026-10-19: a detent that `past_maximum()` says cannot
+show, 255 and up, calls `show::notice_brightness_max()`; the show folds
+`notice_alpha()`, full for 600 ms then four steps down over 200 ms, into the player's
+overlay key beside the clock overlay, so a static frame is re-emitted as the sun comes
+and goes, and `widgets::notice::draw_sun()` stamps the baked `kNoticeSun` with its
+white ring over anything but a stream; `POST /api/v1/diag/encoders/turn` drives the
+same hook for `encoders_smoke.py`)
 never touches flash; `apply_display_settings()` shows the pending value until then. Pause
 is `show::set_paused()`. The like runs `makapix::like()` (blocks up to 20 s) on a
 short-lived task with a 6 KB PSRAM stack, one at a time, never on the poll task. Settings

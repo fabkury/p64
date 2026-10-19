@@ -25,6 +25,19 @@ constexpr KnobRole role_of(int knob, bool swap) {
 constexpr int kDetentStep = 7;
 uint8_t brightness_after(uint8_t current, int32_t detents);
 
+// The brightness knob turned past its top (p095, 2026-10-19): the turn would raise a
+// brightness already at 255, so the panel shows nothing new and the hand cannot tell the
+// end of the range. The show then flashes the sun notice (widgets/notice.hpp).
+constexpr bool past_maximum(uint8_t current, int32_t detents) { return current >= 255 && detents > 0; }
+
+// The notice's opacity (0 = gone, 255 = full) at `elapsed_us` since the last blocked
+// detent: full for kNoticeHoldUs, then kNoticeFadeSteps even steps down across
+// kNoticeFadeUs, nothing after. Every blocked detent restarts the hold.
+constexpr int64_t kNoticeHoldUs = 600 * 1000;
+constexpr int64_t kNoticeFadeUs = 200 * 1000;
+constexpr int kNoticeFadeSteps = 4;
+uint8_t notice_alpha(int64_t elapsed_us);
+
 // Whether a probe of the GPIO socket can find anything. The controller pulls IO45 and
 // IO46 down with 10 k (R59/R60, docs/hardware); only a board's pull-ups raise them, so
 // with the socket empty (every p64a) both lines idle low, and a probe there does not end

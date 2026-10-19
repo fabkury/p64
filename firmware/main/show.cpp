@@ -3,6 +3,7 @@
 // the core (show_core.cpp, host-tested); this file only connects it to the firmware.
 #include "show.hpp"
 
+#include <atomic>
 #include <cstdio>
 #include <memory>
 #include <mutex>
@@ -33,12 +34,23 @@
 #include "p64/system/state_store.hpp"
 #include "p64/stream/stream.hpp"
 #include "p64/web/web.hpp"
+#include "p64/inputs/knob_rules.hpp"
+#include "p64/widgets/notice.hpp"
 #include "p64/widgets/widgets.hpp"
 #include "show_core.hpp"
 #include "status_screens.hpp"
 
 namespace p64::show {
 namespace {
+// The brightness notice (p095): when the knob last turned past its maximum (0 = never).
+std::atomic<int64_t> g_notice_hit_us{0};
+
+uint8_t notice_alpha_now() {
+  const int64_t hit = g_notice_hit_us.load();
+  if (hit == 0 || !core::notice_allowed()) return 0;
+  return inputs::notice_alpha(esp_timer_get_time() - hit);
+}
+
 
 constexpr const char *TAG = "show";
 constexpr const char *kActiveKey = "playset";
@@ -282,8 +294,19 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
     status_screens::black(*g_scratch);
     core::boot(psram_shared<playback::StaticSource>("boot", *g_scratch), 0);
   }
+  // The clock overlay (spec 6.1) and the brightness notice (p095) share the player's
+  // overlay: the key folds both so a change in either re-emits a static frame, and 0
+  // still means nothing to draw (the fold is a bijection of the clock key, so a clock
+  // key alone never folds to 0).
   g_player->set_overlay(playback::Player::Overlay{
-      [] { return core::overlay_allowed() ? widgets::overlay_key() : 0u; }, widgets::draw_overlay});
+      [] {
+        const uint32_t clock = core::overlay_allowed() ? widgets::overlay_key() : 0u;
+        return clock * 2654435761u + notice_alpha_now();
+      },
+      [](gfx::Frame &f) {
+        widgets::draw_overlay(f);
+        widgets::notice::draw_sun(f, notice_alpha_now());
+      }});
   system::subscribe(system::Event::CardMounted, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::CardFailed, [](const system::Message &) { send(Cmd::CardChanged); });
   system::subscribe(system::Event::LocalFilesChanged, [](const system::Message &) { send(Cmd::FilesChanged); });
@@ -324,6 +347,8 @@ void previous() { send(Cmd::Previous); }
 void go_to(size_t history_index) { send(Cmd::GoTo, static_cast<uint32_t>(history_index)); }
 void pause() { send(Cmd::Pause); }
 void resume() { send(Cmd::Resume); }
+void notice_brightness_max() { g_notice_hit_us = esp_timer_get_time(); }
+
 void set_paused(bool paused) { send(paused ? Cmd::Pause : Cmd::Resume); }
 void reset_timer() { send(Cmd::ResetTimer); }
 void refresh() { send(Cmd::Refresh); }

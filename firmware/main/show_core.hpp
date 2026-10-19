@@ -236,6 +236,7 @@ int64_t wait_us();
 
 // Readers.
 bool overlay_allowed();  // an artwork is up, no stream, the show runs (any task)
+bool notice_allowed();   // no stream holds the panel (the brightness notice, p095)
 bool is_paused();
 int32_t current_post_id();  // the Makapix post on the panel, -1 otherwise (Makapix presence and likes)
 const std::string &active_playset_name();

@@ -1320,3 +1320,17 @@ them. Newest entries are at the bottom of [Log](#log).
   (`0.2.0-dev+private`); `encoders_smoke` 0 failures (both boards present, no read
   errors, swap and invert applied and restored); the owner turned both knobs through
   the closed p64b shell and confirmed they feel right now.
+- 2026-10-19 (p095): the brightness notice. A turn up at brightness 255 showed nothing,
+  so the hand could not find the end of the range. Now `past_maximum()` (knob_rules,
+  pure) sends the show a notice, and a 20 px sun from Retro Diffusion
+  (`assets/clock/notice/sun.png`, `rd_fast__low_res` at 24 px with `remove_bg`, chosen
+  from ten candidates for $0.51; `assets/rd-source`) is stamped in the middle of the
+  panel with a one-pixel white ring at three quarters of its opacity (`notice.cpp`,
+  pure, pixel-tested), over anything but a stream, through the player's overlay beside
+  the clock: `notice_alpha()` holds 255 for 600 ms after the last blocked detent, then
+  204, 153, 102, 51 across 200 ms. `POST /api/v1/diag/encoders/turn` turns the knob
+  from the API for the test. Verified on the device (private build 0.2.0-dev+private):
+  a frame captured 200 ms after the turn carries all 240 sun pixels and the ring over
+  the artwork with the clock overlay intact, the frame 2 s later is the artwork again;
+  a capture taken at once still shows the previous frame, so the smoke test waits
+  250 ms. Host suite 211 cases green.

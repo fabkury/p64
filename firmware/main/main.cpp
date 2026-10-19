@@ -113,6 +113,8 @@ void knob_brightness_step(int32_t detents) {
   const int pending = g_knob_brightness.load();
   const uint8_t current = pending >= 0 ? static_cast<uint8_t>(pending) : s->brightness;
   const uint8_t next = p64::inputs::brightness_after(current, detents);
+  // Past the top the panel cannot show the turn, so the show flashes the sun (p095).
+  if (p64::inputs::past_maximum(current, detents)) p64::show::notice_brightness_max();
   g_knob_brightness = next;
   p64::system::Settings live = *s;
   live.brightness = next;
@@ -241,6 +243,7 @@ extern "C" void app_main() {
   hooks.display = [] { return &g_display; };
   hooks.night_active = p64::ops::night_active;
   hooks.factory_reset = [] { p64::ops::factory_reset(); };
+  hooks.brightness_knob = knob_brightness_step;
   p64::web::init(hooks);
   p64::ops::start([] { apply_display_settings(p64::system::settings()); });
   p64::net::clock::start(s.ntp_server, s.timezone);

@@ -86,7 +86,9 @@ next walks forward, then picks a fresh artwork at history's end.
 | p64b knob B: turn / press | Next or previous / like the current Makapix artwork when paired |
 
 Use **Settings → Inputs** to adjust taps, disable knob actions, swap knob roles or
-reverse their direction. Long knob presses have no assigned action.
+reverse their direction. Long knob presses have no assigned action. Turning the
+brightness knob up when it is already at maximum flashes a small sun in the middle of
+the panel: the end of the range.
 
 In **Settings → Display**, choose brightness, rotation, mirror and night scheduling.
 The night schedule lowers brightness or blanks the panel while the device stays on.

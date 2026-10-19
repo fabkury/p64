@@ -43,6 +43,9 @@ struct Hooks {
   // Operations (main/ops).
   std::function<bool()> night_active;     // the night schedule's window applies now
   std::function<void()> factory_reset;    // erases everything and reboots (does not return)
+  // Diagnostics: the brightness knob turned `detents` (the poller's own hook, so a test
+  // can turn the knob without a hand; p095).
+  std::function<void(int32_t detents)> brightness_knob;
 };
 
 // Erases the PIN (factory reset).

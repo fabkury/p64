@@ -634,7 +634,11 @@ diagnostics.
   to pause/resume; knob B (0x37) turns to next/previous and presses to like the current
   Makapix artwork when paired. Long press is unassigned. Settings can disable the
   actions, swap roles, or reverse the direction. Wiring and bench evidence are in the
-  [encoder guide](../hardware/encoders-soldered.md).
+  [encoder guide](../hardware/encoders-soldered.md). A turn up at brightness 255 shows
+  nothing new on the panel, so it flashes a sun (20 px, with a white ring so it reads
+  over any artwork) in the middle of whatever is up except a stream: held while the
+  detents keep coming, gone 600 ms after the last one with a 200 ms fade (decided
+  2026-10-19).
 - Everything else is the web UI, the API and Makapix commands.
 
 ## 10. Network

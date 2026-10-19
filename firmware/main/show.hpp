@@ -32,6 +32,10 @@ void go_to(size_t history_index);
 void pause();
 void resume();
 void set_paused(bool paused);
+// The brightness knob was turned past its maximum (spec 9, p095): the sun notice goes
+// over the panel now (widgets/notice.hpp) and fades kNoticeHoldUs after the last call.
+// From any task.
+void notice_brightness_max();
 void reset_timer();
 void refresh();
 // Play a widget ("clock", "weather", "temperature") as an interlude now: one auto-swap

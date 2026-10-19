@@ -291,3 +291,36 @@ TEST_CASE("knob rules: roles and brightness steps") {
 }
 
 }  // namespace
+
+TEST_CASE("knob rules: the brightness notice past the maximum (p095)") {
+  using p64::inputs::kNoticeFadeUs;
+  using p64::inputs::kNoticeHoldUs;
+  using p64::inputs::notice_alpha;
+  using p64::inputs::past_maximum;
+  // Only a turn up at the top is blocked: arriving at 255 is a real step, turning down
+  // from 255 is a real step, and the brightness number never exceeds 255.
+  CHECK(past_maximum(255, 1));
+  CHECK(past_maximum(255, 3));
+  CHECK_FALSE(past_maximum(255, -1));
+  CHECK_FALSE(past_maximum(254, 1));
+  CHECK_FALSE(past_maximum(253, 5));  // lands on 255, visible
+  CHECK_FALSE(past_maximum(1, 0));
+  // Full for the hold, then four even steps down over the fade, then nothing; negative
+  // elapsed (a clock oddity) draws nothing.
+  CHECK_EQ(notice_alpha(0), 255);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs - 1), 255);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs), 204);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs + kNoticeFadeUs / 4), 153);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs + kNoticeFadeUs / 2), 102);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs + kNoticeFadeUs * 3 / 4), 51);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs + kNoticeFadeUs), 0);
+  CHECK_EQ(notice_alpha(kNoticeHoldUs + kNoticeFadeUs + 1000000), 0);
+  CHECK_EQ(notice_alpha(-1), 0);
+  // Monotone non-increasing across the whole span.
+  uint8_t last = 255;
+  for (int64_t t = 0; t <= kNoticeHoldUs + kNoticeFadeUs + 1000; t += 1000) {
+    const uint8_t a = notice_alpha(t);
+    CHECK(a <= last);
+    last = a;
+  }
+}
