@@ -46,7 +46,8 @@ a public release only knowingly (`private_build` in the update document).
    The [release workflow](../../.github/workflows/release.yml) refuses a tag that does
    not equal `v` + `PROJECT_VER`, builds the public firmware in the `espressif/idf:v5.5.4`
    container, checks `budgets.json`, collects the assets and publishes the release with
-   generated notes under a fixed header (the flashing links). A tag with a suffix
+   the notes of `docs/releases/<tag>.md` when that file exists (write it before tagging),
+   otherwise GitHub's generated notes under a fixed header (the flashing links). A tag with a suffix
    (`v0.3.0-rc1`) becomes a pre-release: the updater ignores it (it asks for the latest
    release) and the web flasher labels it and does not preselect it.
 4. The release workflow then calls the [pages workflow](../../.github/workflows/pages.yml),

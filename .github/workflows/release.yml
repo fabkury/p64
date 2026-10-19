@@ -57,13 +57,21 @@ jobs:
         run: |
           prerelease=""
           case "$TAG" in *-*) prerelease="--prerelease" ;; esac
-          {
-            echo "Flash it from the browser: https://fabkury.github.io/p64/web-flasher/"
-            echo "Or from the command line: https://github.com/fabkury/p64/blob/main/docs/flash-firmware.md"
-            echo "Devices already running p64 install this release from their Update page."
-            echo
-          } > notes.md
-          gh release create "$TAG" --title "p64 $TAG" --notes-file notes.md --generate-notes $prerelease \
+          # Hand-written notes in docs/releases/<tag>.md when present; otherwise the flashing
+          # links followed by GitHub's generated notes.
+          if [ -f "../../../docs/releases/$TAG.md" ]; then
+            cp "../../../docs/releases/$TAG.md" notes.md
+            generate=""
+          else
+            {
+              echo "Flash it from the browser: https://fabkury.github.io/p64/web-flasher/"
+              echo "Or from the command line: https://github.com/fabkury/p64/blob/main/docs/flash-firmware.md"
+              echo "Devices already running p64 install this release from their Update page."
+              echo
+            } > notes.md
+            generate="--generate-notes"
+          fi
+          gh release create "$TAG" --title "p64 $TAG" --notes-file notes.md $generate $prerelease \
             p64-firmware.bin p64-firmware.bin.sha256 bootloader.bin partition-table.bin ota_data_initial.bin \
             flash_args SHA256SUMS
 
