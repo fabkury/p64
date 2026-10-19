@@ -1316,3 +1316,7 @@ them. Newest entries are at the bottom of [Log](#log).
   `encoders_invert` still off; invert gives the board's own sign back. The presses are
   untouched. Host test updated; the bench note in `docs/hardware/encoder-history.md`
   says why a board on the desk counts the other way.
+- 2026-10-19, later (p093): version 0.2.0-dev, built and flashed as the private build
+  (`0.2.0-dev+private`); `encoders_smoke` 0 failures (both boards present, no read
+  errors, swap and invert applied and restored); the owner turned both knobs through
+  the closed p64b shell and confirmed they feel right now.
