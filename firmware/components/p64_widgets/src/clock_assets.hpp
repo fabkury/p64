@@ -50,6 +50,7 @@ extern const Sprite kLedVfdFrame;  // led/vfd-frame.png, 64x64
 extern const Sprite kNixieBase;  // nixie/base.png, 64x4
 extern const Sprite kNixieDigits;  // nixie/digits.png, 79x11
 extern const Sprite kNixieTube;  // nixie/tube.png, 13x38
+extern const Sprite kNoticeSun;  // notice/sun.png, 20x20
 extern const Sprite kOrreryEarth;  // orrery/earth.png, 5x5
 extern const Sprite kOrreryMercury;  // orrery/mercury.png, 3x3
 extern const Sprite kOrreryMoon;  // orrery/moon.png, 3x3

@@ -386,5 +386,75 @@
    "brass3_1.png",
    "brass3_2.png"
   ]
+ },
+ {
+  "name": "sun_fast24",
+  "cost": 0.09,
+  "payload": {
+   "prompt": "a sun icon: a round warm yellow disc with a thin orange rim and eight straight triangular orange-yellow rays evenly spaced around it, symmetrical, filling almost the whole picture, on a plain white background",
+   "prompt_style": "rd_fast__low_res",
+   "width": 24,
+   "height": 24,
+   "num_images": 3,
+   "remove_bg": true
+  },
+  "files": [
+   "sun_fast24_0.png",
+   "sun_fast24_1.png",
+   "sun_fast24_2.png"
+  ],
+  "task": "p095"
+ },
+ {
+  "name": "sun_plus24",
+  "cost": 0.18,
+  "payload": {
+   "prompt": "a sun icon: a round warm yellow disc with a thin orange rim and eight straight triangular orange-yellow rays evenly spaced around it, symmetrical, filling almost the whole picture, on a plain white background",
+   "prompt_style": "rd_plus__low_res",
+   "width": 24,
+   "height": 24,
+   "num_images": 3,
+   "remove_bg": true
+  },
+  "files": [
+   "sun_plus24_0.png",
+   "sun_plus24_1.png",
+   "sun_plus24_2.png"
+  ],
+  "task": "p095"
+ },
+ {
+  "name": "sun_skill32",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "a sun icon: a round warm yellow disc with a thin orange rim and eight straight triangular orange-yellow rays evenly spaced around it, symmetrical, filling almost the whole picture, on a plain white background",
+   "prompt_style": "rd_plus__skill_icon",
+   "width": 32,
+   "height": 32,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "sun_skill32_0.png",
+   "sun_skill32_1.png"
+  ],
+  "task": "p095"
+ },
+ {
+  "name": "sun_item24",
+  "cost": 0.12,
+  "payload": {
+   "prompt": "a sun icon: a round warm yellow disc with a thin orange rim and eight straight triangular orange-yellow rays evenly spaced around it, symmetrical, filling almost the whole picture, on a plain white background",
+   "prompt_style": "rd_plus__topdown_item",
+   "width": 24,
+   "height": 24,
+   "num_images": 2,
+   "remove_bg": true
+  },
+  "files": [
+   "sun_item24_0.png",
+   "sun_item24_1.png"
+  ],
+  "task": "p095"
  }
 ]

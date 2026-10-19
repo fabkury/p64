@@ -57,3 +57,22 @@ What the service taught here, beyond the notes in `retrodiffusion-api`:
 - "No numerals, no hands" holds in about two pictures of three; ask for three.
 - `rd_fast__low_res` goes down to 16x16; how much of the canvas the subject fills follows the
   prompt ("fills almost the whole picture" gave a 12 px disc, without it 8 px).
+
+### The brightness notice's sun (p095, 2026-10-19)
+
+A further $0.51 (of a $2 budget; $3.59 in all): four calls with `remove_bg: true` and
+the same prompt (a yellow disc, thin orange rim, eight straight rays, "filling almost
+the whole picture, on a plain white background"), ten candidates laid over corpus
+artworks with the white ring before the choice.
+
+| Call | Result | Price |
+|---|---|---|
+| `sun_fast24` (rd_fast__low_res, 24x24, three) | `sun_fast24_1` used: 20x20 inked, three flat yellows, even wedge rays; cut to `assets/clock/notice/sun.png` by Pillow (the alpha thresholded at 128, the opaque bounding box) | $0.09 |
+| `sun_plus24` (rd_plus__low_res, 24x24, three) | shaded discs with highlights, thin rays (not used) | $0.18 |
+| `sun_skill32` (rd_plus__skill_icon, 32x32, two) | ragged dark-rimmed rays, one only 17 px (not used) | $0.12 |
+| `sun_item24` (rd_plus__topdown_item, 24x24, two) | a glow-like gradient and a spiky one (not used) | $0.12 |
+
+What the service taught: `remove_bg` on a white background gave a clean binary alpha on
+all ten; a 24 px canvas with "filling almost the whole picture" gave 20 to 24 px of
+subject; `rd_fast` drew the flattest, most icon-like sun, the dearer styles added
+shading the panel does not need.
