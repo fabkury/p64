@@ -1,0 +1,15 @@
+It's time to begin offering pre-built firmware binaries for convenient flashing without the need to build it from source or have ESP-IDF installed at all.
+
+I would like to offer:
+ A. Pre-built binaries with accompanying instructions for flashing using the command-line.
+ B. Web-flasher similar in functionality to the p3a web flasher.
+
+Remember that you can consult p3a's codebase in its reference clone inside folder firmware/reference/p3a/.
+
+While we're at this, let's also use this opportunity to revise, in the codebase:
+ - What are development resources unnecessary in a "general release" build.
+ - What are features included in all builds, including "general release".
+
+In other words, let's also use this opportunity to revise if we should "trim fat" from the general release build, even if we may want to keep that "fat" as resources we might want to use for development purposes. The fat trimming should prioritize overall performance, i.e., fat that is harmless (causes no or negligible overhead) is not the priority.
+
+Please get us going with all of this.
