@@ -1,0 +1,7 @@
+I have a small but impactful change to request.
+
+The two rotary encoders of p64b are working well, but they "feel" reversed. Maybe that's because they're intended to be used from the back of the device but while the device is facing you, hence the "reversed" feel.
+
+Please reverse both knobs: the action from clockwise turn goes to counterclockwise turn, and vice-versa. The clicks stay unchanged.
+
+Commit when done.
