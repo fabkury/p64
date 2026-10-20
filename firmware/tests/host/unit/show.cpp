@@ -1002,4 +1002,42 @@ TEST_CASE("show core: a written update stays on the panel until the reboot") {
   CHECK(core::state().screen == core::Screen::Update);
 }
 
+TEST_CASE("show core: an intro animation plays for one slot on request, then a fresh artwork (p101)") {
+  Show show;
+  const std::string before = show.current();
+  auto intro = std::make_shared<p64::playback::StaticSource>("intro:slide_cross", Frame());
+  core::play_intro(intro, 3000, "slide_cross");
+  CHECK(show.env.last_played() == "intro:slide_cross");
+  CHECK(!core::state().current);
+  CHECK(!core::overlay_allowed());  // no clock overlay over the logo
+  CHECK_EQ(core::state().history.size(), 1u);  // nothing entered history
+  cJSON *st = core::status_json();  // the status document's playback object
+  REQUIRE(cJSON_IsString(cJSON_GetObjectItem(st, "intro")));
+  CHECK(std::string(cJSON_GetObjectItem(st, "intro")->valuestring) == "slide_cross");
+  cJSON_Delete(st);
+  show.advance_s(2);
+  CHECK(show.env.last_played() == "intro:slide_cross");  // the slot runs its course
+  show.advance_s(1);  // the slot ends: a fresh artwork is requested and goes up
+  show.env.complete_loads();
+  core::tick();
+  CHECK(show.env.last_played() != "intro:slide_cross");
+  REQUIRE(core::state().current);
+  CHECK(show.current() != before);
+  st = core::status_json();
+  CHECK(cJSON_IsNull(cJSON_GetObjectItem(st, "intro")));
+  cJSON_Delete(st);
+  // Anything else going up ends the slot early, and the request is ignored outside the show.
+  core::play_intro(intro, 3000, "slide_cross");
+  CHECK(show.env.last_played() == "intro:slide_cross");
+  core::next();
+  show.env.complete_loads();
+  CHECK(show.env.last_played() != "intro:slide_cross");
+  CHECK_EQ(core::state().intro_until_us, 0);
+  show.env.cfg->main_state = p64::system::MainState::Widget;
+  core::settings_changed();
+  CHECK(show.env.last_played() == "widget:clock");
+  core::play_intro(intro, 3000, "slide_cross");
+  CHECK(show.env.last_played() == "widget:clock");
+}
+
 }  // namespace
