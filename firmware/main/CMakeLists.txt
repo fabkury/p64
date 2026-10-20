@@ -5,7 +5,6 @@
 idf_component_register(
     SRCS
         "main.cpp"
-        "boot_animation.cpp"
         "show.cpp"
         "show_rules.cpp"
         "show_core.cpp"
@@ -24,6 +23,7 @@ idf_component_register(
         p64_content
         p64_makapix
         p64_widgets
+        p64_intro
         p64_stream
         p64_inputs
         p64_ota

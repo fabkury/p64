@@ -55,6 +55,9 @@ system::Settings settings() { return *g_env->settings(); }
 // source is kept aside instead (the state keeps running invisibly, spec 8.3) and goes up
 // when the stream ends.
 void present(std::shared_ptr<playback::FrameSource> src) {
+  // Whatever goes up ends an intro's slot (play_intro sets its fields right after).
+  st.intro_until_us = 0;
+  st.intro_name.clear();
   if (st.stage.present(src)) g_env->play(std::move(src));
 }
 
@@ -1037,6 +1040,11 @@ void tick_impl() {
   follow_setup();
   if (st.want_stream) take_stream();
   if (st.want_widget && now >= st.boot_until_us) play_widget(s.widget, false);
+  if (st.intro_until_us && now >= st.intro_until_us) {  // an intro's slot is over (p101): a fresh artwork
+    st.intro_until_us = 0;
+    st.intro_name.clear();
+    if (show_active() && !st.current && !st.widget_up && !st.paused && st.screen == Screen::None) swap_fresh();
+  }
   if (st.want_prepared_now && st.prepared && can_swap_now() && show_active()) play_prepared();
   if (st.status_pending && now >= st.boot_until_us) {
     st.status_pending = false;
@@ -1077,6 +1085,7 @@ int64_t wait_us_impl() {
     consider(st.swap_at_us + static_cast<int64_t>(s.auto_swap_seconds) * kSecond);
   }
   if (st.want_widget) consider(st.boot_until_us);
+  consider(st.intro_until_us);
   if (st.want_prepared_now && st.prepared) consider(st.boot_until_us);
   if (st.connected_pending || st.status_pending) consider(st.boot_until_us);
   if (st.screen == Screen::Connected && st.prepared) consider(st.connected_yield_us);
@@ -1167,8 +1176,9 @@ void init(ShowEnv &env, gfx::Frame &scratch) {
 
 const State &state() { return st; }
 
-void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms) {
+void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms, const char *animation) {
   if (boot_ms > 0) st.boot_until_us = now_us() + static_cast<int64_t>(boot_ms) * 1000;
+  st.boot_animation = animation ? animation : "";
   present(std::move(source));
 }
 
@@ -1205,6 +1215,25 @@ void interlude(system::WidgetKind kind) {
   if (st.screen != Screen::None) end_screen();
   start_interlude(kind);
 }
+void play_intro(std::shared_ptr<playback::FrameSource> source, uint32_t ms, const char *animation) {
+  // Only inside the show, like an interlude: the Widget state keeps its widget, a stream
+  // its frames. Nothing enters history; the slot ends in tick_impl with a fresh artwork.
+  if (!show_active() || g_stream_up) return;
+  if (st.screen != Screen::None) end_screen();
+  present(std::move(source));
+  st.current.reset();
+  g_artwork_up = false;
+  st.widget_up = false;
+  st.paused = false;
+  st.status_reason.clear();
+  st.swap_at_us = now_us();
+  st.intro_until_us = now_us() + static_cast<int64_t>(ms) * 1000;
+  st.intro_name = animation ? animation : "";
+  report_hidden();
+  LOGI("intro %s for one slot (%u ms)", st.intro_name.c_str(), static_cast<unsigned>(ms));
+  g_env->notify_web();
+}
+
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
   do_play_file(path, provider, item_id, name);
 }
@@ -1335,10 +1364,17 @@ cJSON *status_json() {
     cJSON_AddStringToObject(k, "state", kStates[static_cast<int>(plan.state[i])]);
   }
   cJSON_AddBoolToObject(p, "prepared", static_cast<bool>(st.prepared));
+  // An intro animation playing for one slot (p101): its name, else null.
+  if (st.intro_name.empty()) {
+    cJSON_AddNullToObject(p, "intro");
+  } else {
+    cJSON_AddStringToObject(p, "intro", st.intro_name.c_str());
+  }
   // Time-to-first-artwork (spec 15.1, 18.8): both in ms of the clock now_us() counts (on
   // the device esp_timer, which starts with the app, about 0.7 s after reset since
   // 2026-09-26); first_artwork_ms is -1 until an artwork has played.
   cJSON *boot = cJSON_AddObjectToObject(p, "boot");
+  cJSON_AddStringToObject(boot, "animation", st.boot_animation.c_str());
   cJSON_AddNumberToObject(boot, "animation_end_ms", static_cast<double>(st.boot_until_us / 1000));
   cJSON_AddNumberToObject(boot, "first_artwork_ms", st.first_artwork_us ? static_cast<double>(st.first_artwork_us / 1000) : -1);
   cJSON_AddNumberToObject(p, "swaps", st.swaps);

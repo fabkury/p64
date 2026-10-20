@@ -19,7 +19,7 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-#include "boot_animation.hpp"
+#include "p64/intro/intro.hpp"
 #include "loader.hpp"
 #include "p64/content/local_index.hpp"
 #include "p64/content/playset_store.hpp"
@@ -66,6 +66,7 @@ enum class Cmd : uint8_t {
   ResetTimer,
   Refresh,
   Interlude,
+  PlayIntro,
   PlayFile,
   PlayDownloaded,
   Activate,
@@ -93,35 +94,53 @@ struct Command {
   content::Playset *playset;
 };
 
-// The boot animation as a source: runs its course, then holds its last frame until the
-// first artwork replaces it.
-class BootSource : public playback::FrameSource {
+template <typename T, typename... Args>
+std::shared_ptr<T> psram_shared(Args &&...args) {
+  return std::allocate_shared<T>(content::PsramAllocator<T>(), std::forward<Args>(args)...);
+}
+
+// The boot animation as a source (p101, spec 15.1): one of the intro animations, paced
+// at intro::kFrameMs over `duration_ms` from the source's creation, then the finished
+// logo held (a frame every 100 ms) until the first artwork replaces it. The context and
+// the animations' working memory live with the source, in PSRAM like the source itself.
+class IntroSource : public playback::FrameSource {
  public:
-  explicit BootSource(uint32_t duration_ms) : duration_ms_(duration_ms), t0_(esp_timer_get_time()) {}
+  IntroSource(int index, uint32_t duration_ms, uint32_t seed, gfx::Rgb background)
+      : index_(index), duration_ms_(duration_ms), t0_(esp_timer_get_time()) {
+    ctx_.seed = seed;
+    ctx_.background = background;
+    ctx_.scratch = scratch_;
+    name_ = std::string("intro:") + (intro::name(index) ? intro::name(index) : "?");
+  }
   const std::string &name() const override { return name_; }
   bool next_frame(gfx::Frame &out, uint32_t &delay_ms, int64_t due_us) override {
     const int64_t at = due_us ? due_us : esp_timer_get_time();
-    uint32_t t_ms = at > t0_ ? static_cast<uint32_t>((at - t0_) / 1000) : 0;
-    const bool over = t_ms + 1 >= duration_ms_;
-    if (over) t_ms = duration_ms_ - 1;
-    animation_.render(out, t_ms, duration_ms_);
-    // 30 fps: the procedural render (about 7 ms) plus the 7.5 ms panel copy share
-    // core 1, so 60 fps would run late on every frame and pollute the counters.
-    delay_ms = over ? 100 : 33;
+    const float elapsed_ms = at > t0_ ? static_cast<float>(at - t0_) / 1000.0f : 0.0f;
+    const float t = duration_ms_ ? elapsed_ms / static_cast<float>(duration_ms_) : 1.0f;
+    intro::render(index_, out, ctx_, t);
+    delay_ms = t >= intro::kHoldFrom ? 100 : intro::kFrameMs;
     return true;
   }
   bool is_static() const override { return false; }
 
  private:
-  std::string name_ = "boot";
-  BootAnimation animation_;
+  std::string name_;
+  int index_;
   uint32_t duration_ms_;
   int64_t t0_;
+  intro::Context ctx_;
+  uint8_t scratch_[intro::kScratchBytes];
 };
 
-template <typename T, typename... Args>
-std::shared_ptr<T> psram_shared(Args &&...args) {
-  return std::allocate_shared<T>(content::PsramAllocator<T>(), std::forward<Args>(args)...);
+// The animation to play: the setting's name, or a random one (p101).
+int pick_intro(const std::string &setting) {
+  const int forced = intro::find(setting.c_str());
+  if (forced >= 0) return forced;
+  return static_cast<int>(esp_random() % static_cast<uint32_t>(intro::count()));
+}
+
+std::shared_ptr<playback::FrameSource> make_intro(int index, uint32_t duration_ms) {
+  return psram_shared<IntroSource>(index, duration_ms, esp_random(), system::settings().background);
 }
 
 // The core runs on the main task; g_mutex makes its state readable by the API's tasks.
@@ -234,6 +253,13 @@ void handle(Command &c) {
     case Cmd::ResetTimer: core::reset_timer(); break;
     case Cmd::Refresh: core::refresh(); break;
     case Cmd::Interlude: core::interlude(static_cast<system::WidgetKind>(c.number)); break;
+    case Cmd::PlayIntro: {
+      // One slot of the configured length (3 s when the boot animation is off).
+      const uint16_t setting = system::settings().boot_animation_ms;
+      const uint32_t ms = setting ? setting : 3000;
+      core::play_intro(make_intro(static_cast<int>(c.number), ms), ms, intro::name(static_cast<int>(c.number)));
+      break;
+    }
     case Cmd::PlayFile:
       if (c.text) core::play_file(*c.text, "", -1, "");
       break;
@@ -287,9 +313,12 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
     return false;
   }
   core::init(g_env, *g_scratch);
-  // The boot animation holds the panel until it has run its course (spec 15.1).
+  // The boot animation holds the panel until it has run its course (spec 15.1): one of
+  // the intro animations, the setting's or a random one (p101).
   if (boot_animation_ms > 0) {
-    core::boot(psram_shared<BootSource>(boot_animation_ms), boot_animation_ms);
+    const int pick = pick_intro(system::settings().boot_animation);
+    ESP_LOGI(TAG, "boot animation: %s for %u ms", intro::name(pick), static_cast<unsigned>(boot_animation_ms));
+    core::boot(make_intro(pick, boot_animation_ms), boot_animation_ms, intro::name(pick));
   } else {
     status_screens::black(*g_scratch);
     core::boot(psram_shared<playback::StaticSource>("boot", *g_scratch), 0);
@@ -368,6 +397,26 @@ bool interlude(const std::string &widget, std::string &error) {
     return false;
   }
   send(Cmd::Interlude, static_cast<uint32_t>(kind));
+  return true;
+}
+
+bool play_intro(std::string &name, std::string &error) {
+  int index = -1;
+  if (name == "random") {
+    index = pick_intro(name);
+    name = intro::name(index);
+  } else {
+    index = intro::find(name.c_str());
+  }
+  if (index < 0) {
+    error = "unknown animation name";
+    return false;
+  }
+  if (system::settings().main_state != system::MainState::AnimationShow) {
+    error = "intro animations play inside the Animation show";
+    return false;
+  }
+  send(Cmd::PlayIntro, static_cast<uint32_t>(index));
   return true;
 }
 

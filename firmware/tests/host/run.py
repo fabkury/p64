@@ -103,7 +103,6 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_makapix", "src", "policy.cpp"),
     os.path.join(COMPONENTS, "p64_web", "src", "auth_rules.cpp"),
     os.path.join(FIRMWARE, "main", "status_screens.cpp"),
-    os.path.join(FIRMWARE, "main", "boot_animation.cpp"),
     *sorted(glob.glob(os.path.join(COMPONENTS, "p64_intro", "src", "*.cpp"))),
     os.path.join(FIRMWARE, "main", "show_rules.cpp"),
     os.path.join(FIRMWARE, "main", "show_core.cpp"),
@@ -137,7 +136,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp, policy.hpp (only those)
     os.path.join(COMPONENTS, "p64_net", "include"),
     os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
-    os.path.join(FIRMWARE, "main"),                    # status_screens, boot_animation, show_rules, show_core, loader.hpp (only those)
+    os.path.join(FIRMWARE, "main"),                    # status_screens, show_rules, show_core, loader.hpp (only those)
     os.path.join(HERE, "third_party"),     # doctest.h
     os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
@@ -170,7 +169,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_makapix", "src"),    # contract.hpp, policy.hpp (only those)
     os.path.join(COMPONENTS, "p64_net", "include"),
     os.path.join(COMPONENTS, "p64_net", "src"),        # tz_table.inc
-    os.path.join(FIRMWARE, "main"),                    # status_screens, boot_animation, show_rules, show_core, loader.hpp (only those)
+    os.path.join(FIRMWARE, "main"),                    # status_screens, show_rules, show_core, loader.hpp (only those)
     os.path.join(HERE, "unit"),
     os.path.join(COMPONENTS, "p64_gfx", "include"),
     os.path.join(COMPONENTS, "p64_decode", "include"),

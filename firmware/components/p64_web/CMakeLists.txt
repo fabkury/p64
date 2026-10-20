@@ -35,6 +35,7 @@ idf_component_register(
         p64_content
         p64_makapix
         p64_widgets
+        p64_intro
         p64_stream
         p64_inputs
         p64_ota

@@ -9,6 +9,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_random.h"
 #include "esp_timer.h"
 #if CONFIG_HEAP_TASK_TRACKING
 #include "esp_heap_task_info.h"
@@ -19,6 +20,7 @@
 #include "p64/decode/decoder.hpp"
 #include "p64/gfx/fonts.hpp"
 #include "p64/gfx/png_encode.hpp"
+#include "p64/intro/intro.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/net/fetch.hpp"
 #include "p64/net/http_server.hpp"
@@ -288,6 +290,17 @@ esp_err_t settings_put(httpd_req_t *req) {
   std::string body;
   if (!net::http::read_body(req, body, 32 * 1024)) return reply_error(req, "413 Payload Too Large", "PAYLOAD_TOO_LARGE", "body over 32 KB");
   std::string error;
+  {  // display.boot_animation names an intro animation or "random" (p101); the model stores any string
+    cJSON *root = cJSON_Parse(body.c_str());
+    const cJSON *display = root ? cJSON_GetObjectItemCaseSensitive(root, "display") : nullptr;
+    const cJSON *ba = display ? cJSON_GetObjectItemCaseSensitive(display, "boot_animation") : nullptr;
+    const bool bad = ba && (!cJSON_IsString(ba) || (std::strcmp(ba->valuestring, "random") != 0 && intro::find(ba->valuestring) < 0));
+    cJSON_Delete(root);
+    if (bad) {
+      return reply_error(req, "400 Bad Request", "INVALID_SETTINGS",
+                         "display.boot_animation must be \"random\" or an animation name (GET /api/v1/boot_animations)");
+    }
+  }
   const system::Settings before = system::settings();
   bool parsed = true;
   const char *code = "INVALID_JSON";
@@ -675,6 +688,78 @@ esp_err_t diag_memory(httpd_req_t *req) {
 
 // The decode benchmark (spec 4.4): decodes and scales every frame of a file for up to
 // `loops` loops or 600 frames and reports the per-frame time. Runs on the HTTP task.
+// The intro animations (p101): the registry's names, the boot_animation setting and the
+// cadence, for the web UI's menu.
+esp_err_t boot_animations(httpd_req_t *req) {
+  cJSON *d = cJSON_CreateObject();
+  cJSON *names = cJSON_AddArrayToObject(d, "names");
+  for (int i = 0; i < intro::count(); ++i) cJSON_AddItemToArray(names, cJSON_CreateString(intro::name(i)));
+  cJSON_AddStringToObject(d, "setting", system::settings().boot_animation.c_str());
+  cJSON_AddNumberToObject(d, "frame_ms", intro::kFrameMs);
+  cJSON_AddNumberToObject(d, "hold_from", intro::kHoldFrom);
+  return reply_ok(req, d);
+}
+
+// An intro animation on the panel now, for one slot of the Animation show (p101):
+// `{"name": "<name>" | "random"}`; 400 for an unknown name, 409 outside the show.
+esp_err_t action_boot_animation(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *n = cJSON_GetObjectItemCaseSensitive(body, "name");
+  std::string name = cJSON_IsString(n) ? n->valuestring : "random";
+  cJSON_Delete(body);
+  if (name != "random" && intro::find(name.c_str()) < 0) {
+    return reply_error(req, "400 Bad Request", "INVALID_ARG", "unknown animation name (GET /api/v1/boot_animations lists them)");
+  }
+  if (!g_hooks.play_intro) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
+  std::string error;
+  if (!g_hooks.play_intro(name, error)) return reply_error(req, "409 Conflict", "NOT_NOW", error);
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddStringToObject(d, "action", "boot_animation");
+  cJSON_AddStringToObject(d, "name", name.c_str());
+  return reply_ok(req, d);
+}
+
+// Every intro animation rendered off-screen, `samples` frames spread over its window,
+// timed (p101): the render time has to leave the 8 ms panel copy room inside the 20 ms
+// frame. Runs on the HTTP task (core 0; the same CPU speed as core 1, with Wi-Fi's
+// interrupts on top, so the maximum is a pessimistic figure).
+esp_err_t diag_intro_bench(httpd_req_t *req) {
+  constexpr int kSamples = 40;
+  void *mem = heap_caps_malloc(sizeof(gfx::Frame) + intro::kScratchBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!mem) return reply_error(req, "503 Service Unavailable", "NO_MEMORY", "no PSRAM for the frame");
+  auto *frame = new (mem) gfx::Frame();
+  intro::Context ctx;
+  ctx.seed = esp_random();
+  ctx.background = system::settings().background;
+  ctx.scratch = static_cast<uint8_t *>(mem) + sizeof(gfx::Frame);
+  cJSON *d = cJSON_CreateObject();
+  cJSON *list = cJSON_AddArrayToObject(d, "animations");
+  for (int i = 0; i < intro::count(); ++i) {
+    int64_t total = 0, worst = 0, best = -1;
+    for (int k = 0; k < kSamples; ++k) {
+      const float t = intro::kHoldFrom * (k + 0.5f) / kSamples;
+      const int64_t t0 = esp_timer_get_time();
+      intro::render(i, *frame, ctx, t);
+      const int64_t dt = esp_timer_get_time() - t0;
+      total += dt;
+      worst = std::max(worst, dt);
+      best = best < 0 ? dt : std::min(best, dt);
+    }
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "name", intro::name(i));
+    cJSON_AddNumberToObject(o, "min_us", static_cast<double>(best));
+    cJSON_AddNumberToObject(o, "avg_us", static_cast<double>(total / kSamples));
+    cJSON_AddNumberToObject(o, "max_us", static_cast<double>(worst));
+    cJSON_AddItemToArray(list, o);
+  }
+  cJSON_AddNumberToObject(d, "samples", kSamples);
+  cJSON_AddNumberToObject(d, "frame_ms", intro::kFrameMs);
+  frame->~Frame();
+  heap_caps_free(mem);
+  return reply_ok(req, d);
+}
+
 esp_err_t diag_bench(httpd_req_t *req) {
   std::string rel, loops_s;
   if (!query_param(req, "path", rel)) return reply_error(req, "400 Bad Request", "INVALID_ARG", "path required");
@@ -755,6 +840,9 @@ void init(const Hooks &hooks) {
       {"/api/v1/diag/dma", HTTP_POST, diag_dma, nullptr, false, false, nullptr},
       {"/api/v1/diag/memory", HTTP_GET, diag_memory, nullptr, false, false, nullptr},
       {"/api/v1/diag/bench", HTTP_GET, diag_bench, nullptr, false, false, nullptr},
+      {"/api/v1/boot_animations", HTTP_GET, boot_animations, nullptr, false, false, nullptr},
+      {"/api/v1/action/boot_animation", HTTP_POST, action_boot_animation, nullptr, false, false, nullptr},
+      {"/api/v1/diag/intro_bench", HTTP_GET, diag_intro_bench, nullptr, false, false, nullptr},
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
   files::register_routes();

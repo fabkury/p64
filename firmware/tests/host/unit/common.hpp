@@ -41,4 +41,3 @@
 #include "p64/playback/artwork.hpp"
 #include "p64/net/tz.hpp"
 #include "status_screens.hpp"
-#include "boot_animation.hpp"

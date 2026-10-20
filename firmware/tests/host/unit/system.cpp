@@ -126,6 +126,12 @@ TEST_CASE("settings: out-of-range numbers clamp, never wrap (the M4 bug)") {
   CHECK_EQ(a.gain_g, 100);
   CHECK_EQ(a.gain_b, 75);
   CHECK_EQ(a.boot_animation_ms, 7000);
+  CHECK_EQ(a.boot_animation, "random");  // the default survives a document without it
+  Settings named = a;
+  std::string error;
+  named.apply_json(R"({"display":{"boot_animation":"slide_cross"}})", error);
+  CHECK_EQ(named.boot_animation, "slide_cross");
+  CHECK(named.to_json().find("\"boot_animation\":\"slide_cross\"") != std::string::npos);
   CHECK_EQ(a.night.start_minutes, 24 * 60 - 1);
   CHECK_EQ(a.auto_swap_seconds, 5u);
   CHECK_EQ(a.clock.scale, 3);

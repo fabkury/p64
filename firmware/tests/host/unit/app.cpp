@@ -1,7 +1,7 @@
 // Host unit tests: code that was already free of ESP-IDF but never compiled on the PC
 // until the review of 2026-09-22 (P-T2): the PNG encoder behind the live preview, the
 // time zone table, the local folder index, Artwork (decoder + scaler), the status
-// screens and the boot animation.
+// screens (the boot animation is p64_intro, tested in intro.cpp).
 #include "common.hpp"
 
 #include <chrono>
@@ -189,7 +189,7 @@ TEST_CASE("status screens stay inside their border, long names and addresses inc
   check_screen("failed");
 }
 
-TEST_CASE("status screens and the boot animation draw something") {
+TEST_CASE("status screens draw something") {
   Frame f;
   p64::status_screens::no_artwork(f, "no card");
   CHECK(lit(f) > 20);
@@ -199,11 +199,6 @@ TEST_CASE("status screens and the boot animation draw something") {
   CHECK(lit(f) > 5);
   p64::status_screens::black(f);
   CHECK_EQ(lit(f), 0);
-  p64::BootAnimation boot;
-  bool running = boot.render(f, 500, 2000);
-  CHECK(running);
-  CHECK(lit(f) > 0);
-  CHECK(!boot.render(f, 2500, 2000));  // past its duration
 }
 
 }  // namespace

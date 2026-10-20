@@ -148,6 +148,9 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     <div class="section">
         <h3>Boot animation</h3>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Length</label><input class="num-input" type="number" id="boot-ms" min="0" max="7000" step="100" onchange="save({display:{boot_animation_ms:+this.value}})"><span class="setting-hint" style="margin:0">ms (1000 to 7000; 0 = none)</span></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="boot-anim">Animation</label><select class="sel" id="boot-anim" onchange="save({display:{boot_animation:this.value}})"><option value="random">Random (one per boot)</option></select></div>
+        <div class="setting-hint">The logo arrives as its two layers, the panel with the bird and the wordmark, each in its own way. Random picks one of them at every boot; choose a name to see that one every time.</div>
+        <div style="margin-top:8px"><button class="btn" onclick="introNow()">Play now</button> <button class="btn" onclick="introNext()">Play next</button><span class="setting-hint" style="margin:0 0 0 8px" id="boot-anim-playing">on the panel, for one slot of the Animation show; Play next steps through all of them without changing the setting</span></div>
     </div>
     <div class="section">
         <h3>Animation show</h3>
@@ -487,6 +490,7 @@ function fill(s) {
     sv('bg-r', d.background.r); sv('bg-g', d.background.g); sv('bg-b', d.background.b); bgPreview();
     sv('gain-r', d.gains.r); sv('gain-g', d.gains.g); sv('gain-b', d.gains.b);
     sv('boot-ms', d.boot_animation_ms);
+    if (INTRO_NAMES.length) sv('boot-anim', d.boot_animation || 'random');
     sc('ov-enabled', s.show.clock_overlay.enabled); sv('ov-corner', s.show.clock_overlay.corner); setFont('ov-font', s.show.clock_overlay.font); sv('ov-h24', s.show.clock_overlay.h24 ? '24' : '12');
     var ov = s.show.clock_overlay, oc = ov.colour, ob = ov.border_colour; sv('ov-r', oc.r); sv('ov-g', oc.g); sv('ov-b', oc.b); ovPreview();
     sc('ov-border', ov.border); sv('ovb-r', ob.r); sv('ovb-g', ob.g); sv('ovb-b', ob.b); sv('ov-opacity', ov.border_opacity); document.getElementById('ov-opacity-value').textContent = ov.border_opacity; ovbPreview();
@@ -714,6 +718,32 @@ function clockStatus(d) {
     document.getElementById('clock-preview-tag').textContent = showing ? 'on the panel now' : (p.state === 'widget' ? 'the panel shows the ' + (p.widget || 'widget') : p.state === 'stream' ? 'the panel shows a stream' : 'the panel plays artworks');
 }
 function showClock() { save({ show: { main_state: 'widget' }, widgets: { widget: 'clock' } }); }
+// ── The intro animations (p101): the menu from the registry, play now, play next ──
+var INTRO_NAMES = [];
+var introCursor = -1;  // the last one Play next played
+function loadIntros() {
+    p64.get('/api/v1/boot_animations').then(function (r) {
+        var d = r.data || r;
+        INTRO_NAMES = d.names || [];
+        var sel = document.getElementById('boot-anim');
+        INTRO_NAMES.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n.replace(/_/g, ' '); sel.appendChild(o); });
+        sel.value = d.setting || 'random';
+    }).catch(function () {});
+}
+function introPlay(name) {
+    p64.post('/api/v1/action/boot_animation', { name: name }).then(function (r) {
+        var played = ((r && r.data) || r || {}).name || name;
+        var i = INTRO_NAMES.indexOf(played);
+        document.getElementById('boot-anim-playing').textContent = 'playing ' + played.replace(/_/g, ' ') + (i >= 0 ? ' (' + (i + 1) + ' of ' + INTRO_NAMES.length + ')' : '');
+        p64.toast('Intro: ' + played.replace(/_/g, ' '));
+    }).catch(function (e) { p64.toast(e.message || 'Not in the Animation show', true); });
+}
+function introNow() { introPlay(document.getElementById('boot-anim').value); }
+function introNext() {
+    if (!INTRO_NAMES.length) return;
+    introCursor = (introCursor + 1) % INTRO_NAMES.length;
+    introPlay(INTRO_NAMES[introCursor]);
+}
 function interludeNow(widget) {
     p64.post('/api/v1/action/interlude', { widget: widget }).then(function () { p64.toast('Interlude: ' + widget); }).catch(function (e) { p64.toast(e.message || 'Not in the Animation show', true); });
 }
@@ -731,6 +761,7 @@ function interludeNow(widget) {
     setInterval(tick, 1000);
 })();
 
+loadIntros();
 p64.get('/api/v1/fonts').then(function (fonts) {
     [['ov-font', true], ['clock-font', false]].forEach(function (m) {
         var sel = document.getElementById(m[0]);

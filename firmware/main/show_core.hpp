@@ -169,6 +169,9 @@ struct State {
   int widget_face = -1;                // the clock face on the panel when overridden (an interlude)
   uint8_t last_interlude_face = 255;   // the last random face drawn, never drawn twice running
   bool want_widget = false;  // the Widget state waits for the boot animation
+  std::string boot_animation;   // the intro animation of this boot (p101), for the status document
+  int64_t intro_until_us = 0;   // an intro animation plays for one slot until then (0 = none)
+  std::string intro_name;       // ...and this is its name
   rules::Stage<std::shared_ptr<playback::FrameSource>> stage;  // on the panel, and behind a stream
   bool stream_active = false;  // stream frames are arriving (StreamStarted .. StreamEnded)
   bool want_stream = false;    // a takeover waits for the boot animation or a screen
@@ -195,8 +198,9 @@ struct State {
 void init(ShowEnv &env, gfx::Frame &scratch);
 const State &state();
 
-// The boot animation holds the panel for `boot_ms` (spec 15.1); `source` shows meanwhile.
-void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms);
+// The boot animation holds the panel for `boot_ms` (spec 15.1); `source` shows meanwhile,
+// `animation` names it for the status document (p101).
+void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms, const char *animation = "");
 // Activates the saved playset (`saved_name`, "" when none) or the spec's fallback, and
 // enters the saved main state.
 void restore(const std::string &saved_name);
@@ -212,6 +216,10 @@ void refresh();
 // Play this widget as an interlude now (one auto-swap slot, enters history); ignored
 // outside the Animation show and under a stream.
 void interlude(system::WidgetKind kind);
+// Plays an intro animation source on the panel for `ms` as one slot of the Animation show
+// (p101: the web UI's "play now"); `animation` names it for the status document. Ignored
+// outside the show and under a stream; a fresh artwork follows when the slot ends.
+void play_intro(std::shared_ptr<playback::FrameSource> source, uint32_t ms, const char *animation);
 // Play-this: a file on the card ("" provider), or a download of a provider (its id and
 // the item's id, -1 for a plain URL).
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name);

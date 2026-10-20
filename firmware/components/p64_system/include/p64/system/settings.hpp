@@ -49,6 +49,10 @@ struct Settings {
   gfx::Rgb background{0, 0, 0};
   uint8_t gain_r = 100, gain_g = 100, gain_b = 100;  // 50..100 %
   uint16_t boot_animation_ms = 3000;                 // 0 (off) or 1000..7000 (decided 2026-09-26)
+  // "random" (one intro animation per boot) or an animation's name (p101). The model
+  // stores any string up to 32 characters; the API refuses names the registry lacks, and
+  // the show plays a random one for a name it cannot find.
+  std::string boot_animation = "random";
 
   // Show
   MainState main_state = MainState::AnimationShow;

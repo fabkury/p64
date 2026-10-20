@@ -180,6 +180,7 @@ std::string Settings::to_json() const {
   cJSON_AddNumberToObject(g, "g", gain_g);
   cJSON_AddNumberToObject(g, "b", gain_b);
   cJSON_AddNumberToObject(d, "boot_animation_ms", boot_animation_ms);
+  cJSON_AddStringToObject(d, "boot_animation", boot_animation.c_str());
 
   cJSON *s = obj(root, "show");
   cJSON_AddStringToObject(s, "main_state", kMainStates[static_cast<int>(main_state)]);
@@ -319,6 +320,7 @@ bool Settings::read_json(const cJSON *root) {
   get_num(g, "g", gain_g);
   get_num(g, "b", gain_b);
   get_num(d, "boot_animation_ms", boot_animation_ms);
+  get_str(d, "boot_animation", boot_animation, 32);
 
   const cJSON *s = sub(root, "show");
   get_enum(s, "main_state", main_state, kMainStates, 3);

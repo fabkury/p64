@@ -42,6 +42,10 @@ void refresh();
 // slot inside the Animation show, into history. False with a reason when the name is
 // unknown or the main state is not the show.
 bool interlude(const std::string &widget, std::string &error);
+// Plays an intro animation on the panel for one slot of the Animation show (p101):
+// `name` is a registry name or "random" and comes back as the name that plays. False
+// with a reason for an unknown name or outside the Animation show.
+bool play_intro(std::string &name, std::string &error);
 // Play this file now (play-this, spec 5.5). Checked here for existence and extension;
 // the load happens on the loader and a failure is reported in status.
 bool play_file(const std::string &absolute_path, std::string &error);
