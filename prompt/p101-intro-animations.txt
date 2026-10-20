@@ -1,0 +1,27 @@
+p64 has so far used a placeholder logo animation. Let's fix that today by implementing p64's suite of intro animations.
+
+The inspiration for the general design of intro animations comes from p3a's intro animations (firmware/reference/p3a/). In general, they are:
+ - Procedural animations that use embedded raster assets (i.e. bitmaps embedded in the firmware, namely, the logo image)
+ - Are conceptually a kind of "intro" animation, e.g. fade-in (not fade-out), slide-in (not slide-out) etc.
+ - Are non-blocking, meaning they play while the device is initializing, without blocking anything internally (other than the screen itself)
+ - Should be designed to run at at least 30 FPS, ideally more than that.
+
+But here is a major distinction we are going to draw between p3a and p64's intro animations:
+ - p3a: intro animation involves a single raster asset -- the p3a logo.
+ - p64: intro animation will leverage two separate raster assets that, when drawn overlaid on each other, produce the finalized p64 logo. To put it simply, [p64 logo] = [L0 {layer-0} image] + [L1 {layer-1} image].
+
+The L0 image is "C:\Users\fab\F\Estudo\Tecnologia\p64\docs\images\logo\v2\p64-logo-v2-L0.png". The L1 image is "C:\Users\fab\F\Estudo\Tecnologia\p64\docs\images\logo\v2\p64-logo-v2-L1.png". L1 must go on top of L0. Furthermore, these two images need to be optimized this way:
+ - Trim their transparent pixels, but keep their offsets. In other words, if you trim the top half of an image because it's transparent, the bottom half (which is now the whole image) must still fall exactly on the bottom half of the canvas, as if the whole image (transparent pixels included) were there.
+
+The embedded raster assets can be in PNG or direct RGB format. I leave this decision up to you.
+
+When designing p64's intro animations, of which we need 21, feel free to take inspiration from p3a's intro animations, but remember we're now "intro-ing" two raster assets, which opens up so many new possibilities. For example, L0 can slide from top to bottom while L1 slides from bottom to top; L0 and L1 can bounce around independently but somehow end perfectly at their correct coordinates; L0 can open with vertical bands while L1 opens with horizontal ones; things like that (try to be creative, polished, and as varied as reasonably possible).
+
+Please go ahead and revamp p64's intro animations.
+
+The outcomes I am expecting now include:
+ 0 First, study my ask, study the matters, the references, anything you may want regarding all of this. Study the case.
+ 2. Then, ask me questions to collect my preferences, clarifications and final decisions about any and all of this.
+ 3. Then proceed to generate and test 26 intro animations for p64. The basic test to cover is: is the animation being generated without errors and at an acceptable frame rate?
+ 4. Make sure to implement some mechanism to allow me to conveniently see/test the intro animations (e.g. controls on the web UI). Once 26 intro animations have been implemented, I will then manually appraise them, and trim the list to my favorite 21 intro animations.
+ 5. Please make commits as you make reasonable progress. Don't leave things uncommitted.
