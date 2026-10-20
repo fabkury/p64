@@ -42,7 +42,8 @@ p64b, assembled on 2026-10-17: the two rotary encoders through the back of the v
 | On the bench, p64a running behind | First light with the shell closed | |
 
 The [photo index](images/photos/README.md) identifies the current v7a and v7b photos.
-Older prototype photos are retained for history and deprecated for current guides. The
+Photos of the earlier enclosure versions (v1 to v6) are kept for history and are not used
+in the current guides. The
 [video pipeline](video/README.md) generates a 50-second p64b concept video from the
 model. It is a rendering of the design, not footage of an assembled p64b; the MP4
 is generated locally and not committed.

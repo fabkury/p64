@@ -12,7 +12,8 @@ The [repository README](../README.md) is p64's homepage.
 
 ## Product references
 
-- [Status](status.md): assembly, implementation, release readiness and outstanding checks.
+- [Status](status.md): assembly, implementation, release readiness, remaining checks and
+  engineering notes.
 - [Specification](spec/p64-spec.md): behavior, settings, limits and acceptance criteria.
 - [Glossary](../CONTEXT.md): shared terminology.
 - [Architecture decisions](adr/): reasons for consequential choices.

@@ -1334,3 +1334,14 @@ them. Newest entries are at the bottom of [Log](#log).
   the artwork with the clock overlay intact, the frame 2 s later is the artwork again;
   a capture taken at once still shows the previous frame, so the smoke test waits
   250 ms. Host suite 211 cases green.
+- 2026-10-20 (p100): the status record set straight. The owner reported two p64
+  devices (one p64a, one p64b) running essentially around the clock since their
+  assembly (2026-10-09 and 2026-10-17) without issues, so `docs/status.md` no longer
+  calls the variants prototypes or lists the 12 h and 24 h `soak.py` runs as open
+  work: continuous field operation covers what those runs were meant to show, and the
+  formal runs were never made (said so there). The two HTTP 429 observations of
+  2026-10-17 (views retried without Retry-After while locked out; the pairing poll
+  drawing "Too many credential requests") and the `soak.py` report wish moved from
+  "outstanding checks" to "engineering notes": neither affects a device in normal use.
+  Still open as remaining checks: the instrument measurements, the unrecorded hands-on
+  checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
