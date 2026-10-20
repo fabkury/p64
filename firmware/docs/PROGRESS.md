@@ -1373,3 +1373,10 @@ them. Newest entries are at the bottom of [Log](#log).
 - The user appraised the 26 on the panel and dropped `stamp`, `curtain_banner`, `crt_on`,
   `fountain` and `iris_typewriter`; the 21 that remain ship (registry order kept, the
   catalogue renumbered). Host tests and `intro_smoke.py` follow the count.
+- Release v0.2.1 (p102): version bumped, CI green on the bump, tag pushed, the release
+  workflow built the public image (2,496,144 bytes), published the seven assets with the
+  hand-written notes (`docs/releases/v0.2.1.md`) and redeployed the web flasher, which
+  lists v0.2.1 and v0.2.0. First field OTA: the development device checked, found 0.2.1,
+  installed it in 54 s (SHA256 verified), rebooted into `ota_1`, confirmed, boot animation
+  `bands_cross`, first artwork 2 ms after the window; rolled back to `ota_0` and reflashed
+  with `0.2.1+private` (the public 0.2.1 stays in `ota_1`).
