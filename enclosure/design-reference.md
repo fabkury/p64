@@ -22,7 +22,13 @@ The two variant files are three lines each: they include `src/p64_enclosure_v7.s
 geometry, and set `encoders` to false or true. Both variants are supported for good, so a
 change to the shell is made once, in `p64_enclosure_v7.scad`, and both output folders are
 regenerated. Both v7 variants are printed (2026-10-09), assembled and in daily use (v7a since
-2026-10-09, v7b since 2026-10-17). The fit of the pocket, ledge and bosses, unchanged
+2026-10-09, v7b since 2026-10-17). Both were printed with the LED mask 1.0 mm proud of
+the rim. On 2026-10-20 `proud` went from 1.0 to 0.5 in place (the user's choice: a smaller
+step, kept at 0.5 so that the rim's fillet never climbs above the mask if the stack is
+thicker than modelled): the walls wrap 0.5 mm further forward, nothing else moves, and
+both output folders were regenerated, so the files in `output/` are no longer the printed
+ones and the 0.5 mm rim is not printed yet. The shells as printed come back with
+`proud = 1.0` in the source, or from git (`git show dd660e7:enclosure/output/...`). The fit of the pocket, ledge and bosses, unchanged
 since the first version, was verified on the v1 print (see below); the v7 window and
 insert have not been measured against the model yet. The earlier
 versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/README.md).
@@ -66,16 +72,17 @@ Contents:
 
 - **Fit:** pocket 128.4 x 128.4 mm (0.3 mm clearance per side around the 127.8 mm frame
   measured in Waveshare's drawing), 2 mm walls, 2.4 mm back wall.
-  The walls wrap 13.5 mm forward: over the panel's 12 mm plastic frame and 1.5 mm of the
-  2.5 mm LED board and mask stack in front of it, so the mask stands 1.0 mm proud of the
-  rim (`proud`; 2.5 mm until 2026-09-22, when the rim ended at the frame) and the front
-  is nearly bezel-less. Beside the board the pocket keeps 0.2 mm per side around the
+  The walls wrap 14.0 mm forward: over the panel's 12 mm plastic frame and 2.0 mm of the
+  2.5 mm LED board and mask stack in front of it, so the mask stands 0.5 mm proud of the
+  rim (`proud`; 1.0 mm from 2026-09-22 to 2026-10-20, the value both shells were printed
+  with; 2.5 mm before v7, when the rim ended at the frame) and the front is nearly
+  bezel-less. Beside the board the pocket keeps 0.2 mm per side around the
   assumed 128.0 mm board outline (`board`, `board_clr`, not in any drawing); if the real
   board is wider the pocket steps out there automatically and the `front:` echo line
   reports the wall left.
-- **Size:** 132.4 mm wide, 132.4 mm tall at the back edge and 139.9 mm at the front (the
-  base wedge). The side profile is a wedge: 35.5 mm deep at the bottom (13.5 mm lip +
-  22 mm shell) thinning to 21.5 mm at the top (13.5 + 8). The back face is one flat plane
+- **Size:** 132.4 mm wide, 132.4 mm tall at the back edge and 140.1 mm at the front (the
+  base wedge). The side profile is a wedge: 36.0 mm deep at the bottom (14.0 mm lip +
+  22 mm shell) thinning to 22.0 mm at the top (14.0 + 8). The back face is one flat plane
   sloping 6 degrees, so the print still lies flat on it.
 - **Interior:** 19.4 mm clear at the bottom edge, 12.9 mm at the top edge of the controller,
   5.8 mm at the top edge of the panel. The mounted controller needs roughly 9 mm and the
@@ -371,7 +378,8 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
   screw counterbores, the 1.4 mm edge chamfer rises from the bed (first layer
   129.6 x 130.3 mm), the two rails and (p64b) the encoder posts stand up from the cavity
   back, and the window's chamfer is a 45-degree overhang that starts at the bed. Print
-  height 35.7 mm; about 82 g of PLA with 20 percent infill.
+  height 36.2 mm (35.7 on the printed shells, before the 0.5 mm rim of 2026-10-20); about
+  82 g of PLA with 20 percent infill.
 - Print `p64_cradle_insert.stl` too: sole down, no support, under 2 g; its walls lean
   6 degrees (they follow the adapter bodies, the sole follows the sloping cavity back). If
   the opening comes out tight, a file pass fixes it; loose is fine.
@@ -429,7 +437,7 @@ photos `input/PXL_20260918_*.jpg`.
 | Overall size | 133.0 mm wide (model 132.4, +0.6 mm), 34.6 mm deep at the bottom edge (model 34.6). |
 | Screw bosses | All six line up with the panel's inserts. The 3.4 mm holes and 6.5 mm counterbores printed clean; a screw drops in without cleaning. |
 | Panel in the pocket | Drops in by hand with slight side play, under 1 mm, at 0.45 mm clearance. Next FDM print: use the 0.3 mm `p64_enclosure_print.stl`. |
-| Seating | The frame rests on the ledge all round and the LED mask stands about 2.5 mm proud of v1's rim, which ended at the frame (v7's rim runs 1.5 mm further, so the mask stands 1.0 mm proud). |
+| Seating | The frame rests on the ledge all round and the LED mask stands about 2.5 mm proud of v1's rim, which ended at the frame (v7's rim runs 1.5 mm further, so the mask stood 1.0 mm proud on the printed v7 shells; 2.0 mm further and 0.5 mm proud since 2026-10-20). |
 | USB-C ports | v1's 30 mm base pocket landed exactly on the two ports (v7 has a window in the back instead). |
 | Controller clearance | Visible gap between the controller and the back wall with the panel seated. |
 | Back face | Groove marks legible, vent slots, pin holes and mic holes clean; the 2 mm minimum-feature rule held. |
@@ -440,7 +448,8 @@ photos `input/PXL_20260918_*.jpg`.
 ## Main parameters (`src/p64_enclosure_v7.scad`)
 
 - Shell: `depth_bottom` 22, `depth_top` 8 (set equal for a flat back), `tilt` 12, `proud`
-  1.0 with `panel_stack` 2.5 and `frame_d` 12 (the lip, 13.5, is derived), `board` 128.0,
+  0.5 (1.0 on the printed shells) with `panel_stack` 2.5 and `frame_d` 12 (the lip, 14.0,
+  is derived), `board` 128.0,
   `board_clr` 0.2, `wall` 2, `back_t` 2.4, `panel_clr` 0.3; screws `screw_len` 10, `engage` 5, `cb_d` 6.5,
   `boss_od` 10.5; `panel_rot` 90; back wall `vents`, `pin_d` 3, `mic_d` 3.5, `mic1_off`
   [0.5, 1.6]

@@ -22,7 +22,9 @@ Design renders. Both variants are assembled (p64a 2026-10-09, p64b 2026-10-17).
 Print `p64_enclosure_print.stl` (or `.3mf`) and `p64_cradle_insert.stl`. For MJF/SLA
 services, use the larger-clearance `p64_enclosure_service.stl`. Both v7 shells are
 printed, assembled and in daily use; p64b was closed on 2026-10-17 with its two
-encoder boards on the pegs and the panel seated clear of them.
+encoder boards on the pegs and the panel seated clear of them. Since 2026-10-20 the
+files carry a rim 0.5 mm taller than those shells (the LED mask stands 0.5 mm proud of
+it instead of 1.0, `proud` in the source); that revision is not printed yet.
 
 ## Printing
 

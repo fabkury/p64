@@ -73,6 +73,12 @@
 //  (`board`); a stepped pocket appears automatically if board + clearance
 //  exceeds the frame pocket. The shell is 1.5 mm deeper at the front,
 //  nothing inside moves.
+//
+//  v7, 2026-10-20 (in place, both variants, after both shells were
+//  printed and assembled with proud = 1.0): the mask stands 0.5 mm proud
+//  of the rim instead of 1.0 (`proud` 0.5), so the walls wrap 14.0 mm
+//  forward and the shell is 0.5 mm deeper at the front. Only `proud`
+//  changed; `proud = 1.0` gives back the shells as printed.
 // ---------------------------------------------------------------------
 //  Coordinates (design orientation, part = "shell"):
 //    origin = centre of the panel frame back face
@@ -108,8 +114,10 @@ panel_clr  = 0.3;          // clearance per side between panel and pocket
 frame_d    = 12;           // depth of the plastic frame behind the LED PCB
 panel_stack = 2.5;         // LED board + mask in front of the frame's front face (measured on the v1 print: the mask
                            // stood 2.5 mm proud of a rim that ended at the frame)
-proud      = 1.0;          // how far the mask stands proud of the rim (user choice 2026-09-22; was 2.5 = frame only)
-lip        = frame_d + panel_stack - proud;   // how far the walls wrap forward over the frame: 13.5
+proud      = 0.5;          // how far the mask stands proud of the rim (user choice 2026-10-20: 0.5, was 1.0 from 2026-09-22
+                           // to 2026-10-20, the printed v7 shells; 2.5 = the rim ending at the frame, before v7). Set it back to
+                           // 1.0 to regenerate the shells as printed.
+lip        = frame_d + panel_stack - proud;   // how far the walls wrap forward over the frame: 14.0
 board      = 128.0;        // LED board / mask outline (assumed: Waveshare quotes 128; not in any drawing, measure it)
 board_clr  = 0.2;          // clearance per side beside the board; the pocket steps out if board + 2*board_clr exceeds it
 panel_rot  = 90;           // panel rotation inside the shell, CCW seen from the back

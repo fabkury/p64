@@ -89,8 +89,10 @@ with the arrow at the top right of the file view):
 | p64a | [p64_enclosure_print.stl](../enclosure/output/p64a/v7a/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64a/v7a/p64_cradle_insert.stl) |
 | p64b | [p64_enclosure_print.stl](../enclosure/output/p64b/v7b/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64b/v7b/p64_cradle_insert.stl) |
 
-These are the exact files the maintainer's v7a and v7b shells were printed from at
-JLC3DP (confirmed 2026-10-19). The folders also hold a `.3mf` copy of the shell (for
+The maintainer's v7a and v7b shells were printed at JLC3DP from these files as they
+stood until 2026-10-20 (confirmed 2026-10-19). The current files differ in one thing:
+the rim is 0.5 mm taller, so the LED mask stands 0.5 mm proud of it instead of 1.0; that
+revision has not been printed yet. The folders also hold a `.3mf` copy of the shell (for
 home printers) and `p64_enclosure_service.stl` (a looser fit, for nylon and resin
 processes); do not upload those.
 
