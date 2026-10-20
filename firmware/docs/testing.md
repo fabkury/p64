@@ -59,7 +59,7 @@ python tests/device/ui_smoke.py $p64Url
 | `content_smoke.py` | Card artwork; creates/deletes a test playset and exercises playback. |
 | `makapix_smoke.py` | Internet and NTP; downloads and plays artwork. `--paired` also exercises account likes and paired playsets. |
 | `widgets_smoke.py`, `faces_smoke.py` | Select and inspect widgets/faces; network-backed widgets need their data prerequisites. |
-| `intro_smoke.py [--all]` | The intro animations (p101): the list, the off-screen render bench of all 26 against the frame budget, the `boot_animation` setting round trip, one animation (every one with `--all`) played on the panel for a slot with no late flips. |
+| `intro_smoke.py [--all]` | The intro animations (p101): the list, the off-screen render bench of all 21 against the frame budget, the `boot_animation` setting round trip, one animation (every one with `--all`) played on the panel for a slot with no late flips. |
 | `stream_smoke.py` | Sends UDP frames and takes over playback. |
 | `panel_mode_smoke.py`, `brightness_smoke.py`, `timing_smoke.py` | Change display/playback settings; timing tests need suitable test artwork. |
 | `ops_smoke.py` | Changes night settings and ceiling; does not factory-reset. |

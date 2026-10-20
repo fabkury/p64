@@ -56,8 +56,8 @@ const p64::intro::Context kCtx{0x1234567u, Rgb{7, 9, 11}, g_scratch};
 
 }  // namespace
 
-TEST_CASE("intro: the registry has 26 named animations found by name") {
-  CHECK_EQ(p64::intro::count(), 26);
+TEST_CASE("intro: the registry has 21 named animations found by name") {
+  CHECK_EQ(p64::intro::count(), 21);
   std::set<std::string> names;
   for (int i = 0; i < p64::intro::count(); ++i) {
     const char *n = p64::intro::name(i);

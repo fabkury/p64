@@ -94,7 +94,7 @@ In **Settings → Display**, choose brightness, rotation, mirror and night sched
 The **boot animation** section sets how long the logo plays at power-on (0 turns it
 off) and which of the intro animations plays: *Random* picks one at each boot, or
 choose one by name; **Play now** shows the chosen one on the panel at once and **Play
-next** steps through all of them, so you can pick a favourite.
+next** steps through all 21, so you can pick a favourite.
 The night schedule lowers brightness or blanks the panel while the device stays on.
 Quality mode is for normal viewing; Photo mode raises refresh for cameras and is dimmer.
 The brightness ceiling limits both manual controls and schedules.

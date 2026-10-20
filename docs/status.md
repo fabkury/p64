@@ -17,7 +17,7 @@ flashed 2026-10-19 before the version became 0.2.0).
 |---|---|---|
 | p64a | v7a, finished as designed; assembled 2026-10-09, in continuous use since; no soldering | Maintainer confirmation, 2026-10-15 and 2026-10-20 |
 | p64b | v7b, finished as designed; assembled 2026-10-17, in continuous use since: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell; turn direction matched to the hand on 2026-10-19 (0.2.0-dev), confirmed by the maintainer | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
-| Firmware | 0.2.0, working and under continued development: the product features of the specification are implemented, including encoders, Air, 13 clock faces, 26 intro animations (2026-10-20, to be trimmed to 21 by the maintainer's appraisal), PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
+| Firmware | 0.2.0, working and under continued development: the product features of the specification are implemented, including encoders, Air, 13 clock faces, 21 intro animations (2026-10-20), PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
 | Installation | v0.2.0 published 2026-10-19; pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | Verified 2026-10-19 on the development board: the published v0.2.0 files flashed with the guide's esptool command over native USB (21 s, self-reset, booted 0.2.0, Wi-Fi settings kept), and the device's update check found the release and its checksum (`up_to_date`). Not yet exercised: a flash through the browser page (it needs a hand on the port picker) and the first field OTA from v0.2.0 to its successor. Process and image audit: [release build](../firmware/docs/release-build.md) |
 | Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
 | Reliability | Proven in use: two devices running continuously since their assembly (2026-10-09 and 2026-10-17) without issues, through Makapix refreshes, downloads, clocks and widgets | Maintainer's report, 2026-10-20; the unattended [soak harness](../firmware/docs/PROGRESS.md#log) passed every run up to 55 minutes |
@@ -56,9 +56,8 @@ device in normal use:
 - The newer clock faces (the Retro Diffusion faces and the painted dials, 2026-10-03)
   have had less time on the panel than the rest; the maintainer's eye is the remaining
   review.
-- The 26 intro animations (2026-10-20) await the maintainer's appraisal on the panel
-  (Settings > Display > Play next, or the GIF gallery from `tools/render_intro.py`); the
-  five to drop are not chosen yet, and the ones that stay have had no time on the panel.
+- The 21 intro animations (2026-10-20, chosen from 26 on the panel the same day) have
+  had little time on the panel yet; a random one plays at each boot.
 
 ## Known limits
 

@@ -150,7 +150,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Length</label><input class="num-input" type="number" id="boot-ms" min="0" max="7000" step="100" onchange="save({display:{boot_animation_ms:+this.value}})"><span class="setting-hint" style="margin:0">ms (1000 to 7000; 0 = none)</span></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="boot-anim">Animation</label><select class="sel" id="boot-anim" onchange="save({display:{boot_animation:this.value}})"><option value="random">Random (one per boot)</option></select></div>
         <div class="setting-hint">The logo arrives as its two layers, the panel with the bird and the wordmark, each in its own way. Random picks one of them at every boot; choose a name to see that one every time.</div>
-        <div style="margin-top:8px"><button class="btn" onclick="introNow()">Play now</button> <button class="btn" onclick="introNext()">Play next</button><span class="setting-hint" style="margin:0 0 0 8px" id="boot-anim-playing">on the panel, for one slot of the Animation show; Play next steps through all of them without changing the setting</span></div>
+        <div style="margin-top:8px"><button class="btn" onclick="introNow()">Play now</button> <button class="btn" onclick="introNext()">Play next</button><span class="setting-hint" style="margin:0 0 0 8px" id="boot-anim-playing">on the panel, for one slot of the Animation show; Play next steps through all 21 without changing the setting</span></div>
     </div>
     <div class="section">
         <h3>Animation show</h3>

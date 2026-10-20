@@ -8,7 +8,7 @@ budget (render time under 10 ms of the 20 ms frame, leaving the 8 ms panel copy)
 boot_animation setting round trip (a name, random, an unknown name refused), and one
 animation played on the panel for one slot: the frame changes while it plays, no frame
 flips late, and the show resumes when the window ends. With --all, plays every animation
-on the panel in turn (26 x the configured length). Exit code 1 on any failure.
+on the panel in turn (21 x the configured length). Exit code 1 on any failure.
 """
 
 import sys
@@ -55,14 +55,14 @@ def main():
     st, j = request(base, "GET", "/api/v1/boot_animations")
     check(st == 200, "GET /api/v1/boot_animations answers 200")
     names = j["data"]["names"]
-    check(len(names) == 26, f"26 animations listed ({len(names)})")
+    check(len(names) == 21, f"21 animations listed ({len(names)})")
     check(j["data"]["frame_ms"] == 20, "frame cadence 20 ms")
     check(j["data"]["setting"] in ["random"] + names, f"the setting is random or a name ({j['data']['setting']})")
 
     st, j = request(base, "GET", "/api/v1/diag/intro_bench", timeout=120)
     check(st == 200, "GET /api/v1/diag/intro_bench answers 200")
     rows = j["data"]["animations"]
-    check(len(rows) == 26, "the bench covers every animation")
+    check(len(rows) == 21, "the bench covers every animation")
     worst = max(rows, key=lambda r: r["max_us"])
     for r in rows:
         check(r["max_us"] <= RENDER_BUDGET_US, f"{r['name']}: max {r['max_us']} us, avg {r['avg_us']} us within {RENDER_BUDGET_US} us")

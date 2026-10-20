@@ -8,8 +8,8 @@ turn, opening in bands that cross, bouncing, flipping, shattering. This file is 
 catalogue; the code is `components/p64_intro/`, the design is in
 [architecture.md](architecture.md) (component table) and the API in [api.md](api.md).
 
-The suite has 26 animations so the owner can trim it to the 21 that will ship; the
-ones to drop are not decided yet.
+26 were built so the owner could choose; on 2026-10-20 the owner dropped `stamp`,
+`curtain_banner`, `crt_on`, `fountain` and `iris_typewriter`, and these 21 ship.
 
 ## How they run
 
@@ -39,15 +39,15 @@ ones to drop are not decided yet.
 ## Seeing them
 
 - **On the panel**: Settings > Display > Boot animation has the animation menu, **Play
-  now** (the chosen one, or a random one) and **Play next** (steps through all 26 without
+  now** (the chosen one, or a random one) and **Play next** (steps through all 21 without
   changing the setting). Each plays for one slot of the configured length inside the
   Animation show, then the show swaps to a fresh artwork; nothing enters history. The
   API is `POST /api/v1/action/boot_animation {"name": ...}` and `GET
   /api/v1/boot_animations`.
 - **In a browser**: `python tools\render_intro.py` (from `firmware/`, needs g++ and
   Pillow) compiles the same sources on the host and writes one GIF per animation plus an
-  `index.html` that shows them all to `docs/images/intro/` (git-ignored: 26 GIFs are
-  11 MB). Open `docs/images/intro/index.html`. Pillow quantises each frame to 256
+  `index.html` that shows them all to `docs/images/intro/` (git-ignored: 21 GIFs are
+  9 MB). Open `docs/images/intro/index.html`. Pillow quantises each frame to 256
   colours, so the wordmark's rainbow is close, not exact; the panel is the judge.
 - **Timed**: `GET /api/v1/diag/intro_bench` renders every animation off-screen and
   reports min, average and maximum microseconds per frame; `tests/device/intro_smoke.py`
@@ -68,27 +68,22 @@ maximum per frame, microseconds, HTTP task on core 0 with Wi-Fi up; every one wi
 | 3 | `bounce_drop` | falls under gravity, two damped bounces | drops onto the panel, one bounce | none | 597 / 906 |
 | 4 | `bands_cross` | vertical 4 px bands wipe down and up alternately, staggered | horizontal 4 px bands wipe right and left alternately | none | 1902 / 2387 |
 | 5 | `dissolve_duet` | pixel dissolve by a per-pixel threshold | the same from a different draw, later | which pixel first | 1057 / 1707 |
-| 6 | `iris_typewriter` | a circular iris opens from the centre | typed in column by column behind a blinking cursor | none | 690 / 1011 |
-| 7 | `venetian_cross` | 4-row strips slide in from left and right alternately | 4-column strips slide in from top and bottom alternately | none | 2417 / 4006 |
-| 8 | `assemble` | pixels fly in radially from outside, each with its own distance and delay | pixels streak in from beyond the right edge | distances, delays | 5220 / 6316 |
-| 9 | `glitch_settle` | 4-row slabs jitter sideways with red/blue separation, stuttering, decaying | flickers on, jittering with it, then holds | the jitter | 2818 / 4960 |
-| 10 | `channel_emerge` | red, green and blue ghosts slide in from three sides and recombine | a flat white silhouette that takes on its rainbow | none | 3010 / 4597 |
-| 11 | `hue_spin` | fades in with hues turning twice round the wheel to lock | fades in with its rainbow sliding three turns to rest | none | 3300 / 4268 |
-| 12 | `swirl_orbit` | pixels spiral in from far out, unwinding a turn | orbits the screen centre as one piece on a tightening circle | launch scatter, direction | 2218 / 3855 |
-| 13 | `blinds_flip` | eight slats open edge-on to flat, shaded, top first | opens as one slat | none | 1055 / 1850 |
-| 14 | `scanline_cross` | a bright scan bar sweeps down revealing it | a bar sweeps up from the bottom revealing it | none | 557 / 815 |
-| 15 | `stamp` | fades up quietly | comes down from 4x size like a stamp, white flash on impact | none | 1765 / 5134 |
-| 16 | `shatter_letters` | sixteen Voronoi shards fly in from outside | the p from the left, the 6 from above, the 4 from the right | the shards | 3844 / 5160 |
-| 17 | `curtain_banner` | curtains part from the middle, bright seams | unrolls down over it with a bright roll edge | none | 688 / 945 |
-| 18 | `wave_settle` | fades in with rows displaced by a damping sine wave | fades in with columns bobbing on a wave that settles later | none | 913 / 1217 |
-| 19 | `plasma_duet` | emerges in soft plasma blobs that grow and join | the same through a finer, differently phased field | the phases | 1782 / 2311 |
-| 20 | `starburst_sparkle` | pixels fly in radially, overshoot and snap back | ignites pixel by pixel, a white spark each, cooling to colour | distances, order | 5315 / 8267 |
-| 21 | `tiles_diagonal` | 4x4 tiles pop in, a flat bright block for a blink first | wiped in along the diagonal with a lit edge | tile order | 676 / 1015 |
-| 22 | `flip_card` | turns about its vertical axis from edge-on, shaded | turns about its horizontal axis, after | none | 1642 / 2748 |
-| 23 | `spotlight_sweep` | a spotlight roams over it in the dark, then widens | a beam of light sweeps along it, letters flaring white | none | 2535 / 4126 |
-| 24 | `crt_on` | a bright line grows across, the picture expands out of it | a vertical line grows tall, the wordmark opens sideways | none | 1017 / 2140 |
-| 25 | `fountain` | rises from below and settles | pixels tossed up from the bottom on parabolas, landing in place | launch order, arcs | 1300 / 1794 |
-| 26 | `tune_in` | television snow in its own shape, locking in pixel by pixel | fades up in greys, saturating into its rainbow | the snow, the order | 1813 / 3124 |
+| 6 | `venetian_cross` | 4-row strips slide in from left and right alternately | 4-column strips slide in from top and bottom alternately | none | 2417 / 4006 |
+| 7 | `assemble` | pixels fly in radially from outside, each with its own distance and delay | pixels streak in from beyond the right edge | distances, delays | 5220 / 6316 |
+| 8 | `glitch_settle` | 4-row slabs jitter sideways with red/blue separation, stuttering, decaying | flickers on, jittering with it, then holds | the jitter | 2818 / 4960 |
+| 9 | `channel_emerge` | red, green and blue ghosts slide in from three sides and recombine | a flat white silhouette that takes on its rainbow | none | 3010 / 4597 |
+| 10 | `hue_spin` | fades in with hues turning twice round the wheel to lock | fades in with its rainbow sliding three turns to rest | none | 3300 / 4268 |
+| 11 | `swirl_orbit` | pixels spiral in from far out, unwinding a turn | orbits the screen centre as one piece on a tightening circle | launch scatter, direction | 2218 / 3855 |
+| 12 | `blinds_flip` | eight slats open edge-on to flat, shaded, top first | opens as one slat | none | 1055 / 1850 |
+| 13 | `scanline_cross` | a bright scan bar sweeps down revealing it | a bar sweeps up from the bottom revealing it | none | 557 / 815 |
+| 14 | `shatter_letters` | sixteen Voronoi shards fly in from outside | the p from the left, the 6 from above, the 4 from the right | the shards | 3844 / 5160 |
+| 15 | `wave_settle` | fades in with rows displaced by a damping sine wave | fades in with columns bobbing on a wave that settles later | none | 913 / 1217 |
+| 16 | `plasma_duet` | emerges in soft plasma blobs that grow and join | the same through a finer, differently phased field | the phases | 1782 / 2311 |
+| 17 | `starburst_sparkle` | pixels fly in radially, overshoot and snap back | ignites pixel by pixel, a white spark each, cooling to colour | distances, order | 5315 / 8267 |
+| 18 | `tiles_diagonal` | 4x4 tiles pop in, a flat bright block for a blink first | wiped in along the diagonal with a lit edge | tile order | 676 / 1015 |
+| 19 | `flip_card` | turns about its vertical axis from edge-on, shaded | turns about its horizontal axis, after | none | 1642 / 2748 |
+| 20 | `spotlight_sweep` | a spotlight roams over it in the dark, then widens | a beam of light sweeps along it, letters flaring white | none | 2535 / 4126 |
+| 21 | `tune_in` | television snow in its own shape, locking in pixel by pixel | fades up in greys, saturating into its rainbow | the snow, the order | 1813 / 3124 |
 
 The first bench of 2026-10-20 found three animations over the 10 ms line: `hue_spin`
 (a round trip through HSV per pixel), `swirl_orbit` (a square root, an arctangent and

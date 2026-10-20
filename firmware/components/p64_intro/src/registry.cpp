@@ -12,7 +12,6 @@ extern const Anim kSlideCross;
 extern const Anim kBounceDrop;
 extern const Anim kBandsCross;
 extern const Anim kDissolveDuet;
-extern const Anim kIrisTypewriter;
 extern const Anim kVenetianCross;
 extern const Anim kAssemble;
 extern const Anim kGlitchSettle;
@@ -21,27 +20,22 @@ extern const Anim kHueSpin;
 extern const Anim kSwirlOrbit;
 extern const Anim kBlindsFlip;
 extern const Anim kScanlineCross;
-extern const Anim kStamp;
 extern const Anim kShatterLetters;
-extern const Anim kCurtainBanner;
 extern const Anim kWaveSettle;
 extern const Anim kPlasmaDuet;
 extern const Anim kStarburstSparkle;
 extern const Anim kTilesDiagonal;
 extern const Anim kFlipCard;
 extern const Anim kSpotlightSweep;
-extern const Anim kCrtOn;
-extern const Anim kFountain;
 extern const Anim kTuneIn;
 
 namespace {
 
 const Anim *const kAnims[] = {
-    &kFadeDuet,       &kSlideCross,  &kBounceDrop,     &kBandsCross,       &kDissolveDuet,  &kIrisTypewriter,
-    &kVenetianCross,  &kAssemble,    &kGlitchSettle,   &kChannelEmerge,    &kHueSpin,       &kSwirlOrbit,
-    &kBlindsFlip,     &kScanlineCross, &kStamp,        &kShatterLetters,   &kCurtainBanner, &kWaveSettle,
-    &kPlasmaDuet,     &kStarburstSparkle, &kTilesDiagonal, &kFlipCard,      &kSpotlightSweep, &kCrtOn,
-    &kFountain,       &kTuneIn,
+    &kFadeDuet, &kSlideCross, &kBounceDrop, &kBandsCross, &kDissolveDuet, &kVenetianCross,
+    &kAssemble, &kGlitchSettle, &kChannelEmerge, &kHueSpin, &kSwirlOrbit, &kBlindsFlip,
+    &kScanlineCross, &kShatterLetters, &kWaveSettle, &kPlasmaDuet, &kStarburstSparkle, &kTilesDiagonal,
+    &kFlipCard, &kSpotlightSweep, &kTuneIn,
 };
 constexpr int kCount = static_cast<int>(sizeof(kAnims) / sizeof(kAnims[0]));
 

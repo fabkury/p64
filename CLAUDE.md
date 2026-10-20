@@ -107,12 +107,12 @@ the face starts, `picture.cpp`; the raw pictures and every paid call are in `fir
 `station`: baked dials, hands and markers drawn in integers by `dial.cpp`); `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
 `tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; the intro animations (p101, 2026-10-20):
-`components/p64_intro/`, 26 reveals of the p64 logo drawn from its two layers (`docs/images/logo/v2`, baked trimmed with
+`components/p64_intro/`, 21 reveals of the p64 logo (26 built, five dropped by the user the same day) drawn from its two layers (`docs/images/logo/v2`, baked trimmed with
 their canvas offsets by `tools/gen_logo_assets.py`), pure in the window time and a per-boot seed, 50 fps, the finished logo
 held from 85 % of the window, random per boot or `display.boot_animation` by name, "Play now" and "Play next" in
 Settings > Display (`POST /api/v1/action/boot_animation`), `GET /api/v1/diag/intro_bench` times them,
 `tools/render_intro.py` renders the git-ignored GIF gallery `docs/images/intro/`, the catalogue is
-`firmware/docs/intro-animations.md`; the user will trim the 26 to 21 after appraising them; open: the acceptance measurements that
+`firmware/docs/intro-animations.md`; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks; see `docs/status.md`;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.

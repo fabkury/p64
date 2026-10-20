@@ -1370,3 +1370,6 @@ them. Newest entries are at the bottom of [Log](#log).
   frames of the source being replaced, as at any swap). Internal heap 63.5 KB free,
   largest block 32 KB, with MQTT up; the source and its 4 KB of working memory live in
   PSRAM.
+- The user appraised the 26 on the panel and dropped `stamp`, `curtain_banner`, `crt_on`,
+  `fountain` and `iris_typewriter`; the 21 that remain ship (registry order kept, the
+  catalogue renumbered). Host tests and `intro_smoke.py` follow the count.
