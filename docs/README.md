@@ -33,6 +33,8 @@ These records describe dated work, not necessarily current instructions:
 - [Earlier enclosures](../enclosure/archive/pre-v7/README.md),
   [one-encoder experiment](hardware/encoders-solderless.md), and
   [encoder development record](hardware/encoder-history.md).
+- [Intro animations](../firmware/docs/intro-animations.md): the catalogue of the boot
+  animations, how to see them and how to add one.
 - [Widget research](../firmware/docs/widget-research/README.md),
   [clock design studies](../firmware/docs/design/clock-candidates/README.md),
   [video pipeline](video/README.md), [outreach log](outreach.md), and [session prompts](../prompt/).

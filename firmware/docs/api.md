@@ -78,7 +78,7 @@ screen holding the panel: `pairing`, `paired`, `connected`, `setup`, `update`, o
 `no_artwork` (reason or ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
 {interval_s, remaining_s}`, `interludes {clock, weather, temperature, air: {median_minutes,
 per_swap_percent, state}}` (the plan of ADR 0014: the per-swap chance in percent to a
-tenth, and `state` `rolled`, `never`, `no_auto_swap` or `interval_longer`), `prepared`, `boot {animation_end_ms, first_artwork_ms}` (ms since
+tenth, and `state` `rolled`, `never`, `no_auto_swap` or `interval_longer`), `prepared`, `intro` (the name of an intro animation playing for one slot, else null; p101), `boot {animation (the intro animation of this boot), animation_end_ms, first_artwork_ms}` (ms since
 the app started, about 0.7 s after reset; the first artwork of this boot, -1 until one has
 played: spec 15.1, acceptance 18.8),
 `swaps`, `load_failures`, `frames`, `late`,
@@ -98,6 +98,8 @@ second.
 | `/api/v1/action/previous` | POST | | back in history (no-op at the start) |
 | `/api/v1/action/history_go` | POST | `{"position":n}` | show that history item |
 | `/api/v1/action/interlude` | POST | `{"widget":"clock"|"weather"|"temperature"|"air"}` | that widget as an interlude now: one auto-swap slot, into history (409 outside the Animation show, 400 for an unknown widget) |
+| `/api/v1/action/boot_animation` | POST | `{"name":"<animation>"|"random"}` | that intro animation on the panel now, for one slot of the configured boot animation length (3 s when the boot animation is off), not into history; answers `{name}` with the one that plays (409 outside the Animation show, 400 for an unknown name; p101) |
+| `/api/v1/boot_animations` | GET | | the intro animations: `{names:[...], setting, frame_ms, hold_from}` (`setting` is `display.boot_animation`; p101) |
 | `/api/v1/action/pause` | POST | | panel dark, timer stopped |
 | `/api/v1/action/resume` | POST | | the same artwork again, timer restarted |
 | `/api/v1/action/reset_timer` | POST | | restart the auto-swap interval |
@@ -219,7 +221,10 @@ interludes of that kind, 0 = never, else 5..1440; ADR 0014; interlude_random_clo
 every clock interlude draws one of the available faces at random, never the previous one
 again). With the clock on the panel, `playback.widget_face` names the face shown (an
 interlude's random face, else the setting's), and history items of kind `interlude`
-carry `face` when one was drawn. `GET /api/v1/fonts` lists the bundled fonts in table order, the
+carry `face` when one was drawn. Setting `display.boot_animation` (p101) is `random` (one of
+the intro animations per boot, the default) or an animation's name from `GET
+/api/v1/boot_animations`; any other value is refused with 400 `INVALID_SETTINGS`, and
+`display.boot_animation_ms` stays the window (0 = no boot animation). `GET /api/v1/fonts` lists the bundled fonts in table order, the
 first being the default: `[{name, label, size, overlay}]`; `name` is the value of the
 `font` settings, and the clock overlay draws only the fonts with `overlay` true (any
 other name, or an unknown one, draws the default). History items of kind
@@ -383,4 +388,5 @@ Changes under `animations/` make the show rescan its local channels (2 s debounc
 | `/api/v1/diag/memory` | GET | heaps and task stacks |
 | `/api/v1/diag/dma` | POST | `{"priority":0..5}` the panel's GDMA priority, live |
 | `/api/v1/diag/bench?path=<rel>&loops=N` | GET | decode benchmark of a card file |
+| `/api/v1/diag/intro_bench` | GET | every intro animation rendered off-screen, 40 frames over its window, timed: `{animations:[{name, min_us, avg_us, max_us}], samples, frame_ms}` (the render must leave the 8 ms panel copy room in the 20 ms frame; `tests/device/intro_smoke.py` holds it under 10 ms; p101) |
 | `/api/v1/action/reboot` | POST | |

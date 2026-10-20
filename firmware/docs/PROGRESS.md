@@ -1345,3 +1345,28 @@ them. Newest entries are at the bottom of [Log](#log).
   "outstanding checks" to "engineering notes": neither affects a device in normal use.
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
+
+### 2026-10-20
+
+- The intro animations (p101): the placeholder rings replaced by a suite of 26 reveals
+  of the p64 logo, each moving its two layers (`docs/images/logo/v2`: the panel with the
+  bird, the wordmark on top) in its own way; `components/p64_intro/`, pure and
+  host-tested (`tests/host/unit/intro.cpp`: the baked layers against the PNGs through the
+  firmware's decoder, and for every animation the background alone at t = 0, the exact
+  finished logo from the hold on, determinism, every frame of a 3 s window at 50 fps,
+  motion). Decided with the user: 50 fps, the finished logo held from 85 % of the window
+  (no separate hold), the display background under the layers, random per boot with
+  `display.boot_animation` to force a name, the web UI's Play now / Play next for one slot
+  of the Animation show, a bench endpoint and a device test; the user trims the 26 to 21
+  after appraising them (`tools/render_intro.py` writes the git-ignored GIF gallery).
+- Device (private build, flashed twice): `intro_smoke.py` 0 failures. The first bench
+  found `hue_spin` 8.3 ms, `swirl_orbit` 12.1 ms and `plasma_duet` 12.0 ms average per
+  frame (per-pixel HSV, trigonometry and sines); reworked to a per-frame hue matrix, one
+  rotation and scale per frame, and per-row/column sine tables: 3.3, 2.2 and 1.8 ms.
+  Second bench, all 26 under 10 ms maximum, the slowest `starburst_sparkle` 5.3 ms
+  average / 8.3 ms maximum and `assemble` 5.2 / 6.3 (per-pixel square roots). A boot
+  played `flip_card`: window end 3148 ms, first artwork 3149 ms; a played slot showed
+  0 late frames and 0 late flips (the renderer's "skipped" at the cut are the queued
+  frames of the source being replaced, as at any swap). Internal heap 63.5 KB free,
+  largest block 32 KB, with MQTT up; the source and its 4 KB of working memory live in
+  PSRAM.

@@ -64,7 +64,9 @@ not need to regenerate them.
 
 - [Streaming guide](../docs/using-p64.md#send-a-live-stream) and [wire protocol](docs/api.md#streams).
 - Asset tools: [fonts](tools/gen_fonts.py), [weather icons](tools/gen_weather_icons.py),
-  [UI icons](tools/gen_ui_icons.py), [clock assets](tools/gen_clock_assets.py).
+  [UI icons](tools/gen_ui_icons.py), [clock assets](tools/gen_clock_assets.py),
+  [logo layers](tools/gen_logo_assets.py) for the [intro animations](docs/intro-animations.md)
+  ([render_intro.py](tools/render_intro.py) draws their GIF gallery on the host).
   Python tools document their inputs; image generators use Pillow.
 - [Release build](docs/release-build.md): assets, the tag-driven CI release, the audit of
   development resources in the image; [asset collector](tools/release_assets.py),

@@ -431,7 +431,7 @@ widgets have their own font settings.
 
 | Screen | When | Content |
 |---|---|---|
-| Boot | power-on until the first artwork | boot animation (default 3 s; 1 to 7 s, or 0 = off) |
+| Boot | power-on until the first artwork | boot animation (default 3 s; 1 to 7 s, or 0 = off): one of the intro animations, a random one at each boot or the one chosen in the settings; the logo's two layers (the panel with the bird, the wordmark) arrive each in its own way, the finished logo holds from 85 % of the window (decided 2026-10-20) |
 | Setup | setup mode with no network saved (holds the panel); with a saved network only in place of "no artwork" (artworks keep playing from the cache) | pages cycling every 3 s: "Wi-Fi setup", "Join" the AP name `p64-setup`, "Open" `192.168.4.1` |
 | Connected | after joining a network, only when nothing plays and nothing is loading once the boot animation has ended; for 15 s, or until an artwork is ready | hostname and IP address |
 | Pairing | while a pairing code is valid | the 6-character code, then "paired" for 10 s |
@@ -872,6 +872,7 @@ All persisted unless noted. Ranges are inclusive.
 | Display | background colour | RGB 0 to 255 each | 0, 0, 0 |
 | Display | RGB gains | 50 to 100 % each | 100, 100, 100 |
 | Display | boot animation length | 0 (off), or 1000 to 7000 ms | 3000 |
+| Display | boot animation | random (one per boot), or one of the intro animations by name (2026-10-20) | random |
 | Show | main state | animation show, widget, stream | animation show |
 | Show | auto-swap interval | 0, or 5 to 86400 s | 30 |
 | Show | pick mode | random, recency | random |

@@ -79,7 +79,7 @@ ESP-IDF v5.5.4, C++20, components under `firmware/components/` (`p64_gfx`, `p64_
 `p64_display`, `p64_system`, `p64_playback`, `p64_storage`, `p64_content`, `p64_net`,
 `p64_web`,
 `p64_makapix`, vendored `esp-hub75` with the p64 patch, `animatedgif`, `libpng`, `libwebp`)
-`p64_makapix`, `p64_widgets`, `p64_stream`, `p64_inputs`, `p64_ota`) and the application in `firmware/main/` (`main.cpp`
+`p64_makapix`, `p64_widgets`, `p64_intro`, `p64_stream`, `p64_inputs`, `p64_ota`) and the application in `firmware/main/` (`main.cpp`
 wiring, `show.cpp` the state machine, `loader.cpp` the card I/O worker). Milestones M0
 to M8 are done (2026-09-19): display, decoders, storage, settings, Wi-Fi with setup
 mode, API v1 with WebSocket and web UI, the content model (playsets, channels,
@@ -106,7 +106,13 @@ the face starts, `picture.cpp`; the raw pictures and every paid call are in `fir
 `tools/prep_rd_clock_assets.py` cuts them offline), and two analogue faces on painted dials (`bracket`,
 `station`: baked dials, hands and markers drawn in integers by `dial.cpp`); `tools/mock_clock_faces.py` is the
 design reference of the themed faces and writes the pixel-exact test references,
-`tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; open: the acceptance measurements that
+`tools/gen_clock_assets.py` bakes `assets/clock/` into the firmware; the intro animations (p101, 2026-10-20):
+`components/p64_intro/`, 26 reveals of the p64 logo drawn from its two layers (`docs/images/logo/v2`, baked trimmed with
+their canvas offsets by `tools/gen_logo_assets.py`), pure in the window time and a per-boot seed, 50 fps, the finished logo
+held from 85 % of the window, random per boot or `display.boot_animation` by name, "Play now" and "Play next" in
+Settings > Display (`POST /api/v1/action/boot_animation`), `GET /api/v1/diag/intro_bench` times them,
+`tools/render_intro.py` renders the git-ignored GIF gallery `docs/images/intro/`, the catalogue is
+`firmware/docs/intro-animations.md`; the user will trim the 26 to 21 after appraising them; open: the acceptance measurements that
 need instruments, long soaks, the hands-on checks; see `docs/status.md`;
 `firmware/docs/PROGRESS.md` has the table and the log with what was verified on the
 device.
@@ -139,7 +145,8 @@ firmware build too (`firmware/CMakeLists.txt`). Device tests:
 `python tests\device\ws_smoke.py http://<ip>` (the WebSocket push held open) and
 `python tests\device\cache_sweep_smoke.py http://<ip> [--delete]` and
 `python tests\device\brightness_smoke.py http://<ip>` (the brightness ladder against the
-light plan, spec 3.2) against the live device, and
+light plan, spec 3.2) and `python tests\device\intro_smoke.py http://<ip> [--all]` (the intro
+animations: the list, the render bench, one played on the panel) against the live device, and
 `python tests\device\soak.py http://<ip> --minutes N` for an unattended acceptance soak (the
 development device answers at http://p64.local; its IP is in the boot log; give the
 timing-sensitive tests the IP, since the first mDNS lookup of a process can take 3 s).
