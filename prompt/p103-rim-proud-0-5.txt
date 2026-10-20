@@ -1,0 +1,5 @@
+Ok.
+
+Before I actually order, I want to update one little thing about both v7a and v7b: how "proud" the LED matrix sits, in relation to the shell.
+
+Currently there is still slightly over 1 mm of "extra height" of the surface of the LED matrix in comparison to the edges of the shell that "hugs" the LED matrix from all sides. I would like that "extra height", that "proud-ness" to be smaller. Consider this an in-place edit of the v7 shell, not a new v8 shell, but make sure this change is reversible (either in code or in Git).
