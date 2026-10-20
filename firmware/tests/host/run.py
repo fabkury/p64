@@ -104,6 +104,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_web", "src", "auth_rules.cpp"),
     os.path.join(FIRMWARE, "main", "status_screens.cpp"),
     os.path.join(FIRMWARE, "main", "boot_animation.cpp"),
+    *sorted(glob.glob(os.path.join(COMPONENTS, "p64_intro", "src", "*.cpp"))),
     os.path.join(FIRMWARE, "main", "show_rules.cpp"),
     os.path.join(FIRMWARE, "main", "show_core.cpp"),
     os.path.join(COMPONENTS, "p64_inputs", "src", "tap.cpp"),
@@ -126,6 +127,8 @@ LIBWEBP_SOURCES = sorted(
 C_SOURCES = ZLIB_SOURCES + LIBPNG_SOURCES + LIBWEBP_SOURCES + [os.path.join(CJSON, "cJSON.c")]
 INCLUDES = [
     os.path.join(COMPONENTS, "p64_widgets", "include"),
+    os.path.join(COMPONENTS, "p64_intro", "include"),
+    os.path.join(COMPONENTS, "p64_intro", "src"),       # intro_common.hpp, logo_assets.hpp (the intro tests)
     os.path.join(COMPONENTS, "p64_display", "include"),  # light_curve.hpp (only that one)
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
@@ -157,6 +160,8 @@ INCLUDES = [
 ]
 HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_widgets", "include"),
+    os.path.join(COMPONENTS, "p64_intro", "include"),
+    os.path.join(COMPONENTS, "p64_intro", "src"),       # intro_common.hpp, logo_assets.hpp (the intro tests)
     os.path.join(COMPONENTS, "p64_display", "include"),  # light_curve.hpp (only that one)
     os.path.join(COMPONENTS, "p64_web", "src"),        # auth_rules.hpp (only that one)
     os.path.join(COMPONENTS, "esp-hub75", "src", "platforms", "gdma"),  # p64_bcm.h (only that one)
