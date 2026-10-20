@@ -1,0 +1,7 @@
+Let's fix the record about p64 in parts of the documentation.
+
+1. p64a and p64b are not "prototypes", but finished as designed and working very well. The firmware is in version 0.2.0 and in good working condition (I have 2 p64 devices running basically 24/7) but should remain under development for an unspecified amount of time.
+
+2. Page https://github.com/fabkury/p64/blob/main/docs/status.md contains innacuracies. For example, "Full 12-hour seamless-playback and 24-hour reliability acceptance soaks" are moot because, as I said, I have 2 p64 devices running continuously for well more than 24 hours, without issues. Another example, "Makapix views refused with HTTP 429 are retried at the next swap" is not an "outstanding check" but an "engineering note" of sorts -- the same goes for "While pairing, the device polls the server for its credentials often enough to draw 'HTTP 429 Too many credential requests'".
+
+Please refresh those parts of the documentation, plus any other that pops to your attention while you're working on these, then commit and push. Feel free to ask me questions.
