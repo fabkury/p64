@@ -1,0 +1,1 @@
+Revise documentation of prior outreach efforts, particularly the Reddit posts of p64. Then, give me your recommendation: now that p64b is completed and in daily use, should I post about it on r/esp32 now? 
