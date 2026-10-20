@@ -140,6 +140,14 @@ inline float luma(Rgb c) { return (0.299f * c.r + 0.587f * c.g + 0.114f * c.b) /
 // White on a dark background, black on a light one: the colour of a bar or a cursor.
 inline Rgb contrast(Rgb bg) { return luma(bg) > 0.5f ? gfx::kBlack : gfx::kWhite; }
 // The colour with its hue turned by `turns` (1 = a full circle), saturation and value kept.
-Rgb hue_rotate(Rgb c, float turns);
+// A hue turn built once per frame (hue_turn) and applied per pixel (hue_rotate): the
+// colour turned by `turns` (1 = a full circle) about the grey axis, greys untouched,
+// exactly the colour itself at 0.
+struct HueTurn {
+  float m[9];
+  bool identity;
+};
+HueTurn hue_turn(float turns);
+Rgb hue_rotate(Rgb c, const HueTurn &turn);
 
 }  // namespace p64::intro

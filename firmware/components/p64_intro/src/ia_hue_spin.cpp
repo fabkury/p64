@@ -9,7 +9,8 @@ namespace {
 
 void spin(Frame &f, const Layer &l, float turns, uint8_t alpha) {
   if (alpha == 0) return;
-  each(l, [&](int lx, int ly, Rgb c) { f.blend(l.x + lx, l.y + ly, hue_rotate(c, turns), alpha); });
+  const HueTurn turn = hue_turn(turns);
+  each(l, [&](int lx, int ly, Rgb c) { f.blend(l.x + lx, l.y + ly, hue_rotate(c, turn), alpha); });
 }
 
 void render(Frame &f, const Context &, float u) {

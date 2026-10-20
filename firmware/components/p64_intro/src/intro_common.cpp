@@ -56,38 +56,31 @@ uint32_t hash(uint32_t seed, uint32_t a, uint32_t b) {
   return x;
 }
 
-Rgb hue_rotate(Rgb c, float turns) {
+// A rotation about the grey axis (1, 1, 1) of RGB space by the angle of `turns`: greys
+// stay where they are, every other colour turns through the hue circle. Cheaper than a
+// round trip through HSV (which cost 8 ms a frame on the device, 2026-10-20) and the
+// same identity at 0.
+HueTurn hue_turn(float turns) {
+  HueTurn h;
   turns -= std::floor(turns);
-  if (turns == 0.0f) return c;
-  const float r = c.r / 255.0f, g = c.g / 255.0f, b = c.b / 255.0f;
-  const float mx = std::max(r, std::max(g, b)), mn = std::min(r, std::min(g, b));
-  const float d = mx - mn;
-  if (d <= 0.0f) return c;  // grey: no hue to turn
-  float h;
-  if (mx == r) {
-    h = (g - b) / d;
-    if (h < 0.0f) h += 6.0f;
-  } else if (mx == g) {
-    h = 2.0f + (b - r) / d;
-  } else {
-    h = 4.0f + (r - g) / d;
-  }
-  h += turns * 6.0f;
-  h -= 6.0f * std::floor(h / 6.0f);
-  const float s = d / mx, v = mx;
-  const int sector = static_cast<int>(h) % 6;
-  const float fr = h - std::floor(h);
-  const float p = v * (1.0f - s), q = v * (1.0f - s * fr), t = v * (1.0f - s * (1.0f - fr));
-  float rr, gg, bb;
-  switch (sector) {
-    case 0: rr = v; gg = t; bb = p; break;
-    case 1: rr = q; gg = v; bb = p; break;
-    case 2: rr = p; gg = v; bb = t; break;
-    case 3: rr = p; gg = q; bb = v; break;
-    case 4: rr = t; gg = p; bb = v; break;
-    default: rr = v; gg = p; bb = q; break;
-  }
-  return {byte(rr), byte(gg), byte(bb)};
+  h.identity = turns == 0.0f;
+  const float ang = turns * 6.28318530718f;
+  const float cs = std::cos(ang), sn = std::sin(ang);
+  const float a = cs + (1.0f - cs) / 3.0f;                 // the diagonal
+  const float b = (1.0f - cs) / 3.0f - sn * 0.57735027f;  // one off-diagonal
+  const float c = (1.0f - cs) / 3.0f + sn * 0.57735027f;  // the other
+  h.m[0] = a; h.m[1] = b; h.m[2] = c;
+  h.m[3] = c; h.m[4] = a; h.m[5] = b;
+  h.m[6] = b; h.m[7] = c; h.m[8] = a;
+  return h;
+}
+
+Rgb hue_rotate(Rgb col, const HueTurn &h) {
+  if (h.identity) return col;
+  const float r = col.r, g = col.g, b = col.b;
+  auto clampb = [](float v) { return static_cast<uint8_t>(v < 0.0f ? 0 : (v > 255.0f ? 255 : std::lround(v))); };
+  return {clampb(h.m[0] * r + h.m[1] * g + h.m[2] * b), clampb(h.m[3] * r + h.m[4] * g + h.m[5] * b),
+          clampb(h.m[6] * r + h.m[7] * g + h.m[8] * b)};
 }
 
 }  // namespace p64::intro
