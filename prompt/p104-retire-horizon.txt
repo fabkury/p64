@@ -1,0 +1,5 @@
+Let's talk about p64's widgets.
+
+Widget Horizon RD is a better version of Horizon, using assets created with the RetroDiffusion API (hence the "RD" in the name).
+
+Please retire Horizon, leaving only Horizon RD between the two. Don't just remove it from the UI -- cleanly remove Horizon from the codebase as a whole.
