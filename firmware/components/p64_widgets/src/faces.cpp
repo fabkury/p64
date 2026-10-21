@@ -260,9 +260,6 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
     case ClockFace::Nixie:
       themed::draw_nixie(out, m, o);
       return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
-    case ClockFace::Horizon:
-      themed::draw_horizon(out, m, o, ctx.sky);
-      return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
     case ClockFace::Words:
       themed::draw_words(out, m, o);
       return to_next_minute(t, ctx);
@@ -308,8 +305,10 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
         state.horizon_rd = std::make_unique<themed::HorizonRdArt>();
         if (!state.horizon_rd->load()) state.horizon_rd.reset(), state.art_failed = true;
       }
-      if (!state.horizon_rd) {  // the horizon face stands in
-        themed::draw_horizon(out, m, o, ctx.sky);
+      if (!state.horizon_rd) {  // a plain sky and the time
+        out.clear({30, 34, 100});
+        const std::string text = themed::hour_text(m, o) + (themed::colon_on(m, o) ? ":" : " ") + (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
+        gfx::fonts::draw_centred(out, gfx::fonts::default_font(), 28, text, {255, 255, 255}, 2);
         return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
       }
       themed::draw_horizon_rd(out, m, o, ctx.sky, *state.horizon_rd, ctx.millis);

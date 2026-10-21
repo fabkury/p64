@@ -250,14 +250,14 @@ class ClockSource : public playback::FrameSource {
     float tz_hours = 0;
     const bool have = local_time_at(due_us, t, &ctx.millis, &tz_hours);
     ctx.time = have ? &t : nullptr;
-    // The horizon's place and weather: the weather widget's location and, when a forecast
+    // The sky faces' place and weather: the weather widget's location and, when a forecast
     // is fresh, its current condition; without a location 40 N and solar time.
     if (s.weather.location_set) {
       ctx.sky.latitude = s.weather.latitude;
       ctx.sky.longitude = s.weather.longitude;
       ctx.sky.tz_hours = tz_hours;
     }
-    if (s.clock.face == system::ClockFace::Horizon || s.clock.face == system::ClockFace::HorizonRd) {
+    if (s.clock.face == system::ClockFace::HorizonRd) {
       std::lock_guard<std::mutex> lock(g_mutex);
       if (g_forecast.valid && esp_timer_get_time() - g_forecast.fetched_us <= faces::kWeatherStaleUs)
         faces::weather_to_sky(g_forecast.code, ctx.sky);

@@ -134,7 +134,7 @@ int run_faces(int argc, char **argv) {
     std::fprintf(stderr, "usage: p64_hosttest faces <out_dir> <ref.png>...\n");
     return 2;
   }
-  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
+  static const char *const kFaces[] = {"digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
   const std::string out_dir = argv[2];
   int failures = 0;
   for (int i = 3; i < argc; ++i) {

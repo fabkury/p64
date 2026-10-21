@@ -10,7 +10,7 @@ drawing is exact (flip, nixie, words, hourglass, orrery), that the device's fram
 for pixel what tools/mock_clock_faces.py draws for the same minute on the host (seconds and
 the blinking colon off, so the frame does not depend on the second). The LED face breathes
 (its glow follows the time of day in 200 ms steps), so its frame must be one of the ten the
-host draws for the two seconds around the capture. The horizon depends
+host draws for the two seconds around the capture. The Horizon-RD depends
 on the location, the zone and the weather, so it is only checked for a sky. Needs the
 system Python with Pillow and a synced clock on the device. Puts the settings back, or
 leaves the device on `--keep FACE` in the Widget state. Exit code 1 on any failure.
@@ -27,7 +27,7 @@ import api_smoke
 from api_smoke import check, request
 import mock_clock_faces as mock
 
-FACES = ["digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"]
+FACES = ["digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"]
 EXACT = {"flip": mock.draw_flip, "nixie": mock.draw_nixie, "words": mock.draw_words,
          "hourglass": mock.draw_hourglass, "orrery": mock.draw_orrery}
 
@@ -101,7 +101,7 @@ def main():
             style = clock.get("led_style", "red")
             wanted = [mock.draw_led(mo, opts, ms, None, 0, style).img.tobytes() for mo in (before, after) for ms in range(0, 1000, 200)]
             check(px in wanted, "led (%s) on the device is one of the host's frames of %02d:%02d:%02d" % (style, before.hour, before.minute, before.second))
-        if face in ("horizon", "horizon_rd"):
+        if face == "horizon_rd":
             # a sky: the top rows are not black and vary down the frame
             top = px[0:64 * 3]
             mid = px[30 * 64 * 3:31 * 64 * 3]

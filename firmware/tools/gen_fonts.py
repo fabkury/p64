@@ -8,8 +8,8 @@ ASCII glyph as rows of bits, its advance, and the font's ascent. The TTFs are dr
 their native pixel size (Everyday Slight 5 px, Capital Hill and Everyday Standard 6 px,
 Everyday Typical 7 px, Everyday Ample and High Birth 9 px, Everyday Vast Black 11 px), the sizes at which Pillow renders them without
 anti-aliasing; anything else would blur a pixel font. Only the regular cut of each is
-bundled, except Everyday Vast, whose Black cut is the horizon face's time (since
-2026-10-01). Fonts marked "overlay" are offered for the clock overlay; the others only for
+bundled, except Everyday Vast, whose Black cut is the Horizon-RD face's time and the air
+widget's figures (since 2026-10-01). Fonts marked "overlay" are offered for the clock overlay; the others only for
 the Clock widget. The output is committed, so the firmware build needs neither Pillow nor
 the TTFs (ADR 0008). The first font is the default.
 """

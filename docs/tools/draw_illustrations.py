@@ -78,5 +78,5 @@ for i, (name, frame) in enumerate(items):
             px = end
     label = {'led':'LED', 'horizon_rd':'Horizon-RD', 'LED · VFD':'LED · VFD'}.get(name, name.capitalize())
     body += '</g>' + text(x+96,y+218,label)
-save('clock-faces', 'Themed clock faces', 'Flip, Nixie, Horizon, Words, Hourglass, Orrery, LED, Horizon-RD, Aquarium, Bracket, Station and LED in VFD style. Digital and Analogue are also available.', 790, body)
+save('clock-faces', 'Themed clock faces', 'Flip, Nixie, Words, Hourglass, Orrery, LED, Horizon-RD, Aquarium, Bracket, Station and LED in VFD style. Digital and Analogue are also available.', 790, body)
 print('Generated five SVGs in', OUT)

@@ -123,7 +123,7 @@ TEST_CASE("show: the interlude roll takes the first winner in priority order") {
 }
 
 TEST_CASE("show: a random clock face is uniform over the others and never the previous one (p057)") {
-  // No previous face: all nine, each from its own residue.
+  // No previous face: every face, each from its own residue.
   for (uint32_t r = 0; r < 9; ++r) CHECK_EQ(rules::random_face(255, r, 9), r);
   CHECK_EQ(rules::random_face(255, 9, 9), 0);
   // Previous face 4: the eight others, each exactly once over the eight residues.

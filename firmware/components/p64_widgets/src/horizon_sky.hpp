@@ -1,6 +1,7 @@
-// What the two horizon faces share (face_horizon.cpp and face_horizon_rd.cpp): the sky's
-// colours by the sun's elevation, where a body sits across the frame, the constants of
-// its rising and setting. The same numbers as tools/mock_clock_faces.py.
+// The sky the horizon_rd and aquarium faces draw from (face_horizon_rd.cpp,
+// face_aquarium.cpp): its colours by the sun's elevation, where a body sits across the
+// frame, the constants of its rising and setting. The same numbers as
+// tools/mock_clock_faces.py. Written for the horizon face, retired on 2026-10-21 (p104).
 #pragma once
 
 #include <cmath>

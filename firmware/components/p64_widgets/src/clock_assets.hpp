@@ -34,12 +34,6 @@ extern const Png kHorizonRdSunPng;  // horizon_rd/sun.png, 12x12, 362 bytes
 extern const Sprite kBracketDial;  // bracket/dial.png, 64x64
 extern const Sprite kFlipDigits;  // flip/digits.png, 99x16
 extern const Sprite kFlipTile;  // flip/tile.png, 30x34
-extern const Sprite kHorizonCloud;  // horizon/cloud.png, 13x5
-extern const Sprite kHorizonFarHills;  // horizon/far-hills.png, 64x18
-extern const Sprite kHorizonNearHills;  // horizon/near-hills.png, 64x18
-extern const Sprite kHorizonSunLow;  // horizon/sun-low.png, 11x11
-extern const Sprite kHorizonSun;  // horizon/sun.png, 11x11
-extern const Sprite kHorizonTree;  // horizon/tree.png, 5x8
 extern const Sprite kHourglassFrame;  // hourglass/frame.png, 26x52
 extern const Sprite kHourglassSand;  // hourglass/sand.png, 4x4
 extern const Sprite kLedBezel;  // led/bezel.png, 64x64

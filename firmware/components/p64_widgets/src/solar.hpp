@@ -1,4 +1,4 @@
-// Where the sun and the moon are, for the horizon face (spec 7.1): NOAA's low-precision
+// Where the sun and the moon are, for the sky faces (spec 7.1, Horizon-RD and the aquarium): NOAA's low-precision
 // solar position (well under a degree) and the Astronomical Almanac's low-precision moon
 // (about 0.3 degrees; its phase from its elongation from the sun). Pure arithmetic,
 // host-tested against the almanac; the same formulas as tools/mock_clock_faces.py.

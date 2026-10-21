@@ -447,7 +447,7 @@ up. Status screens are drawn seamlessly like any content.
 Common to all widgets: fonts are bitmap glyphs rasterised at build time from the bundled
 pixel fonts (Capital Hill 6 px; Everyday Slight 5 px, Everyday Standard 6 px, Everyday
 Typical 7 px and Everyday Ample 9 px; High Birth 9 px and Everyday Vast Black 11 px, for
-the Clock widget only, the latter also the horizon face's time since 2026-10-01; all by
+the Clock widget only, the latter also the Horizon RD face's time since 2026-10-01; all by
 VEXED, CC-BY 4.0, with attribution shown in the web UI's About section; settled
 2026-09-23); text and background
 colours are per-widget settings; every widget renders its first frame within one panel
@@ -472,15 +472,12 @@ refresh of being asked so it can be shown seamlessly.
     leaf lands; the hour tile one frame behind the minute tile).
   - Nixie: four tubes with orange wire numerals and a neon colon (the blinking-colon
     setting applies) on a brass-trimmed walnut base, the date in dim amber under it.
-  - Horizon: a landscape computed from where the sun really is (NOAA's low-precision
-    formulas from the weather location and the local time; 40 N and solar time when no
-    location is set): the sky's colours and its twilight glow on the sun's side, the sun
-    (red near the horizon, gold with rays above), stars once the sun is 4 degrees down,
-    the moon with its phase, clouds by the weather's cover drifting with the minute, rain
-    or snow from the current condition, hills and a tree that darken at night; the time on
-    top in outlined white, the date on the ground.
-  - Horizon RD (`horizon_rd`, 2026-10-03, p075 and p076): the horizon's sky, sun, moon,
-    stars and weather over a landscape painted with Retro Diffusion (snow peaks, a lake,
+  - Horizon RD (`horizon_rd`, 2026-10-03, p075 and p076): a sky computed from where the sun
+    really is (NOAA's low-precision formulas from the weather location and the local
+    time; 40 N and solar time when no location is set): its colours and its twilight glow
+    on the sun's side, stars once the sun is 4 degrees down, the moon with its phase,
+    clouds by the weather's cover drifting with the minute, rain or snow from the current
+    condition; over a landscape painted with Retro Diffusion (snow peaks, a lake,
     pines, a log cabin). The land keeps its colours by day, sinks to a blue night and is
     warmed at the twilights; the lake mirrors the sky and glitters under the sun and the
     moon (the glints move twice a second); the cabin's windows are lit while it is dark.
@@ -881,7 +878,7 @@ All persisted unless noted. Ranges are inclusive.
 | Widgets | chosen widget (Widget state) | clock, weather, temperature, air | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0, air 0 |
 | Widgets | random clock face at clock interludes | on/off | off |
-| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, horizon, words, hourglass, orrery, led, horizon_rd, aquarium, bracket, station; LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, words, hourglass, orrery, led, horizon_rd, aquarium, bracket, station (horizon, retired 2026-10-21, loads as horizon_rd); LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |

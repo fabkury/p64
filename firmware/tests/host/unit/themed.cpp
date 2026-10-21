@@ -92,7 +92,7 @@ TEST_CASE("solar: New York's moon against the almanac (full on 2026-09-26, new o
   CHECK(std::fabs(late.azimuth - 64.3f) < 1);
 }
 
-TEST_CASE("themed: the weather's WMO code sets the horizon's cover and precipitation") {
+TEST_CASE("themed: the weather's WMO code sets the sky's cover and precipitation") {
   themed::Sky sky;
   faces::weather_to_sky(0, sky);  // clear
   CHECK_EQ(sky.cover, 0);
@@ -222,8 +222,6 @@ TEST_CASE("themed: the hold times follow the seconds and blink settings, minus t
   CHECK_EQ(hold(), 39750u);
   s.clock.blink_colon = true;
   CHECK_EQ(hold(), 750u);
-  s.clock.face = ClockFace::Horizon;
-  CHECK_EQ(hold(), 750u);
   s.clock.face = ClockFace::Orrery;
   CHECK_EQ(hold(), 750u);
   s.clock.face = ClockFace::Hourglass;
@@ -331,104 +329,13 @@ TEST_CASE("themed: 12-hour mode blanks the leading zero and shows AM or PM on ev
   themed::draw_orrery(a, m, themed::Options{});
   themed::draw_orrery(b, m, h12);
   CHECK_FALSE(same(a, b));
-  themed::draw_horizon(a, m, themed::Options{}, themed::Sky{});
-  themed::draw_horizon(b, m, h12, themed::Sky{});
-  CHECK_FALSE(same(a, b));
   themed::draw_led(a, m, themed::Options{}, themed::LedStyle::Red);
   themed::draw_led(b, m, h12, themed::LedStyle::Red);
   CHECK_FALSE(same(a, b));
 }
 
-TEST_CASE("themed: the horizon's sun sets on the far hills' line at the almanac's sunset") {
-  // New York, 2026-09-26 (the almanac: sunset 18:46 EDT). The disc rests on the hill line
-  // until 18:40, slides behind it and is gone by 18:48 (the solar model runs about 0.3
-  // degrees high: two minutes); the far hills stand 5 px above the horizon there and used
-  // to hide it an hour early.
-  themed::Sky ny;
-  ny.latitude = kNyLat, ny.longitude = kNyLon, ny.tz_hours = kNyTz;
-  const auto sun_pixels = [&](int h, int m) {
-    Frame f;
-    themed::draw_horizon(f, themed::Moment::from(moment(h, m)), themed::Options{}, ny);
-    int n = 0;
-    for (int y = 25; y < 46; ++y)
-      for (int x = 40; x < 64; ++x) {
-        const Rgb c = f.get(x, y);
-        if (c.r > 220 && c.g > 90 && c.b < 160) ++n;  // the disc, red to gold
-      }
-    return n;
-  };
-  for (const int hm : {1700, 1740, 1800, 1820, 1840}) {
-    CAPTURE(hm);
-    CHECK(sun_pixels(hm / 100, hm % 100) >= 30);  // the whole 7 px disc
-  }
-  const int half = sun_pixels(18, 43);
-  CHECK(half > 0);
-  CHECK(half < 30);
-  CHECK(sun_pixels(18, 48) == 0);
-  CHECK(sun_pixels(19, 5) == 0);
-}
-
-TEST_CASE("themed: the horizon's bodies rest on the hill line, never dip while rising, and arc symmetrically") {
-  for (const int radius : {3, 4}) {
-    for (int x = 0; x < 64; ++x) {
-      CAPTURE(radius);
-      CAPTURE(x);
-      CHECK(themed::horizon_body_row(-0.84, x, radius) == -1);
-      int previous = 64;
-      for (double el = -0.82; el <= 90; el += 0.05) {
-        const int y = themed::horizon_body_row(el, x, radius);
-        REQUIRE(y >= 0);
-        CHECK(y <= previous);
-        previous = y;
-      }
-      CHECK(themed::horizon_body_row(90, x, radius) == 18);
-    }
-    // above the first 5 degrees the arc is the same in every column (round, symmetric)
-    for (const double el : {6.0, 15.0, 30.0, 60.0})
-      for (int x = 1; x < 64; ++x) CHECK(themed::horizon_body_row(el, x, radius) == themed::horizon_body_row(el, 0, radius));
-  }
-  // at rest the disc's bottom row is just above the hill line, at the hidden end its top is on it
-  CHECK(themed::horizon_body_row(0.7, 57, 3) == 41 - 3 - 1);
-  CHECK(themed::horizon_body_row(-0.8, 57, 3) == 41 + 3);
-}
-
-TEST_CASE("themed: the horizon is dark at night and bright by day, and the weather greys it") {
-  Frame night, day, overcast;
-  themed::Sky ny;
-  ny.latitude = kNyLat, ny.longitude = kNyLon, ny.tz_hours = kNyTz;
-  themed::draw_horizon(night, themed::Moment::from(moment(1, 0, 0)), themed::Options{}, ny);
-  themed::draw_horizon(day, themed::Moment::from(moment(13, 0, 0)), themed::Options{}, ny);
-  ny.cover = 3;
-  ny.precip = themed::Sky::Precip::Rain;
-  themed::draw_horizon(overcast, themed::Moment::from(moment(13, 0, 0)), themed::Options{}, ny);
-  const auto sky_sum = [](const Frame &f) {
-    long s = 0;
-    for (int y = 20; y < 30; ++y)
-      for (int x = 0; x < 64; ++x) s += f.get(x, y).r + f.get(x, y).g + f.get(x, y).b;
-    return s;
-  };
-  CHECK(sky_sum(night) * 4 < sky_sum(day));
-  // the overcast sky is less blue than the clear one
-  const auto blue = [](const Frame &f) {
-    long s = 0;
-    for (int y = 20; y < 30; ++y)
-      for (int x = 0; x < 64; ++x) s += f.get(x, y).b - f.get(x, y).r;
-    return s;
-  };
-  CHECK(blue(overcast) < blue(day));
-  // the sun is up by day (a gold pixel in the sky), not at night
-  int gold_day = 0, gold_night = 0;
-  for (int y = 0; y < 46; ++y)
-    for (int x = 0; x < 64; ++x) {
-      gold_day += day.get(x, y) == Rgb{255, 222, 90};
-      gold_night += night.get(x, y) == Rgb{255, 222, 90};
-    }
-  CHECK(gold_day > 5);
-  CHECK_EQ(gold_night, 0);
-}
-
 TEST_CASE("themed: settings JSON round-trips every face name") {
-  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
+  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
   static_assert(sizeof(kNames) / sizeof(kNames[0]) == p64::system::kClockFaceCount);
   for (int i = 0; i < p64::system::kClockFaceCount; ++i) {
     p64::system::Settings s;
@@ -437,6 +344,15 @@ TEST_CASE("themed: settings JSON round-trips every face name") {
     CHECK(s.apply_json(json.c_str(), error));
     CHECK_EQ(static_cast<int>(s.clock.face), i);
     CHECK(s.to_json().find(std::string("\"face\":\"") + kNames[i] + "\"") != std::string::npos);
+  }
+  // the retired horizon (p104): a saved choice loads as horizon_rd, an unknown name is kept out
+  {
+    p64::system::Settings s;
+    std::string error;
+    CHECK(s.apply_json("{\"clock\":{\"face\":\"horizon\"}}", error));
+    CHECK_EQ(s.clock.face, ClockFace::HorizonRd);
+    CHECK(s.apply_json("{\"clock\":{\"face\":\"no_such_face\"}}", error));
+    CHECK_EQ(s.clock.face, ClockFace::HorizonRd);
   }
   // an unknown name leaves the face alone
   p64::system::Settings s;

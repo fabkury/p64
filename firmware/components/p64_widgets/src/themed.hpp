@@ -1,5 +1,5 @@
-// The themed clock faces (spec 7.1, approved 2026-09-26): flip, nixie, horizon, words,
-// hourglass, orrery and, since 2026-09-28, the LED, each drawn from pixel-art assets (clock_assets, baked from
+// The themed clock faces (spec 7.1, approved 2026-09-26): flip, nixie, words, hourglass,
+// orrery and, since 2026-09-28, the LED (the horizon was retired on 2026-10-21, p104), each drawn from pixel-art assets (clock_assets, baked from
 // assets/clock/) onto a Frame. Pure and host-tested: tools/mock_clock_faces.py draws the
 // same faces on the host with the same arithmetic, and tests/host/run.py compares the
 // firmware's pixels with its references (tests/host/corpus/clock/).
@@ -30,7 +30,7 @@ struct Moment {
 // The clock settings a themed face honours (colours and fonts are the face's own).
 struct Options {
   bool seconds = false;      // the per-second element: the flip's rail, the hourglass's stream, Mercury
-  bool blink = false;        // the colon is off on odd seconds (nixie, horizon, orrery)
+  bool blink = false;        // the colon is off on odd seconds (nixie, orrery, horizon_rd)
   bool h24 = true;           // else 12 h with AM or PM
   bool month_first = false;  // the date's order
 };
@@ -53,16 +53,12 @@ void draw_flip(gfx::Frame &frame, const Moment &m, const Options &o, int phase =
 // 2. Nixie: four tubes on a base.
 void draw_nixie(gfx::Frame &frame, const Moment &m, const Options &o);
 
-// 3. Horizon: a landscape from the sun's real position.
+// The place and the weather the sky faces draw from (horizon_rd, aquarium).
 struct Sky {
   float latitude = 40, longitude = 0, tz_hours = 0;  // without a location: 40 N, local time as solar time
   uint8_t cover = 0;                                 // 0 clear, 1 few, 2 broken, 3 overcast
   enum class Precip : uint8_t { None, Rain, Snow } precip = Precip::None;
 };
-void draw_horizon(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky);
-// The row of a body's centre at column x (the sun's disc has radius 3, the moon's 4): on
-// the far hills' line at +0.7 degrees, behind it by -0.83 (then -1), a round arc above.
-int horizon_body_row(double elevation, int x, int radius);
 
 // 4. Words: the time spelled on a letter grid (twelve-hour by nature).
 void draw_words(gfx::Frame &frame, const Moment &m, const Options &o);
@@ -93,10 +89,10 @@ void draw_led(gfx::Frame &frame, const Moment &m, const Options &o, LedStyle sty
 int led_ms(const Moment &m, int millis);
 int led_pulse(int ms);
 
-// 8. Horizon-RD (p076): the horizon's sky and almanac over a landscape painted by Retro
-// Diffusion. Its pictures are PNG files in the firmware, decoded by load() when the face
+// 8. Horizon-RD (p076): the sky and almanac from the sun's real position over a landscape
+// painted by Retro Diffusion. Its pictures are PNG files in the firmware, decoded by load() when the face
 // starts and freed with the art (about 30 KB, in PSRAM on the device); load() is false
-// when a picture does not decode, and the clock then draws the horizon face instead.
+// when a picture does not decode, and the clock then draws the time on a plain sky.
 // `millis` moves the lake's glints, a frame every kHorizonRdStepMs.
 constexpr uint32_t kHorizonRdStepMs = 500;
 struct HorizonRdArt {

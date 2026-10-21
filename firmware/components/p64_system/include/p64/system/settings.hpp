@@ -28,7 +28,8 @@ enum class WidgetKind : uint8_t { Clock = 0, Weather = 1, Temperature = 2, Air =
 constexpr int kWidgetKindCount = 4;
 // The clock widget's face (spec 7.1): the digital and analogue ones honour the font and
 // colour settings; the six themed ones (approved 2026-09-26) draw with their own assets.
-enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Horizon = 4, Words = 5, Hourglass = 6, Orrery = 7, Led = 8, HorizonRd = 9, Aquarium = 10, Bracket = 11, Station = 12 };
+// The horizon (once 4) was retired on 2026-10-21 (p104): a saved "horizon" loads as horizon_rd.
+enum class ClockFace : uint8_t { Digital = 0, Analogue = 1, Flip = 2, Nixie = 3, Words = 4, Hourglass = 5, Orrery = 6, Led = 7, HorizonRd = 8, Aquarium = 9, Bracket = 10, Station = 11 };
 // The LED face's look (p053): four LED colours behind a filter, or a vacuum fluorescent display.
 enum class LedStyle : uint8_t { Red = 0, Green = 1, Amber = 2, Blue = 3, Vfd = 4 };
 
@@ -77,7 +78,7 @@ struct Settings {
   // Interludes (ADR 0014): the median gap in minutes between interludes of each kind,
   // 0 = never, else 5..1440; the per-swap probability follows from the auto-swap interval.
   uint16_t interlude_clock = 30, interlude_weather = 180, interlude_temperature = 0, interlude_air = 0;
-  // A clock interlude draws a random face (p057): all nine, never the previous one again.
+  // A clock interlude draws a random face (p057): any of them, never the previous one again.
   bool interlude_random_clock_face = false;
   struct Clock {
     ClockFace face = ClockFace::Digital;
@@ -163,7 +164,7 @@ struct Settings {
 
 // The JSON names of the clock faces ("digital", "analogue", ...).
 const char *clock_face_name(ClockFace face);
-constexpr int kClockFaceCount = 13;
+constexpr int kClockFaceCount = 12;
 
 // Loads the document from NVS (defaults for anything missing) at boot.
 bool settings_init();

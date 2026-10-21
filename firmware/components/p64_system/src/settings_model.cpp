@@ -103,7 +103,7 @@ const char *const kPickModes[] = {"random", "recency"};
 const char *const kChannelSelects[] = {"stochastic", "swrr"};
 const char *const kCorners[] = {"top_left", "top_right", "bottom_left", "bottom_right", "top_center", "bottom_center"};
 const char *const kWidgets[] = {"clock", "weather", "temperature", "air"};
-const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "horizon", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
+const char *const kClockFaces[] = {"digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
 const char *const kLedStyles[] = {"red", "green", "amber", "blue", "vfd"};
 
 }  // namespace
@@ -349,6 +349,8 @@ bool Settings::read_json(const cJSON *root) {
   const cJSON *ck = sub(root, "clock");
   {
     get_enum(ck, "face", clock.face, kClockFaces, sizeof(kClockFaces) / sizeof(kClockFaces[0]));
+    // The horizon face was retired on 2026-10-21 (p104): a saved "horizon" becomes horizon_rd.
+    if (const cJSON *f = ck ? cJSON_GetObjectItemCaseSensitive(ck, "face") : nullptr; f && cJSON_IsString(f) && f->valuestring && std::strcmp(f->valuestring, "horizon") == 0) clock.face = ClockFace::HorizonRd;
     get_enum(ck, "led_style", clock.led_style, kLedStyles, sizeof(kLedStyles) / sizeof(kLedStyles[0]));
     get_str(ck, "font", clock.font, 32);
     get_num(ck, "scale", clock.scale);

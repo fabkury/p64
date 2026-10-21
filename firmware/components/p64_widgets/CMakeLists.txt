@@ -14,7 +14,6 @@ idf_component_register(
         "src/face_flip.cpp"
         "src/face_led.cpp"
         "src/face_nixie.cpp"
-        "src/face_horizon.cpp"
         "src/face_words.cpp"
         "src/face_hourglass.cpp"
         "src/face_orrery.cpp"

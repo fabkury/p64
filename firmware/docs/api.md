@@ -207,8 +207,9 @@ while one is in use, spec 7.4; a missing value is -1); `playback.state` is
 panel. Every action that asks for an artwork (`play_playset`, `next`, `previous`,
 `history/go`, `resume`, `play`, the Makapix commands, a tap) switches
 `show.main_state` to `animation_show` and persists it (spec 6); a client that wants the
-Widget or Stream state back sets it again afterwards. Settings groups `clock` (face: `digital`, `analogue`, `flip`, `nixie`, `horizon`, `words`,
-`hourglass`, `orrery`, `led`, `horizon_rd`, `aquarium`, `bracket` or `station`; led_style: `red`, `green`, `amber`, `blue` or `vfd`, the
+Widget or Stream state back sets it again afterwards. Settings groups `clock` (face: `digital`, `analogue`, `flip`, `nixie`, `words`,
+`hourglass`, `orrery`, `led`, `horizon_rd`, `aquarium`, `bracket` or `station`; a saved `horizon`,
+retired on 2026-10-21, loads as `horizon_rd`; led_style: `red`, `green`, `amber`, `blue` or `vfd`, the
 LED face's look; font, scale, seconds, blink_colon, h24,
 date_order, colour, background), `weather` (latitude, longitude, units,
 refresh_minutes), `air` (index: `us` or `european`) and `temperature`

@@ -9,18 +9,18 @@ What it does:
     exist yet (edit a PNG by hand and it is kept; delete it to have it redrawn), the way
     gen_weather_icons.py does; tools/gen_clock_assets.py bakes them into the firmware;
   - renders the review images under docs/design/clock-candidates/ (each face at 64x64 and
-    8x, moments strips, the flip's GIFs, the horizon's day and variants);
+    8x, moments strips, the flip's GIFs, the horizon_rd's day and variants);
   - writes the test references under tests/host/corpus/clock/: one 64x64 PNG per moment,
     named <face>-HHMMSS[-flags].png (flags: s seconds on, b blinking colon, h 12-hour,
     pN the flip's transition frame N), all on Saturday 2026-09-26; tests/host/run.py
     renders the same moments with the firmware's code and compares pixel for pixel (the
-    horizon, floating-point, within a tolerance).
+    horizon_rd, floating-point, within a tolerance).
 
 Everything here is drawn the way the firmware draws: the bundled fonts through the very
 glyph tables of components/p64_gfx/src/fonts_data.cpp (parsed below) with the same
 placement as fonts.cpp, sprites stamped with a 0/1 alpha, integer arithmetic wherever a
 pixel depends on it, and a shared sine table for the orrery (gen_clock_assets.py emits
-the same numbers). A face that draws with floating point (the horizon's sky) says so.
+the same numbers). A face that draws with floating point (the horizon_rd's sky) says so.
 """
 
 import math
@@ -167,15 +167,6 @@ def blit(frame, sprite, x, y):
             c = px[xx, yy]
             if c[3] >= 128:
                 frame.set(x + xx, y + yy, c[:3])
-
-
-def blit_tinted(frame, sprite, x, y, colour):
-    """Paints `colour` where the sprite's alpha is 128 or more (sprite::stamp)."""
-    px = sprite.load()
-    for yy in range(sprite.height):
-        for xx in range(sprite.width):
-            if px[xx, yy][3] >= 128:
-                frame.set(x + xx, y + yy, colour)
 
 
 def stamp_mask(frame, mask, x, y, colour):
@@ -537,9 +528,10 @@ def draw_nixie(m, o):
     return frame
 
 
-# ---------------------------------------------------------------- 3. Horizon (floating point)
+# ---------------------------------------------------------------- 3. The sky (floating point)
 
-# The scene is procedural from the sun's real position (elevation and azimuth from the
+# The sky the horizon_rd and the aquarium draw (the horizon face that began it was retired
+# on 2026-10-21, p104). The scene is procedural from the sun's real position (elevation and azimuth from the
 # weather widget's latitude and longitude, the date and the local time): the twilight glow
 # sits on the sun's side of the horizon, the sun climbs as high as it does there, stars
 # come out when the sun is far enough below, and the moon shows its phase. NOAA's
@@ -628,39 +620,10 @@ def sky_x(az, el, lat):
     return int(round(31.5 - 25.5 * e))
 
 
-# The sun and the moon rise and set on the far hills' line, not on the horizon row. The
-# day's arc is one curve of the elevation, the old one lifted onto a raised horizon (the
-# higher of the hill line's two ends) and running to row 18 at the zenith, so it stays
-# round and symmetric. Where the hills under a body are lower than that, the body sinks
-# to their line instead, the difference fading out over the first 5 degrees (it only ever
-# lowers a body near the line, so a body never dips while rising); where they are higher,
-# they simply hide it. The setting: at +0.7 degrees the disc rests on the line, by -0.83
-# (the almanac's sunset: the upper limb at the horizon, refraction included) it has slid
-# behind it, under a pixel a minute for the sun in New York.
+# A body's setting (rd_body_y): at +0.7 degrees the disc rests on the skyline, by -0.83 (the
+# almanac's sunset: the upper limb at the horizon, refraction included) it has slid behind
+# it; the local line's pull on a body fades out over the first 5 degrees.
 RESTS, SET, BLEND = 0.7, -0.83, 5.0
-ZENITH_Y = 18
-
-
-def hill_line(far):
-    """The far hills' top row in the frame per column, smoothed over five columns."""
-    a = far.split()[-1].load()
-    tops = [next((y for y in range(far.size[1]) if a[x, y] >= 128), far.size[1]) + HORIZON_Y - 12 for x in range(W)]
-    return [sum(tops[min(W - 1, max(0, x + d))] for d in range(-2, 3)) / 5 for x in range(W)]
-
-
-def body_y(el, x, radius, line):
-    """The row of a body's centre (a disc of that radius) at column x, or None once set."""
-    if el <= SET:
-        return None
-    raised = min(line[0], line[W - 1])
-    local = max(line[min(W - 1, max(0, x))], raised)
-    edge = raised + (local - raised) * max(0.0, 1 - (el - RESTS) / BLEND)
-    rests, hidden = edge - radius - 1, edge + radius
-    if el < RESTS:
-        return int(round(hidden + (rests - hidden) * (el - SET) / (RESTS - SET)))
-    return int(round(rests + (ZENITH_Y - rests) * (min(el, 90) - RESTS) / (90 - RESTS)))
-
-
 # Colours keyed by the sun's elevation: (elevation, top of sky, horizon near the sun,
 # horizon away from the sun).
 SKY = [
@@ -676,7 +639,6 @@ SKY = [
 ]
 STARS = [(5, 4), (14, 9), (22, 3), (30, 12), (41, 6), (50, 2), (57, 10), (9, 16), (36, 18), (60, 20), (26, 22), (47, 15), (3, 24), (54, 27)]
 CLOUD_SPOTS = [(5, 20), (40, 28), (24, 14), (52, 10), (12, 32), (34, 22), (58, 30)]
-HORIZON_Y = 46
 HORIZON_OUTLINE_ALPHA = 191  # the black outline of the time (p070) and the date (p071) at 75 %
 MASK_OUTLINE, MASK_TEXT = (1, 1, 1), (2, 2, 2)  # fonts::kMaskOutline, kMaskText
 
@@ -691,193 +653,6 @@ def sky_palette(el):
 
 def daylight(el):
     return max(0.0, min(1.0, (el + 6) / 14))
-
-
-def draw_horizon_sun():
-    sun = Image.new("RGBA", (11, 11), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sun)
-    d.ellipse((2, 2, 8, 8), fill=(255, 222, 90, 255))
-    d.ellipse((3, 3, 7, 7), fill=(255, 240, 150, 255))
-    for x, y in ((5, 0), (5, 10), (0, 5), (10, 5), (1, 1), (9, 9), (1, 9), (9, 1)):
-        sun.putpixel((x, y), (255, 200, 70, 255))
-    return sun
-
-
-def draw_horizon_sun_low():
-    """The sun within 6 degrees of the horizon: a red disc, no rays (tinted at draw time)."""
-    sun = Image.new("RGBA", (11, 11), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sun)
-    d.ellipse((2, 2, 8, 8), fill=(255, 255, 255, 255))
-    return sun
-
-
-def draw_horizon_cloud():
-    cloud = Image.new("L", (13, 5), 0)
-    d = ImageDraw.Draw(cloud)
-    d.rectangle((1, 3, 11, 4), fill=255)
-    d.rectangle((3, 1, 8, 2), fill=255)
-    d.rectangle((5, 0, 6, 0), fill=255)
-    d.rectangle((9, 2, 10, 2), fill=255)
-    d.rectangle((0, 4, 12, 4), fill=255)
-    return cloud
-
-
-def draw_horizon_far_hills():
-    far = Image.new("L", (W, 18), 0)
-    d = ImageDraw.Draw(far)
-    for x in range(W):
-        top = 6 + int(round(4 * math.sin(x / 9.0) + 2 * math.sin(x / 4.0 + 1)))
-        d.line((x, top, x, 17), fill=255)
-    return far
-
-
-def draw_horizon_near_hills():
-    near = Image.new("L", (W, 18), 0)
-    d = ImageDraw.Draw(near)
-    for x in range(W):
-        top = 11 + int(round(3 * math.sin(x / 13.0 + 2.5) + 1.5 * math.sin(x / 5.0)))
-        d.line((x, top, x, 17), fill=255)
-    return near
-
-
-def draw_horizon_tree():
-    tree = Image.new("L", (5, 8), 0)
-    d = ImageDraw.Draw(tree)
-    d.rectangle((2, 5, 2, 7), fill=255)
-    d.polygon(((2, 0), (0, 4), (4, 4)), fill=255)
-    d.polygon(((2, 2), (0, 5), (4, 5)), fill=255)
-    return tree
-
-
-def horizon_assets():
-    return (asset("horizon", "sun", draw_horizon_sun), asset("horizon", "sun-low", draw_horizon_sun_low),
-            asset("horizon", "cloud", draw_horizon_cloud), asset("horizon", "far-hills", draw_horizon_far_hills),
-            asset("horizon", "near-hills", draw_horizon_near_hills), asset("horizon", "tree", draw_horizon_tree))
-
-
-def draw_moon(frame, x, y, phase, lat, dark_sky):
-    """A 9 px moon with its terminator; the lit side is the right one while waxing (mirrored
-    in the southern hemisphere); the dark side shows faintly on a dark sky."""
-    c = math.cos(2 * math.pi * phase)
-    for dy in range(-4, 5):
-        v = dy / 4.5
-        s = math.sqrt(max(0.0, 1 - v * v))
-        for dx in range(-4, 5):
-            u = dx / 4.5
-            if u * u + v * v > 1:
-                continue
-            uu = u if lat >= 0 else -u
-            lit = (uu > s * c) if phase < 0.5 else (uu < -s * c)
-            X, Y = x + dx, y + dy
-            if not (0 <= X < W and 0 <= Y < HORIZON_Y):
-                continue
-            if lit:
-                frame.set(X, Y, (236, 236, 248))
-            elif dark_sky:
-                frame.set(X, Y, lerp(frame.get(X, Y), (60, 62, 90), 0.6))
-
-
-def draw_horizon(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip=""):
-    """`cover` 0..3 (clear, few, broken, overcast) and `precip` ("", "rain", "snow") come
-    from the weather widget's current condition; without a location the firmware uses
-    40 N, 0 E and the local time as solar time (the defaults here)."""
-    h = m.hour + m.minute / 60.0
-    frame = Frame((0, 0, 0))
-    sun, sun_low, cloud, far, near, tree = horizon_assets()
-    el, az = solar_position(lat, lon, tz, m.yday, h)
-    top, near_c, away_c = sky_palette(el)
-    grey = 0.22 * cover
-    top, near_c, away_c = (lerp(c, (110, 116, 130), grey) for c in (top, near_c, away_c))
-    sx = sky_x(az, el, lat)
-    glow_width = 30 if el < 12 else 60
-    for x in range(W):
-        w = math.exp(-((x - sx) / glow_width) ** 2)
-        hz = lerp(away_c, near_c, w)
-        for y in range(HORIZON_Y):
-            t = (y / (HORIZON_Y - 1)) ** 1.5
-            frame.set(x, y, lerp(top, hz, t))
-    light = daylight(el)
-    star_k = max(0.0, min(1.0, (-el - 4) / 8)) * (1 - 0.8 * min(1, cover / 2))
-    if star_k > 0:
-        for i, (x, y) in enumerate(STARS):
-            frame.set(x, y, lerp(frame.get(x, y), (232, 232, 250), star_k * (0.85 if i % 3 else 1.0)))
-            if i % 3 == 0 and star_k > 0.6:
-                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    if 0 <= x + dx < W and 0 <= y + dy < HORIZON_Y:
-                        frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
-    line = hill_line(far)
-    phase = moon_phase(year, m.yday, h, tz)
-    mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
-    mx = sky_x(maz, mel, lat)
-    my = body_y(mel, mx, 4, line)
-    if my is not None and el < 25:
-        draw_moon(frame, mx, my, phase, lat, el < -6)
-    sy = body_y(el, sx, 3, line)
-    if sy is not None:
-        if el < 6:
-            k = max(0.0, el / 6)
-            blit_tinted(frame, sun_low, sx - 5, sy - 5, lerp((255, 110, 60), (255, 222, 90), k))
-            frame.fill_rect(sx - 1, sy - 1, 3, 3, lerp((255, 150, 90), (255, 240, 150), k))
-        else:
-            blit(frame, sun, sx - 5, sy - 5)
-    tint = lerp((50, 52, 80), lerp((255, 255, 255), near_c, 0.35), light)
-    if cover >= 3:
-        tint = lerp((40, 42, 60), (168, 172, 186), light)
-    for base_x, y in CLOUD_SPOTS[: (1, 2, 4, 7)[cover]]:
-        x = (base_x + m.minute * 64 // 60) % (W + 13) - 13
-        blit_tinted(frame, cloud, x, y, tint)
-    if precip:
-        rng = (m.minute * 7919 + m.hour * 104729) % 65536
-        for _ in range(22):
-            rng = (rng * 1103515245 + 12345) % 2147483648
-            x, y = (rng >> 8) % W, (rng >> 4) % 44
-            if precip == "rain":
-                for k in range(3):
-                    if y + k < HORIZON_Y:
-                        frame.set(x, y + k, lerp(frame.get(x, y + k), (150, 190, 240), 0.7))
-            else:
-                frame.set(x, y, (240, 244, 255))
-    blit_tinted(frame, far, 0, HORIZON_Y - 12, lerp(lerp((8, 14, 26), (66, 128, 78), light), away_c, 0.25 * light))
-    blit_tinted(frame, near, 0, HORIZON_Y, lerp((4, 8, 14), (32, 84, 46), light))
-    blit_tinted(frame, tree, 49, 43, (0, 0, 0))
-    if precip == "snow" and light > 0:
-        c = lerp((60, 64, 80), (225, 230, 240), light)
-        for x in range(W):
-            frame.set(x, HORIZON_Y, c)
-    font = load_font("capital-hill")
-    big = load_font("everyday-vast-black")  # the time, at its native 11 px
-    hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
-    time_text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
-    # one extra pixel between the characters; the outline of the time, the meridiem and the
-    # date is one shape (fonts::draw_mask) darkened once at HORIZON_OUTLINE_ALPHA, so the sky
-    # shows through it evenly where halos overlap (p070, the date since p071), then the ink
-    gap = 1
-    spaced = text_width(big, time_text) + gap * (len(time_text) - 1)
-    x0 = (W - spaced) // 2
-    x_end = x0 + spaced
-    mask = Frame()
-    x = x0
-    for ch in time_text:
-        draw_text(mask, big, x, 4, ch, MASK_TEXT, 1, outline=MASK_OUTLINE)
-        x += text_width(big, ch) + gap
-    mx = x_end - text_width(font, m.meridiem())
-    if not o.h24:
-        draw_text(mask, font, mx, 18, m.meridiem(), MASK_TEXT, 1, outline=MASK_OUTLINE)
-    date = m.date(o.month_first)
-    dx = (W - text_width(font, date)) // 2
-    draw_text(mask, font, dx, 55, date, MASK_TEXT, 1, outline=MASK_OUTLINE)
-    for y in range(H):
-        for x in range(W):
-            if mask.get(x, y) == MASK_OUTLINE:
-                frame.set(x, y, blend(frame.get(x, y), (0, 0, 0), HORIZON_OUTLINE_ALPHA))
-    x = x0
-    for ch in time_text:
-        draw_text(frame, big, x, 4, ch, (255, 255, 255), 1)
-        x += text_width(big, ch) + gap
-    if not o.h24:
-        draw_text(frame, font, mx, 18, m.meridiem(), (255, 255, 255), 1)
-    draw_text(frame, font, dx, 55, date, lerp((150, 160, 190), (230, 240, 230), light), 1)
-    return frame
 
 
 # ---------------------------------------------------------------- 4. Words
@@ -1557,7 +1332,7 @@ def led_animation(m0, o, style="red", seconds=8):
 
 # ---------------------------------------------------------------- 8. Horizon-RD (floating point)
 
-# The horizon face's sky (its colours by the sun's elevation, the glow on the sun's side,
+# The sky of section 3 (its colours by the sun's elevation, the glow on the sun's side,
 # the stars, the sun's and the moon's real places, the moon's phase, the weather's clouds
 # and rain) over a landscape painted by Retro Diffusion (p075, p076): mountains, a lake,
 # pines and a cabin. The land keeps its own colours by day and sinks to a blue night by
@@ -1606,7 +1381,7 @@ def rd_skyline(land):
 
 
 def rd_body_y(el, x, radius, line):
-    """body_y with this face's zenith row, the raised horizon being the skyline's median:
+    """A body's row (the arc of the old horizon face): the raised horizon is the skyline's median,
     the trees and the peaks above it simply hide a body."""
     if el <= SET:
         return None
@@ -1642,7 +1417,7 @@ def draw_moon_rd(frame, moon, x, y, phase, lat, dark_sky):
 
 
 def draw_rd_lettering(frame, m, o):
-    """The horizon face's lettering (white ink, one outline at 75 % black), laid out for a
+    """The lettering (white ink, one outline at 75 % black; the old horizon face's), laid out for a
     picture whose ground is worth seeing: the date small on the lake, right-aligned, clear
     of the cabin, and the meridiem beside the time, so the sky under the time stays the
     sun's."""
@@ -2156,7 +1931,7 @@ def draw_station(m, o, millis=0):
 
 # ---------------------------------------------------------------- output
 
-FACES = {"flip": draw_flip, "nixie": draw_nixie, "horizon": draw_horizon, "words": draw_words,
+FACES = {"flip": draw_flip, "nixie": draw_nixie, "words": draw_words,
          "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led,
          "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium, "bracket": draw_bracket, "station": draw_station}
 
@@ -2190,8 +1965,6 @@ REFERENCES = [
     ("flip", Moment(10, 33, 0), "p5"),
     ("nixie", Moment(10, 32, 37), ""), ("nixie", Moment(10, 32, 37), "b"), ("nixie", Moment(19, 32, 5), "h"),
     ("nixie", Moment(9, 5, 0), "h"),
-    ("horizon", Moment(18, 42, 0), ""), ("horizon", Moment(12, 30, 0), ""), ("horizon", Moment(3, 0, 0), ""),
-    ("horizon", Moment(6, 20, 0), "h"),
     ("words", Moment(10, 32, 0), ""), ("words", Moment(7, 15, 0), ""), ("words", Moment(14, 45, 0), ""),
     ("words", Moment(19, 58, 0), ""), ("words", Moment(0, 0, 0), ""), ("words", Moment(23, 30, 0), ""),
     ("hourglass", Moment(10, 32, 37), "s"), ("hourglass", Moment(10, 32, 37), ""), ("hourglass", Moment(0, 0, 0), "s"),
@@ -2207,7 +1980,7 @@ REFERENCES = [
     ("led", Moment(10, 32, 37), "sv"), ("led", Moment(21, 5, 9), "hsv"), ("led", Moment(10, 32, 37), "bv"),
     ("led", Moment(10, 33, 0), "svp2"),
     ("led", Moment(10, 32, 37), "sg"), ("led", Moment(10, 32, 37), "sa"), ("led", Moment(10, 32, 37), "su"),
-    # the two faces from Retro Diffusion art: the horizon's, floating point, within the
+    # the two faces from Retro Diffusion art: the horizon_rd, floating point, within the
     # tolerance; the aquarium pixel for pixel (day, the fish elsewhere, 12 h at dawn with
     # the lamp half up, night with the blinking colon off, the last dark before dawn)
     ("horizon_rd", Moment(18, 42, 0), ""), ("horizon_rd", Moment(12, 30, 0), ""), ("horizon_rd", Moment(3, 0, 0), ""),
@@ -2251,7 +2024,6 @@ def write_design():
     o = Options()
     faces = [("flip", draw_flip(Moment(10, 32, 37), Options(seconds=True))),
              ("nixie", draw_nixie(Moment(10, 32, 37), o)),
-             ("horizon", draw_horizon(Moment(18, 42), o, lat=40.7, lon=-74.0, tz=-4)),
              ("words", draw_words(Moment(10, 32))),
              ("hourglass", draw_hourglass(Moment(10, 32, 37), Options(seconds=True))),
              ("orrery", draw_orrery(Moment(10, 32, 37), Options(seconds=True))),
@@ -2268,19 +2040,6 @@ def write_design():
                       ("flip-hour", flip_animation(Moment(10, 59), Moment(11, 0), o))):
         save_gif(os.path.join(DESIGN, name + ".gif"), seq)
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8)
-    ny = dict(lat=40.7, lon=-74.0, tz=-4)
-    moments = [(0, 30), (3, 0), (5, 30), (6, 20), (6, 50), (8, 0), (12, 30), (16, 30), (18, 20), (18, 50), (19, 25), (21, 0)]
-    contact_sheet([(f"{hh:02d}:{mm:02d}", draw_horizon(Moment(hh, mm), o, **ny)) for hh, mm in moments], scale=4, columns=6).save(
-        os.path.join(DESIGN, "horizon-day.png"))
-    variants = [("clear", draw_horizon(Moment(15, 0), o, **ny)),
-                ("broken", draw_horizon(Moment(15, 0), o, cover=2, **ny)),
-                ("rain", draw_horizon(Moment(15, 0), o, cover=3, precip="rain", **ny)),
-                ("snow", draw_horizon(Moment(15, 0), o, cover=3, precip="snow", **ny)),
-                ("sao paulo", draw_horizon(Moment(18, 10), o, lat=-23.55, lon=-46.63, tz=-3)),
-                ("tromso dec", draw_horizon(Moment(13, 0, 0, 1, 21, 12, 354), o, lat=69.65, lon=18.96, tz=1)),
-                ("reykjavik jun", draw_horizon(Moment(23, 30, 0, 0, 21, 6, 171), o, lat=64.15, lon=-21.94, tz=0)),
-                ("singapore", draw_horizon(Moment(12, 0), o, lat=1.35, lon=103.8, tz=8))]
-    contact_sheet(variants, scale=4, columns=4, gap=24).save(os.path.join(DESIGN, "horizon-variants.png"))
     times = [(0, 0, 0), (7, 15, 12), (10, 32, 37), (14, 45, 50), (19, 58, 5), (23, 30, 20)]
     for name, fn in (("words", lambda mm: draw_words(mm)),
                      ("hourglass", lambda mm: draw_hourglass(mm, Options(seconds=True))),

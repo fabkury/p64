@@ -18,7 +18,7 @@ nearest-neighbour for looking at, `contact-sheet.png` all six side by side.
 |---|---|---|---|---|
 | `flip` | A split-flap clock: two graphite tiles with rounded corners, a top highlight, a hinge line through the numerals and axle pins; ivory numerals; the weekday and date small and dim above; an amber seconds rail below (30 ticks, one per two seconds). | `tile.png` (30x34, stamped twice), `digits.png` (ten 9x16 Helvetica-bold-style numerals) | Capital Hill 6 px for the date | The rail every second (optional); the flip on the minute (below) |
 | `nixie` | Four Nixie tubes on a brass-trimmed walnut base: domed glass with a reflection, warm haze inside, wire numerals in orange with a one-pixel halo, socket and pins, a neon colon; the date in dim amber under the base. | `tube.png` (13x38, stamped four times), `digits.png` (ten 7x11 wire numerals), `base.png` (64x4) | Capital Hill 6 px for the date | The colon blinks (optional) |
-| `horizon` | A landscape computed from where the sun really is (below). The time on top in outlined white, the date on the ground. | `sun.png`, `cloud.png`, `far-hills.png`, `near-hills.png`, `tree.png` (masks tinted per moment); the moon is drawn procedurally from its phase | Capital Hill 6 px at 2x for the time, 1x for the date | Every minute |
+| `horizon` (retired on 2026-10-21, p104: Horizon-RD below kept its sky and almanac, its hills and tree are gone from the firmware, the assets and references with them) | A landscape computed from where the sun really is (below). The time on top in outlined white, the date on the ground. | `sun.png`, `cloud.png`, `far-hills.png`, `near-hills.png`, `tree.png` (masks tinted per moment); the moon is drawn procedurally from its phase | Capital Hill 6 px at 2x for the time, 1x for the date | Every minute |
 | `words` | A word clock: a 12x9 grid of letters behind a brushed-steel bezel, the letters that spell the time lit in warm white and the rest barely there ("IT IS HALF PAST TEN AM"); four corner dots add the minutes past the five. The grid is p64's own layout, not a product's. | `alphabet.png` (a 3x5 capital alphabet drawn for the grid), `bezel.png` (64x64 frame with the brush, the inner shadow and four screw heads) | none from the bundled fonts | Every five minutes, and a dot a minute |
 | `hourglass` | The hour as sand: the top bulb holds what is left of it, the bottom the heap that has run, a stream between them that loses a grain every second; the surface of the top sand dips into a funnel and the heap rises to a peak under the neck. The hour and the minute stacked beside it in the flip's numerals, the date under them. | `frame.png` (26x52: walnut end plates, brass posts, the glass outline), `sand.png` (4x4 two-tone dither tile); the flip's `digits.png` shared | Everyday Slight 5 px for the date | The stream every second, the sand every minute |
 | `orrery` | A brass orrery on a star chart: the Earth (with its Moon on an arm) goes round the Sun once in twelve hours, the Moon round the Earth once an hour, Mercury round the Sun once a minute; dotted brass rings for the orbits, twelve ticks at the rim, the time in figures on a brass plaque at the foot. | `plate.png` (64x64: chart, rings, ticks, plaque, drawn once), `sun.png` (9x9), `earth.png` (5x5), `moon.png` and `mercury.png` (3x3) | Capital Hill 6 px on the plaque | Mercury every second, the Moon and the Earth every minute |
@@ -50,6 +50,8 @@ before the minute, the flip, and the rest.
 
 ## The horizon's model
 
+The model lives on in Horizon-RD (`horizon_sky.hpp`, `solar.cpp`, the sky of section 3 of
+the mock); the hills, the tree and the images named below were the retired face's.
 The scene is procedural, from the sun's position rather than from the hour, so every
 hour of every day, and every place, looks like itself:
 
@@ -81,7 +83,7 @@ hour of every day, and every place, looks like itself:
 - Clouds drift with the minute; the hills are hazed by the horizon colour by day and black
   by night.
 
-`horizon-day.png` shows twelve moments of one day in New York; `horizon-variants.png` the
+`horizon-day.png` showed twelve moments of one day in New York; `horizon-variants.png` the
 same afternoon hour in four weathers, and dusk in Sao Paulo (sun setting on the left, the
 southern hemisphere), midwinter noon in Tromso (the sun never up, a crescent moon),
 midsummer near midnight in Reykjavik (the sun just under the horizon at the north) and noon
@@ -154,12 +156,12 @@ assets for both; a 12 px sun and a 12 px moon (the first mock had 8 and 14).
 | `horizon_rd` | The horizon face's sky and almanac (colours by the sun's elevation, glow on the sun's side, stars, the sun and the moon where they are, the moon's phase, the weather's clouds, rain and snow) over a painted landscape: snow peaks, a lake, pines and a log cabin. The land keeps its colours by day, sinks to a blue night and is warmed at the twilights; the lake mirrors the sky and glitters under the sun and the moon; the cabin's two windows are lit while it is dark. | `land.png` (64x38, at row 26), `lake.png` (the water's mask), `lights.png` (the windows), `sun.png` (12x12), `moon.png` (12x12, the phase's terminator is computed over it), `cloud-a.png`, `cloud-b.png` | Everyday Vast Black 11 px for the time, Capital Hill for AM/PM beside it, Everyday Slight 5 px for the date at the bottom right, on the lake, clear of the cabin; one outline at 75 % black | The lake's glints every 500 ms, the rest every minute |
 | `aquarium` | A goldfish tank: a stone castle, a plant, an open treasure chest, gravel, and a wooden sign that carries the time. Three goldfish swim from wall to wall and turn, each on its lane, wagging its tail: a small yellow one and an orange one behind the decor, a large red and white one in front of everything but the sign. By night (from the sun's elevation) the water goes dark blue, the castle's window and door glow, the yellow fish hides and the others swim at half speed. | `tank.png` (16 frames of 64x64: the plant sways, bubbles rise from the chest), `front.png` (the same frames, only what stands in front of the far fish), `sign.png` (27x10), `lights.png`, `fish-a.png` (20x17), `fish-b.png` (26x19), `fish-c.png` (14x10), eight frames each | Everyday Standard 6 px on the sign, cream with a carved shadow | Every 150 ms |
 
-`horizon_rd-day.png` is one day in New York (the same twelve moments as `horizon-day.png`),
+`horizon_rd-day.png` is one day in New York (twelve moments),
 `horizon_rd-variants.png` the weather, 12 h, the full and the half moon and Sao Paulo,
 `horizon_rd@8x.gif` six seconds of the lake; `aquarium-moments.png` six moments,
 `aquarium.gif` and `aquarium-night.gif` (with `@8x`) fourteen and ten seconds of the tank.
 The aquarium is integer arithmetic after the sun's elevation, so its references are
-compared pixel for pixel; Horizon-RD's within the horizon's tolerance.
+compared pixel for pixel; Horizon-RD's within a tolerance (3 % of the pixels may differ by more than 8).
 
 ## Two analogue faces on Retro Diffusion dials (p077 and p078, 2026-10-03)
 

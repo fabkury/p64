@@ -96,11 +96,12 @@ are done, and M10 delivered the web UI in p3a's layout and five themes
 (`components/p64_web/ui/`: four pages, the shared static files, the setup portal on the
 same stylesheet), the unattended soak harness and the docs, so M0 to M10 are complete;
 the analogue clock face followed on 2026-09-20, six themed clock faces on 2026-09-26
-(flip, nixie, horizon, words, hourglass, orrery) and the LED face (seven-segment, five
+(flip, nixie, horizon, words, hourglass, orrery; the horizon was retired on 2026-10-21, p104,
+in favour of `horizon_rd`, which kept its sky) and the LED face (seven-segment, five
 styles including a VFD, `face_led.cpp`) on 2026-09-28; the air widget (air quality and UV
 from Open-Meteo, a fourth widget kind, spec 7.4; `tools/mock_air_widget.py` is its design
 reference, `firmware/docs/widget-research/` the survey it came from) on 2026-10-03; two clock faces from
-Retro Diffusion pixel art the same day (`horizon_rd`, the horizon's sky over a painted landscape, and
+Retro Diffusion pixel art the same day (`horizon_rd`, the computed sky over a painted landscape, and
 `aquarium`; their art is kept as PNG files, `assets/clock-png/`, embedded as they are and decoded when
 the face starts, `picture.cpp`; the raw pictures and every paid call are in `firmware/assets/rd-source/`,
 `tools/prep_rd_clock_assets.py` cuts them offline), and two analogue faces on painted dials (`bracket`,

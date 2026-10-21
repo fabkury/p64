@@ -1346,6 +1346,20 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-10-21
+
+- The horizon clock face retired (p104): Horizon-RD had been its better version since
+  2026-10-03, so the plain horizon goes from the codebase, not only from the UI:
+  `face_horizon.cpp`, its six baked sprites (`assets/clock/horizon/`, 186 lines of
+  `clock_assets.cpp`), its four test references, its review images, its drawing and
+  assets in the mock, its host tests and its entries in the settings model, the web UI,
+  the device tests and the docs. What it began stays for Horizon-RD and the aquarium:
+  `horizon_sky.hpp` (the sky's colours, the body's place and the setting constants) and
+  `solar.cpp`. `ClockFace` renumbered (12 faces, `kClockFaceCount` 12; the names, not the
+  numbers, are what the settings store); a saved `"horizon"` loads as `horizon_rd` (host
+  test). Horizon-RD's fallback when a picture does not decode, which used to be the
+  horizon face, is now the time on a plain sky.
+
 ### 2026-10-20
 
 - The intro animations (p101): the placeholder rings replaced by a suite of 26 reveals

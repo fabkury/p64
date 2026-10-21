@@ -50,8 +50,10 @@ uint32_t hash3(int x, int y, int t) {
   return (v ^ (v >> 16)) & 0xFFFFu;
 }
 
-// face_horizon's body_y with this face's zenith row, the raised horizon being the
-// skyline's median: the trees and the peaks above it simply hide a body.
+// The row of a body's centre at column x (the arc the retired horizon face drew, with this
+// face's zenith row): it rests on the skyline at kRests degrees and has slid behind it by
+// kSet; the raised horizon is the skyline's median, and the trees and the peaks above it
+// simply hide a body.
 bool body_y(const HorizonRdArt &art, double el, int x, int radius, int &y) {
   if (el <= kSet) return false;
   const double raised = art.raised;

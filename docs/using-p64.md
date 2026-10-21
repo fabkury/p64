@@ -59,8 +59,8 @@ set interlude gaps. An interlude replaces one artwork slot. Its gap is a typical
 | Air | Uses the weather location for air quality and UV; choose US or European AQI. Data is fetched while the widget is in use. |
 | Temperature | Reads the board's temperature/humidity sensor; offsets allow calibration. |
 
-The 13 clock faces are Digital, Analogue, Flip, Nixie, Horizon, Words, Hourglass,
-Orrery, LED, Horizon-RD, Aquarium, Bracket and Station. LED has red, green, amber,
+The 12 clock faces are Digital, Analogue, Flip, Nixie, Words, Hourglass, Orrery, LED,
+Horizon-RD, Aquarium, Bracket and Station. LED has red, green, amber,
 blue and VFD styles. The separate **clock overlay** is under **Settings → Display**;
 it shows time over artwork.
 

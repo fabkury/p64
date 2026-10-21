@@ -27,7 +27,7 @@ const gfx::fonts::Font &overlay_font(const std::string &name);
 std::string temperature_text(float value, bool decimals);
 
 // What the clock draws from besides the settings: the time (null while unknown) with the
-// milliseconds into its second, the place and the weather for the horizon face.
+// milliseconds into its second, the place and the weather for the sky faces.
 struct ClockContext {
   const tm *time = nullptr;
   int millis = 0;
@@ -45,7 +45,7 @@ struct ClockState {
   std::unique_ptr<themed::AquariumArt> aquarium;
   bool art_failed = false;  // a picture did not decode: do not try again every frame
 };
-// The weather's WMO code as the horizon's cloud cover and precipitation.
+// The weather's WMO code as the sky's cloud cover and precipitation.
 void weather_to_sky(int wmo_code, themed::Sky &sky);
 // The clock in the chosen face, or "--:--" / "NO TIME" when there is no time. Returns how
 // long the frame holds: to the next second, the next minute, or a flip frame (45 ms).
