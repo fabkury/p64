@@ -1,0 +1,11 @@
+I just caught a bug in p64.
+
+I have a p64 connected via USB-C. It is also available at http://p64.local/. When I visit http://p64.local/update, I see this:
+
+Installed: 0.2.1+private
+Available: 0.2.1
+Status: Update available
+
+As you can see, the firmware is claiming "update available" when in reality it's the same version, just a private build.
+
+Please fix that, and flash the new private build to the connected p64 device.
