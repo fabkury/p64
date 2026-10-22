@@ -25,9 +25,14 @@ Parsed parse(const std::string &text) {
   p.major = parts[0];
   p.minor = parts[1];
   p.patch = parts[2];
+  if (i < text.size() && text[i] == '-') {
+    const size_t plus = text.find('+', i + 1);
+    p.suffix = text.substr(i + 1, plus == std::string::npos ? std::string::npos : plus - (i + 1));
+    i = plus == std::string::npos ? text.size() : plus;
+  }
   if (i < text.size()) {
-    if (text[i] != '-' && text[i] != '+') return p;
-    p.suffix = text.substr(i + 1);
+    if (text[i] != '+') return p;
+    p.build = text.substr(i + 1);
   }
   p.valid = true;
   return p;
@@ -42,7 +47,8 @@ int compare(const std::string &a, const std::string &b) {
   if (pa.major != pb.major) return pa.major < pb.major ? -1 : 1;
   if (pa.minor != pb.minor) return pa.minor < pb.minor ? -1 : 1;
   if (pa.patch != pb.patch) return pa.patch < pb.patch ? -1 : 1;
-  // Same numbers: a release beats a suffixed build; two suffixes compare by text.
+  // Same numbers: a release beats a suffixed build; two suffixes compare by text. Build
+  // metadata is not compared: 0.2.1+private is the release 0.2.1, not an older build of it.
   if (pa.suffix.empty() != pb.suffix.empty()) return pa.suffix.empty() ? 1 : -1;
   return pa.suffix < pb.suffix ? -1 : pa.suffix > pb.suffix ? 1 : 0;
 }

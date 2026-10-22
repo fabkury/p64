@@ -1346,6 +1346,17 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-10-22
+
+- The Update page no longer offers the public release to the private build of the same
+  version (p105). The user found `0.2.1+private` reported as "Update available" against
+  the release `0.2.1`: `version::parse` had treated `+private` like a pre-release suffix
+  (`-dev`), which ranks below the bare number. Fixed in `p64_ota/src/version.cpp`: `-label`
+  stays the pre-release suffix, `+label` is build metadata, kept in `Parsed::build` and
+  ignored by `compare`, as in semver; host tests cover both orders, `-dev+private` and
+  `-rc1+private`. Flashed the private build; the device's own check then reported
+  `up_to_date` (`current_version` `0.2.1+private`, `available_version` `0.2.1`).
+
 ### 2026-10-21
 
 - The horizon clock face retired (p104): Horizon-RD had been its better version since

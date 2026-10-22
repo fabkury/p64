@@ -28,6 +28,19 @@ TEST_CASE("versions") {
   CHECK(!is_newer("0.0.9", "0.1.0-dev"));     // older numbers stay older despite the suffix
   CHECK_EQ(compare("1.0.0", "1.0.0-rc1"), 1);
   CHECK_EQ(compare("1.0.0-rc1", "1.0.0-rc2"), -1);
+  // Build metadata (the private build is "0.2.1+private") names the same version: the
+  // Update page said "update available" for the public 0.2.1 until 2026-10-22.
+  CHECK(!is_newer("0.2.1", "0.2.1+private"));
+  CHECK(!is_newer("0.2.1+private", "0.2.1"));
+  CHECK_EQ(compare("0.2.1+private", "0.2.1"), 0);
+  CHECK(is_newer("0.2.2", "0.2.1+private"));
+  CHECK(is_newer("0.2.1+private", "0.2.1-dev"));
+  CHECK(!is_newer("0.2.1-dev+private", "0.2.1"));
+  CHECK_EQ(compare("0.2.1-rc1+private", "0.2.1-rc1"), 0);
+  const auto b = parse("0.2.1-rc1+private");
+  CHECK(b.valid); CHECK(b.suffix == "rc1"); CHECK(b.build == "private");
+  CHECK(parse("0.2.1+private").suffix.empty()); CHECK(parse("0.2.1+private").build == "private");
+  CHECK(parse("0.2.1+").valid);  // an empty build label is still a parsed version
 }
 
 // --- the GitHub release document (release.cpp) -------------------------------------
