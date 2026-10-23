@@ -39,9 +39,9 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 814 Hz for cameras. Clocks require NTP after each boot. See the
 [owner's guide](docs/using-p64.md) for operating limits.
 
-| ![Synthwave pixel art on p64](docs/images/photos/p64-synthwave.jpg) | ![Yoshi artwork with the time overlay on v7a](docs/images/photos/p64-yoshi-laptop.jpg) | ![Car artwork photographed in low light](docs/images/photos/p64-night-car.jpg) |
+| ![Synthwave pixel art on p64](docs/images/photos/p64-synthwave.jpg) | ![Yoshi artwork with the time overlay on v7a](docs/images/photos/p64-yoshi-laptop.jpg) | ![A red car artwork with the time overlay, on the desk in the evening](docs/images/photos/p64-night-car.jpg) |
 |---|---|---|
-| Colourful pixel art | Artwork with the time overlay | In low light |
+| Colourful pixel art | Artwork with the time overlay | A red car with the time overlay |
 
 ![An animation playing in the shell](docs/images/photos/p64-playing.gif)
 

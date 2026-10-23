@@ -26,8 +26,8 @@ More photos:
 | ![The back of the shell: vent slots, the USB-C window and the cable with its inline switch](images/photos/p64-back.jpg) | ![The back of the shell held in one hand](images/photos/p64-back-in-hand.jpg) | ![An artwork with the time overlay, next to a laptop](images/photos/p64-mummy-laptop.jpg) |
 |---|---|---|
 | The back: vents and the USB-C window | In the hand | Time overlay on an artwork |
-| ![A red car artwork in a dark room](images/photos/p64-night-car.jpg) | ![A monochrome artwork in a dark room](images/photos/p64-night-monochrome.jpg) | ![Another artwork with the time overlay, next to a laptop](images/photos/p64-yoshi-laptop.jpg) |
-| Lights off | Lights off, monochrome | Next to a laptop |
+| ![A red car artwork with the time overlay, on the desk in the evening](images/photos/p64-night-car.jpg) | ![A monochrome artwork with the time overlay, on the desk in the evening](images/photos/p64-night-monochrome.jpg) | ![Another artwork with the time overlay, next to a laptop](images/photos/p64-yoshi-laptop.jpg) |
+| A red car, evening | Monochrome, evening | Next to a laptop |
 
 ## p64b
 
