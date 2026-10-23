@@ -3,6 +3,19 @@
 [Home](../README.md) · [Owner's guide](using-p64.md) · [Project status](status.md) ·
 [Build costs](costs.md)
 
+## Choose your build: p64a or p64b
+
+![Choose your build: p64a has a black enclosure with no knobs and needs no soldering; p64b adds two rear rotary knobs and requires three small soldering jobs. Both use the same display and firmware.](images/illustrations/p64-build-choice.png)
+
+- **Choose p64a** for a solder-free build with no knobs. Assemble it with a hex key.
+- **Choose p64b** for two physical rotary controls. Complete three small soldering
+  jobs, then assemble it.
+
+Both use the same display and firmware. This guide builds p64a and marks the p64b
+additions; choose your variant before buying parts or ordering the shell.
+
+## Build overview
+
 Building a p64 is four steps, three of them shopping and waiting:
 
 - **A. [Buy the parts online](#a-buy-the-parts)**: three items from Waveshare, two from
@@ -16,9 +29,8 @@ Building a p64 is four steps, three of them shopping and waiting:
 
 Then the [first run](#e-first-run): join its Wi-Fi setup network and it plays.
 
-**p64a** has no soldering and no knobs; **p64b** has two rotary knobs and three solder
-joints. Both use the same firmware and both are assembled and in daily use (p64a since
-2026-10-09, p64b since 2026-10-17). This guide builds p64a and marks the p64b additions.
+Both variants are assembled and in daily use (p64a since 2026-10-09, p64b since
+2026-10-17).
 
 ## A. Buy the parts
 
