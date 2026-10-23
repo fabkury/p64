@@ -49,6 +49,8 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 
 ## Choose a variant
 
+![p64a and p64b in black enclosures: both offer browser controls and tap gestures. p64a needs no soldering; p64b adds two rear rotary knobs and requires soldering. Both use the same 64×64 display and firmware.](docs/images/illustrations/p64-variant-choice.png)
+
 | | p64a | p64b |
 |---|---|---|
 | Controls | Browser and tap gestures | Same, plus two rotary knobs |
