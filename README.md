@@ -61,9 +61,9 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.
 
-| ![Side view showing the p64 shell's wedge profile](docs/images/photos/p64-side.jpg) | ![Back of the assembled p64a with vents and two USB-C adapters](docs/images/photos/p64-back.jpg) |
+| ![Back of the assembled p64a with no rotary knobs](docs/images/photos/p64-back.jpg) | ![Back of the assembled p64b with two silver rotary knobs](docs/images/photos/p64b-back.jpg) |
 |---|---|
-| A slim tabletop shell | The assembled p64a, from behind |
+| p64a: no knobs | p64b: two rotary knobs |
 
 ## Build one
 
