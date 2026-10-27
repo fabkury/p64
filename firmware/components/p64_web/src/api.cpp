@@ -345,9 +345,9 @@ esp_err_t action_play(httpd_req_t *req) {
   if (!url_ref.empty()) {
     // A provider's own link first (a post page, say); the plain download otherwise.
     std::string provider;
-    const content::Provider::PlayUrl claimed = content::providers::play_url(url_ref, error, provider);
-    if (claimed == content::Provider::PlayUrl::Rejected) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
-    if (claimed == content::Provider::PlayUrl::NotMine) {
+    const p64::content::Provider::PlayUrl claimed = p64::content::providers::play_url(url_ref, error, provider);
+    if (claimed == p64::content::Provider::PlayUrl::Rejected) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    if (claimed == p64::content::Provider::PlayUrl::NotMine) {
       if (!g_hooks.play_url) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no downloads");
       if (!g_hooks.play_url(url_ref, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
     }
