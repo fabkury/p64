@@ -1,0 +1,7 @@
+Let's polish p64.
+
+First item (just answer the question, don't implement anything yet): why are playset names not allowed to contain spaces? Could that be changed? How exactly, and at what costs and risks?
+
+Let's explore option 2 (don't implement it yet). How would the migration path look like? In other words, what would happen when users upgrade their p64 to a version with the new architecture, and what could we do to mitigate any bad experiences?
+
+Sounds good. Please carefully implement all this.
