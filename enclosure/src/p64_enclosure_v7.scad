@@ -105,6 +105,8 @@
 //  part = "insert"      -> the cradle insert alone, sole on the bed (v7; a second, separate print)
 // =====================================================================
 
+use <../fonts/Lato-Bold.ttf>   // the maker's mark font (brand_font), vendored under the SIL OFL (fonts/OFL-Lato.txt)
+
 part = "shell";            // "shell" | "print" | "assembly" | "section_ad" | "section_win" | "section_y" | "section_enc" | "section_edge" | "product" | "frame" | "insert"
 section_edge_x = 33;       // where "section_edge" cuts: between two vent columns, clear of the encoder boards and the bosses
 
@@ -233,6 +235,18 @@ mark_w     = 1.2;   // groove width  (>= 0.8 mm feature, >= 1.2 mm ribs between 
 mark_l     = 3.0;   // groove length
 mark_d     = 0.8;   // groove depth
 mark_gap   = 1.5;   // material left between two grooves
+// maker's mark (2026-10-27): a name engraved on the back face in the clear strip between the vent bands,
+// the same depth as the grooves; "" = none. Strokes of a bold sans at this size run 1.5 to 2 mm, above
+// the 1.2 mm bureau line (the earlier text labels were dropped at 0.3 mm strokes, pin-hole scale)
+brand       = ["p64"];          // one word, or two with a bar between them (["p64", "Fab"] was the first draft); [] = none
+brand_font  = "Lato:style=Bold";  // ../fonts/Lato-Bold.ttf (SIL OFL), registered by the use<> below, so no system font is needed
+brand_size  = 9;                  // ascent in mm; with the descender of the p the text is about 11.5 mm tall
+brand_pos   = [0, -1];            // centre of the text on the back face: the strip between the vent bands (slots end at
+                                  // y 7.2 and -9.2; mic2's hole starts at x 13, the bosses' counterbores at |x| 53.6)
+brand_bar   = [1.6, 0.9];         // two words: the separator's width in mm and height as a fraction of brand_size (a drawn
+                                  // bar, not the font's "|", whose stem is thinner than the letters)
+brand_gap   = 3;                  // two words: between a word and the bar
+brand_depth = mark_d;
 
 /* [Encoders] */
 encoders    = true;
@@ -580,6 +594,25 @@ module back_hole(p, d) {
     on_back(p[1]) translate([p[0], 0, -back_tz - 1]) cylinder(d = d, h = back_tz + 2);
 }
 
+// the maker's mark, engraved brand_depth into the back face, read from behind: one word centred, or two words on a common
+// baseline with a drawn bar between them. The group is centred on brand_pos: horizontally by the font's own metrics,
+// vertically by the visual centre of ascent plus descender.
+module brand_word(w, halign) { text(w, size = brand_size, font = brand_font, halign = halign, valign = "baseline"); }
+module brand_2d() {
+    if (len(brand) == 1) brand_word(brand[0], "center");
+    else {
+        bar_h = brand_size * brand_bar[1];
+        translate([-(brand_bar[0]/2 + brand_gap), 0]) brand_word(brand[0], "right");
+        translate([-brand_bar[0]/2, 0]) square([brand_bar[0], bar_h]);
+        translate([brand_bar[0]/2 + brand_gap, 0]) brand_word(brand[1], "left");
+    }
+}
+module brand_mark() {
+    on_back(brand_pos[1]) translate([brand_pos[0], 0, -brand_depth]) linear_extrude(brand_depth + 1)
+        translate([0, -brand_size * 0.5 * (1 - 0.25)])   // visual centre: ascent 1.0 above, descender ~0.25 below the baseline
+            brand_2d();
+}
+
 module marks(p, n) {                    // n short grooves to the left of pin hole p
     for (i = [0 : n - 1])
         on_back(p[1]) translate([p[0] - (pin_d/2 + mark_gap + mark_w/2) - i*(mark_w + mark_gap), 0, -mark_d])
@@ -624,6 +657,7 @@ module shell() {
         back_hole(mic2, mic_d);
         marks(boot, 1);
         marks(rst,  2);
+        if (len(brand) > 0) brand_mark();
         if (encoders) for (p = enc_pos) enc_holes(p);
     }
 }

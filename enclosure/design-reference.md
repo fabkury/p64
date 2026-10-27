@@ -27,8 +27,10 @@ the rim. On 2026-10-20 `proud` went from 1.0 to 0.5 in place (the user's choice:
 step, kept at 0.5 so that the rim's fillet never climbs above the mask if the stack is
 thicker than modelled): the walls wrap 0.5 mm further forward, nothing else moves, and
 both output folders were regenerated, so the files in `output/` are no longer the printed
-ones and the 0.5 mm rim is not printed yet. The shells as printed come back with
-`proud = 1.0` in the source, or from git (`git show dd660e7:enclosure/output/...`). The fit of the pocket, ledge and bosses, unchanged
+ones and the 0.5 mm rim is not printed yet. On 2026-10-27 the back face gained the maker's
+mark, "p64" engraved between the vent bands (`brand`, below), also unprinted. The shells as
+printed come back with `proud = 1.0` and `brand = []` in the source, or from git
+(`git show dd660e7:enclosure/output/...`). The fit of the pocket, ledge and bosses, unchanged
 since the first version, was verified on the v1 print (see below); the v7 window and
 insert have not been measured against the model yet. The earlier
 versions v1 to v6 and their story are in [`archive/pre-v7/`](archive/pre-v7/README.md).
@@ -56,6 +58,7 @@ Contents:
 |---|---|
 | `src/p64_enclosure_v7.scad` | The parametric OpenSCAD source (OpenSCAD 2021.01+): the whole shell, the cradle insert, the mock-ups and the section views. Everything below is a parameter. Rendered on its own it gives p64b. |
 | `src/p64_enclosure_v7a.scad`, `src/p64_enclosure_v7b.scad` | The variant files: include the source and set `encoders`. Render these, not the source, so the output lands in the right folder. |
+| `fonts/` | Lato Bold (`Lato-Bold.ttf`, SIL Open Font License, licence text beside it), the font of the maker's mark; the source registers it with `use <../fonts/Lato-Bold.ttf>`, so the mark renders the same on any machine without installing a font. |
 | `output/p64a/v7a/`, `output/p64b/v7b/` | One folder per variant and version, identical file names inside: `p64_enclosure_print.stl` / `.3mf` (ready to slice, print orientation), `p64_enclosure_service.stl` (0.45 mm fit clearance instead of 0.3, for MJF/SLA bureaus), `p64_cradle_insert.stl` (the second print), and the renders: `render_back.png`, `render_assembly.png` (with the mock-ups), `render_print.png`, `render_product.png` / `render_product_back.png` (standing on a table), `render_section_ad.png` (through the POWER adapter), `render_section_win.png` (along the adapters' centre line), `render_window.png` (straight at the window: the two socket faces with the insert's sole around them), `render_insert.png` (the insert alone), `render_frame_notch.png` (historical proposed frame cut, in red; not required by the verified v7a build), `render_section_edge.png` (the wall profile through x = 33: the edge chamfer and fillets); p64b adds `render_section_enc.png` (through an encoder). |
 | `input/measurements.md` | Hand measurements of parts that have no drawing: the v1 print, the 90-degree USB-C adapter. |
 | `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter; one has the hand measurements drawn on it. |
@@ -109,7 +112,10 @@ Contents:
   with short grooves (one groove = BOOT, two grooves = RESET; text labels were dropped because
   their 0.3 mm ribs are too thin for bureau printing), 3.5 mm holes over the two microphones,
   six screw counterbores, the USB-C window with one groove beside its right end (= USB, the
-  programming port; POWER has none), and in p64b the two encoder bushings with their
+  programming port; POWER has none), the maker's mark ("p64" in Lato Bold, 9 mm ascent,
+  engraved 0.8 mm like the grooves, centred in the strip between the vent bands, read from
+  behind; since 2026-10-27, `brand`, strokes about 1.8 mm, 2.5 mm from the mic2 hole and
+  from the slots), and in p64b the two encoder bushings with their
   spot-faces. Every wall and rib is 2.0 mm or thicker, with two named exceptions in the
   glued insert.
 - **Edges:** the back face's perimeter has a 1.4 mm 45-degree chamfer, the front rim a
@@ -388,8 +394,11 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
   PLA left the panel with slight side play (see below). Keep the 0.45 mm file for MJF/SLA.
   Both v7 shells (v7a and v7b, JLC3DP FDM PLA, order of 2026-09-28) were printed from
   `_print.stl` and the panel seats without force in both (maintainer, 2026-10-19).
-- Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores and the
-  grooves stay clean on the first layer.
+- Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores, the
+  grooves and the maker's mark stay clean on the first layer (the mark is a 0.8 mm recess
+  in the bed face, four layers deep, like the grooves; its strokes are about 1.8 mm, well
+  above the 1.2 mm bureau line that sank the earlier 0.3 mm text labels). For a shell
+  without it set `brand = []`.
 - p64b: the pegs are 2.2 mm pins; MJF nylon prints them fine, for FDM check the fit and
   sand if needed. The spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring
   at the third layer, which is harmless.
@@ -452,7 +461,9 @@ photos `input/PXL_20260918_*.jpg`.
   is derived), `board` 128.0,
   `board_clr` 0.2, `wall` 2, `back_t` 2.4, `panel_clr` 0.3; screws `screw_len` 10, `engage` 5, `cb_d` 6.5,
   `boss_od` 10.5; `panel_rot` 90; back wall `vents`, `pin_d` 3, `mic_d` 3.5, `mic1_off`
-  [0.5, 1.6]
+  [0.5, 1.6]; the maker's mark `brand` ["p64"] (one word, or two with a drawn bar between
+  them, `brand_bar` and `brand_gap`; [] = none), `brand_font` Lato Bold, `brand_size` 9,
+  `brand_pos` [0, -1], `brand_depth` = `mark_d` 0.8
 - Edges: `edge_back_c` 1.4, `edge_rim_r` 1.5, `edge_base_r` 3, `cb_chamfer` 0.5 (all 0 =
   the sharp-edged body)
 - Adapters and window: `adapters`, `ad_*` (the measured adapter), `ad_win_chamfer` 0.5,

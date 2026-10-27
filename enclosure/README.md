@@ -24,7 +24,8 @@ services, use the larger-clearance `p64_enclosure_service.stl`. Both v7 shells a
 printed, assembled and in daily use; p64b was closed on 2026-10-17 with its two
 encoder boards on the pegs and the panel seated clear of them. Since 2026-10-20 the
 files carry a rim 0.5 mm taller than those shells (the LED mask stands 0.5 mm proud of
-it instead of 1.0, `proud` in the source); that revision is not printed yet.
+it instead of 1.0, `proud` in the source) and a "p64" mark engraved in the back face
+(`brand`, set it to `[]` for a plain back); neither revision is printed yet.
 
 ## Printing
 
