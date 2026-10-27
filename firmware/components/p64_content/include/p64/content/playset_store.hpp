@@ -33,5 +33,9 @@ bool load(const std::string &name, Playset &out, std::string &error);
 // stored spelling is kept and written back into playset.name.
 bool save(Playset &playset, std::string &error);
 bool remove(const std::string &name, std::string &error);
+// Gives a stored playset a new name (p108): refuses a built-in or taken name and a hash
+// collision; a change of case or spacing only respells it. The new file is written
+// before the old one goes, so a power cut leaves at most a duplicate.
+bool rename(const std::string &old_name, const std::string &new_name, std::string &error);
 
 }  // namespace p64::content::store

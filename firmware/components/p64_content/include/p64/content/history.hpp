@@ -53,6 +53,7 @@ class History {
   size_t size() const { return items_.size(); }
   size_t position() const { return position_; }
   const HistoryItem &at(size_t i) const { return items_[i]; }
+  HistoryItem &at(size_t i) { return items_[i]; }
 
  private:
   std::vector<HistoryItem> items_;  // oldest first

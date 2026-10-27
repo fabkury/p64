@@ -235,6 +235,7 @@ extern "C" void app_main() {
   hooks.play_url = p64::makapix::play_url;
   hooks.like = p64::makapix::like;
   hooks.activate_playset = p64::show::activate_playset;
+  hooks.playset_renamed = p64::show::playset_renamed;
   hooks.playback_status = p64::show::status_json;
   hooks.channels = p64::show::channels_json;
   hooks.history = p64::show::history_json;

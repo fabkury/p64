@@ -303,7 +303,8 @@ Semantics are p3a's, unchanged:
 - Up to 32 user playsets; names up to 32 characters of any printable text, with no
   leading or trailing space (ADR 0017, since 2026-10-27; before that, letters, digits
   and underscore). Names that differ only in ASCII case or in the spacing between
-  words are the same playset, kept in the spelling it was first saved with.
+  words are the same playset, kept in the spelling it was first saved with. A playset
+  can be renamed; the active one stays active under the new name.
 - Up to 64 channels per playset, each with a display name (up to 64 characters), a weight
   (0 mutes; all zero means equal) and an offset (ordered sources only: local, URL list,
   pinned).

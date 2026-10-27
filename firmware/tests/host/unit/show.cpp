@@ -595,6 +595,30 @@ TEST_CASE("show core: with nothing to play at the boot animation's end the IP sh
   CHECK(core::state().screen == core::Screen::None);
 }
 
+TEST_CASE("show core: a renamed playset follows in the show, the history and the persisted name (p108)") {
+  Show s;
+  // Local is a built-in: a rename of its name must not touch it.
+  core::playset_renamed("Local", "Rainy days");
+  CHECK_EQ(core::active_playset_name(), "Local");
+  CHECK_EQ(s.env.persisted_playset, "");  // a restore persists nothing, and neither did this
+  // A stored playset (stood in by a transient one named like a user playset).
+  p64::content::Playset p = p64::content::builtin_playset(p64::content::Builtin::Local, {""});
+  p.name = "Work mix";
+  p.builtin = false;
+  core::activate_transient(p);
+  s.env.complete_scan({"a.gif", "b.gif"});
+  s.env.complete_loads();
+  REQUIRE_EQ(core::active_playset_name(), "Work mix");
+  core::playset_renamed("Other", "Rainy days");  // not the active one
+  CHECK_EQ(core::active_playset_name(), "Work mix");
+  core::playset_renamed("work  MIX", "Rainy days");  // the active one, in another spelling
+  CHECK_EQ(core::active_playset_name(), "Rainy days");
+  CHECK_EQ(s.env.persisted_playset, "Rainy days");
+  const p64::content::HistoryItem *cur = core::state().history.current();
+  REQUIRE(cur);
+  CHECK_EQ(cur->playset, "Rainy days");
+}
+
 TEST_CASE("show core: the auto-swap puts the prepared artwork up after the interval") {
   Show show;
   show.env.cfg->auto_swap_seconds = 30;

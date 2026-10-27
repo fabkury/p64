@@ -57,6 +57,8 @@ void play_downloaded(const std::string &path, const std::string &provider, int32
 bool activate_playset(const std::string &name, std::string &error);
 // Activate a playset that is not stored (from the site, or the Followed built-in).
 void activate_transient(const content::Playset &playset);
+// A stored playset was renamed (p108); the active one follows.
+void playset_renamed(const std::string &old_name, const std::string &new_name);
 bool is_paused();
 int32_t current_post_id();  // the Makapix post on the panel, -1 otherwise
 

@@ -134,6 +134,7 @@ as the title.
 | `/api/v1/playsets/<name>` | GET | the playset (`{name, builtin, channels:[...]}`); built-in names work too |
 | `/api/v1/playsets/<name>` | PUT | create or replace: `{"channels":[{kind, identifier, display_name, weight, offset}]}` |
 | `/api/v1/playsets/<name>` | DELETE | remove a user playset |
+| `/api/v1/playsets/<name>/rename` | POST | `{"name":"<new>"}`: rename a user playset (answers `{name, previous}`; 404 unknown, 400 a built-in on either side, 409 `RENAME_FAILED` when the name is taken or collides); the active playset and its history entries follow the new name, the stored one too (p108) |
 
 Names: 1 to 32 characters (code points) of printable text, no leading or trailing space,
 no control characters (ADR 0017); percent-encode them in the path (`+` is not a space

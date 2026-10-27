@@ -34,6 +34,7 @@ struct Hooks {
   std::function<bool(const std::string &url, std::string &error)> play_url;           // arbitrary URL
   std::function<bool(int32_t post_id, bool liked, std::string &error)> like;          // blocks briefly
   std::function<bool(const std::string &name, std::string &error)> activate_playset;
+  std::function<void(const std::string &old_name, const std::string &new_name)> playset_renamed;  // p108
   // Snapshots: each returns a new object the caller owns.
   std::function<cJSON *()> playback_status;  // the status document's "playback" object
   std::function<cJSON *()> channels;

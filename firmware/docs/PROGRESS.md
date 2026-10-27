@@ -1348,6 +1348,25 @@ them. Newest entries are at the bottom of [Log](#log).
 
 ### 2026-10-27
 
+- Playsets can be renamed (p108). `POST /api/v1/playsets/<name>/rename {"name"}` is the
+  explicit route (a PUT under a new name stays "create or replace"). `store::rename`
+  refuses built-in, taken and colliding names, writes the new file before removing the
+  old one (a power cut leaves at most a duplicate), and treats a change of case or
+  spacing as a respelling of the same playset; for a legacy-shaped name the respelling
+  targets the new case explicitly, because `locate()` reports the file in the listing's
+  case and the first attempt wrote back the old one (caught by `content_smoke.py`). The
+  show follows through a `PlaysetRenamed` command: the active playset, its history
+  entries and the persisted name take the new name (`core::playset_renamed`, host test
+  with a transient playset standing in for a stored one). The editor unlocks the name
+  field; a save under a new name renames first, then PUTs the channels under it; the
+  duplicate check excludes the playset being edited. Host suite 225 cases green. Device:
+  `content_smoke.py` 0 failures with the rename cases ("Rainy days" -> "Sunny days"
+  while active, status and history following, 404 for the old name, 409 onto
+  `smoke_test`, 400 onto `Local` and from `Local`, a respelling to "SUNNY  days" as one
+  playset, `smoke_test` -> `SMOKE_TEST.json` and back), `api_smoke.py` 0 failures, heap
+  61.3 KB free / 32.8 KB largest. The editor's rename path was not checked by eye (the
+  Chrome extension disconnected); the API it calls was.
+
 - Playset names with spaces and Unicode (p107, ADR 0017). The name was the file stem on
   the card and a raw URL segment, hence `[A-Za-z0-9_]{1,32}`. Now `valid_playset_name`
   accepts any printable text of 1 to 32 code points (no leading or trailing space, no

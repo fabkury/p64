@@ -225,6 +225,9 @@ void play_intro(std::shared_ptr<playback::FrameSource> source, uint32_t ms, cons
 void play_file(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name);
 void activate(const std::string &name);
 void activate_transient(const content::Playset &playset);
+// A stored playset was renamed on the card (p108): the active one follows, in the show
+// and in the persisted name; a built-in or another playset is untouched.
+void playset_renamed(const std::string &old_name, const std::string &new_name);
 
 // Events and results.
 void on_loaded(std::unique_ptr<loader::LoadResult> result);

@@ -94,6 +94,36 @@ esp_err_t delete_handler(httpd_req_t *req) {
   return reply_ok(req, d);
 }
 
+// POST /api/v1/playsets/<name>/rename {"name": "<new>"} (p108).
+esp_err_t rename_handler(httpd_req_t *req) {
+  const std::string raw = req->uri + std::strlen(kPrefix);
+  const size_t slash = raw.find('/');
+  const std::string action = slash == std::string::npos ? "" : raw.substr(slash + 1, raw.find('?', slash) - slash - 1);
+  if (action != "rename") return reply_error(req, "404 Not Found", "NOT_FOUND", "no such action");
+  const std::string name = name_of(req);
+  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  const cJSON *n = cJSON_GetObjectItemCaseSensitive(body, "name");
+  const std::string new_name = (n && cJSON_IsString(n) && n->valuestring) ? n->valuestring : "";
+  cJSON_Delete(body);
+  if (!p64::content::valid_playset_name(new_name)) return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
+  p64::content::Builtin b;
+  if (p64::content::builtin_from_name(new_name, b)) return reply_error(req, "400 Bad Request", "INVALID_NAME", "that name is reserved for a built-in playset");
+  if (p64::content::builtin_from_name(name, b)) return reply_error(req, "400 Bad Request", "INVALID_NAME", "built-in playsets cannot be renamed");
+  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "playsets are stored on the card");
+  std::string error;
+  if (!p64::content::store::exists(name)) return reply_error(req, "404 Not Found", "NOT_FOUND", "no such playset");
+  if (!p64::content::store::rename(name, new_name, error)) return reply_error(req, "409 Conflict", "RENAME_FAILED", error);
+  if (hooks().playset_renamed) hooks().playset_renamed(name, new_name);
+  system::publish(system::Event::PlaysetsChanged);
+  notify();
+  cJSON *d = cJSON_CreateObject();
+  cJSON_AddStringToObject(d, "name", new_name.c_str());
+  cJSON_AddStringToObject(d, "previous", name.c_str());
+  return reply_ok(req, d);
+}
+
 esp_err_t channels_handler(httpd_req_t *req) {
   if (!hooks().channels) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
   return reply_ok(req, hooks().channels());
@@ -206,6 +236,7 @@ void register_routes() {
       {"/api/v1/playsets/*", HTTP_GET, get_handler, nullptr, false, false, nullptr},
       {"/api/v1/playsets/*", HTTP_PUT, put_handler, nullptr, false, false, nullptr},
       {"/api/v1/playsets/*", HTTP_DELETE, delete_handler, nullptr, false, false, nullptr},
+      {"/api/v1/playsets/*", HTTP_POST, rename_handler, nullptr, false, false, nullptr},
       {"/api/v1/channels", HTTP_GET, channels_handler, nullptr, false, false, nullptr},
       {"/api/v1/history", HTTP_GET, history_handler, nullptr, false, false, nullptr},
       {"/api/v1/folders", HTTP_GET, folders_handler, nullptr, false, false, nullptr},

@@ -38,7 +38,8 @@ with Makapix's Promoted channel:
 2. Add the local folder and the Promoted channel.
 3. Set their weights: equal weights give equal shares of channel picks; 2 and 1 give
    the first channel about twice as many picks.
-4. Save, then play it. It also appears on Home.
+4. Save, then play it. It also appears on Home. Editing a playset later can also
+   rename it; the device keeps playing it under the new name.
 
 A zero weight mutes a channel unless all weights are zero, which means equal shares.
 There can be 32 user playsets with up to 64 channels each. Built-ins such as Local and

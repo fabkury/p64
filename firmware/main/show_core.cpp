@@ -1248,6 +1248,17 @@ void activate_transient(const content::Playset &playset) {
   do_activate_transient(playset);
 }
 
+void playset_renamed(const std::string &old_name, const std::string &new_name) {
+  if (st.playset.builtin || !content::same_playset_name(st.playset.name, old_name)) return;
+  LOGI("active playset renamed: '%s' -> '%s'", st.playset.name.c_str(), new_name.c_str());
+  st.playset.name = new_name;
+  for (size_t i = 0; i < st.history.size(); ++i) {
+    content::HistoryItem &item = st.history.at(i);
+    if (content::same_playset_name(item.playset, old_name)) item.playset = new_name;
+  }
+  g_env->persist_active_playset(new_name);
+}
+
 void on_loaded(std::unique_ptr<loader::LoadResult> result) { on_loaded_impl(std::move(result)); }
 void on_scanned(std::unique_ptr<loader::ScanResult> result) { on_scanned_impl(std::move(result)); }
 void card_changed() { st.rescan_due_us = now_us() + kSecond / 5; }

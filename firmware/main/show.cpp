@@ -71,6 +71,7 @@ enum class Cmd : uint8_t {
   PlayDownloaded,
   Activate,
   ActivateTransient,
+  PlaysetRenamed,
   Loaded,
   Scanned,
   CardChanged,
@@ -274,6 +275,9 @@ void handle(Command &c) {
     case Cmd::ActivateTransient:
       if (c.playset) core::activate_transient(*c.playset);
       break;
+    case Cmd::PlaysetRenamed:
+      if (c.text && c.text2) core::playset_renamed(*c.text, *c.text2);
+      break;
     case Cmd::Loaded: core::on_loaded(std::unique_ptr<loader::LoadResult>(c.load)); break;
     case Cmd::Scanned: core::on_scanned(std::unique_ptr<loader::ScanResult>(c.scan)); break;
     case Cmd::CardChanged: core::card_changed(); break;
@@ -455,6 +459,10 @@ bool activate_playset(const std::string &name, std::string &error) {
 
 void activate_transient(const content::Playset &playset) {
   send(Cmd::ActivateTransient, 0, nullptr, nullptr, nullptr, nullptr, new content::Playset(playset));
+}
+
+void playset_renamed(const std::string &old_name, const std::string &new_name) {
+  send(Cmd::PlaysetRenamed, 0, new std::string(old_name), nullptr, nullptr, new std::string(new_name));
 }
 
 bool is_paused() {

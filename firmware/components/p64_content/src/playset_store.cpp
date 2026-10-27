@@ -221,4 +221,64 @@ bool remove(const std::string &name, std::string &error) {
   return storage::remove_path(l.path, error);
 }
 
+bool rename(const std::string &old_name, const std::string &new_name, std::string &error) {
+  if (!valid_playset_name(old_name) || !valid_playset_name(new_name)) {
+    error = "invalid playset name";
+    return false;
+  }
+  Builtin b;
+  if (builtin_from_name(new_name, b)) {
+    error = "that name is reserved for a built-in playset";
+    return false;
+  }
+  if (!storage::mounted()) {
+    error = "no card";
+    return false;
+  }
+  const Located from = locate(old_name);
+  if (!from.exists) {
+    error = "no such playset";
+    return false;
+  }
+  const bool respelling = same_playset_name(old_name, new_name);
+  const Located to = locate(new_name);
+  if (!respelling) {
+    if (to.exists) {
+      error = "a playset named '" + to.stored_name + "' already exists";
+      return false;
+    }
+    if (!to.other_name.empty()) {
+      error = "that name collides with the playset '" + to.other_name + "'; pick another";
+      return false;
+    }
+  }
+  Playset p;
+  if (!parse_file(from.path, p, error)) return false;
+  p.name = new_name;
+  p.builtin = false;
+  cJSON *json = playset_to_json(p);
+  cJSON_DeleteItemFromObject(json, "builtin");
+  if (to.new_style) cJSON_AddNumberToObject(json, "format", 2);
+  char *text = cJSON_PrintUnformatted(json);
+  cJSON_Delete(json);
+  if (!text) {
+    error = "out of memory";
+    return false;
+  }
+  // A respelled legacy name must land in the new case: locate() reports the file in the
+  // listing's case, and write_file unlinks its target before the rename, so the same FAT
+  // file comes back under the new spelling.
+  const std::string target = (respelling && !to.new_style) ? playsets_dir() + "/" + new_name + ".json" : to.path;
+  const bool ok = storage::write_file(target, reinterpret_cast<const uint8_t *>(text), std::char_traits<char>::length(text), error);
+  cJSON_free(text);
+  if (!ok) return false;
+  if (!respelling && !storage::remove_path(from.path, error)) {
+    ESP_LOGW(TAG, "renamed '%s' to '%s' but %s stays (%s)", old_name.c_str(), new_name.c_str(), from.path.c_str(), error.c_str());
+    error = "renamed, but the old file could not be removed: " + error;
+    return false;
+  }
+  ESP_LOGI(TAG, "renamed playset '%s' to '%s' (%s)", old_name.c_str(), new_name.c_str(), target.c_str());
+  return true;
+}
+
 }  // namespace p64::content::store

@@ -227,7 +227,6 @@ function editPlayset(name) {
         state.editing = name; state.channels = (p.channels || []).map(function (c) { return { kind: c.kind, identifier: c.identifier || '', display_name: c.display_name || '', weight: c.weight || 0, offset: c.offset || 0 }; });
         document.getElementById('editorTitle').textContent = 'Edit ' + name;
         document.getElementById('playsetName').value = name;
-        document.getElementById('playsetName').readOnly = true;
         renderChannels(); validateForm();
         document.getElementById('listView').classList.add('hidden');
         document.getElementById('editorView').classList.remove('hidden');
@@ -246,7 +245,7 @@ function validateForm() {
     else if (count > 32) msg = 'Up to 32 characters (this is ' + count + ').';
     else if (/[\u0000-\u001f\u007f-\u009f\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]/.test(name)) msg = 'Only plain spaces and printable characters.';
     else if (reserved.some(function (r) { return p64.sameName(r, name); })) msg = 'That name is a built-in playset.';
-    else if (!state.editing && state.playsets.some(function (p) { return p64.sameName(p.name, name); })) msg = 'A playset with that name exists.';
+    else if (state.playsets.some(function (p) { return p64.sameName(p.name, name) && !(state.editing && p64.sameName(p.name, state.editing)); })) msg = 'A playset with that name exists.';
     err.textContent = msg; err.classList.toggle('hidden', !msg);
     document.getElementById('playsetName').classList.toggle('error', !!msg);
     var ok = !msg && state.channels.length > 0;
@@ -417,9 +416,14 @@ function addChannel() {
 }
 function savePlayset(play) {
     if (!validateForm()) return;
-    var name = state.editing || typedName();
+    var name = typedName();
     var body = { channels: state.channels.map(function (c) { return { kind: c.kind, identifier: c.identifier, display_name: c.display_name, weight: c.weight, offset: c.offset }; }) };
-    p64.put('/api/v1/playsets/' + encodeURIComponent(name), body).then(function () {
+    // An edit under a new name renames first (the device keeps the active playset and its
+    // history in step), then the channels are saved under that name.
+    var first = (state.editing && name !== state.editing)
+        ? p64.post('/api/v1/playsets/' + encodeURIComponent(state.editing) + '/rename', { name: name }).then(function (r) { name = (r && r.name) || name; })
+        : Promise.resolve();
+    first.then(function () { return p64.put('/api/v1/playsets/' + encodeURIComponent(name), body); }).then(function () {
         p64.toast('Saved');
         if (play) return p64.post('/api/v1/action/play_playset', { name: name }).then(function () { p64.toast('Playing ' + name); });
     }).then(function () { cancelEdit(); load(); }).catch(function (e) { p64.toast(e.message, true); });
