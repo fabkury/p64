@@ -76,9 +76,25 @@ TEST_CASE("scaler_placement") {
   CHECK_EQ(s.out_w(), 64);
   CHECK_EQ(s.out_h(), 32);
   CHECK_EQ(s.out_y(), 16);
+  // Shrinking only by powers of two (2026-10-27): 100x50 halves to 50x25, never 64x32.
   s.configure(100, 50, 64, 64);
-  CHECK_EQ(s.out_w(), 64);
-  CHECK_EQ(s.out_h(), 32);
+  CHECK_EQ(s.halvings(), 1);
+  CHECK_EQ(s.out_w(), 50);
+  CHECK_EQ(s.out_h(), 25);
+  CHECK_EQ(s.out_x(), 7);
+  s.configure(96, 96, 64, 64);
+  CHECK_EQ(s.halvings(), 1);
+  CHECK_EQ(s.out_w(), 48);
+  s.configure(160, 90, 64, 64);
+  CHECK_EQ(s.halvings(), 2);
+  CHECK_EQ(s.out_w(), 40);
+  CHECK_EQ(s.out_h(), 23);  // 90 -> 45 -> 23: the odd row into the edge
+  s.configure(640, 640, 64, 64);
+  CHECK_EQ(s.halvings(), 4);
+  CHECK_EQ(s.out_w(), 40);
+  s.configure(65, 65, 64, 64);
+  CHECK_EQ(s.halvings(), 1);
+  CHECK_EQ(s.out_w(), 33);
   s.configure(20, 10, 64, 64);
   CHECK_EQ(s.factor(), 3);
   CHECK_EQ(s.out_w(), 60);
@@ -86,6 +102,7 @@ TEST_CASE("scaler_placement") {
   CHECK_EQ(s.out_x(), 2);
   CHECK_EQ(s.out_y(), 17);
   s.configure(256, 128, 64, 64);
+  CHECK_EQ(s.halvings(), 2);
   CHECK_EQ(s.out_w(), 64);
   CHECK_EQ(s.out_h(), 32);
 }
@@ -122,6 +139,16 @@ TEST_CASE("scaler_pixels") {
   CHECK(f.get(0, 16) == (Rgb{1, 1, 1}));
   CHECK(f.get(63, 47) == (Rgb{1, 1, 1}));
   CHECK(f.get(63, 48) == (Rgb{7, 8, 9}));
+  // A 3x3 halved: 2x2 boxes, the last row and column a partial box averaged on its own.
+  const uint8_t odd[3 * 3 * 3] = {0, 0, 0, 100, 100, 100, 50, 50, 50, 100, 100, 100, 0, 0, 0, 50, 50, 50, 200, 200, 200, 200, 200, 200, 30, 30, 30};
+  s.configure(3, 3, 2, 2);
+  CHECK_EQ(s.halvings(), 1);
+  uint8_t out[2 * 2 * 3];
+  s.scale(odd, out);
+  CHECK_EQ(out[0], 50);   // (0 + 100 + 100 + 0) / 4
+  CHECK_EQ(out[3], 50);   // (50 + 50) / 2
+  CHECK_EQ(out[6], 200);  // (200 + 200) / 2
+  CHECK_EQ(out[9], 30);   // the corner pixel alone
 }
 
 

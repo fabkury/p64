@@ -17,26 +17,34 @@ void Scaler::configure(int src_w, int src_h, int dst_w, int dst_h) {
     ow_ = src_w_ * factor_;
     oh_ = src_h_ * factor_;
   } else {
-    // Shrinking on at least one axis: fit by the tighter ratio, non-integer allowed.
+    // Shrinking on at least one axis: only by a power of two (1/2, 1/4, ...), the
+    // smallest that fits both axes, so every destination pixel is the average of an
+    // exact 2^k x 2^k block and the pixel art keeps its grid (user rule, 2026-10-27;
+    // before, the ratio was fractional and a 96 px canvas was blurred to 64). An odd
+    // remainder is averaged into the edge pixel: the picture is ceil(size / 2^k).
     factor_ = 1;
-    const double s = std::min(static_cast<double>(dst_w_) / src_w_, static_cast<double>(dst_h_) / src_h_);
-    ow_ = std::clamp(static_cast<int>(src_w_ * s + 0.5), 1, dst_w_);
-    oh_ = std::clamp(static_cast<int>(src_h_ * s + 0.5), 1, dst_h_);
+    halvings_ = 0;
+    ow_ = src_w_;
+    oh_ = src_h_;
+    while ((ow_ > dst_w_ || oh_ > dst_h_) && halvings_ < 15) {
+      ow_ = (ow_ + 1) / 2;
+      oh_ = (oh_ + 1) / 2;
+      ++halvings_;
+    }
   }
   ox_ = (dst_w_ - ow_) / 2;
   oy_ = (dst_h_ - oh_) / 2;
 
-  auto spans = [](int src, int out) {
+  const int box = 1 << halvings_;
+  auto spans = [box](int src, int out) {
     std::vector<Span> v(static_cast<size_t>(out));
     for (int i = 0; i < out; ++i) {
       if (out >= src) {  // enlarging: the source pixel whose block this column lies in
         const int p = std::min(src - 1, static_cast<int>(static_cast<int64_t>(i) * src / out));
         v[i] = Span{static_cast<uint16_t>(p), static_cast<uint16_t>(p + 1)};
-      } else {  // shrinking: a box of source pixels; boxes tile the source exactly
-        const int b = static_cast<int>(static_cast<int64_t>(i) * src / out);
-        int e = static_cast<int>(static_cast<int64_t>(i + 1) * src / out);
-        if (e <= b) e = b + 1;
-        v[i] = Span{static_cast<uint16_t>(b), static_cast<uint16_t>(std::min(e, src))};
+      } else {  // shrinking: a box of 2^k source pixels; the last box may be partial
+        const int b = i * box;
+        v[i] = Span{static_cast<uint16_t>(b), static_cast<uint16_t>(std::min(b + box, src))};
       }
     }
     return v;

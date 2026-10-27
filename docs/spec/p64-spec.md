@@ -153,9 +153,13 @@ Canvases are fitted into the panel preserving aspect ratio:
 - Smaller than the panel on both axes: nearest-neighbour upscaling by the largest integer
   factor that fits, then centred. (A 32x32 shows at 2x, a 16x16 at 4x; a 48x48 stays 1x,
   never blurred.)
-- Larger than the panel on either axis: box-average downscaling to fit, non-integer ratios
-  allowed (a 128x128 becomes 64x64 by averaging 2x2 blocks; a 100x100 by averaging
-  fractional boxes).
+- Larger than the panel on either axis: box-average downscaling by a power of two only
+  (1/2, 1/4, 1/8, ...), the fewest halvings that fit both axes; never a fractional ratio
+  (a 128x128 becomes 64x64 by averaging 2x2 blocks; a 100x100 becomes 50x50, a 96x96
+  48x48, a 160x90 40x23, each centred with bars). An odd remainder is averaged into the
+  edge pixel. Decided 2026-10-27 (ADR 0016): a fractional box blurs the pixel grid, a
+  power of two keeps it; until then the ratio was fractional and a 100x100 filled the
+  panel.
 - Exactly the panel size: unchanged.
 - Non-square canvases keep their aspect ratio; the unused rows or columns are bars in the
   background colour, centred.
@@ -939,8 +943,9 @@ device and read over diagnostics.
    decode on core 1 slows from about 10 to 15 ms per frame under the shared PSRAM
    traffic); the criterion holds with the walks idle, and a yield throttle in the
    worker recovered only 2 fps, so nothing was changed for it.
-5. Scaling: 32x32 shows at exactly 2x with hard edges; 128x128 averages 2x2; a 64x32
-   shows pillar/letterboxed in the background colour, centred.
+5. Scaling: 32x32 shows at exactly 2x with hard edges; 128x128 averages 2x2; a 96x96
+   shows at 48x48 (halved, never stretched to 64); a 64x32 shows pillar/letterboxed in
+   the background colour, centred.
 6. Modes: switching to Photo mode measures at least 600 Hz; back to Quality at 264 Hz;
    both with under 1 s of blank. Verified 2026-09-20 from the driver's timing (813.8
    and 271.3 Hz) over 12 switches plus a five-request burst, frame lock kept, no
@@ -989,7 +994,10 @@ night schedule.
 5. The server plans daily caps on its anonymous endpoints; the Promoted channel without
    pairing depends on them staying generous.
 6. Box-average downscaling of pixel art (128x128 to 64x64) softens it by design; the spec
-   accepts this per the user's requirement.
+   accepts this per the user's requirement. Since 2026-10-27 the ratio is a power of
+   two only, so the softening is uniform (every panel pixel averages the same block)
+   and a canvas between 65 and 127 px shows smaller than the panel rather than blurred
+   across it.
 
 ## 21. References
 

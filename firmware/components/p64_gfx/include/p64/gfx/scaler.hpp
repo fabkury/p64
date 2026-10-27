@@ -1,6 +1,8 @@
 // p64 -- Scaler: fits an RGB888 canvas of one size into a destination of another size,
-// keeping the aspect ratio: nearest neighbour when enlarging, box average when
-// shrinking, bars in the background colour around the picture (spec section 3.5).
+// keeping the aspect ratio: nearest neighbour by an integer factor when enlarging, box
+// average by a power of two when shrinking (never a fractional ratio, so the pixel grid
+// survives; an odd remainder goes into the edge pixel), bars in the background colour
+// around the picture (spec section 3.5).
 #pragma once
 
 #include <cstdint>
@@ -13,7 +15,8 @@ namespace p64::gfx {
 class Scaler {
  public:
   // Prepares the column and row spans for src -> dst. Enlarging uses the largest
-  // integer factor that fits (crisp pixels); shrinking averages exact boxes.
+  // integer factor that fits (crisp pixels); shrinking the fewest halvings that fit,
+  // averaging 2^k x 2^k boxes.
   void configure(int src_w, int src_h, int dst_w, int dst_h);
   // dst holds dst_w*dst_h*3 bytes; the area outside the picture is filled with `bars`.
   void scale(const uint8_t *src, uint8_t *dst, Rgb bars = kBlack) const;
@@ -28,6 +31,7 @@ class Scaler {
   int out_h() const { return oh_; }
   bool enlarging() const { return factor_ > 1; }
   int factor() const { return factor_; }  // integer enlargement factor, 1 when shrinking or same size
+  int halvings() const { return halvings_; }  // k of the 1/2^k shrink, 0 when not shrinking
 
  private:
   struct Span {
@@ -37,6 +41,7 @@ class Scaler {
   int src_w_ = 0, src_h_ = 0, dst_w_ = 0, dst_h_ = 0;
   int ox_ = 0, oy_ = 0, ow_ = 0, oh_ = 0;
   int factor_ = 1;
+  int halvings_ = 0;
 };
 
 }  // namespace p64::gfx
