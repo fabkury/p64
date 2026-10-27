@@ -126,6 +126,14 @@ TEST_CASE("provider_registry") {
       return true;
     }
     std::vector<ChannelOffer> offers() override { return {{"one", "One"}}; }
+    PlayUrl play_url(const std::string &url, std::string &error) override {
+      if (url.rfind(std::string("https://") + id_ + ".example/", 0) != 0) return PlayUrl::NotMine;
+      if (url.find("/gone") != std::string::npos) {
+        error = "gone";
+        return PlayUrl::Rejected;
+      }
+      return PlayUrl::Queued;
+    }
   };
   providers::clear();
   P a("aa"), mk("mk");
@@ -135,6 +143,24 @@ TEST_CASE("provider_registry") {
   CHECK_EQ(providers::all().size(), 2u);
   CHECK(providers::find("mk") == &mk);
   CHECK(providers::find("zz") == nullptr);
+  // Play-this of a link (2026-10-27): the first provider that claims the URL answers;
+  // nobody claims a plain artwork URL; the player hook hears what lands.
+  std::string error, who;
+  CHECK(providers::play_url("https://mk.example/post/1", error, who) == Provider::PlayUrl::Queued);
+  CHECK(who == "mk");
+  CHECK(providers::play_url("https://aa.example/gone", error, who) == Provider::PlayUrl::Rejected);
+  CHECK(who == "aa");
+  CHECK(error == "gone");
+  CHECK(providers::play_url("https://elsewhere.example/x.gif", error, who) == Provider::PlayUrl::NotMine);
+  CHECK(who.empty());
+  std::string played;
+  providers::play("/x", "nobody", 1, "n");  // no player yet: nothing happens
+  providers::set_player([&](const std::string &path, const std::string &provider, int32_t id, const std::string &name) {
+    played = provider + ":" + std::to_string(id) + ":" + path + ":" + name;
+  });
+  providers::play("/sdcard/p64/downloads/7.png", "aa", 7, "seven");
+  CHECK(played == "aa:7:/sdcard/p64/downloads/7.png:seven");
+  providers::set_player(nullptr);
   ChannelSpec local;
   CHECK(providers::for_spec(local) == nullptr);
   ChannelSpec promoted;

@@ -163,7 +163,7 @@ the public firmware lists nothing else.
 | `/api/v1/makapix/unpair` | POST | | erases the credentials, closes the MQTT session |
 | `/api/v1/makapix/like` | POST | `{"post_id":n,"like":true|false}` | reacts as the owner (needs pairing; blocks up to 20 s) |
 | `/api/v1/action/play` | POST | `{"post":"<sqid or makapix.club/p/<sqid>>"}` | play-this of a Makapix post (looked up and downloaded, then played) |
-| `/api/v1/action/play` | POST | `{"url":"http(s)://..."}` | play-this of an arbitrary artwork URL (downloaded into `downloads/`) |
+| `/api/v1/action/play` | POST | `{"url":"http(s)://..."}` | play-this of a URL: a registered content provider that recognises the link as one of its artworks (a post page, say) looks it up and downloads it (the answer carries `provider`; 422 when it rejects the link), otherwise an arbitrary artwork URL downloaded into `downloads/` (since 2026-10-27, ADR 0012) |
 
 Channel objects of `/api/v1/channels` for Makapix kinds add `cached`, `last_refresh`
 (epoch seconds), `oversized` (entries the last refresh listed but dropped for being over

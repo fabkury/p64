@@ -62,6 +62,27 @@ cJSON *status_json() {
   return arr;
 }
 
+Provider::PlayUrl play_url(const std::string &url, std::string &error, std::string &provider) {
+  for (Provider *p : g_providers) {
+    const Provider::PlayUrl r = p->play_url(url, error);
+    if (r == Provider::PlayUrl::NotMine) continue;
+    provider = p->id();
+    return r;
+  }
+  provider.clear();
+  return Provider::PlayUrl::NotMine;
+}
+
+namespace {
+Player g_player;
+}
+
+void set_player(Player player) { g_player = std::move(player); }
+
+void play(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name) {
+  if (g_player) g_player(path, provider, item_id, name);
+}
+
 void erase_credentials() {
   for (Provider *p : g_providers) p->erase_credentials();
 }

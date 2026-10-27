@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -113,6 +114,18 @@ class Provider {
   virtual const char *settings_path() { return nullptr; }
   // Forgets whatever credentials the provider stores (factory reset).
   virtual void erase_credentials() {}
+
+  // Play-this of a pasted link (2026-10-27): a provider that recognises `url` as one of
+  // its artworks queues the lookup and download and answers Queued (the artwork plays
+  // through providers::play() when it lands), or Rejected with `error` (its link, but
+  // offline, malformed, gone); NotMine lets the next provider look, and the plain URL
+  // download takes what nobody claims.
+  enum class PlayUrl : uint8_t { NotMine, Queued, Rejected };
+  virtual PlayUrl play_url(const std::string &url, std::string &error) {
+    (void)url;
+    (void)error;
+    return PlayUrl::NotMine;
+  }
 };
 
 // The registry. Providers are registered at start-up (before the show restores its
@@ -131,6 +144,16 @@ bool memory_bytes(const std::string &path, std::vector<uint8_t> &out);
 cJSON *status_json();
 // Every provider forgets its credentials (factory reset).
 void erase_credentials();
+// Offers `url` to every provider in registration order; the first that claims it
+// answers (Queued or Rejected, `provider` its id), NotMine when none does.
+Provider::PlayUrl play_url(const std::string &url, std::string &error, std::string &provider);
+// The show's "play this downloaded artwork now" (a card path or "mem:<key>", the
+// provider's id, the item id, a display name), set by the application; a provider calls
+// play() when a play-this download lands. A no-op until set.
+using Player = std::function<void(const std::string &path, const std::string &provider, int32_t item_id,
+                                  const std::string &name)>;
+void set_player(Player player);
+void play(const std::string &path, const std::string &provider, int32_t item_id, const std::string &name);
 }  // namespace providers
 
 }  // namespace p64::content

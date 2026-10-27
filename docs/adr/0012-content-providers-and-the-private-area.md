@@ -42,7 +42,11 @@ Two more hooks followed the same day, for providers that keep credentials: a pro
 declare a `settings_path` (its own page on the device; the public Settings page lists
 every provider and links to that page, so a private provider gets a settings entry
 without the public UI naming it) and `erase_credentials()`, which the factory reset calls
-on every provider.
+on every provider. A third followed on 2026-10-27, for play-this of a pasted link:
+`play_url()` lets a provider claim a URL as one of its artworks (the public route asks
+every provider before treating the URL as a plain download) and `providers::play()` is
+the show's "play this downloaded file now", set by the application, so a provider's
+play-this lands without the public tree naming the provider.
 
 Consequences: a device running a private build must not install a public release without
 knowing it drops the private parts; the OTA status carries `private_build` and the Update

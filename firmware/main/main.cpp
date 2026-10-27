@@ -273,6 +273,7 @@ extern "C" void app_main() {
   mk.play_artwork = [](const std::string &path, int32_t post_id, const std::string &name) {
     p64::show::play_downloaded(path, "makapix", post_id, name);
   };
+  p64::content::providers::set_player(p64::show::play_downloaded);  // a provider's play-this of its own link
   mk.play_playset = p64::show::activate_transient;
   mk.current_post_id = p64::show::current_post_id;
   mk.is_paused = p64::show::is_paused;

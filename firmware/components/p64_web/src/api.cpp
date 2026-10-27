@@ -343,11 +343,18 @@ esp_err_t action_play(httpd_req_t *req) {
     return reply_ok(req, d);
   }
   if (!url_ref.empty()) {
-    if (!g_hooks.play_url) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no downloads");
-    if (!g_hooks.play_url(url_ref, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    // A provider's own link first (a post page, say); the plain download otherwise.
+    std::string provider;
+    const content::Provider::PlayUrl claimed = content::providers::play_url(url_ref, error, provider);
+    if (claimed == content::Provider::PlayUrl::Rejected) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    if (claimed == content::Provider::PlayUrl::NotMine) {
+      if (!g_hooks.play_url) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no downloads");
+      if (!g_hooks.play_url(url_ref, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+    }
     cJSON *d = cJSON_CreateObject();
     cJSON_AddStringToObject(d, "url", url_ref.c_str());
     cJSON_AddBoolToObject(d, "queued", true);
+    if (!provider.empty()) cJSON_AddStringToObject(d, "provider", provider.c_str());
     return reply_ok(req, d);
   }
   if (rel.empty() || !storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path, post or url required");
