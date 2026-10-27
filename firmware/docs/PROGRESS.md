@@ -1364,8 +1364,10 @@ them. Newest entries are at the bottom of [Log](#log).
   while active, status and history following, 404 for the old name, 409 onto
   `smoke_test`, 400 onto `Local` and from `Local`, a respelling to "SUNNY  days" as one
   playset, `smoke_test` -> `SMOKE_TEST.json` and back), `api_smoke.py` 0 failures, heap
-  61.3 KB free / 32.8 KB largest. The editor's rename path was not checked by eye (the
-  Chrome extension disconnected); the API it calls was.
+  61.3 KB free / 32.8 KB largest. In Chrome: editing "Scratch" (active), typing
+  "work_MIX" showed "A playset with that name exists", "SCRATCH" passed as the same
+  playset, and saving as "Scratch pad" renamed it in place: now playing under the new
+  name, the old name 404, the card file `scratch_pad~XXXX.json`.
 
 - Playset names with spaces and Unicode (p107, ADR 0017). The name was the file stem on
   the card and a raw URL segment, hence `[A-Za-z0-9_]{1,32}`. Now `valid_playset_name`
