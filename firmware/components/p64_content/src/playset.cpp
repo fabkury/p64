@@ -68,14 +68,6 @@ bool kind_from_name(const std::string &name, const std::string &sub_name, Channe
   return true;
 }
 
-bool valid_playset_name(const std::string &name) {
-  if (name.empty() || name.size() > kMaxPlaysetName) return false;
-  for (char c : name) {
-    if (!ascii_alnum(c) && c != '_') return false;
-  }
-  return true;
-}
-
 bool valid_sqid(const std::string &s) {
   if (s.empty() || s.size() > 32) return false;
   for (char c : s) {
@@ -213,7 +205,7 @@ bool ChannelSpec::validate(std::string &error) const {
 
 bool Playset::validate(std::string &error) const {
   if (!builtin && !valid_playset_name(name)) {
-    error = "playset name must be 1 to 32 letters, digits or underscores";
+    error = "playset name must be 1 to 32 characters, with no leading or trailing space and no control characters";
     return false;
   }
   Builtin b;

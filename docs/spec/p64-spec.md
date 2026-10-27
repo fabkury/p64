@@ -300,7 +300,10 @@ A local folder is a channel; subfolders are separate channels (one level below
 
 Semantics are p3a's, unchanged:
 
-- Up to 32 user playsets; names up to 32 characters, letters, digits and underscore.
+- Up to 32 user playsets; names up to 32 characters of any printable text, with no
+  leading or trailing space (ADR 0017, since 2026-10-27; before that, letters, digits
+  and underscore). Names that differ only in ASCII case or in the spacing between
+  words are the same playset, kept in the spelling it was first saved with.
 - Up to 64 channels per playset, each with a display name (up to 64 characters), a weight
   (0 mutes; all zero means equal) and an offset (ordered sources only: local, URL list,
   pinned).
@@ -916,7 +919,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | Channels per playset | 64 |
 | Channel index | 4096 (default 2048) |
 | History | 32 |
-| Playset name | 32 characters |
+| Playset name | 32 characters (code points) |
 | Channel display name | 64 characters |
 | Device name | 16 characters |
 | PIN | 4 to 8 digits |

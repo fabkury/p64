@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "p64/content/playset_name.hpp"
+
 namespace p64::content {
 
 enum class ChannelKind : uint8_t {
@@ -25,7 +27,7 @@ enum class ChannelKind : uint8_t {
 
 constexpr size_t kMaxPlaysets = 32;
 constexpr size_t kMaxChannels = 64;
-constexpr size_t kMaxPlaysetName = 32;
+constexpr size_t kMaxPlaysetName = 32;  // code points (ADR 0017), up to 128 bytes
 constexpr size_t kMaxDisplayName = 64;
 constexpr size_t kMaxIdentifier = 64;
 constexpr uint32_t kMaxWeight = 1000000;
@@ -55,7 +57,7 @@ struct ChannelSpec {
 };
 
 struct Playset {
-  std::string name;  // 1..32 of [A-Za-z0-9_] for user playsets; built-ins use their display names
+  std::string name;  // 1..32 code points, valid_playset_name() (playset_name.hpp); built-ins use their display names
   std::vector<ChannelSpec> channels;  // 1..64
   bool builtin = false;
 
@@ -68,7 +70,6 @@ struct Playset {
 const char *kind_name(ChannelKind kind);  // "local", "promoted", "all", "own", "artist", "hashtag", "reactions", ..., "external"
 // Accepts p64's names and p3a's ("sdcard", "user", "named" with a sub-name).
 bool kind_from_name(const std::string &name, const std::string &sub_name, ChannelKind &out);
-bool valid_playset_name(const std::string &name);
 bool valid_sqid(const std::string &s);
 bool valid_hashtag(const std::string &s);
 bool valid_folder_name(const std::string &s);  // one path segment, no dots-only, no control characters

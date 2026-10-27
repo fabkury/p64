@@ -14,8 +14,10 @@ TEST_CASE("playset_model") {
   using namespace p64::content;
   CHECK(valid_playset_name("mix_1"));
   CHECK(!valid_playset_name(""));
-  CHECK(!valid_playset_name("has space"));
   CHECK(!valid_playset_name(std::string(33, 'a')));
+  CHECK(legacy_playset_name("mix_1"));
+  CHECK(!legacy_playset_name("has space"));  // the rule before ADR 0017, the shape of a legacy file stem
+  CHECK(!legacy_playset_name("mix~1"));
   Builtin b;
   CHECK((builtin_from_name("local", b) && b == Builtin::Local));
   CHECK((builtin_from_name("PROMOTED", b) && b == Builtin::Promoted));
@@ -46,6 +48,69 @@ TEST_CASE("playset_model") {
   CHECK(builtin_playset(Builtin::Promoted, {}).channels[0].kind == ChannelKind::MakapixPromoted);
 }
 
+
+// ADR 0017: names decoupled from file names.
+TEST_CASE("playset_name") {
+  using namespace p64::content;
+  // the new rule: printable text, 1..32 code points, trimmed
+  CHECK(valid_playset_name("Rainy days"));
+  CHECK(valid_playset_name("Caf\xc3\xa9 \xe2\x98\x95"));
+  CHECK(valid_playset_name("Mix (2024)"));
+  CHECK(valid_playset_name("a/b%c'd\\e"));
+  std::string e32;
+  for (int i = 0; i < 32; ++i) e32 += "\xc3\xa9";
+  CHECK_EQ(e32.size(), 64u);
+  CHECK(valid_playset_name(e32));
+  CHECK_EQ(utf8_length(e32), 32u);
+  CHECK(!valid_playset_name(e32 + "\xc3\xa9"));
+  CHECK(!valid_playset_name(""));
+  CHECK(!valid_playset_name(" lead"));
+  CHECK(!valid_playset_name("trail "));
+  CHECK(!valid_playset_name("a\tb"));
+  CHECK(!valid_playset_name("a\x01" "b"));
+  CHECK(!valid_playset_name("a\x7f" "b"));
+  CHECK(!valid_playset_name("a\xc2\x85" "b"));     // U+0085, a C1 control
+  CHECK(!valid_playset_name("Mix\xc2\xa0"));        // U+00A0
+  CHECK(!valid_playset_name("a\xe2\x80\x8d" "b"));  // zero-width joiner
+  CHECK(!valid_playset_name("\xc3"));               // truncated sequence
+  CHECK(!valid_playset_name("\xed\xa0\x80"));       // a surrogate
+  CHECK(!valid_playset_name("\xc0\xaf"));           // overlong
+  // canonical form: trimmed, spaces collapsed, ASCII case folded
+  CHECK_EQ(canonical_playset_name("Rainy  DAYS "), "rainy days");
+  CHECK(same_playset_name("Rainy  DAYS", "rainy days"));
+  CHECK(!same_playset_name("Rainy days", "Rainy_days"));
+  CHECK_EQ(canonical_playset_name("Caf\xc3\x89"), "caf\xc3\x89");  // no Unicode folding on the device
+  // slug
+  CHECK_EQ(playset_slug("Rainy days"), "rainy_days");
+  CHECK_EQ(playset_slug("Caf\xc3\xa9 \xe2\x98\x95"), "caf");
+  CHECK_EQ(playset_slug("\xe2\x98\x95\xe2\x98\x95"), "playset");
+  CHECK_EQ(playset_slug("--Mix (2024)--"), "mix_2024");
+  CHECK_EQ(playset_slug("abcdefghijklmnopqrstuvwxyz0123456789").size(), 24u);
+  // file stems: legacy names unchanged, the rest slug~hash, never legacy-shaped
+  CHECK_EQ(playset_file_stem("mix_1"), "mix_1");
+  CHECK_EQ(playset_file_stem("MIX"), "MIX");
+  CHECK(!new_style_stem("mix_1"));
+  const std::string s1 = playset_file_stem("Rainy days");
+  CHECK(new_style_stem(s1));
+  CHECK(!legacy_playset_name(s1));
+  CHECK_EQ(s1.substr(0, 11), "rainy_days~");
+  CHECK_EQ(s1.size(), 15u);
+  for (char c : s1) CHECK((std::isdigit(static_cast<unsigned char>(c)) || (c >= 'a' && c <= 'z') || c == '_' || c == '~'));
+  CHECK_EQ(playset_file_stem("rainy  DAYS"), s1);  // canonical-equal names share the file
+  CHECK_NE(playset_file_stem("Rainy days 2"), s1);
+  CHECK_EQ(playset_file_stem("Rainy days"), s1);  // stable
+  CHECK_EQ(playset_file_stem(e32).substr(0, 8), "playset~");
+  // the model accepts the new names and still reserves the built-ins in any case
+  Playset p;
+  p.channels.push_back(ChannelSpec{ChannelKind::Local, "", "", 0, 0});
+  std::string e;
+  p.name = "Rainy days";
+  CHECK(p.validate(e));
+  p.name = "fOLLOWED";
+  CHECK(!p.validate(e));
+  p.name = " x";
+  CHECK(!p.validate(e));
+}
 
 TEST_CASE("playset_external_kind") {
   using namespace p64::content;

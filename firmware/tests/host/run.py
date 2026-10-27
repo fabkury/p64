@@ -57,6 +57,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_decode", "src", "bmp_decoder.cpp"),
     os.path.join(COMPONENTS, "animatedgif", "src", "AnimatedGIF.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "playset.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "playset_name.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "playset_json.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "scheduler.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
