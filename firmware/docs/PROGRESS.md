@@ -1370,9 +1370,13 @@ them. Newest entries are at the bottom of [Log](#log).
   `smoke_test.json`, a re-spelled PUT keeping the stored name, `SMOKE_TEST` updating
   `smoke_test`, a 32-code-point accented name through URL and JSON, 33 refused, bad
   escapes and look-alike spaces refused), `api_smoke.py` 0 failures, "Rainy days" active
-  across a reboot and restored by name, heap after 64.8 KB free / 34.8 KB largest. Not
-  yet checked by eye: the Playsets page in a browser (the Chrome extension was not
-  connected); the logic was exercised in node.
+  across a reboot and restored by name, heap after 64.8 KB free / 34.8 KB largest. In
+  the browser (Chrome, same day): the editor refused a 33-character name ("this is
+  33"), a built-in in lower case and "CAFé  ☕" against an existing "Café ☕"; "Café ☕"
+  saved with a Promoted channel, played, listed as now playing, edited (weight 7 came
+  back through the API), the Home pill highlighted and the now-playing card named it;
+  the card file was `caf~f2b4.json`. A rollback to the older image was not exercised
+  (user's instruction).
 
 ### 2026-10-22
 
