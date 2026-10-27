@@ -67,7 +67,17 @@ same asset set in `build_public/release/`; `gh release create v0.2.0 build_publi
 would publish it by hand, but the tag path is the documented one so that every
 published image comes from CI and the tagged commit.
 
-## 3. Development resources in the image
+## 3. Data compatibility on rollback
+
+Rolling back to an older image keeps the card and NVS as the newer image left them, so
+the older firmware must cope with what it finds. Known cases:
+
+- Playsets whose names have spaces or non-ASCII letters (ADR 0017, since 2026-10-27)
+  are stored as `<slug>~<hash>.json`; firmware before that version skips those files
+  without touching them, so the playsets are hidden, not lost, and reappear on the next
+  upgrade. If one was active, the old firmware falls back to a built-in playset.
+
+## 4. Development resources in the image
 
 Everything below is in every build, the published one included. The question asked on
 2026-10-19 was whether any of it should leave the release for performance; the answer

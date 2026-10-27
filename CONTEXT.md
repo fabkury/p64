@@ -81,7 +81,8 @@ kinds (Promoted, All, Own, Artist by sqid, Hashtag, Reactions by sqid).
 
 **Playset**:
 A named mix of up to 64 weighted channels that the device plays from. The user has up to
-32 of them; built-in playsets exist for each single source.
+32 of them; built-in playsets exist for each single source. A name is up to 32 characters
+of printable text; names equal up to ASCII case and spacing are one playset (ADR 0017).
 _Avoid_: playlist (Makapix's word for a curated post list), mix, queue
 
 **Built-in playset**:

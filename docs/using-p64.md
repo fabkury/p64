@@ -33,7 +33,8 @@ account. For other channels, likes and sending artwork from the site, open
 A channel supplies artworks; a playset mixes channels. For example, mix a local folder
 with Makapix's Promoted channel:
 
-1. Open **Playsets**, create a playset, and give it a name.
+1. Open **Playsets**, create a playset, and give it a name (up to 32 characters, spaces
+   and accents welcome).
 2. Add the local folder and the Promoted channel.
 3. Set their weights: equal weights give equal shares of channel picks; 2 and 1 give
    the first channel about twice as many picks.
@@ -135,7 +136,9 @@ for offline artwork playback. exFAT is unsupported; formatting is never automati
 The **Update** page checks GitHub Releases and shows available firmware. Installation
 requires your action; the device verifies the image checksum. Follow the page's reboot
 prompt. A failed boot can roll back automatically; the page also offers manual rollback
-when another valid image is available. See [status](status.md) for release readiness.
+when another valid image is available. Firmware older than 2026-10-27 does not show
+playsets whose names have spaces or accents; they stay on the card and return with the
+next update. See [status](status.md) for release readiness.
 
 Set an optional PIN in **Settings → Network**. It protects device controls and the
 HTTP API, but not UDP streams or the setup portal. The device uses HTTP on your local

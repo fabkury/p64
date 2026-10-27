@@ -1346,6 +1346,34 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-10-27
+
+- Playset names with spaces and Unicode (p107, ADR 0017). The name was the file stem on
+  the card and a raw URL segment, hence `[A-Za-z0-9_]{1,32}`. Now `valid_playset_name`
+  accepts any printable text of 1 to 32 code points (no leading or trailing space, no
+  control characters, no look-alike spaces), `legacy_playset_name` keeps the old rule as
+  the shape of a legacy stem, and the store (`playset_store.cpp`) derives the file from
+  the name (`playset_name.cpp`, pure, host-tested): a legacy-shaped name is still
+  `<name>.json`, found in the listing ignoring ASCII case because FAT does; any other
+  name is `<slug>~<4 hex of FNV-1a>.json` with the name inside and `"format": 2`, read
+  only when its inner name puts it there, a collision refused on save. Names equal up to
+  ASCII case and spacing are one playset in its stored spelling (a PUT under another
+  spelling updates, never renames). The routes percent-decode the path (`url_decode`
+  exported from `api.cpp`, `+` not a space in a path, bad escapes refused);
+  `play_playset` validates its name; the editor normalises to NFC, counts code points,
+  refuses look-alike spaces, compares canonically and passes names through `data-name`
+  attributes instead of inline quoted strings. Nothing on an existing card is rewritten;
+  the old firmware skips the `~` stems, so a rollback hides those playsets intact. Host
+  suite 224 cases green (`playset_name`: the rule, canonical form, slug, stem
+  invariants). Device (the dev build `0.2.1+private` flashed to `ota_0`): `content_smoke.py` 0
+  failures with the new cases ("Rainy days" stored as `rainy_days~a0e1.json` beside
+  `smoke_test.json`, a re-spelled PUT keeping the stored name, `SMOKE_TEST` updating
+  `smoke_test`, a 32-code-point accented name through URL and JSON, 33 refused, bad
+  escapes and look-alike spaces refused), `api_smoke.py` 0 failures, "Rainy days" active
+  across a reboot and restored by name, heap after 64.8 KB free / 34.8 KB largest. Not
+  yet checked by eye: the Playsets page in a browser (the Chrome extension was not
+  connected); the logic was exercised in node.
+
 ### 2026-10-22
 
 - The Update page no longer offers the public release to the private build of the same

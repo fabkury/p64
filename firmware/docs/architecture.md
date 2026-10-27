@@ -46,7 +46,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON) |
 | `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
-| `p64_content` | channels, playsets and their JSON, scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store, the Makapix index format, the content provider interface and registry (ADR 0012) | `p64_storage`, cJSON | yes (model, JSON, scheduler, history, the Makapix index, the provider registry, the local folder index) |
+| `p64_content` | channels, playsets and their JSON, the playset name rules (ADR 0017), scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store, the Makapix index format, the content provider interface and registry (ADR 0012) | `p64_storage`, cJSON | yes (model, name rules, JSON, scheduler, history, the Makapix index, the provider registry, the local folder index) |
 | `p64_net` | Wi-Fi manager (STA, setup mode, captive portal), mDNS, SNTP (the only source of trusted time), time zone table, HTTP fetch helper with the TLS gate | IDF | partly (`tz`: the time zone table; `time_rules`: the build-date floors, the SNTP slot plan) |
 | `p64_web` | HTTP server, `/api/v1`, WebSocket push, embedded web UI, PIN | `p64_net`, everything it exposes | partly (`auth_rules`: the PIN, the lockout, the sessions) |
 | `p64_makapix` | pairing, credentials, MQTT over mTLS, player RPC, commands, views, likes; the first `content::Provider` | `p64_net`, `p64_content` | partly (`contract`: the server's documents, the site's commands, the MQTT payloads; `policy`: the worker's refresh, walk, download, offline-job and sweep rules) |
@@ -245,8 +245,10 @@ credit/65536, 0.1, 3) with the same credit moves; random picks avoid an immediat
 recency walks a cursor from the channel offset and wraps), `History` (32 items, a
 position; a push from the middle discards what was ahead), the local folder index
 (`LocalEntry` 140 bytes in PSRAM, newest first, caps of 4096 per channel and 16384 per
-playset) and the playset store (`channels/playsets/<name>.json`, atomic writes). The
-built-in playsets are synthesised: Local gets one channel per folder found under
+playset) and the playset store (`channels/playsets/<name>.json` for a name of
+`[A-Za-z0-9_]`, `<slug>~<hash>.json` with the name inside for any other, ADR 0017;
+atomic writes; names equal up to ASCII case and spacing are one playset, in its stored
+spelling). The built-in playsets are synthesised: Local gets one channel per folder found under
 `animations/` (the root first).
 
 `main/show.cpp` runs on the main task and owns the runtime: the active playset and one
