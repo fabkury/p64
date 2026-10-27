@@ -409,14 +409,14 @@ function renderPills() {
     bar.innerHTML = '';
     (playsets.playsets || []).forEach(function (ps) {
         var b = document.createElement('button');
-        b.className = 'pill-item kind-user' + (ps.name === active ? ' active' : '');
+        b.className = 'pill-item kind-user' + (p64.sameName(ps.name, active) ? ' active' : '');
         b.textContent = ps.name;
         b.onclick = function () { playPlayset(ps.name); };
         bar.appendChild(b);
     });
     (playsets.builtins || []).forEach(function (bi) {
         var b = document.createElement('button');
-        b.className = 'pill-item kind-builtin' + (bi.name === active ? ' active' : '');
+        b.className = 'pill-item kind-builtin' + (p64.sameName(bi.name, active) ? ' active' : '');
         b.textContent = bi.name;
         if (!bi.enabled) { b.disabled = true; b.title = bi.reason || 'unavailable'; b.style.opacity = '0.45'; }
         b.onclick = function () { playPlayset(bi.name); };

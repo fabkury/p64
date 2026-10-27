@@ -106,7 +106,7 @@ h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
         <h2 style="color:var(--c-card-fg)" id="editorTitle">New playset</h2>
         <div class="form-group">
             <label class="form-label" for="playsetName">Name</label>
-            <input type="text" id="playsetName" class="form-input" maxlength="32" placeholder="letters, digits and underscores" oninput="validateForm()">
+            <input type="text" id="playsetName" class="form-input" maxlength="64" placeholder="up to 32 characters" oninput="validateForm()">
             <div class="error-message hidden" id="nameError"></div>
         </div>
         <div class="form-group weight-viz-container">
@@ -182,20 +182,20 @@ function renderList() {
         list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#127925;</div><p>No playsets yet. Create your first mix!</p></div>';
     } else {
         list.innerHTML = state.playsets.map(function (p) {
-            var active = p.name === state.active;
-            return '<div class="playset-item' + (active ? ' active-playset' : '') + '"><div class="playset-info"><div class="playset-name">' + p64.esc(p.name) +
+            var active = p64.sameName(p.name, state.active), n = p64.esc(p.name);
+            return '<div class="playset-item' + (active ? ' active-playset' : '') + '"><div class="playset-info"><div class="playset-name">' + n +
                 (active ? ' <span class="now-playing-badge">Now playing</span>' : '') + '</div><div class="playset-meta">' + p.channels + ' channel' + (p.channels === 1 ? '' : 's') + '</div></div>' +
-                '<div class="playset-actions"><button class="btn btn-primary btn-small" onclick="playPlayset(\'' + p64.esc(p.name) + '\')">&#9654; Play</button>' +
-                '<button class="btn btn-secondary btn-small" onclick="editPlayset(\'' + p64.esc(p.name) + '\')">Edit</button>' +
-                '<button class="btn btn-danger" onclick="deletePlayset(\'' + p64.esc(p.name) + '\')">Delete</button></div></div>';
+                '<div class="playset-actions"><button class="btn btn-primary btn-small" data-name="' + n + '" onclick="playPlayset(this.dataset.name)">&#9654; Play</button>' +
+                '<button class="btn btn-secondary btn-small" data-name="' + n + '" onclick="editPlayset(this.dataset.name)">Edit</button>' +
+                '<button class="btn btn-danger" data-name="' + n + '" onclick="deletePlayset(this.dataset.name)">Delete</button></div></div>';
         }).join('');
     }
     document.getElementById('builtinList').innerHTML = state.builtins.map(function (b) {
-        var active = b.name === state.active;
-        return '<div class="playset-item builtin' + (active ? ' active-playset' : '') + (b.enabled ? '' : ' disabled') + '"><div class="playset-info"><div class="playset-name">' + p64.esc(b.name) +
+        var active = p64.sameName(b.name, state.active), n = p64.esc(b.name);
+        return '<div class="playset-item builtin' + (active ? ' active-playset' : '') + (b.enabled ? '' : ' disabled') + '"><div class="playset-info"><div class="playset-name">' + n +
             ' <span class="builtin-badge">built-in</span>' + (active ? ' <span class="now-playing-badge">Now playing</span>' : '') + '</div><div class="playset-meta">' + p64.esc(b.enabled ? builtinHint(b.name) : (b.reason || 'unavailable')) + '</div></div>' +
-            '<div class="playset-actions"><button class="btn btn-primary btn-small" ' + (b.enabled ? '' : 'disabled ') + 'onclick="playPlayset(\'' + p64.esc(b.name) + '\')">&#9654; Play</button>' +
-            '<button class="btn btn-secondary btn-small" onclick="viewBuiltin(\'' + p64.esc(b.name) + '\')">View</button></div></div>';
+            '<div class="playset-actions"><button class="btn btn-primary btn-small" ' + (b.enabled ? '' : 'disabled ') + 'data-name="' + n + '" onclick="playPlayset(this.dataset.name)">&#9654; Play</button>' +
+            '<button class="btn btn-secondary btn-small" data-name="' + n + '" onclick="viewBuiltin(this.dataset.name)">View</button></div></div>';
     }).join('');
 }
 function builtinHint(name) {
@@ -234,12 +234,19 @@ function editPlayset(name) {
     }).catch(function (e) { p64.toast(e.message, true); });
 }
 function cancelEdit() { document.getElementById('editorView').classList.add('hidden'); document.getElementById('listView').classList.remove('hidden'); }
+// The typed name as it is sent: trimmed and NFC-normalised (the device compares bytes).
+function typedName() {
+    var v = document.getElementById('playsetName').value.trim();
+    return v.normalize ? v.normalize('NFC') : v;
+}
 function validateForm() {
-    var name = document.getElementById('playsetName').value.trim(), err = document.getElementById('nameError'), msg = '';
+    var name = typedName(), err = document.getElementById('nameError'), msg = '';
+    var count = Array.from(name).length;
     if (!name) msg = 'A name is needed.';
-    else if (!/^[A-Za-z0-9_]{1,32}$/.test(name)) msg = 'Letters, digits and underscores only, up to 32.';
-    else if (reserved.indexOf(name) >= 0) msg = 'That name is a built-in playset.';
-    else if (!state.editing && state.playsets.some(function (p) { return p.name === name; })) msg = 'A playset with that name exists.';
+    else if (count > 32) msg = 'Up to 32 characters (this is ' + count + ').';
+    else if (/[\u0000-\u001f\u007f-\u009f\u00a0\u1680\u2000-\u200d\u2028\u2029\u202f\u205f\u3000\ufeff]/.test(name)) msg = 'Only plain spaces and printable characters.';
+    else if (reserved.some(function (r) { return p64.sameName(r, name); })) msg = 'That name is a built-in playset.';
+    else if (!state.editing && state.playsets.some(function (p) { return p64.sameName(p.name, name); })) msg = 'A playset with that name exists.';
     err.textContent = msg; err.classList.toggle('hidden', !msg);
     document.getElementById('playsetName').classList.toggle('error', !!msg);
     var ok = !msg && state.channels.length > 0;
@@ -410,7 +417,7 @@ function addChannel() {
 }
 function savePlayset(play) {
     if (!validateForm()) return;
-    var name = state.editing || document.getElementById('playsetName').value.trim();
+    var name = state.editing || typedName();
     var body = { channels: state.channels.map(function (c) { return { kind: c.kind, identifier: c.identifier, display_name: c.display_name, weight: c.weight, offset: c.offset }; }) };
     p64.put('/api/v1/playsets/' + encodeURIComponent(name), body).then(function () {
         p64.toast('Saved');

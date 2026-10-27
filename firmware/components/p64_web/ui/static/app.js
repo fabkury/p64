@@ -65,6 +65,11 @@
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
         });
     };
+    // Playset names: the same playset when they differ only in ASCII case or spacing (ADR 0017).
+    P.canonName = function (s) {
+        return String(s == null ? '' : s).trim().replace(/ +/g, ' ').replace(/[A-Z]/g, function (c) { return c.toLowerCase(); });
+    };
+    P.sameName = function (a, b) { return P.canonName(a) === P.canonName(b); };
     P.fmtBytes = function (n) {
         n = +n || 0;
         if (n < 1024) return n + ' B';

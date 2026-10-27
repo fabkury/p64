@@ -69,6 +69,9 @@ esp_err_t reply_ok(httpd_req_t *req, cJSON *data);  // takes ownership of data (
 esp_err_t reply_error(httpd_req_t *req, const char *status, const char *code, const std::string &message);
 // Query parameter, URL-decoded; false when absent.
 bool query_param(httpd_req_t *req, const char *name, std::string &out);
+// Percent-decoding; '+' is a space only in a query string (plus_as_space). False on a
+// '%' that is not followed by two hex digits.
+bool url_decode(const std::string &in, std::string &out, bool plus_as_space);
 // Parses a JSON body (up to 32 KB); nullptr with an error reply already sent when invalid.
 cJSON *parse_body(httpd_req_t *req);
 

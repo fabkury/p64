@@ -70,23 +70,33 @@ namespace {
 
 constexpr const char *TAG = "api";
 
-std::string url_decode(const std::string &in) {
-  std::string out;
+int hex_value(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+}  // namespace
+
+bool url_decode(const std::string &in, std::string &out, bool plus_as_space) {
+  out.clear();
+  out.reserve(in.size());
   for (size_t i = 0; i < in.size(); ++i) {
-    if (in[i] == '+') {
+    if (plus_as_space && in[i] == '+') {
       out += ' ';
-    } else if (in[i] == '%' && i + 2 < in.size()) {
-      out += static_cast<char>(std::strtol(in.substr(i + 1, 2).c_str(), nullptr, 16));
+    } else if (in[i] == '%') {
+      if (i + 2 >= in.size()) return false;
+      const int hi = hex_value(in[i + 1]), lo = hex_value(in[i + 2]);
+      if (hi < 0 || lo < 0) return false;
+      out += static_cast<char>(hi * 16 + lo);
       i += 2;
     } else {
       out += in[i];
     }
   }
-  return out;
+  return true;
 }
-
-
-}  // namespace
 
 // --- helpers ------------------------------------------------------------------
 
@@ -126,7 +136,7 @@ bool query_param(httpd_req_t *req, const char *name, std::string &out) {
   std::string value(1024, '\0');
   if (httpd_query_key_value(query.c_str(), name, value.data(), value.size()) != ESP_OK) return false;
   value.resize(std::strlen(value.c_str()));
-  out = url_decode(value);
+  if (!url_decode(value, out, true)) out = value;
   return true;
 }
 

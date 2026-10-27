@@ -24,15 +24,19 @@ namespace {
 constexpr const char *TAG = "web";
 constexpr const char *kPrefix = "/api/v1/playsets/";
 
-// The playset name from /api/v1/playsets/<name>; empty when malformed.
+// The playset name from /api/v1/playsets/<name>, percent-decoded; empty when malformed.
 std::string name_of(httpd_req_t *req) {
   const char *uri = req->uri;
   if (std::strncmp(uri, kPrefix, std::strlen(kPrefix)) != 0) return "";
-  std::string name = uri + std::strlen(kPrefix);
-  const size_t end = name.find_first_of("?/");
-  if (end != std::string::npos) name.resize(end);
+  std::string raw = uri + std::strlen(kPrefix);
+  const size_t end = raw.find_first_of("?/");
+  if (end != std::string::npos) raw.resize(end);
+  std::string name;
+  if (!url_decode(raw, name, false)) return "";
   return p64::content::valid_playset_name(name) ? name : "";
 }
+
+constexpr const char *kNameRule = "playset names are 1 to 32 characters, with no leading or trailing space and no control characters";
 
 esp_err_t list_handler(httpd_req_t *req) {
   if (!hooks().playsets) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
@@ -40,10 +44,10 @@ esp_err_t list_handler(httpd_req_t *req) {
 }
 
 esp_err_t get_handler(httpd_req_t *req) {
-  const std::string raw = req->uri + std::strlen(kPrefix);
+  const std::string name = name_of(req);
+  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
   p64::content::Builtin b;
-  const std::string bare = raw.substr(0, raw.find_first_of("?/"));
-  if (p64::content::builtin_from_name(bare, b)) {
+  if (p64::content::builtin_from_name(name, b)) {
     std::vector<std::string> folders{""};
     if (b == p64::content::Builtin::Local && storage::mounted()) {
       std::vector<std::string> subs;
@@ -52,8 +56,6 @@ esp_err_t get_handler(httpd_req_t *req) {
     }
     return reply_ok(req, p64::content::playset_to_json(p64::content::builtin_playset(b, folders)));
   }
-  const std::string name = name_of(req);
-  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", "playset names are 1 to 32 letters, digits or underscores");
   p64::content::Playset p;
   std::string error;
   if (!p64::content::store::load(name, p, error)) return reply_error(req, "404 Not Found", "NOT_FOUND", error);
@@ -62,7 +64,7 @@ esp_err_t get_handler(httpd_req_t *req) {
 
 esp_err_t put_handler(httpd_req_t *req) {
   const std::string name = name_of(req);
-  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", "playset names are 1 to 32 letters, digits or underscores");
+  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
   p64::content::Playset p;
@@ -70,7 +72,7 @@ esp_err_t put_handler(httpd_req_t *req) {
   const bool parsed = p64::content::playset_from_json(body, p, error);
   cJSON_Delete(body);
   if (!parsed) return reply_error(req, "400 Bad Request", "INVALID_PLAYSET", error);
-  p.name = name;
+  p.name = name;  // the URL names the playset; the body's "name" is ignored
   p.builtin = false;
   if (!p.validate(error)) return reply_error(req, "400 Bad Request", "INVALID_PLAYSET", error);
   if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "playsets are stored on the card");
@@ -82,7 +84,7 @@ esp_err_t put_handler(httpd_req_t *req) {
 
 esp_err_t delete_handler(httpd_req_t *req) {
   const std::string name = name_of(req);
-  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", "playset names are 1 to 32 letters, digits or underscores");
+  if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
   std::string error;
   if (!p64::content::store::remove(name, error)) return reply_error(req, "404 Not Found", "NOT_FOUND", error);
   system::publish(system::Event::PlaysetsChanged);
@@ -147,6 +149,10 @@ esp_err_t action_play_playset(httpd_req_t *req) {
   const std::string name = (n && cJSON_IsString(n) && n->valuestring) ? n->valuestring : "";
   cJSON_Delete(body);
   if (name.empty()) return reply_error(req, "400 Bad Request", "INVALID_NAME", "name required");
+  p64::content::Builtin b;
+  if (!p64::content::builtin_from_name(name, b) && !p64::content::valid_playset_name(name)) {
+    return reply_error(req, "400 Bad Request", "INVALID_NAME", kNameRule);
+  }
   if (!hooks().activate_playset) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
   std::string error;
   if (!hooks().activate_playset(name, error)) return reply_error(req, "404 Not Found", "NOT_FOUND", error);

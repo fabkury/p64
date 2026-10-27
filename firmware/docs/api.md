@@ -135,7 +135,13 @@ as the title.
 | `/api/v1/playsets/<name>` | PUT | create or replace: `{"channels":[{kind, identifier, display_name, weight, offset}]}` |
 | `/api/v1/playsets/<name>` | DELETE | remove a user playset |
 
-Names: 1 to 32 of `[A-Za-z0-9_]`; `Promoted`, `All`, `Followed`, `Local` are reserved.
+Names: 1 to 32 characters (code points) of printable text, no leading or trailing space,
+no control characters (ADR 0017); percent-encode them in the path (`+` is not a space
+there). `Promoted`, `All`, `Followed`, `Local` are reserved in any case. Names that
+differ only in ASCII case or in spacing are the same playset: a PUT under another
+spelling updates it and every answer carries the stored spelling; the body's `name` is
+ignored. On the card a name of `[A-Za-z0-9_]` is the file `channels/playsets/<name>.json`,
+any other name is `<slug>~<hash>.json` with the name inside.
 Channel kinds: `local` (identifier = folder under `animations/`, "" = the root),
 `promoted`, `all`, `own`, `artist` (sqid), `hashtag` (tag without `#`), `reactions`
 (sqid), `external` (identifier = `<provider>:<channel>`, a channel of a registered content

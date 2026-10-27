@@ -5,7 +5,8 @@ r"""Device smoke test of the content model (M5) over the HTTP API.
 
 Needs a card with artwork files in animations/ (run api_smoke.py --corpus first).
 Exercises: the playset list with its built-ins, creating, reading, rejecting, activating
-and deleting a user playset, the channels view, next/previous/history navigation,
+and deleting a user playset, names with spaces and non-ASCII letters (ADR 0017: stored
+under a slug~hash file, one spelling per playset), the channels view, next/previous/history navigation,
 history_go, pause/resume, reset_timer, play-this from a file, and the Local built-in.
 The playset active at the start is active again at the end.
 Exit code 1 on any failure.
@@ -13,6 +14,7 @@ Exit code 1 on any failure.
 
 import sys
 import time
+from urllib.parse import quote
 
 from api_smoke import check, playset_restored, request
 
@@ -56,8 +58,18 @@ def run(base):
     st, j = request(base, "GET", "/api/v1/playsets")
     check(any(p["name"] == "smoke_test" for p in j["data"]["playsets"]), "smoke_test listed")
 
-    st, j = request(base, "PUT", "/api/v1/playsets/bad%20name", body)
-    check(st == 400, "PUT with an invalid name is rejected (" + str(st) + ")")
+    st, j = request(base, "PUT", "/api/v1/playsets/%20lead", body)
+    check(st == 400, "PUT with a leading space is rejected (" + str(st) + ")")
+    st, j = request(base, "PUT", "/api/v1/playsets/" + "a" * 33, body)
+    check(st == 400, "PUT with 33 characters is rejected (" + str(st) + ")")
+    st, j = request(base, "PUT", "/api/v1/playsets/a%01b", body)
+    check(st == 400, "PUT with a control character is rejected (" + str(st) + ")")
+    st, j = request(base, "PUT", "/api/v1/playsets/%ED%A0%80", body)
+    check(st == 400, "PUT with invalid UTF-8 is rejected (" + str(st) + ")")
+    st, j = request(base, "PUT", "/api/v1/playsets/a%zz", body)
+    check(st == 400, "PUT with a bad percent escape is rejected (" + str(st) + ")")
+    st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": " x"})
+    check(st == 400, "play_playset with an untrimmed name is rejected (" + str(st) + ")")
     st, j = request(base, "PUT", "/api/v1/playsets/Local", body)
     check(st == 400, "PUT with a built-in name is rejected (" + str(st) + ")")
     st, j = request(base, "PUT", "/api/v1/playsets/bad_kind", {"channels": [{"kind": "giphy"}]})
@@ -93,6 +105,49 @@ def run(base):
 
     st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "nope_missing"})
     check(st == 404, "activating an unknown playset is 404 (" + str(st) + ")")
+
+    # Names with spaces and non-ASCII letters (ADR 0017).
+    spaced = "Rainy days"
+    st, j = request(base, "PUT", "/api/v1/playsets/" + quote(spaced), body)
+    check(st == 200 and j["data"]["name"] == spaced, "PUT playset 'Rainy days'")
+    st, j = request(base, "GET", "/api/v1/playsets/" + quote(spaced))
+    check(st == 200 and j["data"]["name"] == spaced and len(j["data"]["channels"]) == 2, "GET playset 'Rainy days'")
+    st, j = request(base, "GET", "/api/v1/playsets")
+    names = [p["name"] for p in j["data"]["playsets"]]
+    check(spaced in names, "'Rainy days' listed")
+    st, j = request(base, "PUT", "/api/v1/playsets/" + quote("rainy  DAYS"), body)
+    check(st == 200 and j["data"]["name"] == spaced, "PUT under another spelling keeps the stored one (" + str(j)[:80] + ")")
+    st, j = request(base, "GET", "/api/v1/playsets")
+    check([p["name"] for p in j["data"]["playsets"]].count(spaced) == 1 and "rainy  DAYS" not in [p["name"] for p in j["data"]["playsets"]], "no second playset for the respelling")
+    st, j = request(base, "GET", "/api/v1/files?path=channels/playsets")
+    stems = [e["name"] for e in j["data"]["entries"]] if st == 200 else []
+    check(any(n.startswith("rainy_days~") and n.endswith(".json") for n in stems), "stored as rainy_days~XXXX.json (" + ", ".join(stems)[:120] + ")")
+    check(not any(n.lower().startswith("rainy days") for n in stems), "no 'Rainy days.json' on the card")
+    check("smoke_test.json" in stems, "the legacy-shaped name keeps its legacy file")
+    st, j = request(base, "PUT", "/api/v1/playsets/SMOKE_TEST", body)
+    check(st == 200 and j["data"]["name"] == "smoke_test", "a legacy name in another case updates the stored one (" + str(j)[:80] + ")")
+    st, j = request(base, "GET", "/api/v1/playsets")
+    check(sum(1 for p in j["data"]["playsets"] if p["name"].lower() == "smoke_test") == 1, "one smoke_test after the re-cased PUT")
+    st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "rainy days"})
+    check(st == 200, "play_playset 'rainy days' (any spelling)")
+    p = wait_for(base, lambda p: p["playset"]["name"] == spaced, "'Rainy days' is the active playset, in its stored spelling", 20)
+    st, j = request(base, "GET", "/api/v1/channels")
+    check(st == 200 and j["data"]["playset"] == spaced, "GET /api/v1/channels names 'Rainy days'")
+    accented = "Café " + "é" * 27  # 32 code points, 60 bytes
+    st, j = request(base, "PUT", "/api/v1/playsets/" + quote(accented), body)
+    check(st == 200 and j["data"]["name"] == accented, "PUT a 32-code-point accented name through the URL")
+    st, j = request(base, "GET", "/api/v1/playsets/" + quote(accented))
+    check(st == 200 and j["data"]["name"] == accented, "GET it back")
+    st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": accented})
+    check(st == 200, "play_playset with the accented name in JSON")
+    wait_for(base, lambda p: p["playset"]["name"] == accented, "the accented playset is active", 20)
+    st, j = request(base, "PUT", "/api/v1/playsets/" + quote(accented + "é"), body)
+    check(st == 400, "33 code points are rejected (" + str(st) + ")")
+    for n in (spaced, accented):
+        st, j = request(base, "DELETE", "/api/v1/playsets/" + quote(n))
+        check(st == 200, "DELETE playset " + n[:12])
+        st, j = request(base, "GET", "/api/v1/playsets/" + quote(n))
+        check(st == 404, "deleted playset " + n[:12] + " is gone")
 
     # Navigation: three nexts, then two previous, then forward again. History holds 32
     # items; once full, a push drops the oldest and the position stays at 31, so every
