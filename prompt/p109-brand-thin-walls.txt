@@ -1,0 +1,44 @@
+We have news about the latest print of v7b (which now has "p64" written on the back). Please see the email below.
+
+"""
+---------- Forwarded message ---------
+From: JLCPCB Support <support@jlcpcb.com>
+Date: Tue, Oct 27, 2026 at 11:16 PM
+Subject: 3D printing order issue confirm 13461278A-D2026102854500005-W2026102801545325 from JLC3DP
+To: <pub@kury.dev>
+
+
+Hello,
+
+Hope this email finds you well. There's a matter that we would like to confirm regarding your 3D printing order (D2026102854500005, D2026102854500011) before proceeding with the next stage.
+
+1. Based on our engineering review, the areas highlighted in red in the figure below indicate wall thicknesses that are below the recommended requirement (too thin). This may result in a risk of missing features, deformation, cracking, breakage, or print failure during the printing process.
+
+Recommended minimum wall thickness:
+
+Nylon: >1.0mm (2.0mm optimal)
+
+Plastic: >1.2mm (2.0mm optimal)
+
+[IMAGE A]
+
+2. Due to the large size and geometry of the part, there is a high risk of deformation and warping during the printing process. This may also result in greater dimensional deviations and visible layer lines on the surface.
+
+[IMAGE B]
+
+Would you like to modify and re-upload the 3D files or proceed with the current files and accept the associated risks?
+
+If you would like to proceed, please reply to this email stating that you accept the printing risks. Your written reply will be treated as your authorization to proceed with production.
+
+Looking forward to your reply so that we can proceed with your order promptly.
+
+Thank you.
+
+Best regards,
+
+Sky
+"""
+
+The images A and B are these images I'm attaching here.
+
+Please fix the enclosure as necessary. [Image #2] [Image #3]
