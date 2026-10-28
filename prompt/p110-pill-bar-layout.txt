@@ -1,0 +1,9 @@
+Let's fix something about p64's web UI.
+
+Please see the screenshot image. Notice that the pill bar is wrong: the pills are not being laid out horizontally, but only vertically.
+
+If you need an example of a working pill bar in a very similar web UI, you can check p3a's firmware inside the firmware/reference/p3a/ folder.
+
+I have a development p64 device connected to this computer via USB. It is also connected to the same LAN as this computer, and responds at mDNS address p64.local.
+
+Please fix the problem and flash a new build to my development p64. Please remember that the builds flashed to the development p64 should include the private components.
