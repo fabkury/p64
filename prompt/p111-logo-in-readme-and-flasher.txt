@@ -1,0 +1,1 @@
+The p64 project has a logo -- it is used in the intro animations when the device boots -- but it isn't being used in the project's README (which is the project's homepage) and in the web flasher. Please fix that: use a 2x upscale (nearest neighbor) of the logo in the documentation and web flasher. When done, commit and push so I can see the result on GitHub.
