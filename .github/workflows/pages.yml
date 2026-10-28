@@ -22,7 +22,8 @@ on:
     branches: [main]
     paths:
       - "docs/web-flasher/**"
-      - "docs/images/logo/p64-logo-64.png"
+      - "docs/images/logo/v2/p64-logo-v2.png"
+      - "docs/images/logo/v2/p64-logo-v2-2x.png"
       - ".github/workflows/pages.yml"
 
 permissions:

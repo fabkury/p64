@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Draws the p64 logo as a 64x64 pixel-art PNG, docs/images/logo/p64-logo-64.png.
+"""Draws the first p64 logo as a 64x64 pixel-art PNG, docs/images/logo/p64-logo-64.png.
+
+Historical since 2026-10-20: the logo in use is v2 (v2/, hand-drawn in GIMP as two layers,
+composited and upscaled by firmware/tools/gen_logo_assets.py), which the device animates
+at boot and the README and web flasher show.
 
 It is a pixel-art translation of the creative direction in
 creative-direction-2026-09-23.png (same folder): the device seen in

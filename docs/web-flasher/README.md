@@ -22,7 +22,8 @@ built and hosted.
 GitHub's release assets cannot be fetched cross-origin from a browser, so the site
 carries its own copy of every release's flash files. [build_site.py](build_site.py)
 assembles the site at deployment: this folder's `index.html` and `esptool-bundle.js`,
-the logo from `docs/images/logo/`, and for every release listed by `gh release list`
+the logo (`docs/images/logo/v2/p64-logo-v2.png` as the favicon and its 2x copy in the
+header, both written by `firmware/tools/gen_logo_assets.py`), and for every release listed by `gh release list`
 the files its `flash_args` names, downloaded from the release's assets, plus the
 `index.json` the page reads. Nothing is committed: the
 [pages workflow](../../.github/workflows/pages.yml) rebuilds and deploys the whole

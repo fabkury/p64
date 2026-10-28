@@ -1,6 +1,11 @@
+<img src="images/logo/v2/p64-logo-v2-2x.png" alt="The p64 logo" width="128" height="128" align="left">
+
 # p64 documentation
 
-The [repository README](../README.md) is p64's homepage.
+The [repository README](../README.md) is p64's homepage. The logo is the one the device
+draws at boot; its layers and the files for the pages are in [images/logo/v2](images/logo/v2).
+
+<br clear="all">
 
 | Audience | Start here | Details |
 |---|---|---|

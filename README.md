@@ -1,9 +1,13 @@
+<img src="docs/images/logo/v2/p64-logo-v2-2x.png" alt="The p64 logo: a pixel-art panel with a bird over a rainbow p64 wordmark" width="128" height="128" align="left">
+
 # p64
 
 A small pixel-art display for your desk: 64×64 RGB LEDs in a 3D-printed shell,
 powered over USB-C and controlled from a browser. Play animated artwork from a
 microSD card or [Makapix Club](https://makapix.club), show clocks and widgets, or
 stream pixels from your computer. The firmware and enclosure are open source.
+
+<br clear="all">
 
 ![p64 in its printed shell on a desk next to a laptop](docs/images/photos/p64-hero.jpg)
 

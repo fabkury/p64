@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>p64 web flasher</title>
 <meta name="description" content="Put the p64 firmware on a Waveshare ESP32-S3-RGB-Matrix board from your browser">
-<link rel="icon" href="p64-logo-64.png" type="image/png">
+<link rel="icon" href="p64-logo-v2.png" type="image/png">
 <style>
 :root {
     --bg: #14131a;
@@ -34,7 +34,7 @@ body {
 }
 .container { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
 .header { text-align: center; padding: 8px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.logo { width: 64px; height: 64px; image-rendering: pixelated; }
+.logo { width: 128px; height: 128px; image-rendering: pixelated; }
 .header h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2rem); font-weight: 300; letter-spacing: 0.08em; }
 .header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -108,7 +108,7 @@ code { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.
 <body>
 <div class="container">
     <div class="header">
-        <img src="p64-logo-64.png" alt="p64" class="logo">
+        <img src="p64-logo-v2-2x.png" alt="p64" class="logo" width="128" height="128">
         <h1>p64 web flasher</h1>
         <p>Puts the firmware on the controller over USB. No tools to install.</p>
     </div>

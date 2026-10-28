@@ -25,7 +25,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-LOGO = os.path.join(ROOT, "docs", "images", "logo", "p64-logo-64.png")
+LOGO_DIR = os.path.join(ROOT, "docs", "images", "logo", "v2")
+LOGOS = ["p64-logo-v2.png", "p64-logo-v2-2x.png"]  # the favicon and the header image (p111)
 PAGE_FILES = ["index.html", "esptool-bundle.js"]
 REPO = "fabkury/p64"
 
@@ -126,7 +127,8 @@ def main():
     os.makedirs(firmware_dir)
     for name in PAGE_FILES:
         shutil.copyfile(os.path.join(HERE, name), os.path.join(site, name))
-    shutil.copyfile(LOGO, os.path.join(site, "p64-logo-64.png"))
+    for name in LOGOS:
+        shutil.copyfile(os.path.join(LOGO_DIR, name), os.path.join(site, name))
     with open(os.path.join(out, "index.html"), "w", newline="\n", encoding="utf-8") as f:
         f.write(REDIRECT)
     with open(os.path.join(out, ".nojekyll"), "w") as f:
