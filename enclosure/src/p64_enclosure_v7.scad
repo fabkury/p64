@@ -242,11 +242,21 @@ brand       = ["p64"];          // one word, or two with a bar between them (["p
 brand_font  = "Lato:style=Bold";  // ../fonts/Lato-Bold.ttf (SIL OFL), registered by the use<> below, so no system font is needed
 brand_size  = 9;                  // ascent in mm; with the descender of the p the text is about 11.5 mm tall
 brand_pos   = [0, -1];            // centre of the text on the back face: the strip between the vent bands (slots end at
-                                  // y 7.2 and -9.2; mic2's hole starts at x 13, the bosses' counterbores at |x| 53.6)
+                                  // y 7.2 and -9.2, 2.6 mm from the ascent and the descender; the tracked-out word is
+                                  // 22.7 mm wide, 1.65 mm from mic2's hole at x 13; the bosses' counterbores at |x| 53.6)
 brand_bar   = [1.6, 0.9];         // two words: the separator's width in mm and height as a fraction of brand_size (a drawn
                                   // bar, not the font's "|", whose stem is thinner than the letters)
 brand_gap   = 3;                  // two words: between a word and the bar
 brand_depth = mark_d;
+// JLC3DP's review of the order of 2026-10-28 measured 0.22 mm walls inside the mark as first drawn: the gap between
+// the 6 and the 4 was 0.39 mm, the one between the p and the 6 0.73 mm, the notches where the bowl of the p meets its
+// stem and where the arm of the 6 meets its bowl tapered to nothing, and the counter of the 4 was 1.1 mm wide. Fixed
+// by tracking the letters out and by closing the engraved outline (grow then shrink by brand_round, which fills every
+// re-entrant corner with a fillet of that radius), so any material left standing between engraved areas is at least
+// 2 * brand_round wide and the letter gaps are 1.66 and 1.97 mm (measured on the outline in the scratch check of
+// 2026-10-28; the closing bridges any gap narrower than 2 * brand_round, so keep the spacing well above that)
+brand_spacing = 1.18;             // text() spacing factor (1 = the font's own advance)
+brand_round   = 0.7;              // closing radius in mm: fills the re-entrant corners, min standing wall 1.4 mm
 
 /* [Encoders] */
 encoders    = true;
@@ -595,10 +605,16 @@ module back_hole(p, d) {
 }
 
 // the maker's mark, engraved brand_depth into the back face, read from behind: one word centred, or two words on a common
-// baseline with a drawn bar between them. The group is centred on brand_pos: horizontally by the font's own metrics,
+// baseline with a drawn bar between them, the outline tracked out by brand_spacing and closed by brand_round. The group is centred on brand_pos: horizontally by the font's own metrics,
 // vertically by the visual centre of ascent plus descender.
-module brand_word(w, halign) { text(w, size = brand_size, font = brand_font, halign = halign, valign = "baseline"); }
-module brand_2d() {
+module brand_word(w, halign) {
+    text(w, size = brand_size, font = brand_font, halign = halign, valign = "baseline", spacing = brand_spacing);
+}
+module brand_2d() {                     // the engraved outline, closed by brand_round (see the parameters)
+    if (brand_round > 0) offset(r = -brand_round, $fn = 48) offset(r = brand_round, $fn = 48) brand_raw_2d();
+    else brand_raw_2d();
+}
+module brand_raw_2d() {
     if (len(brand) == 1) brand_word(brand[0], "center");
     else {
         bar_h = brand_size * brand_bar[1];

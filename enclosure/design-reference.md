@@ -28,7 +28,11 @@ step, kept at 0.5 so that the rim's fillet never climbs above the mask if the st
 thicker than modelled): the walls wrap 0.5 mm further forward, nothing else moves, and
 both output folders were regenerated, so the files in `output/` are no longer the printed
 ones and the 0.5 mm rim is not printed yet. On 2026-10-27 the back face gained the maker's
-mark, "p64" engraved between the vent bands (`brand`, below), also unprinted. The shells as
+mark, "p64" engraved between the vent bands (`brand`, below), also unprinted; JLC3DP's
+engineering review of the first order with it (2026-10-28, MJF nylon and FDM PLA, both
+v7b files) measured 0.22 mm walls inside the letters, and the outline was reworked the
+same day (`brand_spacing`, `brand_round`; the review is in
+`input/jlc3dp-review-2026-10-28/`). The shells as
 printed come back with `proud = 1.0` and `brand = []` in the source, or from git
 (`git show dd660e7:enclosure/output/...`). The fit of the pocket, ledge and bosses, unchanged
 since the first version, was verified on the v1 print (see below); the v7 window and
@@ -63,6 +67,7 @@ Contents:
 | `input/measurements.md` | Hand measurements of parts that have no drawing: the v1 print, the 90-degree USB-C adapter. |
 | `input/usb-c-90-degree-adapter/` | Photos of the 90-degree USB-C adapter; one has the hand measurements drawn on it. |
 | `input/PXL_20260918_*.jpg` | Photos of the v1 print, alone and assembled. |
+| `input/jlc3dp-review-2026-10-28/` | JLC3DP's engineering review of the first order with the maker's mark (v7b print and service files): the thin-wall flags inside the letters (0.22 and 0.24 mm) and the generic warping notice for a part this size. |
 | `input/RGB-Matrix-P2-64x64-2D.dwg`, `.pdf` | Waveshare's drawing of the panel frame (DWG and a PDF rendering of it). |
 | `input/ESP32-S3-RGB-Matrix-2D.pdf` | Waveshare's 1:1 drawing of the controller board. |
 | `input/*details*.jpg` | Waveshare product photos used for the features the drawings do not cover. |
@@ -114,10 +119,18 @@ Contents:
   six screw counterbores, the USB-C window with one groove beside its right end (= USB, the
   programming port; POWER has none), the maker's mark ("p64" in Lato Bold, 9 mm ascent,
   engraved 0.8 mm like the grooves, centred in the strip between the vent bands, read from
-  behind; since 2026-10-27, `brand`, strokes about 1.8 mm, 2.5 mm from the mic2 hole and
-  from the slots), and in p64b the two encoder bushings with their
-  spot-faces. Every wall and rib is 2.0 mm or thicker, with two named exceptions in the
-  glued insert.
+  behind; since 2026-10-27, `brand`, strokes about 1.8 mm, 2.6 mm from the slots and
+  1.65 mm from the mic2 hole). The letters are tracked out by 18 % (`brand_spacing`) and
+  the engraved outline is closed by 0.7 mm (`brand_round`: grown then shrunk, which fills
+  every re-entrant corner with a fillet of that radius), because JLC3DP's review of
+  2026-10-28 found 0.22 mm walls in the mark as first drawn: the gap between the 6 and
+  the 4 was 0.39 mm, between the p and the 6 0.73 mm, the notches where the bowl of the p
+  meets its stem and where the arm of the 6 meets its bowl tapered to nothing, and the
+  counter of the 4 was 1.1 mm wide. With the rework nothing standing between engraved
+  areas is narrower than 1.4 mm and the letter gaps are 1.66 and 1.97 mm (measured on
+  the 2D outline: the material around the mark minus its morphological opening by 1.2 mm
+  leaves no sliver). In p64b the two encoder bushings with their spot-faces. Every wall
+  and rib is 2.0 mm or thicker, with two named exceptions in the glued insert.
 - **Edges:** the back face's perimeter has a 1.4 mm 45-degree chamfer, the front rim a
   1.5 mm fillet, the base's front edge a 3 mm fillet, the counterbore mouths a 0.5 mm
   chamfer (see Edges).
@@ -396,9 +409,14 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
   `_print.stl` and the panel seats without force in both (maintainer, 2026-10-19).
 - Enable elephant-foot compensation (0.1 to 0.2 mm) so the screw counterbores, the
   grooves and the maker's mark stay clean on the first layer (the mark is a 0.8 mm recess
-  in the bed face, four layers deep, like the grooves; its strokes are about 1.8 mm, well
-  above the 1.2 mm bureau line that sank the earlier 0.3 mm text labels). For a shell
-  without it set `brand = []`.
+  in the bed face, four layers deep, like the grooves; its strokes are about 1.8 mm and,
+  since the rework of 2026-10-28, nothing standing between its engraved areas is under
+  1.4 mm, above the 1.2 mm bureau line that sank the earlier 0.3 mm text labels). For a
+  shell without it set `brand = []`.
+- Bureau checks flag two things on these files (JLC3DP, 2026-10-28): wall thickness,
+  which the rework above answers, and a generic deformation and warping notice for a
+  132 x 139 x 36 mm part, accepted as a known risk: both v7 shells of this size printed
+  flat in FDM PLA in October 2026.
 - p64b: the pegs are 2.2 mm pins; MJF nylon prints them fine, for FDM check the fit and
   sand if needed. The spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring
   at the third layer, which is harmless.
@@ -463,7 +481,7 @@ photos `input/PXL_20260918_*.jpg`.
   `boss_od` 10.5; `panel_rot` 90; back wall `vents`, `pin_d` 3, `mic_d` 3.5, `mic1_off`
   [0.5, 1.6]; the maker's mark `brand` ["p64"] (one word, or two with a drawn bar between
   them, `brand_bar` and `brand_gap`; [] = none), `brand_font` Lato Bold, `brand_size` 9,
-  `brand_pos` [0, -1], `brand_depth` = `mark_d` 0.8
+  `brand_pos` [0, -1], `brand_depth` = `mark_d` 0.8, `brand_spacing` 1.18, `brand_round` 0.7
 - Edges: `edge_back_c` 1.4, `edge_rim_r` 1.5, `edge_base_r` 3, `cb_chamfer` 0.5 (all 0 =
   the sharp-edged body)
 - Adapters and window: `adapters`, `ad_*` (the measured adapter), `ad_win_chamfer` 0.5,
