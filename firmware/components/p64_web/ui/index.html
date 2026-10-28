@@ -407,12 +407,13 @@ function renderPills() {
     if (!playsets) return;
     var active = S && S.playback && S.playback.playset ? S.playback.playset.name : playsets.active;
     bar.innerHTML = '';
+    var pills = [];
     (playsets.playsets || []).forEach(function (ps) {
         var b = document.createElement('button');
         b.className = 'pill-item kind-user' + (p64.sameName(ps.name, active) ? ' active' : '');
         b.textContent = ps.name;
         b.onclick = function () { playPlayset(ps.name); };
-        bar.appendChild(b);
+        pills.push(b);
     });
     (playsets.builtins || []).forEach(function (bi) {
         var b = document.createElement('button');
@@ -420,8 +421,23 @@ function renderPills() {
         b.textContent = bi.name;
         if (!bi.enabled) { b.disabled = true; b.title = bi.reason || 'unavailable'; b.style.opacity = '0.45'; }
         b.onclick = function () { playPlayset(bi.name); };
-        bar.appendChild(b);
+        pills.push(b);
     });
+    /* Two .pill-row strips, first half on top, document order kept: the bar in
+       common.css is a column of rows that scrolls horizontally as one on touch
+       and collapses the rows (display: contents) into one wrapping flow on a
+       fine-pointer desktop. Pills appended to the bar directly stack vertically.
+       An odd count puts the extra pill on the top row (same as p3a). */
+    if (pills.length) {
+        var half = Math.ceil(pills.length / 2);
+        [pills.slice(0, half), pills.slice(half)].forEach(function (rowPills) {
+            if (!rowPills.length) return;
+            var row = document.createElement('div');
+            row.className = 'pill-row';
+            rowPills.forEach(function (p) { row.appendChild(p); });
+            bar.appendChild(row);
+        });
+    }
 }
 function playPlayset(name) {
     p64.post('/api/v1/action/play_playset', { name: name }).then(function () { p64.toast('Playing ' + name); p64.refresh(); }).catch(function (e) { p64.toast(e.message, true); });

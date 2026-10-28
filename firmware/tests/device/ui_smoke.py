@@ -62,6 +62,11 @@ def main():
         check(not missing, "%s references only served assets%s" % (path, (": missing " + ", ".join(missing)) if missing else ""))
         check("p64.nav(" in html and "/static/app.js" in html, "%s uses the shared app script and navigation" % path)
         check(bodies[path].endswith(b"</html>\n") or bodies[path].endswith(b"</html>"), "%s ends cleanly (no embedded NUL)" % path)
+    home = bodies["/"].decode("utf-8", "replace")
+    # The pill bar in common.css is a column of .pill-row strips; pills appended to the
+    # bar directly stack vertically (p110). The Home script must build the rows.
+    check('id="pill-bar"' in home and "className = 'pill-row'" in home and "Math.ceil(pills.length / 2)" in home,
+          "the Home page lays its playset pills out in two .pill-row strips")
     settings = bodies["/settings"].decode("utf-8", "replace")
     for face in ("digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"):
         check('<option value="%s">' % face in settings, "the settings page offers the %s face" % face)

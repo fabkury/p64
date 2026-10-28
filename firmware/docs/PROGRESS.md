@@ -1346,6 +1346,16 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-10-28
+
+- Home page pill bar stacked vertically (p110). `common.css` lays the bar out as a column
+  of two `.pill-row` strips (one horizontal scroller on touch, one wrapping flow on a
+  fine-pointer desktop, both taken from p3a), but `renderPills()` appended the pills to
+  the bar directly, so the column stacked them one per line. The script now builds the
+  two rows the way p3a's does (first half on top, document order kept, the odd pill on
+  the top row). `ui_smoke.py` checks that the served Home page builds the rows. Device:
+  private build flashed, `ui_smoke.py` 0 failures, heap 55.5 KB free / 32.8 KB largest.
+
 ### 2026-10-27
 
 - Playsets can be renamed (p108). `POST /api/v1/playsets/<name>/rename {"name"}` is the
