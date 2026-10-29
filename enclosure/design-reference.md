@@ -416,7 +416,12 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
 - Bureau checks flag two things on these files (JLC3DP, 2026-10-28): wall thickness,
   which the rework above answers, and a generic deformation and warping notice for a
   132 x 139 x 36 mm part, accepted as a known risk: both v7 shells of this size printed
-  flat in FDM PLA in October 2026.
+  flat in FDM PLA in October 2026. After the reworked files were uploaded, the second
+  review (2026-10-29) flagged nothing on the walls and repeated only the warping notice
+  for the MJF service part; the owner accepted it in writing the same day and production
+  went ahead (order D2026102854500005 MJF PA12, D2026102854500011 FDM PLA). When the
+  parts arrive, check the MJF back face for flatness against a table edge and that the
+  panel seats without rocking.
 - p64b: the pegs are 2.2 mm pins; MJF nylon prints them fine, for FDM check the fit and
   sand if needed. The spot-faces sit on the bed face and become a 3.3 mm-wide bridge ring
   at the third layer, which is harmless.
