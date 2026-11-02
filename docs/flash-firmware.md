@@ -11,7 +11,6 @@ Two ways, same result:
 
 - **In the browser:** [fabkury.github.io/p64/web-flasher](https://fabkury.github.io/p64/web-flasher/)
   in Chrome or Edge. Choose the release, click Connect, pick the board, click Flash.
-  That page's source and its hosting are described in [docs/web-flasher](web-flasher/README.md).
 - **From the command line:** below, with Espressif's `esptool`. Works in any browser's
   absence, on Windows, macOS and Linux.
 
@@ -97,8 +96,6 @@ The first boot after a flash prints its log on the same port; `esptool`'s compan
 
 ## Building from source instead
 
-Developers and anyone changing the firmware build it with ESP-IDF v5.5.4 and flash with
-the repository's scripts: [firmware/README.md](../firmware/README.md). The published
-binaries are the same public build, made by [CI](../.github/workflows/release.yml) from
-the tagged commit; [firmware/docs/release-build.md](../firmware/docs/release-build.md)
-describes what a release contains and how one is cut.
+Developers build the firmware with ESP-IDF v5.5.4 and flash it with the repository's
+scripts: [firmware/README.md](../firmware/README.md). The published binaries are the
+same public build ([release-build.md](../firmware/docs/release-build.md)).

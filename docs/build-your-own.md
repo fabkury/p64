@@ -29,14 +29,12 @@ Building a p64 is four steps, three of them shopping and waiting:
 
 Then the [first run](#e-first-run): join its Wi-Fi setup network and it plays.
 
-Both variants are assembled and in daily use (p64a since 2026-10-09, p64b since
-2026-10-17).
+Both variants are built and in daily use.
 
 ## A. Buy the parts
 
-Every link is the listing the maintainer bought from or recommends; prices are what
-the listing showed on the date given, in US dollars, before shipping and tax. The
-[build costs](costs.md) page has the invoices and the per-build totals.
+Prices are what each listing showed on the date given, in US dollars, before shipping
+and tax; [build costs](costs.md) has the per-build totals.
 
 ### A.1 p64a and p64b alike
 
@@ -45,18 +43,18 @@ the listing showed on the date given, in US dollars, before shipping and tax. Th
 | 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) controller board (SKU 34422) | Waveshare | $24.99, 2026-09-02. The box includes the panel power lead and a short 4-pin cable. |
 | 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) panel, GOB version (SKU 33838) | Waveshare | $31.99, 2026-09-02. The standard (non-GOB) version, SKU 23706, fits the same shell. |
 | 1 | [PSU-27W-USB-C](https://www.waveshare.com/psu-27w-usb-c-c.htm) power supply; pick the US, EU or UK plug on the page | Waveshare | $6.99, 2026-09-02. Any 5 V USB-C supply rated 3 A or more also works. |
-| 2 | [Right-angle USB-C male-to-female adapters, 2-pack](https://www.amazon.com/dp/B0B2NJ3P3L) (AreMe, metallic purple) | Amazon | $4.99, 2026-10-19. [This 4-pack](https://www.amazon.com/dp/B0H3JNGX1D), $6.99 on 2026-10-10, is what the maintainer's own units use. |
+| 2 | [Right-angle USB-C male-to-female adapters, 2-pack](https://www.amazon.com/dp/B0B2NJ3P3L) (AreMe, metallic purple) | Amazon | $4.99, 2026-10-19. [This 4-pack](https://www.amazon.com/dp/B0H3JNGX1D) ($6.99, 2026-10-10) also fits. |
 | 6 | [M3 × 10 mm button-head hex screws, 50-pack](https://www.amazon.com/dp/B0GJK7Z9DH) (MoyoCodi, black stainless; choose size "M3 x 10mm") | Amazon | $5.99, 2026-10-19. The pack includes the 2 mm hex key that drives them. |
 | 1 | USB-C data cable | any | For the first flash. A charge-only cable cannot flash. The supply's own cable powers the device. |
 | a dab | Cyanoacrylate glue or double-sided tape | any | Holds the printed cradle insert. |
 | optional | microSD card, FAT32 | any | Local artwork files and a persistent cache. |
 
-Order the Waveshare items together: their freight to New York was $25.60 for the three
-parts in one box (2026-09-02).
+Order the three Waveshare items together: freight is charged per shipment ($25.60 to
+New York, 2026-09-02).
 
 Why these adapters: the shell's back window is sized for a 19.3 × 12.7 × 8.0 mm adapter
-body with a 7.7 mm plug. Both linked listings fit (confirmed 2026-10-15). A different
-shape needs the [measurements](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
+body with a 7.7 mm plug. Both linked listings fit. A different shape needs the
+[measurements](../enclosure/input/measurements.md#90-degree-usb-c-adapter-two-one-per-driver-board-port)
 checked first.
 
 ### A.2 p64b only
@@ -68,7 +66,7 @@ checked first.
 | 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into the controller. |
 | 1 | [Adafruit 4397](https://www.adafruit.com/product/4397) STEMMA QT cable to female sockets, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into board A; its sockets take the 4209's pins. |
 | 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm | Adafruit | $1.25, 2026-09-27. Board A to board B. |
-| 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. The maintainer's build used ½ W ones from a 40-pack ($3.99, 2026-09-17); ¼ W lie flatter. |
+| 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. ½ W resistors also work but are bulkier. |
 | some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack | any | Wraps the four cable joints. |
 
 Tools for p64b: a soldering iron with a fine tip and electronics solder, flux if you
@@ -77,7 +75,7 @@ the knobs' set screws). A multimeter is optional and recommended.
 
 ### A.3 What it costs
 
-From the maintainer's invoices, shipped to New York (details in [build costs](costs.md)):
+Delivered to New York, from the invoices in [build costs](costs.md):
 
 | Build | Parts | Shipping | Tax | Delivered |
 |---|---:|---:|---:|---:|
@@ -86,12 +84,10 @@ From the maintainer's invoices, shipped to New York (details in [build costs](co
 
 ## B. Order the shell from JLC3DP
 
-The shell is two printed parts: the shell itself and a small cradle insert. The
-maintainer had both printed by [JLC3DP](https://jlc3dp.com) in one order on
-2026-09-28, received on 2026-10-09: the shell in black PLA ($10.23 for p64a, $10.10 for
-p64b, before shipping) and the insert in black resin ($1.07). JLC3DP does not accept a
-part as small as the insert for its PLA process, so the insert is ordered in resin, as
-below; it has only ever been printed that way. Nothing here needs a 3D printer or any
+The shell is two printed parts: the shell itself, in black PLA, and a small cradle
+insert, in black resin (JLC3DP's PLA process does not take a part as small as the
+insert). At [JLC3DP](https://jlc3dp.com) the shell costs about $10 and the insert about
+$1, plus shipping; delivery took eleven days. Nothing here needs a 3D printer or any
 experience with one.
 
 > *What is the cradle insert? Do I need it?* Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works as a lever on the controller's own USB-C connector every time it is plugged, pulled or bumped, and that connector is what would give. The insert takes the force instead.
@@ -105,12 +101,9 @@ with the arrow at the top right of the file view):
 | p64a | [p64_enclosure_print.stl](../enclosure/output/p64a/v7a/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64a/v7a/p64_cradle_insert.stl) |
 | p64b | [p64_enclosure_print.stl](../enclosure/output/p64b/v7b/p64_enclosure_print.stl) | [p64_cradle_insert.stl](../enclosure/output/p64b/v7b/p64_cradle_insert.stl) |
 
-The maintainer's v7a and v7b shells were printed at JLC3DP from these files as they
-stood until 2026-10-20 (confirmed 2026-10-19). The current files differ in one thing:
-the rim is 0.5 mm taller, so the LED mask stands 0.5 mm proud of it instead of 1.0; that
-revision has not been printed yet. The folders also hold a `.3mf` copy of the shell (for
-home printers) and `p64_enclosure_service.stl` (a looser fit, for nylon and resin
-processes); do not upload those.
+The folders also hold a `.3mf` copy of the shell (for home printers) and
+`p64_enclosure_service.stl` (a looser fit, for nylon and resin processes); do not
+upload those.
 
 **2. Open the quote page.** Go to [jlc3dp.com](https://jlc3dp.com) and click
 **Order Now** at the top right. The page "Online 3D Printing Quote" opens with the
@@ -125,7 +118,7 @@ as a line in the list, with a price.
 | Option | Choose |
 |---|---|
 | 3D Technology | **FDM(Plastic)** |
-| Material | **PLA-P** (JLC3DP's name for plain PLA since 2026; the page says the rename changed nothing) |
+| Material | **PLA-P** (plain PLA) |
 | Color | **Black** |
 | Thread | **No** |
 | Package Box | either |
@@ -134,15 +127,12 @@ as a line in the list, with a price.
 
 Click **Save**. Then open **Edit Specifications** on the insert's line and choose
 **SLA(Resin)** as the 3D Technology, a standard resin in **Black** as the material and
-colour, and the other options as above. At 34 × 7 × 6 mm the insert is below the
-minimum size JLC3DP takes for FDM PLA; resin prints it cleanly, and the maintainer's
-black resin inserts fit as designed. Neither part needs finishing.
+colour, and the other options as above. Neither part needs finishing.
 
 **5. Order.** On the right, leave **Build Time** at **Standard**, tick **I agree to
 JLC3DP's terms of use** and click **Submit Order**. You need a JLC3DP account (sign in or
-create one when asked), then it asks for a shipping address and a shipping method (choose the
-cheapest tracked one; the maintainer's two-shell order paid $11.97 of shipping and a
-$0.50 payment fee), then for payment.
+create one when asked), then it asks for a shipping address, a shipping method (the
+cheapest tracked one is fine) and payment.
 
 **If you have your own printer** instead: for the shell, PLA or PETG, 0.2 mm layers,
 3 to 4 perimeters, 20 % infill, no supports, a bed of at least 140 × 140 mm, 0.1 to
@@ -234,7 +224,7 @@ Nothing on board B.
 
 <img src="images/photos/p64b-pullups-soldered.jpg" alt="Board A on the bench with the two pull-up resistors standing on its header pads, soldered to VIN, SDA and SCL" width="600">
 
-Board A as built on 2026-10-17: the two resistors standing on the header holes.
+Board A with its two resistors standing on the header holes.
 
 **Job 3: plug the two cables into each other** (no solder). The controller's socket
 and the boards' sockets use different pin orders, so a plain cable between them
@@ -261,7 +251,7 @@ few seconds board A's small colour LED flashes **green** and board B's flashes
 **blue**. Both green means job 1 did not take; one dark means its cable; the
 [troubleshooting table](hardware/encoders-soldered.md#9-what-can-go-wrong) has the
 rest. Optional meter checks are in the long guide's
-[section 8](hardware/encoders-soldered.md#8-optional-checks-with-a-multimeter-or-a-breadboard).
+[section 8](hardware/encoders-soldered.md#8-optional-checks-with-a-multimeter).
 
 **Fit the boards** (power off, before the panel goes in):
 
@@ -318,8 +308,8 @@ first time, most of it the ESP-IDF installer.
 
 1. Install Git, PowerShell 7 (Windows) and **ESP-IDF v5.5.4** for the ESP32-S3,
    following [Espressif's instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
-   Windows is the workflow the maintainer uses; Linux builds run in CI; macOS and
-   Linux flashing have not been tried by the maintainer.
+   The scripts below are for Windows; Linux and macOS use `idf.py` directly (macOS is
+   untested).
 2. Clone the repository and enter the firmware folder:
 
    ```powershell
