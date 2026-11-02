@@ -87,11 +87,12 @@ From the maintainer's invoices, shipped to New York (details in [build costs](co
 ## B. Order the shell from JLC3DP
 
 The shell is two printed parts: the shell itself and a small cradle insert. The
-maintainer had both printed by [JLC3DP](https://jlc3dp.com): the shell in black PLA
-(the v7 shells of 2026-09-28 arrived on 2026-10-09, eleven days after ordering, and cost
-$10.23 (p64a shell) or $10.10 (p64b shell) before shipping) and the insert in black
-resin. The insert is too small for the PLA process; order it in resin, as below.
-Nothing here needs a 3D printer or any experience with one.
+maintainer had both printed by [JLC3DP](https://jlc3dp.com) in one order on
+2026-09-28, received on 2026-10-09: the shell in black PLA ($10.23 for p64a, $10.10 for
+p64b, before shipping) and the insert in black resin ($1.07). JLC3DP does not accept a
+part as small as the insert for its PLA process, so the insert is ordered in resin, as
+below; it has only ever been printed that way. Nothing here needs a 3D printer or any
+experience with one.
 
 ### What is the cradle insert? Do I need it?
 
@@ -138,9 +139,9 @@ as a line in the list, with a price.
 
 Click **Save**. Then open **Edit Specifications** on the insert's line and choose
 **SLA(Resin)** as the 3D Technology, a standard resin in **Black** as the material and
-colour, and the other options as above. The insert's 1.2 mm sole and 34 × 7 × 6 mm
-size are below what the FDM service prints reliably; resin prints it cleanly, and the
-maintainer's black resin insert fits as designed. Neither part needs finishing.
+colour, and the other options as above. At 34 × 7 × 6 mm the insert is below the
+minimum size JLC3DP takes for FDM PLA; resin prints it cleanly, and the maintainer's
+black resin inserts fit as designed. Neither part needs finishing.
 
 **5. Order.** On the right, leave **Build Time** at **Standard**, tick **I agree to
 JLC3DP's terms of use** and click **Submit Order**. You need a JLC3DP account (sign in or
