@@ -1,0 +1,5 @@
+Let's polish this project's main README, which is this project's homepage as well (on GitHub).
+
+In the "Choose a variant" area, there is a table comparing p64a with p64b. Add a row to that table with the cost of each unit.
+
+Once done, commit and push so I can see the changes on GitHub.
