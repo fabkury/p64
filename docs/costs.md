@@ -16,7 +16,7 @@ Section 3 is the log of every order behind the numbers.
 | PSU-27W-USB-C-C supply | 6.99 | | | Waveshare, 2026-09-02 |
 | Waveshare freight (YunExpress, China to New York) | | 25.60 | | the three parts above shipped together |
 | Shell v7a, JLC3DP FDM PLA | 10.23 | | | JLC3DP, 2026-09-28 |
-| Cradle insert | 1.07 | | | JLC3DP, 2026-09-28 |
+| Cradle insert, black resin | 1.07 | | | JLC3DP, 2026-09-28 |
 | JLC3DP shipping and payment fee, half of the two-shell order | | 6.24 | | see the note below |
 | Two right-angle USB-C adapters | 4.99 | 0.00 | 0.44 | Amazon listing price, 2026-10-17 |
 | M3×10 button-head hex screws, pack of 50 (a build uses six) | 5.99 | 0.00 | 0.53 | Amazon, 2026-09-18 |
@@ -33,7 +33,7 @@ Everything in the p64a column, with the v7b shell in place of v7a, plus the enco
 |---|---:|---:|---:|---|
 | Controller, panel and supply, as above | 63.97 | 25.60 | | Waveshare, 2026-09-02 |
 | Shell v7b, JLC3DP FDM PLA | 10.10 | | | JLC3DP, 2026-09-28 |
-| Cradle insert | 1.07 | | | JLC3DP, 2026-09-28 |
+| Cradle insert, black resin | 1.07 | | | JLC3DP, 2026-09-28 |
 | JLC3DP shipping and payment fee, half of the two-shell order | | 6.24 | | see the note below |
 | Two right-angle USB-C adapters | 4.99 | 0.00 | 0.44 | Amazon listing price, 2026-10-17 |
 | M3×10 button-head hex screws, pack of 50 (a build uses six) | 5.99 | 0.00 | 0.53 | Amazon, 2026-09-18 |
@@ -60,7 +60,7 @@ Not costed, as for p64a: glue, microSD card, USB data cable.
   charged New York's 8.875 % on goods and on shipping; the two direct imports
   (Waveshare, JLC3DP) charged none. A builder elsewhere pays their own rate, or none.
 - **JLC3DP shipping.** The v7 shells were printed in one order: one v7a shell, one v7b
-  shell and three inserts, $23.54 of printing, $11.97 of shipping and a $0.50 payment
+  shell (FDM PLA) and three inserts (resin), $23.54 of printing, $11.97 of shipping and a $0.50 payment
   fee. The tables charge each build half of the $12.47, or $6.24. A single shell with
   its insert shipped alone would cost more per build; the only single-shell data point
   is the v1 shell of 2026-09-05, $18.83 delivered.
@@ -91,7 +91,7 @@ that shared an Amazon order are left out, and their share of that order's tax wi
 | 2026-09-11 | Adafruit | 2 × 5880 boards 15.90, 2 × 5528 silver knobs 5.90, 4209 0.95, 4397 0.95, 4399 50 mm cable 0.95 | 24.65 | 5.82 | 2.70 | 33.17 |
 | 2026-09-17 | Amazon | 2.2 kΩ resistors, 40-pack 3.99; three 400-point breadboards 5.98 (bench test only) | 9.97 | 0.00 | 0.88 | 10.85 |
 | 2026-09-18 | Amazon | M3×10 button-head hex socket screws, black oxide stainless, 50-pack (free shipping) | 5.99 | 0.00 | 0.53 | 6.52 |
-| 2026-09-28 | JLC3DP | v7a shell 10.23, v7b shell 10.10, 3 × cradle insert 3.21 (received 2026-10-09); payment fee 0.50 counted as shipping | 23.54 | 12.47 | 0.00 | 36.01 |
+| 2026-09-28 | JLC3DP | v7a shell 10.23, v7b shell 10.10, 3 × cradle insert in resin 3.21 (received 2026-10-09); payment fee 0.50 counted as shipping | 23.54 | 12.47 | 0.00 | 36.01 |
 | 2026-09-27 | Adafruit | 3 × 5880 boards 23.85 (one replaced the board killed on the bench, two spare), 2 × 5529 blue knobs 5.90 (spare set), 2 × 4401 200 mm cables 2.50, 4209 0.95, 4397 0.95, heat-shrink pack 1649 4.95; received 2026-10-01 | 39.10 | 6.33 | 4.03 | 49.46 |
 | 2026-10-10 | Amazon | 2 × 4-packs of right-angle USB-C adapters, 6.99 each (free shipping) | 13.98 | 0.00 | 1.24 | 15.22 |
 | | **Total spent on p64 parts and prints** | | | | | **259.63** |

@@ -399,7 +399,8 @@ stay plugged in, and the insert takes a drop of cyanoacrylate or a strip of tape
   back, and the window's chamfer is a 45-degree overhang that starts at the bed. Print
   height 36.2 mm (35.7 on the printed shells, before the 0.5 mm rim of 2026-10-20); about
   82 g of PLA with 20 percent infill.
-- Print `p64_cradle_insert.stl` too: sole down, no support, under 2 g; its walls lean
+- Print `p64_cradle_insert.stl` too: sole down, no support, under 2 g. JLC3DP refuses
+  a part this small in FDM PLA; the maintainer's inserts are black resin (SLA). Its walls lean
   6 degrees (they follow the adapter bodies, the sole follows the sloping cavity back). If
   the opening comes out tight, a file pass fixes it; loose is fine.
 - 0.2 mm layers, 3 to 4 perimeters, 20 percent infill, PLA or PETG.
