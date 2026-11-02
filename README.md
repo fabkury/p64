@@ -61,6 +61,7 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 | Soldering | None | Required for the encoder wiring |
 | Shell | v7a | v7b |
 | Status | Finished; assembled 2026-10-09, in daily use | Finished; assembled 2026-10-17, in daily use |
+| Cost | About US$119 delivered | About US$157 delivered |
 
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.
