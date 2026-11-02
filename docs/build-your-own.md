@@ -87,10 +87,18 @@ From the maintainer's invoices, shipped to New York (details in [build costs](co
 ## B. Order the shell from JLC3DP
 
 The shell is two printed parts: the shell itself and a small cradle insert. The
-maintainer had both printed by [JLC3DP](https://jlc3dp.com) in black PLA, twice; the
-v7 shells of 2026-09-28 arrived on 2026-10-09, eleven days after ordering, and cost
-$10.23 (p64a shell) or $10.10 (p64b shell) plus $1.07 for the insert, before shipping.
-Nothing below needs a 3D printer or any experience with one.
+maintainer had both printed by [JLC3DP](https://jlc3dp.com): the shell in black PLA
+(the v7 shells of 2026-09-28 arrived on 2026-10-09, eleven days after ordering, and cost
+$10.23 (p64a shell) or $10.10 (p64b shell) before shipping) and the insert in black
+resin. The insert is too small for the PLA process; order it in resin, as below.
+Nothing here needs a 3D printer or any experience with one.
+
+### What is the cradle insert? Do I need it?
+
+Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the
+two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works
+as a lever on the controller's own USB-C connector every time it is plugged, pulled or
+bumped, and that connector is what would give. The insert takes the force instead.
 
 **1. Download the two files.** Pick your variant and save both files to your computer
 (each link opens the file on GitHub; use its **Download raw file** button, the icon
@@ -115,8 +123,8 @@ processes); do not upload those.
 **3. Upload.** Click **Upload 3D models** and choose both `.stl` files. Each appears
 as a line in the list, with a price.
 
-**4. Set the options for each file.** Click **Edit Specifications** on a line and
-choose, top to bottom:
+**4. Set the options for each file.** The two parts use different processes. Click
+**Edit Specifications** on the shell's line and choose, top to bottom:
 
 | Option | Choose |
 |---|---|
@@ -128,9 +136,11 @@ choose, top to bottom:
 | Qty | **1** |
 | Product Desc | "Enclosure, Block, Plate, Cylinder" category, if the form asks for one |
 
-Click **Save**, then repeat for the second file. Both parts print without supports and
-need no finishing. The insert's 1.2 mm sole is at the service's minimum wall; their
-file check accepted it (a thinner draft was flagged).
+Click **Save**. Then open **Edit Specifications** on the insert's line and choose
+**SLA(Resin)** as the 3D Technology, a standard resin in **Black** as the material and
+colour, and the other options as above. The insert's 1.2 mm sole and 34 × 7 × 6 mm
+size are below what the FDM service prints reliably; resin prints it cleanly, and the
+maintainer's black resin insert fits as designed. Neither part needs finishing.
 
 **5. Order.** On the right, leave **Build Time** at **Standard**, tick **I agree to
 JLC3DP's terms of use** and click **Submit Order**. You need a JLC3DP account (sign in or
@@ -138,10 +148,11 @@ create one when asked), then it asks for a shipping address and a shipping metho
 cheapest tracked one; the maintainer's two-shell order paid $11.97 of shipping and a
 $0.50 payment fee), then for payment.
 
-**If you have your own printer** instead: PLA or PETG, 0.2 mm layers, 3 to 4
-perimeters, 20 % infill, no supports, a bed of at least 140 × 140 mm, 0.1 to 0.2 mm
-elephant-foot compensation. The shell file already lies in its print orientation;
-print the insert sole down. About 82 g plus 2 g. The
+**If you have your own printer** instead: for the shell, PLA or PETG, 0.2 mm layers,
+3 to 4 perimeters, 20 % infill, no supports, a bed of at least 140 × 140 mm, 0.1 to
+0.2 mm elephant-foot compensation; the file already lies in its print orientation, about
+82 g. Print the insert on a resin printer if you have one, sole down; on an FDM printer
+it is a 2 g part at the limit of what a 0.4 mm nozzle resolves, so check its walls. The
 [enclosure guide](../enclosure/README.md) and
 [design reference](../enclosure/design-reference.md) have the rest.
 
@@ -151,7 +162,8 @@ back are open.
 
 <img src="../enclosure/output/p64a/v7a/render_insert.png" alt="CAD view of the separate U-shaped USB-C cradle insert and its flat sole" width="420">
 
-The cradle insert, the second of the two prints (CAD view).
+The cradle insert, the second of the two prints (CAD view): the U holds the 90-degree
+USB-C adapter, the sole is glued to the inside of the back wall.
 
 ## C. Assemble
 
