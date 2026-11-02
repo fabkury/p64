@@ -94,12 +94,7 @@ part as small as the insert for its PLA process, so the insert is ordered in res
 below; it has only ever been printed that way. Nothing here needs a 3D printer or any
 experience with one.
 
-### What is the cradle insert? Do I need it?
-
-Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the
-two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works
-as a lever on the controller's own USB-C connector every time it is plugged, pulled or
-bumped, and that connector is what would give. The insert takes the force instead.
+> *What is the cradle insert? Do I need it?* Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works as a lever on the controller's own USB-C connector every time it is plugged, pulled or bumped, and that connector is what would give. The insert takes the force instead.
 
 **1. Download the two files.** Pick your variant and save both files to your computer
 (each link opens the file on GitHub; use its **Download raw file** button, the icon
