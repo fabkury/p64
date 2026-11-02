@@ -1,0 +1,5 @@
+Let's polish as well as fix https://github.com/fabkury/p64/blob/main/docs/build-your-own.md.
+
+In section "B. Order the shell from JLC3DP", we need these changes:
+ - The cradle insert cannot be printed in PLA because it is too small. I printed it in black resin with success.
+ - Please add a "What is the cradle insert? Do I need it?" sub-section, very briefly explaining that yes, you need the cradle insert; it prevents the USB-C cable from acting as a lever on the USB-C connector. The cradle insert provides physical support to the 90-degree USB-C adapter inside p64.
