@@ -1,0 +1,5 @@
+Let's design new clock widgets for p64, using RetroDiffusion.
+
+Please come up with 4 concepts, generate previews using RetroDiffusion, and present them to me in a private artifact.
+
+Your budget at RetroDiffusion for this is $6.00.
