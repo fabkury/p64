@@ -51,7 +51,10 @@ BOARD_X, BOARD_W = 27, 27  # where the widened board goes
 # the castle's window and door, [x0, y0, x1, y1) in the source, and their glow at night
 CASTLE_LIGHTS = [((14, 32, 16, 37), (255, 200, 90, 255)), ((13, 44, 16, 49), (214, 138, 60, 255))]
 FISH_KEY = (40, 90, 140)  # the flat colour the fish were animated on
-FISH = {"fish-a": ("fish_a_k20.png", 20), "fish-b": ("fish_b_idle_0.gif", 32), "fish-c": ("fish_d_k20.png", 20)}
+# name: (source, cell size, whether the service painted it facing left). The faces draw every
+# strip facing right and mirror it for the way back, so a left-facing source is mirrored here
+# (fish_b swam backward on the device until p117, 2026-11-03).
+FISH = {"fish-a": ("fish_a_k20.png", 20, False), "fish-b": ("fish_b_idle_0.gif", 32, True), "fish-c": ("fish_d_k20.png", 20, False)}
 
 
 def src(name):
@@ -180,12 +183,14 @@ def aquarium():
             for x in range(x0, x1):
                 lights.putpixel((x, y), glow)
     save("aquarium", "lights", lights)
-    for name, (file, cell) in FISH.items():
+    for name, (file, cell, faces_left) in FISH.items():
         if file.endswith(".gif"):
             cells = gif_frames(src(file))
         else:
             strip = Image.open(src(file)).convert("RGB")
             cells = [strip.crop((i * cell, 0, (i + 1) * cell, cell)) for i in range(strip.width // cell)]
+        if faces_left:
+            cells = [c.transpose(Image.Transpose.FLIP_LEFT_RIGHT) for c in cells]
         keyed = []
         for c in cells:
             k = c.convert("RGBA")

@@ -1346,6 +1346,18 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-11-03
+
+- Aquarium: the red and white fish swam backward (p117). Retro Diffusion painted that
+  strip (`fish_b_idle_0.gif`) facing left while the other two face right, and
+  `face_aquarium.cpp` draws every strip as facing right and mirrors it on the way back, so
+  the large near fish led with its tail. Fixed at the source: `prep_rd_clock_assets.py`
+  now carries a facing-left flag per strip and mirrors that one when it cuts the sheet;
+  `fish-b.png`, the embedded assets, the mock's review images and the five aquarium
+  references were regenerated (no other face changed). Host tests pass against the new
+  references; device: private build flashed, the fish seen head-first both ways in
+  `/api/v1/frame`, `widgets_smoke.py` 0 failures, heap 63 KB free / 34 KB largest at boot.
+
 ### 2026-10-28
 
 - Home page pill bar stacked vertically (p110). `common.css` lays the bar out as a column

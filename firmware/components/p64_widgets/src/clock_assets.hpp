@@ -18,7 +18,7 @@ struct Png {
 };
 
 extern const Png kAquariumFishAPng;  // aquarium/fish-a.png, 160x17, 2139 bytes
-extern const Png kAquariumFishBPng;  // aquarium/fish-b.png, 208x19, 3328 bytes
+extern const Png kAquariumFishBPng;  // aquarium/fish-b.png, 208x19, 3256 bytes
 extern const Png kAquariumFishCPng;  // aquarium/fish-c.png, 112x10, 1582 bytes
 extern const Png kAquariumFrontPng;  // aquarium/front.png, 1024x64, 7783 bytes
 extern const Png kAquariumLightsPng;  // aquarium/lights.png, 64x64, 145 bytes
