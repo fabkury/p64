@@ -1578,13 +1578,14 @@ def draw_horizon_rd(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip=
 # each on its own lane and wagging its tail (eight frames played forth and back), and the
 # time on the sunken sign (the time only: the board has no room for AM or PM). The far
 # fish pass behind the castle, the plant, the chest and the sign; the near one in front of
-# everything but the sign's board. The tank's lamp follows the sun: by night the water
+# everything but the signpost (p118). The tank's lamp follows the sun: by night the water
 # goes dark blue, the castle's window and door glow, the small fish hides and the others
 # swim at half speed. Everything after the sun's elevation is integer arithmetic (the
 # daylight in 256ths), so the firmware's pixels are the mock's.
 
 TANK_FRAMES, TANK_MS = 16, 150
-BOARD_X, BOARD_Y = 27, 19
+BOARD_X, BOARD_Y = 27, 19  # the sign's board
+SIGN_Y = 16  # sign.png starts at the post's cap, three rows above the board
 SIGN_INK = (255, 240, 200)
 SIGN_SHADOW = (58, 38, 30)
 NIGHT_TANK = (77, 102, 179)  # in 256ths: what night leaves of red, green and blue
@@ -1647,7 +1648,7 @@ def draw_aquarium(m, o, lat=40.0, lon=0.0, tz=0.0, millis=0):
     for fish in FISHES:
         if fish[8]:
             draw_fish(frame, fish, swim_ms)
-    blit(frame, sign, BOARD_X, BOARD_Y)
+    blit(frame, sign, BOARD_X, SIGN_Y)  # the signpost, in front of the near fish too
     # the lamp: everything dims to a blue night, then the castle's lights and the time glow
     if light < 256:
         dim = [NIGHT_TANK[i] + ((256 - NIGHT_TANK[i]) * light >> 8) for i in range(3)]

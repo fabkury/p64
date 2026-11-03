@@ -4,7 +4,7 @@
 // to wall and turn, each on its own lane and wagging its tail (eight frames played forth
 // and back), and the time on the sunken sign (the time only: the board has no room for AM
 // or PM). The far fish pass behind the castle, the plant, the chest and the sign; the near
-// one in front of everything but the sign's board. The tank's lamp follows the sun: by
+// one in front of everything but the signpost (p118). The tank's lamp follows the sun: by
 // night the water goes dark blue, the castle's window and door glow, the small fish hides
 // and the others swim at half speed. Everything after the sun's elevation is integer
 // arithmetic (the daylight in 256ths), the same as tools/mock_clock_faces.py: the host
@@ -26,7 +26,8 @@ using gfx::Rgb;
 
 constexpr int kTankFrames = 16;
 constexpr int kTankMs = static_cast<int>(kAquariumFrameMs);
-constexpr int kBoardX = 27, kBoardY = 19;
+constexpr int kBoardX = 27, kBoardY = 19;  // the sign's board
+constexpr int kSignY = 16;                  // sign.png starts at the post's cap, three rows above the board
 constexpr Rgb kSignInk{255, 240, 200}, kSignShadow{58, 38, 30};
 constexpr int kNightTank[3] = {77, 102, 179};  // in 256ths: what night leaves of red, green and blue
 constexpr int kNightBelow = 77;                // the daylight (of 256) under which it is night for the fish
@@ -99,7 +100,7 @@ void draw_aquarium(Frame &frame, const Moment &m, const Options &o, const Sky &p
   sprite::blit(frame, tank, 0, 0);  // the decor in front of the far fish
   for (int i = 0; i < AquariumArt::kFishCount; ++i)
     if (kFishes[i].near) draw_fish(frame, art.fish[i], kFishes[i], swim_ms);
-  sprite::blit(frame, art.sign.view(), kBoardX, kBoardY);
+  sprite::blit(frame, art.sign.view(), kBoardX, kSignY);  // the signpost, in front of the near fish too
   // the lamp: everything dims to a blue night, then the castle's lights and the time glow
   if (light < 256) {
     int dim[3];

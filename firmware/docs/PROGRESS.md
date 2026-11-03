@@ -1348,6 +1348,15 @@ them. Newest entries are at the bottom of [Log](#log).
 
 ### 2026-11-03
 
+- Aquarium: the near fish swam in front of the sign's post (p118). `sign.png` held the
+  board alone, drawn last, while the post was part of the tank's decor, which the near
+  fish passes in front of, so its fins hid the post's cap and shaft. The prep script now
+  cuts the signpost whole (the board plus the post's own pixels from its cap three rows
+  above the board down to the chest, 27x30, taken from a frame where its one flickering
+  highlight pixel is steady) and the face and the mock blit it from row 16. The near fish
+  now passes behind the whole signpost; the five aquarium references and the review
+  images regenerated, host tests pass. Device: flashed, the cap seen through the fins in
+  `/api/v1/frame`, `widgets_smoke.py` 0 failures, heap 61.9 KB free / 34 KB largest.
 - Aquarium: the red and white fish swam backward (p117). Retro Diffusion painted that
   strip (`fish_b_idle_0.gif`) facing left while the other two face right, and
   `face_aquarium.cpp` draws every strip as facing right and mirrors it on the way back, so

@@ -22,7 +22,7 @@ Aquarium:
   tank.png     the 16 frames of the tank side by side (the plant sways, bubbles rise), the
                sign widened to hold the time, black outside the glass
   front.png    the same frames with only what stands in front of the far fish
-  sign.png     the sign's board, drawn last
+  sign.png     the signpost (the board and its post down to the chest), drawn last
   lights.png   the castle's windows, lit at night
   fish-a.png, fish-b.png, fish-c.png   eight frames each, facing right
 """
@@ -47,6 +47,8 @@ TANK_FRAMES = 16
 OUTSIDE = (148, 149, 151)  # the grey around the glass
 WATER = [(122, 188, 195), (100, 160, 171), (53, 104, 119)]
 BOARD = (33, 19, 50, 29)  # the sign's board in the source, [x0, y0, x1, y1)
+POST = (40, 16, 43, 46)  # the sign's post, from its cap above the board down to the chest
+POST_FRAME = 2  # the frame the post is taken from (one highlight pixel flickers in frames 0 and 1)
 BOARD_X, BOARD_W = 27, 27  # where the widened board goes
 # the castle's window and door, [x0, y0, x1, y1) in the source, and their glow at night
 CASTLE_LIGHTS = [((14, 32, 16, 37), (255, 200, 90, 255)), ((13, 44, 16, 49), (214, 138, 60, 255))]
@@ -152,6 +154,15 @@ def aquarium():
     frames = gif_frames(src("tank_subtle_0.gif"))
     assert len(frames) == TANK_FRAMES
     board = wide_board(frames[0])
+    # The signpost drawn last, in front of the near fish (p118): the board and, in the
+    # rows above and below it, the post's own pixels.
+    signpost = Image.new("RGBA", (BOARD_W, POST[3] - POST[1]), (0, 0, 0, 0))
+    signpost.paste(board.convert("RGBA"), (0, BOARD[1] - POST[1]))
+    post = frames[POST_FRAME].crop(POST).convert("RGBA")
+    for y in range(post.height):
+        if not (BOARD[1] <= POST[1] + y < BOARD[3]):
+            for x in range(post.width):
+                signpost.putpixel((POST[0] - BOARD_X + x, y), post.getpixel((x, y)))
     tank = Image.new("RGB", (64 * TANK_FRAMES, 64))
     front = Image.new("RGBA", tank.size, (0, 0, 0, 0))
     for i, f in enumerate(frames):
@@ -176,7 +187,7 @@ def aquarium():
                 front.putpixel((64 * i + x, y), px[x, y] + (255,))
     save("aquarium", "tank", tank)
     save("aquarium", "front", front)
-    save("aquarium", "sign", board)
+    save("aquarium", "sign", signpost)
     lights = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     for (x0, y0, x1, y1), glow in CASTLE_LIGHTS:
         for y in range(y0, y1):
