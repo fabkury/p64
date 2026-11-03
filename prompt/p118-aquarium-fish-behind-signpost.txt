@@ -1,0 +1,7 @@
+I found another nuanced bug in this same widget.
+
+Please look at the attached image. Notice this:
+ - The signpost that tells the time has two parts: the post, and the sign. The post comes from the ground and holds the sign up.
+ - Red-and-white fish should be displayed behind the signpost, but it is being displayed behind the sign but in front of the post.
+
+Notice in the image how the lower fins of the fish overlap the post, hiding it, when it was the post that should hide the fish parts.
