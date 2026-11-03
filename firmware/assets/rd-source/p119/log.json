@@ -1,0 +1,584 @@
+[
+ {
+  "name": "observatory",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 3,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1191,
+   "prompt": "A small white domed astronomical observatory on top of a green grassy hill, seen from the side and slightly below, the dome's slit open with a telescope tube poking out, a winding footpath up the hill, two dark pine trees, the hill and observatory fill the lower half of the picture, above them a clear deep blue twilight sky that takes the whole upper half of the picture, empty apart from a few tiny stars."
+  },
+  "remaining": 12.100000000000005,
+  "files": [
+   "observatory_0.png",
+   "observatory_1.png",
+   "observatory_2.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:17",
+  "cost": 0.18
+ },
+ {
+  "name": "hearth",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 3,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1192,
+   "prompt": "The inside of a cosy cottage living room, looking straight at a grey stone fireplace with a bright fire burning in it, a wooden mantelpiece above the fire, and above the mantelpiece a large plain blank dark wooden board hanging on the wall, a small window with daylight on the left wall, a red armchair on the right, a round rug and a sleeping orange cat on the floor, warm golden light."
+  },
+  "remaining": 12.100000000000005,
+  "files": [
+   "hearth_0.png",
+   "hearth_1.png",
+   "hearth_2.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:17",
+  "cost": 0.18
+ },
+ {
+  "name": "terminal",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 3,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1193,
+   "prompt": "An old beige 1980s home computer with a bulky CRT monitor sitting on a wooden desk, viewed straight on from the front, the monitor's screen is a blank dark glass with no text and takes up most of the picture, a beige keyboard on the desk in front of it, a coffee mug and a floppy disk beside the keyboard, a small desk lamp, a dim room with a window at the back."
+  },
+  "remaining": 11.740000000000006,
+  "files": [
+   "terminal_0.png",
+   "terminal_1.png",
+   "terminal_2.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:17",
+  "cost": 0.18
+ },
+ {
+  "name": "seasons",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 3,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "prompt": "A single large old oak tree standing on a gentle green hill with a small wooden bench beneath it, full round green crown in summer, the tree in the middle of the picture, rolling green hills behind, a clear bright blue sky with no clouds taking the upper third of the picture, sunny day."
+  },
+  "remaining": 11.740000000000006,
+  "files": [
+   "seasons_0.png",
+   "seasons_1.png",
+   "seasons_2.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:17",
+  "cost": 0.18
+ },
+ {
+  "name": "observatory_night",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1191,
+   "strength": 0.5,
+   "prompt": "The same observatory on the same hill at deep night, pitch dark navy sky full of tiny stars, the grass dark blue-green, a warm yellow light glowing from the observatory's doorway and the open slit of the dome, the telescope silhouetted.",
+   "input_image": "observatory_2.png"
+  },
+  "remaining": 11.620000000000005,
+  "files": [
+   "observatory_night_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:18",
+  "cost": 0.06
+ },
+ {
+  "name": "hearth_night",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1192,
+   "strength": 0.5,
+   "prompt": "The same cottage living room at night, the window dark blue with a moon, the room lit only by the orange glow of the fire, deep shadows in the corners, the cat asleep.",
+   "input_image": "hearth_2.png"
+  },
+  "remaining": 11.620000000000005,
+  "files": [
+   "hearth_night_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:18",
+  "cost": 0.06
+ },
+ {
+  "name": "terminal_night",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1193,
+   "strength": 0.5,
+   "prompt": "The same beige computer on the same desk at night, the room dark, lit only by a small warm desk lamp and the faint green glow of the blank monitor screen.",
+   "input_image": "terminal_1.png"
+  },
+  "remaining": 11.500000000000004,
+  "files": [
+   "terminal_night_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:18",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_night",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.5,
+   "prompt": "The same oak tree, bench and hills at night, dark navy starry sky, the grass dark blue-green, moonlight on the leaves.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 11.440000000000003,
+  "files": [
+   "seasons_night_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:18",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_spring",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.5,
+   "prompt": "The same oak tree, bench and hills in spring, the crown covered in pale pink blossom with fresh light green leaves, bright fresh grass, a clear pale blue sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 11.380000000000003,
+  "files": [
+   "seasons_spring_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:18",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_winter",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.5,
+   "prompt": "The same oak tree, bench and hills in winter, the tree bare with snow on its branches, the hills and bench covered in white snow, a pale grey-blue winter sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 11.320000000000002,
+  "files": [
+   "seasons_winter_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:19",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_autumn",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.5,
+   "prompt": "The same oak tree, bench and hills in autumn, the crown orange, red and gold, fallen leaves on yellowing grass, a clear pale sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 11.070000000000002,
+  "files": [
+   "seasons_autumn_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:19",
+  "cost": 0.06
+ },
+ {
+  "name": "hearth_subtle",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "prompt": "The fire in the fireplace flickers and dances in place, its glow on the stones pulses gently, the cat's chest rises and falls as it sleeps. The walls, the board above the mantelpiece, the mantelpiece, the window, the armchair and the rug stay completely still, same size, shape and position; nothing enters or leaves the picture; calm repeating rhythm that ends as it began.",
+   "input_image": "hearth_2.png"
+  },
+  "remaining": 10.820000000000002,
+  "files": [
+   "hearth_subtle_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:19",
+  "cost": 0.25
+ },
+ {
+  "name": "observatory_subtle",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "prompt": "The pine trees and the grass sway gently in a light breeze, in place; the stars twinkle. The observatory, dome, telescope, hill, path and sky stay completely still, same size, shape and position; nothing enters or leaves the picture; calm repeating rhythm that ends as it began.",
+   "input_image": "observatory_2.png"
+  },
+  "remaining": 10.750000000000002,
+  "files": [
+   "observatory_subtle_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:20",
+  "cost": 0.25
+ },
+ {
+  "name": "fx_fire",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "A small warm campfire flame burning in place, orange and yellow with a few rising embers, on a plain black background, filling the lower middle of the picture."
+  },
+  "remaining": 10.680000000000001,
+  "files": [
+   "fx_fire_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:20",
+  "cost": 0.07
+ },
+ {
+  "name": "fx_snow",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "Soft white snowflakes falling slowly and gently, scattered across the whole picture, on a plain black background."
+  },
+  "remaining": 10.610000000000001,
+  "files": [
+   "fx_snow_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:20",
+  "cost": 0.07
+ },
+ {
+  "name": "fx_leaves",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "A few small orange and red autumn leaves drifting and tumbling slowly down through the air, scattered across the picture, on a plain black background."
+  },
+  "remaining": 10.540000000000001,
+  "files": [
+   "fx_leaves_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:20",
+  "cost": 0.07
+ },
+ {
+  "name": "fx_petals",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "A few small pale pink cherry blossom petals drifting slowly down and sideways through the air, scattered across the picture, on a plain black background."
+  },
+  "remaining": 10.540000000000001,
+  "files": [
+   "fx_petals_0.gif"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:20",
+  "cost": 0.07
+ },
+ {
+  "name": "seasons_winter2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.85,
+   "prompt": "A single large old oak tree on a gentle hill with a small wooden bench beneath it, in deep winter: the tree completely bare, dark branches with a line of snow on top, the hill, the bench and the hills behind all covered in white snow, a pale grey winter sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 10.42,
+  "files": [
+   "seasons_winter2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_autumn2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.8,
+   "prompt": "A single large old oak tree on a gentle hill with a small wooden bench beneath it, in autumn: the whole crown is bright orange, red and gold, fallen orange leaves on the yellowing grass, hills behind turning brown and gold, a clear pale sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 10.42,
+  "files": [
+   "seasons_autumn2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_spring2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "strength": 0.7,
+   "prompt": "A single large old oak tree on a gentle hill with a small wooden bench beneath it, in spring: the whole crown covered in pale pink blossom, fresh bright green grass with small white flowers, a clear pale blue sky.",
+   "input_image": "seasons_2.png"
+  },
+  "remaining": 10.299999999999999,
+  "files": [
+   "seasons_spring2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "observatory_night2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1191,
+   "strength": 0.7,
+   "prompt": "A small white domed observatory on a grassy hilltop at deep night, the dome's slit open with a telescope tube poking out of it, warm yellow light glowing from the open slit and the doorway, the sky pitch dark navy full of tiny stars, the grass dark blue-green, the winding path faint in moonlight.",
+   "input_image": "observatory_2.png"
+  },
+  "remaining": 10.299999999999999,
+  "files": [
+   "observatory_night2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "hearth_night2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1192,
+   "strength": 0.7,
+   "prompt": "A cosy cottage living room at night with a stone fireplace, a bright fire burning, a wooden mantelpiece and a large blank dark wooden board above it, the room dark and lit only by the orange glow of the fire, deep blue shadows in the corners, a red armchair, a sleeping orange cat on the rug, a tall window on the left showing a dark blue night sky.",
+   "input_image": "hearth_2.png"
+  },
+  "remaining": 10.179999999999998,
+  "files": [
+   "hearth_night2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "terminal_night2",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1193,
+   "strength": 0.7,
+   "prompt": "An old beige 1980s home computer with a bulky CRT monitor on a wooden desk at night, viewed straight from the front, the blank dark glass screen takes up most of the picture, the room dark blue and lit only by a small warm desk lamp, the window behind showing night.",
+   "input_image": "terminal_1.png"
+  },
+  "remaining": 10.179999999999998,
+  "files": [
+   "terminal_night2_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:22",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_spring3",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "prompt": "A single large old oak tree standing on a gentle hill with a small wooden bench beneath it, full round crown covered in pale pink cherry blossom in spring, the tree in the middle of the picture, rolling fresh green hills behind, a clear pale blue sky with no clouds taking the upper third of the picture, sunny day."
+  },
+  "remaining": 10.059999999999997,
+  "files": [
+   "seasons_spring3_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:23",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_autumn3",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "prompt": "A single large old oak tree standing on a gentle hill with a small wooden bench beneath it, full round crown of bright orange and red autumn leaves, fallen orange leaves on the grass, the tree in the middle of the picture, rolling golden-brown hills behind, a clear pale blue sky with no clouds taking the upper third of the picture, sunny day."
+  },
+  "remaining": 10.059999999999997,
+  "files": [
+   "seasons_autumn3_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:23",
+  "cost": 0.06
+ },
+ {
+  "name": "seasons_winter3",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_plus__low_res",
+   "seed": 1194,
+   "prompt": "A single large old bare oak tree standing on a gentle snow-covered hill with a small wooden bench beneath it, dark bare branches with snow on top, the tree in the middle of the picture, rolling snow-covered hills behind, a clear pale grey-blue winter sky with no clouds taking the upper third of the picture."
+  },
+  "remaining": 9.999999999999996,
+  "files": [
+   "seasons_winter3_0.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:23",
+  "cost": 0.06
+ },
+ {
+  "name": "terminal_pro",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1193,
+   "prompt": "An old beige 1980s home computer with a bulky CRT monitor sitting on a wooden desk, viewed straight on from the front and centred, the monitor's screen is a flat blank very dark green glass with no text, no reflections and no glare, and the screen takes up most of the picture, a beige keyboard on the desk in front, a coffee mug on the left and a floppy disk on the right, a small desk lamp, a dim room with a night window at the back."
+  },
+  "remaining": 9.279999999999998,
+  "files": [
+   "terminal_pro_0.png",
+   "terminal_pro_1.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:25",
+  "cost": 0.36
+ },
+ {
+  "name": "observatory_pro",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1191,
+   "prompt": "A white domed astronomical observatory building on top of a green grassy hill, seen from the side and slightly below, the dome large and round with its slit open and a long dark telescope tube pointing up out of the slit, a small doorway, a winding footpath up the hill, a dark pine tree on each side, the hill and the building fill the lower half of the picture, above them a clear deep blue twilight sky that takes the whole upper half, empty apart from a few tiny stars."
+  },
+  "remaining": 9.279999999999998,
+  "files": [
+   "observatory_pro_0.png",
+   "observatory_pro_1.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:26",
+  "cost": 0.36
+ },
+ {
+  "name": "observatory_pro80",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1191,
+   "prompt": "A white domed astronomical observatory building on top of a green grassy hill, seen from the side and slightly below, the dome large and round with its slit open and a long dark telescope tube pointing up out of the slit, a small doorway, a winding footpath up the hill, a dark pine tree on each side, the scene extends edge to edge with no border and no frame, the hill and the building fill the lower half, above them a clear deep blue twilight sky that takes the whole upper half, empty apart from a few tiny stars."
+  },
+  "remaining": 8.559999999999999,
+  "files": [
+   "observatory_pro80_0.png",
+   "observatory_pro80_1.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:30",
+  "cost": 0.36
+ },
+ {
+  "name": "terminal_pro80",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1193,
+   "prompt": "A close view of an old beige 1980s home computer with a very large bulky CRT monitor on a wooden desk, viewed straight on from the front and centred, the monitor fills most of the view and its screen is a flat blank very dark green glass with no text, no reflections and no glare, a beige keyboard on the desk in front, a coffee mug on the left and a floppy disk on the right, a small desk lamp, a dim room with a night window at the back, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 8.559999999999999,
+  "files": [
+   "terminal_pro80_0.png",
+   "terminal_pro80_1.png"
+  ],
+  "task": "p119",
+  "when": "2026-11-03 16:31",
+  "cost": 0.36
+ }
+]

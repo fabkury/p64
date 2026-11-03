@@ -76,3 +76,23 @@ What the service taught: `remove_bg` on a white background gave a clean binary a
 all ten; a 24 px canvas with "filling almost the whole picture" gave 20 to 24 px of
 subject; `rd_fast` drew the flattest, most icon-like sun, the dearer styles added
 shading the panel does not need.
+
+### Four scene clock concepts (p119, 2026-11-03)
+
+`p119/` holds the candidates of four scene faces proposed to the user (observatory, hearth,
+terminal, seasons), none implemented yet: `log.json` lists all 30 calls with their prompts
+and prices (**$3.90 spent** of a $12 budget; balance $12.46 before, $8.56 after), and
+`build_previews.py` draws the previews the user was shown (the time in the firmware's own
+glyph tables, computed nights, firmware-style motion) into a git-ignored `previews/`
+folder. Nothing in `p119/` is embedded in the firmware. What the calls taught:
+
+- Image-to-image with the same seed (`input_image` + `strength` 0.5 to 0.85) keeps the
+  composition but changes almost nothing: the four seasons and the nights came back as
+  the summer day. Prompt-only with the same seed and changed words gave four seasons.
+- Pro (`rd_pro__default`, $0.18) paints detail far better but framed the picture with a
+  painted border whenever the prompt said "picture"; drawing at 80 px and keeping the
+  middle 64 removes it.
+- `subtle_motion` looped first time on an interior with a fire (seam 3 % against steps of
+  1 to 3 %) and came back still on a landscape, as on 2026-10-03.
+- `rd_animation__vfx` drew fire (8 usable frames, then a frame whose GIF descriptor is
+  corrupt) and nothing at all for petals, leaves or snow on black (927-byte files).
