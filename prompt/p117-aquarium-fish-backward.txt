@@ -1,0 +1,7 @@
+I caught a bug in p64. In the Aquarium widget, one of the fish (the white and orange one) appears swimming backward, instead of forward.
+
+Please do:
+ 1. Confirm the bug is happening.
+ 2. If confirmed, proceed to fix it.
+
+I have the development p64 connected to this computer via USB. It is also already connected to the same LAN as this computer and responds at p64.local. Feel free to use it for development purposes. At the end, leave it with the fixed firmware.
