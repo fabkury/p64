@@ -1,0 +1,4 @@
+I am looking at https://github.com/fabkury/p64/blob/main/docs/build-your-own.md. I noticed one thing missing: DigiKey also sells Adafruit components and for the same price. Please do:
+ 1. Find the DigiKey product links for the same products from Adafruit for p64b.
+ 2. Add those links to the A.2 section.
+ 3. Commit and push.
