@@ -61,13 +61,16 @@ checked first.
 
 | Qty | Part | Where | Price seen |
 |---|---|---|---|
-| 2 | [Adafruit 5880](https://www.adafruit.com/product/5880) I2C QT rotary encoder breakout, with the encoder soldered on | Adafruit | $7.95 each, 2026-09-11. One becomes knob A, the other knob B. Each encoder brings its own nut and washer. |
-| 2 | [Adafruit 5528](https://www.adafruit.com/product/5528) 20 mm silver aluminium knob ([5529](https://www.adafruit.com/product/5529) is the same knob in blue) | Adafruit | $2.95 each, 2026-09-11. Any knob with a 6 mm bore fits; the shell was drawn for 20 mm. |
-| 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into the controller. |
-| 1 | [Adafruit 4397](https://www.adafruit.com/product/4397) STEMMA QT cable to female sockets, 150 mm | Adafruit | $0.95, 2026-09-11. Plugs into board A; its sockets take the 4209's pins. |
-| 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm | Adafruit | $1.25, 2026-09-27. Board A to board B. |
+| 2 | [Adafruit 5880](https://www.adafruit.com/product/5880) I2C QT rotary encoder breakout, with the encoder soldered on ([DigiKey 1528-5880-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5880/22596384)) | Adafruit or DigiKey | $7.95 each, 2026-09-11. One becomes knob A, the other knob B. Each encoder brings its own nut and washer. |
+| 2 | [Adafruit 5528](https://www.adafruit.com/product/5528) 20 mm silver aluminium knob ([DigiKey 1528-5528-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5528/16653404)); [5529](https://www.adafruit.com/product/5529) ([DigiKey 1528-5529-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5529/16653408)) is the same knob in blue | Adafruit or DigiKey | $2.95 each, 2026-09-11. Any knob with a 6 mm bore fits; the shell was drawn for 20 mm. |
+| 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm ([DigiKey 1528-4209-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4209/10230003)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into the controller. |
+| 1 | [Adafruit 4397](https://www.adafruit.com/product/4397) STEMMA QT cable to female sockets, 150 mm ([DigiKey 1528-4397-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4397/10824270)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into board A; its sockets take the 4209's pins. |
+| 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm ([DigiKey 1528-4401-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4401/10824265)) | Adafruit or DigiKey | $1.25, 2026-09-27. Board A to board B. |
 | 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. ½ W resistors also work but are bulkier. |
-| some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack | any | Wraps the four cable joints. |
+| some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack ([DigiKey 1528-1649AD-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/1649/10670039), not stocked, ordered in) | any | Wraps the four cable joints. |
+
+DigiKey carries every Adafruit part above at Adafruit's own prices (checked 2026-11-04,
+all in stock except the heat-shrink pack), so the p64b parts can come from either shop.
 
 Tools for p64b: a soldering iron with a fine tip and electronics solder, flux if you
 have it, small side cutters, and the 2 mm hex key from the screw pack (it also fits
