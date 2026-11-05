@@ -1,0 +1,702 @@
+[
+ {
+  "name": "square_day",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1201,
+   "prompt": "A small European town square seen straight on from across the square in bright morning light, a tall stone clock tower in the middle with a large plain blank white round clock face near its top, low shop fronts with striped awnings on both sides of the tower, a round stone fountain in the foreground centre, cobblestones, a lamp post, a bench, a clear blue sky above the rooftops, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 17.84,
+  "files": [
+   "square_day_0.png",
+   "square_day_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:00"
+ },
+ {
+  "name": "harbour_day",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1202,
+   "prompt": "A small fishing harbour in bright daylight, a stone pier running from the left to a red and white striped lighthouse at its end on the right, calm blue sea filling the lower half, a quayside stone house with a chimney at the far left, a wooden mooring post, a clear blue sky with no clouds taking the upper third, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 17.48,
+  "files": [
+   "harbour_day_0.png",
+   "harbour_day_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:01"
+ },
+ {
+  "name": "station_day",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__scifi",
+   "seed": 1204,
+   "prompt": "The inside of a space station looking out through one large round porthole window that fills most of the view, the blue Earth with white clouds and brown continents seen through the window against black space with stars, grey metal panels with rivets around the window, a plain blank dark rectangular console screen below the window, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 17.12,
+  "files": [
+   "station_day_0.png",
+   "station_day_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:02"
+ },
+ {
+  "name": "sp_woman",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A woman in a red coat with a brown shopping bag, brown hair in a bun"
+  },
+  "remaining": 17.05,
+  "files": [
+   "sp_woman_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:05"
+ },
+ {
+  "name": "sp_man",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "An old man in a grey coat and flat cap with a walking stick"
+  },
+  "remaining": 16.98,
+  "files": [
+   "sp_man_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:06"
+ },
+ {
+  "name": "sp_cat",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "An orange tabby cat"
+  },
+  "remaining": 16.91,
+  "files": [
+   "sp_cat_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:06"
+ },
+ {
+  "name": "sp_fisherman",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A fisherman in a yellow raincoat and hat carrying a fishing rod"
+  },
+  "remaining": 16.84,
+  "files": [
+   "sp_fisherman_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:07"
+ },
+ {
+  "name": "sp_gull",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A white seagull with grey wings"
+  },
+  "remaining": 16.77,
+  "files": [
+   "sp_gull_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:07"
+ },
+ {
+  "name": "sp_rooster",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A rooster with a red comb and green tail feathers"
+  },
+  "remaining": 16.7,
+  "files": [
+   "sp_rooster_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:07"
+ },
+ {
+  "name": "sp_cow",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A black and white dairy cow"
+  },
+  "remaining": 16.63,
+  "files": [
+   "sp_cow_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:07"
+ },
+ {
+  "name": "sp_farmer",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A farmer in blue overalls and a straw hat carrying a pitchfork"
+  },
+  "remaining": 16.56,
+  "files": [
+   "sp_farmer_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "sp_astronaut",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "An astronaut in a white spacesuit with a gold visor"
+  },
+  "remaining": 16.49,
+  "files": [
+   "sp_astronaut_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "st_boat",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A small wooden fishing boat with a white cabin and a short mast, side view, filling almost the whole width, on a plain white background"
+  },
+  "remaining": 16.43,
+  "files": [
+   "st_boat_0.png",
+   "st_boat_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "st_tram",
+  "payload": {
+   "width": 48,
+   "height": 24,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A small yellow vintage tram, side view, filling almost the whole width, on a plain white background"
+  },
+  "remaining": 16.37,
+  "files": [
+   "st_tram_0.png",
+   "st_tram_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "st_ship",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A small white supply spacecraft with solar panels, side view, filling almost the whole width, on a plain white background"
+  },
+  "remaining": 16.310000000000002,
+  "files": [
+   "st_ship_0.png",
+   "st_ship_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "st_owl",
+  "payload": {
+   "width": 16,
+   "height": 16,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A brown owl perched, front view, filling almost the whole height, on a plain white background"
+  },
+  "remaining": 16.250000000000004,
+  "files": [
+   "st_owl_0.png",
+   "st_owl_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "fx_smoke",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "A thin wisp of grey chimney smoke rising upward and drifting, on a plain black background"
+  },
+  "remaining": 16.180000000000003,
+  "files": [
+   "fx_smoke_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "fx_rain",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "Heavy rain, many thin pale blue diagonal streaks falling across the whole view, on a plain black background"
+  },
+  "remaining": 16.110000000000003,
+  "files": [
+   "fx_rain_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "fx_firework",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__vfx",
+   "frames_duration": 16,
+   "prompt": "A single firework bursting into a sphere of golden sparks that fall and fade, on a plain black background"
+  },
+  "remaining": 16.040000000000003,
+  "files": [
+   "fx_firework_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:08"
+ },
+ {
+  "name": "farm_day",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1203,
+   "prompt": "A small farm in bright daylight, a red wooden barn and a white farmhouse with a brick chimney on the left, a wooden windmill with four sails on a low hill on the right, a fenced green pasture across the foreground, a dirt track, a large plain blank wooden signboard on two posts in the foreground on the right, a clear blue sky with no clouds taking the upper third, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 15.680000000000003,
+  "files": [
+   "farm_day_0.png",
+   "farm_day_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:11"
+ },
+ {
+  "name": "square_dusk",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1201,
+   "prompt": "A small European town square seen straight on from across the square, a tall stone clock tower in the middle with a large plain blank white round clock face near its top, low shop fronts with striped awnings on both sides of the tower, a round stone fountain in the foreground centre, cobblestones, a lamp post, a bench, at dusk, the sky deep orange and purple, the first stars, the lamps just lit, windows glowing warm yellow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "square_day_0.png"
+   ]
+  },
+  "remaining": 15.320000000000004,
+  "files": [
+   "square_dusk_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:14"
+ },
+ {
+  "name": "square_dawn",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1201,
+   "prompt": "A small European town square seen straight on from across the square, a tall stone clock tower in the middle with a large plain blank white round clock face near its top, low shop fronts with striped awnings on both sides of the tower, a round stone fountain in the foreground centre, cobblestones, a lamp post, a bench, at dawn, the sky pink and orange near the horizon fading to pale blue above, long soft shadows, a few lit windows, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "square_day_0.png"
+   ]
+  },
+  "remaining": 15.140000000000004,
+  "files": [
+   "square_dawn_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:15"
+ },
+ {
+  "name": "square_night",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1201,
+   "prompt": "A small European town square seen straight on from across the square, a tall stone clock tower in the middle with a large plain blank white round clock face near its top, low shop fronts with striped awnings on both sides of the tower, a round stone fountain in the foreground centre, cobblestones, a lamp post, a bench, at deep night, a dark navy sky full of stars and a crescent moon, every window glowing warm yellow, the lamps lit, the ground in blue shadow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "square_day_0.png"
+   ]
+  },
+  "remaining": 14.960000000000004,
+  "files": [
+   "square_night_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:16"
+ },
+ {
+  "name": "harbour_dawn",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1202,
+   "prompt": "A small fishing harbour, a stone pier running from the left to a red and white striped lighthouse at its end on the right, calm sea filling the lower half, a quayside stone house with a chimney at the far left, a wooden mooring post, at dawn, the sky pink and orange near the horizon fading to pale blue above, long soft shadows, a few lit windows, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "harbour_day_0.png"
+   ]
+  },
+  "remaining": 14.780000000000005,
+  "files": [
+   "harbour_dawn_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:18"
+ },
+ {
+  "name": "harbour_dusk",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1202,
+   "prompt": "A small fishing harbour, a stone pier running from the left to a red and white striped lighthouse at its end on the right, calm sea filling the lower half, a quayside stone house with a chimney at the far left, a wooden mooring post, at dusk, the sky deep orange and purple, the first stars, the lamps just lit, windows glowing warm yellow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "harbour_day_0.png"
+   ]
+  },
+  "remaining": 14.600000000000005,
+  "files": [
+   "harbour_dusk_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:19"
+ },
+ {
+  "name": "harbour_night",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1202,
+   "prompt": "A small fishing harbour, a stone pier running from the left to a red and white striped lighthouse at its end on the right, calm sea filling the lower half, a quayside stone house with a chimney at the far left, a wooden mooring post, at deep night, a dark navy sky full of stars and a crescent moon, every window glowing warm yellow, the lamps lit, the ground in blue shadow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "harbour_day_0.png"
+   ]
+  },
+  "remaining": 14.420000000000005,
+  "files": [
+   "harbour_night_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:19"
+ },
+ {
+  "name": "farm_dusk",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1203,
+   "prompt": "A small farm, a red wooden barn and a white farmhouse with a brick chimney on the left, a wooden windmill with four sails on a low hill on the right, a fenced green pasture across the foreground, a dirt track, a large plain blank wooden signboard on two posts in the foreground on the right, at dusk, the sky deep orange and purple, the first stars, the lamps just lit, windows glowing warm yellow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "farm_day_1.png"
+   ]
+  },
+  "remaining": 14.240000000000006,
+  "files": [
+   "farm_dusk_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:21"
+ },
+ {
+  "name": "farm_dawn",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1203,
+   "prompt": "A small farm, a red wooden barn and a white farmhouse with a brick chimney on the left, a wooden windmill with four sails on a low hill on the right, a fenced green pasture across the foreground, a dirt track, a large plain blank wooden signboard on two posts in the foreground on the right, at dawn, the sky pink and orange near the horizon fading to pale blue above, long soft shadows, a few lit windows, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "farm_day_1.png"
+   ]
+  },
+  "remaining": 14.060000000000006,
+  "files": [
+   "farm_dawn_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:21"
+ },
+ {
+  "name": "farm_night",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__default",
+   "seed": 1203,
+   "prompt": "A small farm, a red wooden barn and a white farmhouse with a brick chimney on the left, a wooden windmill with four sails on a low hill on the right, a fenced green pasture across the foreground, a dirt track, a large plain blank wooden signboard on two posts in the foreground on the right, at deep night, a dark navy sky full of stars and a crescent moon, every window glowing warm yellow, the lamps lit, the ground in blue shadow, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "farm_day_1.png"
+   ]
+  },
+  "remaining": 13.880000000000006,
+  "files": [
+   "farm_night_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:22"
+ },
+ {
+  "name": "station_dawn",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__scifi",
+   "seed": 1204,
+   "prompt": "The inside of a space station looking out through one large round porthole window that fills most of the view, the Earth seen through the window with the thin bright arc of sunrise on its limb, most of the globe still dark with city lights, black space with stars, grey metal panels with rivets around the window, a plain blank dark rectangular console screen below the window, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "station_day_0.png"
+   ]
+  },
+  "remaining": 13.700000000000006,
+  "files": [
+   "station_dawn_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:25"
+ },
+ {
+  "name": "station_dusk",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__scifi",
+   "seed": 1204,
+   "prompt": "The inside of a space station looking out through one large round porthole window that fills most of the view, the Earth seen through the window half in daylight and half in night, a sharp terminator line down the middle, city lights on the dark half, black space with stars, grey metal panels with rivets around the window, a plain blank dark rectangular console screen below the window, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "station_day_0.png"
+   ]
+  },
+  "remaining": 13.520000000000007,
+  "files": [
+   "station_dusk_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:25"
+ },
+ {
+  "name": "square_subtle",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "prompt": "The water of the fountain splashes and ripples in place and the awnings flutter slightly. The tower, the buildings, the lamp post, the bench, the cobblestones and the sky stay completely still, same size, shape and position; nothing enters or leaves; calm repeating rhythm that ends as it began.",
+   "input_image": "square_day_0.png cropped"
+  },
+  "remaining": 13.270000000000007,
+  "files": [
+   "square_subtle_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:25"
+ },
+ {
+  "name": "harbour_subtle",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "prompt": "The sea ripples gently in place with small glints of light. The pier, the lighthouse, the house, the mooring post and the sky stay completely still, same size, shape and position; nothing enters or leaves; calm repeating rhythm that ends as it began.",
+   "input_image": "harbour_day_0.png cropped"
+  },
+  "remaining": 13.020000000000007,
+  "files": [
+   "harbour_subtle_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:26"
+ },
+ {
+  "name": "farm_subtle",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_advanced_animation__subtle_motion",
+   "frames_duration": 16,
+   "bypass_prompt_expansion": true,
+   "prompt": "The four sails of the windmill turn slowly and steadily around the hub. The barn, the farmhouse, the hill, the fence, the track, the signboard and the sky stay completely still, same size, shape and position; nothing enters or leaves; calm repeating rhythm that ends as it began.",
+   "input_image": "farm_day_1.png cropped"
+  },
+  "remaining": 12.770000000000007,
+  "files": [
+   "farm_subtle_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:27"
+ },
+ {
+  "name": "station_night",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 1,
+   "prompt_style": "rd_pro__scifi",
+   "seed": 1204,
+   "prompt": "The inside of a space station looking out through one large round porthole window that fills most of the view, the night side of the Earth seen through the window, a dark globe webbed with golden city lights and faint aurora at the top, black space with stars, grey metal panels with rivets around the window, a plain blank dark rectangular console screen below the window, the scene extends edge to edge with no border and no frame.",
+   "reference_images": [
+    "station_day_0.png"
+   ]
+  },
+  "remaining": 12.700000000000006,
+  "files": [
+   "station_night_0.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:27"
+ },
+ {
+  "name": "sp_dog",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A small brown and white dog"
+  },
+  "remaining": 12.630000000000006,
+  "files": [
+   "sp_dog_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:28"
+ },
+ {
+  "name": "sp_sheep",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A fluffy white sheep"
+  },
+  "remaining": 12.560000000000006,
+  "files": [
+   "sp_sheep_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:28"
+ },
+ {
+  "name": "sp_drone",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A small round floating maintenance robot with one blue eye and little arms"
+  },
+  "remaining": 12.490000000000006,
+  "files": [
+   "sp_drone_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:28"
+ },
+ {
+  "name": "sp_lamplighter",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A lamplighter in a dark coat and top hat carrying a long pole with a flame"
+  },
+  "remaining": 12.490000000000006,
+  "files": [
+   "sp_lamplighter_0.gif"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:28"
+ }
+]

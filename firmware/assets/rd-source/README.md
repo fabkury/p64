@@ -96,3 +96,26 @@ folder. Nothing in `p119/` is embedded in the firmware. What the calls taught:
   1 to 3 %) and came back still on a landscape, as on 2026-10-03.
 - `rd_animation__vfx` drew fire (8 usable frames, then a frame whose GIF descriptor is
   corrupt) and nothing at all for petals, leaves or snow on black (927-byte files).
+
+### Four more scene clock concepts (p120, 2026-11-05)
+
+`p120/` holds the second set of four concepts (square, harbour, farm, space station), again
+none implemented: `log.json` lists the calls with their prompts (**$6.07 spent** of a $16
+budget; balance $18.56 before, $12.49 after; one farm Pro call was charged and never
+delivered its files, so it is counted but not logged), `build_previews.py` draws the
+previews (it imports the fonts and text drawing from `../p119/build_previews.py`).
+What the calls taught:
+
+- `rd_pro__default` with the day painting in `reference_images` keeps the composition
+  across dawn, dusk and night prompts (the square within a pixel, the rest within a
+  shift of a few pixels, matched by edges in the builder). The first round's separate
+  prompts drifted far more. $0.18 per phase.
+- `rd_animation__small_sprites` ($0.07) gives 20 frames on a transparent background:
+  five front idles, a four-frame side walk (frames 6 to 9), a back view, a surprised
+  and a lying pose. Shrunk 2x by a k-centroid pass they are 10 to 14 px tall.
+- `subtle_motion` turned the windmill's sails a full revolution in 16 frames (steps 5 to
+  10 %, seam 6 %) and rippled the sea (seam 3 %); the town square came back still.
+- `rd_animation__vfx` drew chimney smoke (16 frames at 32 px) and a firework (11 frames);
+  rain came back as an empty file, like the particles of p119.
+- Stills with `remove_bg` on "a plain white background" keyed cleanly (tram 48x24, boat,
+  ship, owl 16x16).

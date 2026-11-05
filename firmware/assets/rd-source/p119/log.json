@@ -580,5 +580,23 @@
   "task": "p119",
   "when": "2026-11-03 16:31",
   "cost": 0.36
+ },
+ {
+  "name": "farm_day",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1203,
+   "prompt": "A small farm in bright daylight, a red wooden barn and a white farmhouse with a brick chimney on the left, a wooden windmill with four sails on a low hill on the right, a fenced green pasture across the foreground, a dirt track, a large plain blank wooden signboard on two posts in the foreground on the right, a clear blue sky with no clouds taking the upper third, the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 15.680000000000003,
+  "files": [
+   "farm_day_0.png",
+   "farm_day_1.png"
+  ],
+  "task": "p120",
+  "when": "2026-11-05 13:12"
  }
 ]
