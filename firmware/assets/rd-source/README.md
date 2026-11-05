@@ -101,8 +101,8 @@ folder. Nothing in `p119/` is embedded in the firmware. What the calls taught:
 
 `p120/` holds the second set of four concepts (square, harbour, farm, space station), again
 none implemented: `log.json` lists the calls with their prompts (**$6.07 spent** of a $16
-budget; balance $18.56 before, $12.49 after; one farm Pro call was charged and never
-delivered its files, so it is counted but not logged), `build_previews.py` draws the
+budget; balance $18.56 before, $12.49 after; the farm's first Pro call delivered its two
+files late, kept as `farm_day_alt_*`, not used), `build_previews.py` draws the
 previews (it imports the fonts and text drawing from `../p119/build_previews.py`).
 What the calls taught:
 
