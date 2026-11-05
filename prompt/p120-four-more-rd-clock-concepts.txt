@@ -1,0 +1,7 @@
+I somewhat like the four concepts so far, but I need more.
+
+Let's do another round: please generate yet 4 more concepts.
+
+Things to prioritize/value:
+ - Plenty of visual variation according to the time of the day (the more things that vary, the better)
+ - Plenty of use of sprites/animations from RetroDiffusion (generally, the more content from RetroDiffusion the better).
