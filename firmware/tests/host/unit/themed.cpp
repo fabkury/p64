@@ -439,7 +439,7 @@ TEST_CASE("picture: every embedded PNG decodes to its size with a 0/255 alpha") 
   };
   const Case cases[] = {
       {&assets::kAquariumTankPng, 1024, 64, true, false},   {&assets::kAquariumFrontPng, 1024, 64, false, true},
-      {&assets::kAquariumSignPng, 27, 10, true, false},     {&assets::kAquariumLightsPng, 64, 64, false, true},
+      {&assets::kAquariumSignPng, 27, 30, false, true},     {&assets::kAquariumLightsPng, 64, 64, false, true},
       {&assets::kAquariumFishAPng, 160, 17, false, true},   {&assets::kAquariumFishBPng, 208, 19, false, true},
       {&assets::kAquariumFishCPng, 112, 10, false, true},   {&assets::kHorizonRdLandPng, 64, 38, false, true},
       {&assets::kHorizonRdLakePng, 64, 38, false, true},    {&assets::kHorizonRdLightsPng, 64, 38, false, true},
