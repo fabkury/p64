@@ -1,0 +1,3 @@
+Let's polish something about p64's web UI.
+
+In http://p64.local/settings, there is a "Ceiling (advanced)" configuration. The problem is that the user doesn't know what is the maximum for that number. Please add text indicating that the maximum ceiling number is 255.
