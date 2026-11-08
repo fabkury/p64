@@ -1,0 +1,1 @@
+Look at this screenshot of the p64 panel: [Image #1]. Notice that the overlay clock is set to 12-hour mode. Notice as well that there is an empty space to the left of the "1", representing the zero before the one that is NOT being drawn. Please remove that empty, zero-sized space.
