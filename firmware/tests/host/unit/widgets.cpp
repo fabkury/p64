@@ -25,7 +25,7 @@ TEST_CASE("clock_format") {
   t.tm_mon = 8;
   CHECK(time_text(t, true, false) == "14:05");
   CHECK(time_text(t, true, true) == "14:05:09");
-  CHECK(time_text(t, false, false) == " 2:05");
+  CHECK(time_text(t, false, false) == "2:05");  // no blank for the dropped zero (2026-11-08)
   CHECK(time_text(t, true, false, false) == "14 05");
   CHECK(meridiem(t, false) == "PM");
   CHECK(meridiem(t, true) == "");

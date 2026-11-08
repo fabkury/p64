@@ -23,7 +23,7 @@ std::string time_text(const tm &t, bool h24, bool seconds, bool colon) {
   } else {
     hour = hour % 12;
     if (hour == 0) hour = 12;
-    std::snprintf(buf, sizeof(buf), "%2d%c%02d", hour, sep, t.tm_min);
+    std::snprintf(buf, sizeof(buf), "%d%c%02d", hour, sep, t.tm_min);
   }
   std::string out = buf;
   if (seconds) {
