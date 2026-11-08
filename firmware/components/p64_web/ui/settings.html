@@ -93,7 +93,7 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="brightness-row"><input type="range" id="brightness" min="1" max="255" value="255" oninput="document.getElementById('brightness-value').textContent=this.value" onchange="save({display:{brightness:+this.value}})"><span class="brightness-value" id="brightness-value">255</span></div>
         <div class="setting-hint">1 to 255. Full white at 255 needs the 27 W supply on the POWER port.</div>
         <div class="toggle-row" style="margin-top:10px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Ceiling (advanced)</label><input class="num-input" type="number" id="ceiling" min="1" max="255" onchange="save({display:{brightness_ceiling:+this.value}})"></div>
-        <div class="setting-hint">The number is perceived lightness: 128 looks about half as bright as 255, 1 is a night-light glow. The effective brightness never exceeds the ceiling: schedules, Makapix commands and the API included.</div>
+        <div class="setting-hint">1 to 255. The number is perceived lightness: 128 looks about half as bright as 255, 1 is a night-light glow. The effective brightness never exceeds the ceiling: schedules, Makapix commands and the API included.</div>
     </div>
     <div class="section">
         <h3>Night schedule</h3>
