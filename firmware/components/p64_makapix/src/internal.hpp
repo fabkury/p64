@@ -12,6 +12,7 @@
 #include "credentials.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "handoff.hpp"
 #include "p64/makapix/makapix.hpp"
 #include "p64/net/fetch.hpp"
 
@@ -80,7 +81,10 @@ struct Job {
   api::ViewEvent view;
   content::MakapixEntry entry = {};
   std::string name;
-  SemaphoreHandle_t done = nullptr;  // when set, the submitter waits and owns the job
+  // When set, the submitter waits for the result. The job is on the heap and `handoff`
+  // decides who frees it: the submitter, or the worker when the submitter gave up (F-10).
+  SemaphoreHandle_t done = nullptr;
+  Handoff handoff;
   bool ok = false;
   std::string error;
 };

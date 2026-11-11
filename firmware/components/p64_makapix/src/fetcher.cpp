@@ -62,9 +62,12 @@ void finish(Job *job, bool ok, const std::string &error) {
   job->ok = ok;
   job->error = error;
   if (!ok && !error.empty()) set_error(error);
-  if (job->done) {
-    xSemaphoreGive(job->done);  // the submitter owns the job
+  if (!job->done) {
+    delete job;
+  } else if (job->handoff.finish()) {
+    xSemaphoreGive(job->done);  // the submitter is waiting and owns the job
   } else {
+    vSemaphoreDelete(job->done);  // the submitter gave up (its wait timed out): ours to free
     delete job;
   }
 }

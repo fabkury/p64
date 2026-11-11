@@ -3,6 +3,8 @@
 // against the examples in reference/makapix/docs/player/querying-artwork.md with a real
 // UUID for the storage key.
 #include "common.hpp"
+#include "handoff.hpp"
+#include <thread>
 #include "contract.hpp"
 #include "policy.hpp"
 
@@ -395,6 +397,49 @@ TEST_CASE("makapix policy: the nightly sweep deletes what was not played, and wh
   // the whole cache).
   CHECK(policy::sweep_verdict(now + day + 1, now, thirty, floor) == V::Suspect);
   CHECK(policy::sweep_verdict(now + 400 * day, now, thirty, floor) == V::Suspect);
+}
+
+
+// --- F-10 (2026-11-11): the like job lived on the waiter's stack, and a worker that
+// finished after the waiter's timeout wrote its result into a dead stack frame.
+
+TEST_CASE("makapix handoff: exactly one side frees a job, whoever is first (F-10)") {
+  using p64::makapix::Handoff;
+  {  // the worker finishes in time: the waiter owns the job
+    Handoff h;
+    CHECK(h.finish());
+    CHECK(!h.abandon());  // a late timeout must not hand the job away
+  }
+  {  // the waiter times out first: the job is the worker's
+    Handoff h;
+    CHECK(h.abandon());
+    CHECK(!h.finish());  // the worker frees it and signals nobody
+  }
+  {  // each side decides once
+    Handoff h;
+    CHECK(h.abandon());
+    CHECK(!h.abandon());
+    Handoff g;
+    CHECK(g.finish());
+    CHECK(!g.finish());
+  }
+  // Both at the same instant, many times: always exactly one owner.
+  int waiter_owns = 0, worker_owns = 0;
+  for (int i = 0; i < 2000; ++i) {
+    Handoff h;
+    bool abandoned = false, finished = false;
+    std::thread waiter([&] { abandoned = h.abandon(); });
+    std::thread worker([&] { finished = h.finish(); });
+    waiter.join();
+    worker.join();
+    REQUIRE(abandoned != finished);
+    if (finished) {
+      ++waiter_owns;
+    } else {
+      ++worker_owns;
+    }
+  }
+  CHECK_EQ(waiter_owns + worker_owns, 2000);
 }
 
 }  // namespace

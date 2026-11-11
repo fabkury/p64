@@ -524,29 +524,37 @@ bool like(int32_t post_id, bool liked, std::string &error) {
     error = "likes need pairing";
     return false;
   }
-  Job job{JobType::Like};
-  job.number = post_id;
-  job.flag = liked;
-  job.done = xSemaphoreCreateBinary();
-  if (!job.done) {
+  // On the heap, never on this stack: the worker may finish after this function has
+  // returned (F-10, 2026-11-11: it then wrote its result into a dead stack frame).
+  auto *job = new Job{JobType::Like};
+  job->number = post_id;
+  job->flag = liked;
+  job->done = xSemaphoreCreateBinary();
+  if (!job->done) {
+    delete job;
     error = "out of memory";
     return false;
   }
-  if (!submit(&job)) {
-    vSemaphoreDelete(job.done);
+  if (!submit(job)) {
+    vSemaphoreDelete(job->done);
+    delete job;
     error = "busy";
     return false;
   }
-  const bool finished = xSemaphoreTake(job.done, pdMS_TO_TICKS(20000)) == pdTRUE;
-  if (!finished) {
-    // The worker still holds the pointer: never free it while the job may run. Leak the
-    // semaphore rather than crash; this only happens when the server hangs.
-    error = "timed out";
-    return false;
+  if (xSemaphoreTake(job->done, pdMS_TO_TICKS(20000)) != pdTRUE) {
+    if (job->handoff.abandon()) {
+      // The worker is busy elsewhere (a download, a walk, the TLS slot). The job is its
+      // own now: it runs the like when it gets there and frees the job.
+      error = "timed out";
+      return false;
+    }
+    xSemaphoreTake(job->done, portMAX_DELAY);  // it finished this instant: its signal is on the way
   }
-  vSemaphoreDelete(job.done);
-  error = job.error;
-  return job.ok;
+  const bool ok = job->ok;
+  error = job->error;
+  vSemaphoreDelete(job->done);
+  delete job;
+  return ok;
 }
 
 namespace {
