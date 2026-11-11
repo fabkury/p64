@@ -43,6 +43,25 @@ loads at a time and the last request is the one that plays (since 0.2.2). The se
 portal's `/setup/save` and `/setup/erase` answer 403 unless the device is in setup mode
 (since 0.2.2).
 
+Since 2026-11-11 (after 0.2.2):
+
+- **Busy**: a command the device cannot queue right now answers 503 `BUSY` with
+  `Retry-After: 1`. Nothing is accepted and then dropped.
+- **Other sites**: a request with a method other than GET, and the WebSocket, is refused
+  with 403 `FOREIGN_ORIGIN` when it carries an `Origin` header that does not name the
+  device (its `Host`). Requests without `Origin` (scripts, curl) are unaffected.
+- **Settings types**: `PUT /api/v1/settings` answers 400 `INVALID_SETTINGS` with the
+  key's name when a known key has a value of the wrong type or an unknown choice
+  (`brightness: expected a number`, `panel_mode: expected one of quality, photo`), and
+  applies nothing of that document. Unknown keys are still ignored and numbers out of
+  range still clamped.
+- **Settings writes**: a change is applied at once and written to flash within 2 s (0.3 s
+  after the last change); `status.settings_nvs_writes` counts the writes since boot.
+- **Errors**: an unknown route answers 404 `NOT_FOUND` and a wrong method 405
+  `METHOD_NOT_ALLOWED`, both in the JSON envelope. An upload that is refused (too large,
+  no card, a bad path) is answered and the connection closed; the body is not read.
+- **Timeouts**: the server waits 5 s for a stalled client (10 before).
+
 File paths are relative to the configured p64 storage root: `animations/demo.gif`
 means `p64/animations/demo.gif` on a card using the default root. URL-encode query values.
 PNG, raw-frame and log responses are not JSON envelopes.
@@ -175,7 +194,7 @@ the public firmware lists nothing else.
 | `/api/v1/makapix/pair` | POST | | asks the server for a pairing code; `code` appears in the status within seconds and on the panel |
 | `/api/v1/makapix/pair/cancel` | POST | | drops the code |
 | `/api/v1/makapix/unpair` | POST | | erases the credentials, closes the MQTT session |
-| `/api/v1/makapix/like` | POST | `{"post_id":n,"like":true|false}` | reacts as the owner (needs pairing; blocks up to 20 s) |
+| `/api/v1/makapix/like` | POST | `{"post_id":n,"like":true|false}` | reacts as the owner (needs pairing). Waits up to 5 s for the Makapix worker (a like takes about 3 s): 200 `{post_id, liked}` when done; 202 `{post_id, liked, queued: true}` when the worker is busy (the like runs when it gets there, and `status.makapix.like` `{post_id, liked, pending, error}` says how it ended); 409 `LIKE_FAILED` otherwise. It blocked up to 20 s until 2026-11-11 |
 | `/api/v1/action/play` | POST | `{"post":"<sqid or makapix.club/p/<sqid>>"}` | play-this of a Makapix post (looked up and downloaded, then played) |
 | `/api/v1/action/play` | POST | `{"url":"http(s)://..."}` | play-this of a URL: a registered content provider that recognises the link as one of its artworks (a post page, say) looks it up and downloads it (the answer carries `provider`; 422 when it rejects the link), otherwise an arbitrary artwork URL downloaded into `downloads/` (since 2026-10-27, ADR 0012) |
 

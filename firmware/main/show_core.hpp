@@ -172,6 +172,7 @@ struct State {
   system::WidgetKind widget_kind = system::WidgetKind::Clock;
   int widget_face = -1;                // the clock face on the panel when overridden (an interlude)
   uint8_t last_interlude_face = 255;   // the last random face drawn, never drawn twice running
+  int64_t interlude_rolled_for_us = -1; // the swap (its swap_at_us) the interlude plan was last rolled for
   bool want_widget = false;  // the Widget state waits for the boot animation
   std::string boot_animation;   // the intro animation of this boot (p101), for the status document
   int64_t intro_until_us = 0;   // an intro animation plays for one slot until then (0 = none)

@@ -147,7 +147,10 @@ struct Settings {
   // (false, nothing changed) malformed JSON and a minimum artwork size above the maximum;
   // `code` names which ("INVALID_JSON" or "INVALID_SETTINGS") for the API's reply.
   std::string to_json() const;
-  bool apply_json(const char *json, std::string &error, const char **code = nullptr);
+  // `strict` (the API, since 2026-11-11): a known key whose value has the wrong type, or
+  // an enum value nobody knows, refuses the whole document with INVALID_SETTINGS and the
+  // key's name; unknown keys are ignored and out-of-range numbers clamped either way.
+  bool apply_json(const char *json, std::string &error, const char **code = nullptr, bool strict = false);
   void clamp();
 
   // The artwork size steps: any number snaps up to the next step (the maximum's 256 is
@@ -179,5 +182,10 @@ std::shared_ptr<const Settings> settings_view();
 bool settings_update(const std::function<void(Settings &)> &mutate);
 // Restores the defaults (factory reset) and persists them.
 bool settings_reset();
+// Writes a pending change to NVS now (settings_update() writes a moment after the last
+// change; an orderly restart calls this by itself). False when the write failed.
+bool settings_flush();
+// NVS writes of the settings since boot (diagnostics and tests).
+uint32_t settings_nvs_writes();
 
 }  // namespace p64::system

@@ -40,8 +40,19 @@ void put_rgb(cJSON *parent, const char *name, gfx::Rgb c) {
   cJSON_AddNumberToObject(o, "b", c.b);
 }
 
+// Strict reading (the API, decision D28): the first known key whose value has the wrong
+// type, or an enum value nobody knows, is noted here and the document is refused with a
+// 400 that names it. Left null for the lenient reading of a stored document, where such
+// a key is skipped as before (an older or newer firmware may have written it).
+thread_local std::string *t_wrong = nullptr;
+
+void wrong(const char *name, const std::string &expected) {
+  if (t_wrong && t_wrong->empty()) *t_wrong = std::string(name) + ": expected " + expected;
+}
+
 const cJSON *sub(const cJSON *parent, const char *name) {
   const cJSON *o = cJSON_GetObjectItemCaseSensitive(parent, name);
+  if (o && !cJSON_IsObject(o)) wrong(name, "an object");
   return (o && cJSON_IsObject(o)) ? o : nullptr;
 }
 
@@ -51,6 +62,7 @@ template <typename T>
 void get_num(const cJSON *o, const char *name, T &out) {
   if (!o) return;
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, name);
+  if (v && !cJSON_IsNumber(v)) wrong(name, "a number");
   if (!v || !cJSON_IsNumber(v)) return;
   double d = v->valuedouble;
   const double lo = static_cast<double>(std::numeric_limits<T>::min());
@@ -63,12 +75,14 @@ void get_num(const cJSON *o, const char *name, T &out) {
 void get_bool(const cJSON *o, const char *name, bool &out) {
   if (!o) return;
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, name);
+  if (v && !cJSON_IsBool(v)) wrong(name, "true or false");
   if (v && cJSON_IsBool(v)) out = cJSON_IsTrue(v);
 }
 
 void get_str(const cJSON *o, const char *name, std::string &out, size_t max_len) {
   if (!o) return;
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, name);
+  if (v && !cJSON_IsString(v)) wrong(name, "a string");
   if (v && cJSON_IsString(v) && v->valuestring) out = std::string(v->valuestring).substr(0, max_len);
 }
 
@@ -88,6 +102,7 @@ template <typename E>
 void get_enum(const cJSON *o, const char *name, E &out, const char *const *names, size_t count) {
   if (!o) return;
   const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, name);
+  if (v && !cJSON_IsString(v)) wrong(name, "a string");
   if (!v || !cJSON_IsString(v) || !v->valuestring) return;
   for (size_t i = 0; i < count; ++i) {
     if (std::strcmp(v->valuestring, names[i]) == 0) {
@@ -95,6 +110,9 @@ void get_enum(const cJSON *o, const char *name, E &out, const char *const *names
       return;
     }
   }
+  std::string list;
+  for (size_t i = 0; i < count; ++i) list += std::string(i ? ", " : "") + names[i];
+  wrong(name, "one of " + list);
 }
 
 const char *const kPanelModes[] = {"quality", "photo"};
@@ -274,7 +292,7 @@ std::string Settings::to_json() const {
   return out;
 }
 
-bool Settings::apply_json(const char *json, std::string &error, const char **code) {
+bool Settings::apply_json(const char *json, std::string &error, const char **code, bool strict) {
   if (code) *code = "INVALID_JSON";
   cJSON *root = cJSON_Parse(json);
   if (!root) {
@@ -288,8 +306,16 @@ bool Settings::apply_json(const char *json, std::string &error, const char **cod
   }
   // Read into a copy: a refused document leaves the settings as they were.
   Settings next = *this;
+  std::string wrong_key;
+  t_wrong = strict ? &wrong_key : nullptr;
   const bool ordered = next.read_json(root);
+  t_wrong = nullptr;
   cJSON_Delete(root);
+  if (!wrong_key.empty()) {
+    if (code) *code = "INVALID_SETTINGS";
+    error = wrong_key;
+    return false;
+  }
   if (!ordered) {
     if (code) *code = "INVALID_SETTINGS";
     error = "minimum artwork size " + std::to_string(snap_min_side(next.makapix_min_side)) + " above the maximum " +

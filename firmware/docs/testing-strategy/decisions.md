@@ -53,13 +53,16 @@ window"), **card failed**, **card playset**, **device playset**.
 
 | # | Question | Decision |
 |---|---|---|
-| D25 | What a second client is owed ([Q1](web-ui-and-api.md#q1-one-stalled-client-freezes-every-other)) | **Answered within 3 s, except during an upload.** The single HTTP task stays; timeouts shorten, refused bodies are not drained, a like is queued. A legitimate upload holds the server (about 18 s at most) and the pages say so. |
+| D25 | What a second client is owed ([Q1](web-ui-and-api.md#q1-one-stalled-client-freezes-every-other)) | **Answered within 5 s, except during an upload** (3 s at first; changed to 5 s by the owner when the work began, 2026-11-11, with the like waiting up to 5 s for the worker before it is queued with a 202: a like was measured at about 3 s, not the "under a second" first assumed). The single HTTP task stays; timeouts shorten, refused bodies are not drained, a like is queued. A legitimate upload holds the server (about 18 s at most) and the pages say so. |
 | D26 | A command the device cannot take ([Q2](web-ui-and-api.md#q2-the-answer-when-a-command-cannot-be-taken)) | **Coalesce, else 503.** Navigation is "latest wins"; internal results have their own path and are never dropped; a load that does not come back is retried by the show; anything else answers 503 with Retry-After. |
 | D27 | Open pages (Q3) | **Four** are supported; beyond that the page idle longest loses its WebSocket and polls. |
 | D28 | Malformed requests (Q4) | A known settings key with a value of the wrong type answers **400**; unknown keys stay ignored; out-of-range numbers stay clamped. A JSON nesting limit of 16. Errors in the API's envelope where ESP-IDF allows. |
 | D29 | LAN trust (Q5) | State-changing requests with a **foreign Origin are refused**; `/setup/save` and `/setup/erase` answer **only in setup mode**; the PIN's global lockout stays, documented, and does not survive a restart. |
 | D30 | Settings writes and page rules (Q6, Q7) | Accepted as proposed: a write that changes nothing writes nothing; bursts coalesce into one NVS write; applied equals stored after the last write; controls are disabled or coalesce in flight; one poll at a time; the reconnect backs off; long actions answer 202. |
 | D31 | New Wi-Fi credentials that are wrong (F-23) | **As today, with a warning first**: the page says the device will leave the network and that a mistake means reconnecting through `p64-setup`. |
+
+Implemented on 2026-11-11, the firmware side (D25 to D30 except the pages' own rules,
+which with D31 belong to the pages): see [findings.md](findings.md) for what each closed.
 
 ## The specification and the code
 

@@ -44,11 +44,17 @@ esp_err_t list_handler(httpd_req_t *req) {
 // POST /api/v1/files?path=animations/name.gif with the file as the raw body.
 esp_err_t upload_handler(httpd_req_t *req) {
   std::string rel, abs, error;
-  if (!query_param(req, "path", rel) || rel.empty()) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
-  if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
-  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "no card mounted");
+  // A refusal here leaves the body unread; net::http::after_refusal closes the connection
+  // rather than drain megabytes while every other client waits (finding F-04).
+  const auto refuse = [req](const char *status, const char *code, const std::string &message) {
+    reply_error(req, status, code, message);
+    return net::http::after_refusal(req);
+  };
+  if (!query_param(req, "path", rel) || rel.empty()) return refuse("400 Bad Request", "INVALID_PATH", "path required");
+  if (!storage::resolve(rel, abs, error)) return refuse("400 Bad Request", "INVALID_PATH", error);
+  if (!storage::mounted()) return refuse("503 Service Unavailable", "NO_CARD", "no card mounted");
   if (req->content_len == 0 || req->content_len > playback::kMaxFileBytes) {
-    return reply_error(req, "413 Payload Too Large", "FILE_TOO_LARGE", "files up to 5 MB");
+    return refuse("413 Payload Too Large", "FILE_TOO_LARGE", "files up to 5 MB");
   }
   std::vector<uint8_t> bytes;
   bytes.resize(req->content_len);

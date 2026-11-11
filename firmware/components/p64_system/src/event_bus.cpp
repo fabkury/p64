@@ -1,5 +1,6 @@
 #include "p64/system/event_bus.hpp"
 
+#include <atomic>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -26,10 +27,23 @@ TaskHandle_t g_task = nullptr;
 std::mutex g_mutex;
 std::vector<Subscription> g_subs;
 
+// Events that only say "something changed, read it again" are coalesced: while one is
+// queued and not yet dispatched, another of the same kind adds nothing and is not queued.
+// A burst of settings writes therefore cannot fill the queue, and no such event is ever
+// lost: the handlers run after the last change and read the current state (finding F-05:
+// 100 writes in 3 s dropped "settings changed" events from a full queue).
+std::atomic<bool> g_queued[32];
+
+bool coalesced(Event type) {
+  return type == Event::SettingsChanged || type == Event::ProviderChannelChanged || type == Event::LocalFilesChanged ||
+         type == Event::PlaysetsChanged;
+}
+
 void dispatcher(void *) {
   Message m;
   while (true) {
     if (xQueueReceive(g_queue, &m, portMAX_DELAY) != pdTRUE) continue;
+    if (coalesced(m.type)) g_queued[static_cast<size_t>(m.type) % 32] = false;  // before the handlers read
     // Copy the matching handlers so a handler may subscribe others without deadlock.
     std::vector<Handler> handlers;
     {
@@ -98,7 +112,10 @@ void subscribe(Event type, Handler handler) {
 bool publish(Event type, int32_t arg) {
   if (!g_queue) return false;
   const Message m{type, arg};
+  const bool merge = coalesced(type) && arg == 0;
+  if (merge && g_queued[static_cast<size_t>(type) % 32].exchange(true)) return true;  // one is on its way
   if (xQueueSend(g_queue, &m, 0) != pdTRUE) {
+    if (merge) g_queued[static_cast<size_t>(type) % 32] = false;
     ESP_LOGW(TAG, "queue full; dropped %s", event_name(type));
     return false;
   }

@@ -42,6 +42,12 @@ struct Status {
   uint32_t last_sweep = 0;  // epoch seconds, 0 never
   uint32_t last_sweep_deleted = 0;
   uint64_t last_sweep_freed = 0;
+  // The last like that was queued rather than answered (the worker was busy): the post,
+  // what was asked, whether it is still waiting, and the error when it failed.
+  int32_t like_post = -1;
+  bool like_liked = false;
+  bool like_pending = false;
+  std::string like_error;
 };
 
 // The show addresses channels through the content provider interface (ADR 0012);
@@ -109,7 +115,10 @@ void note_hidden();  // nothing of Makapix is up any more
 bool play_post(const std::string &sqid_or_url, std::string &error);
 bool play_url(const std::string &url, std::string &error);
 // Like or unlike a post as the owner (blocks up to 20 s; needs pairing).
-bool like(int32_t post_id, bool liked, std::string &error);
+// Reacts to a post as the owner. Waits up to 5 s for the worker: true with the like
+// done, or true with `*queued` set when the worker is busy (the like runs when it gets
+// there and its outcome appears in Status::like_*), or false with the reason.
+bool like(int32_t post_id, bool liked, std::string &error, bool *queued = nullptr);
 // The Followed built-in: asks the server for followed_artists and hands the playset to
 // hooks.play_playset when it lands (asynchronous). False when not paired.
 bool play_followed(std::string &error);

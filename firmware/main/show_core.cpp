@@ -1132,7 +1132,12 @@ void tick_impl() {
   }
   resolve_connected();
   if (rules::auto_swap_due(swap_timer_runs(), s.auto_swap_seconds, now, st.swap_at_us)) {
-    if (!roll_interlude()) swap_fresh();
+    // One roll per due swap (finding F-06): while the next artwork is not ready the swap
+    // stays due and this runs on every tick; rolling each time made an interlude almost
+    // certain whenever an artwork was late, whatever its median gap.
+    const bool rolled = st.interlude_rolled_for_us == st.swap_at_us;
+    st.interlude_rolled_for_us = st.swap_at_us;
+    if (rolled || !roll_interlude()) swap_fresh();
   }
   if (st.scan_queued && !st.scan_running && now >= st.scan_retry_at_us) {  // the loader refused it earlier
     const content::Playset next = std::move(st.queued_scan);

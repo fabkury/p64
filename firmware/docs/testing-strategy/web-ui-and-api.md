@@ -78,6 +78,13 @@ One answer differs from the recommendation written here: Q1 was answered with op
 alone, so the promise is "within 3 s, except during an upload" and no worker task is
 added. The text below is kept as the record of what was weighed.
 
+**Implemented on 2026-11-11, the firmware side**: Q1 (5 s by the owner's later choice),
+Q2, Q4, Q5 and Q6, with `abuse_smoke.py` extended to assert each (WEB-D4 to WEB-D8 in a
+first form). Open: Q3 is tested at five clients but nothing closes the oldest page's
+WebSocket on purpose; Q7 (the pages' JavaScript) and the browser lane; the monkey
+(WEB-D3), the overlaps of heavy actions (WEB-D9), the PIN variant (WEB-D10) and the
+latency budgets (WEB-D11).
+
 ### Q1. One stalled client freezes every other
 
 The server handles one request at a time, so a slow upload, a phone that lost its

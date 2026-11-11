@@ -125,10 +125,21 @@ def run(base, paired):
 
     if paired:
         pid = d["playback"]["artwork"]["post_id"]
-        st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": True})
-        check(st == 200 and j["data"]["liked"], "like post %d" % pid)
-        st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": False})
-        check(st == 200 and not j["data"]["liked"], "unlike post %d" % pid)
+        # 200 with the result, or 202 "queued" when the worker was busy for the route's
+        # 5 s (the outcome is then in the status document's makapix.like).
+        for want, word in ((True, "like"), (False, "unlike")):
+            st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": want}, timeout=30)
+            ok = st == 200 and j["data"]["liked"] == want
+            if st == 202 and j["data"].get("queued"):
+                deadline = time.time() + 60
+                like = {}
+                while time.time() < deadline:
+                    like = status(base)["makapix"].get("like") or {}
+                    if like.get("post_id") == pid and like.get("liked") == want and like.get("pending") is False:
+                        break
+                    time.sleep(0.5)
+                ok = like.get("pending") is False and like.get("error") == "" and like.get("liked") == want
+            check(ok, "%s post %d (%s)" % (word, pid, st))
         st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": "All"})
         check(st == 200, "activate All")
         deadline = time.time() + 180

@@ -1,5 +1,5 @@
 ---
-status: accepted (decided 2026-11-11; not implemented yet)
+status: accepted (decided 2026-11-11; the firmware side implemented the same day, the pages' side not yet)
 date: 2026-11-11
 ---
 
@@ -15,9 +15,13 @@ re-examined for running beside another.
 
 The promise, which the specification states and the tests assert:
 
-- While one client stalls or sends garbage, any other client is answered within 3 s:
-  short receive and send timeouts, a refused body is not drained, nothing slow is done
-  inline (a like is queued and reported through the status).
+- While one client stalls or sends garbage, any other client is answered within 5 s:
+  receive and send timeouts of 5 s, a refused body is not drained (the connection is
+  closed), nothing slow is done inline beyond that (a like, which takes about 3 s, waits up to 5 s
+  for the worker, then is queued and reported through the status). The owner chose 5 s over the 3 s first written here
+  on 2026-11-11, to be kinder to uploads over weak Wi-Fi. The promise is per stalled
+  client: they are timed out one after the other, so six stalled at once cost about
+  30 s once (measured 29.7 s; 90 s before).
 - **Except during an upload**: a legitimate upload holds the server for its duration
   (about 18 s for the 5 MB maximum at the measured 290 KB/s); the pages say so and wait.
 - Four open pages are supported; beyond that the page idle longest loses its WebSocket

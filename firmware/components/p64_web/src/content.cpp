@@ -158,9 +158,9 @@ esp_err_t folders_handler(httpd_req_t *req) {
   return reply_ok(req, arr);
 }
 
-esp_err_t simple_action(httpd_req_t *req, const char *name, const std::function<void()> &fn) {
+esp_err_t simple_action(httpd_req_t *req, const char *name, const std::function<bool()> &fn) {
   if (!fn) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
-  fn();
+  if (!fn()) return reply_busy(req);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "action", name);
   return reply_ok(req, d);
@@ -185,7 +185,9 @@ esp_err_t action_play_playset(httpd_req_t *req) {
   }
   if (!hooks().activate_playset) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
   std::string error;
-  if (!hooks().activate_playset(name, error)) return reply_error(req, "404 Not Found", "NOT_FOUND", error);
+  if (!hooks().activate_playset(name, error)) {
+    return error == kBusyError ? reply_busy(req) : reply_error(req, "404 Not Found", "NOT_FOUND", error);
+  }
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "name", name.c_str());
   cJSON_AddBoolToObject(d, "activating", true);
@@ -204,6 +206,7 @@ esp_err_t action_interlude(httpd_req_t *req) {
   if (!hooks().interlude) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
   std::string error;
   if (!hooks().interlude(widget, error)) {
+    if (error == kBusyError) return reply_busy(req);
     const bool unknown = error.find("must be") != std::string::npos;
     return reply_error(req, unknown ? "400 Bad Request" : "409 Conflict", unknown ? "INVALID_WIDGET" : "NOT_IN_SHOW",
                        error);
@@ -222,7 +225,7 @@ esp_err_t action_history_go(httpd_req_t *req) {
   cJSON_Delete(body);
   if (pos < 0 || pos > 1000) return reply_error(req, "400 Bad Request", "INVALID_POSITION", "position required");
   if (!hooks().go_to) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
-  hooks().go_to(static_cast<size_t>(pos));
+  if (!hooks().go_to(static_cast<size_t>(pos))) return reply_busy(req);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddNumberToObject(d, "position", pos);
   return reply_ok(req, d);

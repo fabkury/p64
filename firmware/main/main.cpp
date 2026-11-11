@@ -137,7 +137,8 @@ std::atomic<bool> g_like_busy{false};
 void knob_like_task(void *arg) {
   const auto post = static_cast<int32_t>(reinterpret_cast<intptr_t>(arg));
   std::string error;
-  if (p64::makapix::like(post, true, error)) ESP_LOGI(TAG, "knob: liked post %ld", static_cast<long>(post));
+  bool queued = false;
+  if (p64::makapix::like(post, true, error, &queued)) ESP_LOGI(TAG, "knob: %s post %ld", queued ? "like queued for" : "liked", static_cast<long>(post));
   else ESP_LOGW(TAG, "knob: like of post %ld failed: %s", static_cast<long>(post), error.c_str());
   g_like_busy = false;
   vTaskDelete(nullptr);

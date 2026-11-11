@@ -131,6 +131,11 @@ esp_err_t reply_error(httpd_req_t *req, const char *status, const char *code, co
   return r;
 }
 
+esp_err_t reply_busy(httpd_req_t *req) {
+  httpd_resp_set_hdr(req, "Retry-After", "1");
+  return reply_error(req, "503 Service Unavailable", "BUSY", kBusyError);
+}
+
 bool query_param(httpd_req_t *req, const char *name, std::string &out) {
   const size_t len = httpd_req_get_url_query_len(req);
   if (len == 0) return false;
@@ -278,6 +283,8 @@ cJSON *build_status() {
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());
   cJSON_AddStringToObject(d, "update_state", ota::state_name(ota::status().state));
   cJSON_AddNumberToObject(d, "playsets_version", g_playsets_version.load());
+  // Flash writes of the settings since boot: a burst of changes must cost one (decision D30).
+  cJSON_AddNumberToObject(d, "settings_nvs_writes", system::settings_nvs_writes());
 #ifdef CONFIG_P64_TEST_HOOKS
   cJSON_AddBoolToObject(d, "test_hooks", true);  // a test build can never pass for a release
 #endif
@@ -321,7 +328,7 @@ esp_err_t settings_put(httpd_req_t *req) {
   bool parsed = true;
   const char *code = "INVALID_JSON";
   const bool saved =
-      system::settings_update([&](system::Settings &s) { parsed = s.apply_json(body.c_str(), error, &code); });
+      system::settings_update([&](system::Settings &s) { parsed = s.apply_json(body.c_str(), error, &code, true); });
   if (!parsed) return reply_error(req, "400 Bad Request", code, error);
   if (!saved) return reply_error(req, "500 Internal Server Error", "SAVE_FAILED", "settings could not be stored");
   const system::Settings after = system::settings();
@@ -333,7 +340,7 @@ esp_err_t settings_put(httpd_req_t *req) {
 }
 
 esp_err_t action_next(httpd_req_t *req) {
-  if (g_hooks.next) g_hooks.next();
+  if (g_hooks.next && !g_hooks.next()) return reply_busy(req);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "action", "next");
   return reply_ok(req, d);
@@ -375,7 +382,9 @@ esp_err_t action_play(httpd_req_t *req) {
   }
   if (rel.empty() || !storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path, post or url required");
   if (!g_hooks.play_file) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no player");
-  if (!g_hooks.play_file(abs, error)) return reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+  if (!g_hooks.play_file(abs, error)) {
+    return error == kBusyError ? reply_busy(req) : reply_error(req, "422 Unprocessable Entity", "REJECTED", error);
+  }
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "path", rel.c_str());
   return reply_ok(req, d);
@@ -736,7 +745,9 @@ esp_err_t action_boot_animation(httpd_req_t *req) {
   }
   if (!g_hooks.play_intro) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no show");
   std::string error;
-  if (!g_hooks.play_intro(name, error)) return reply_error(req, "409 Conflict", "NOT_NOW", error);
+  if (!g_hooks.play_intro(name, error)) {
+    return error == kBusyError ? reply_busy(req) : reply_error(req, "409 Conflict", "NOT_NOW", error);
+  }
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "action", "boot_animation");
   cJSON_AddStringToObject(d, "name", name.c_str());

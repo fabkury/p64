@@ -49,6 +49,13 @@ cJSON *status_json() {
   cJSON_AddBoolToObject(o, "mqtt_connected", s.mqtt_connected);
   cJSON_AddStringToObject(o, "activity", s.activity.c_str());
   cJSON_AddStringToObject(o, "last_error", s.last_error.c_str());
+  if (s.like_post >= 0) {  // the last like that was queued behind a busy worker
+    cJSON *like = cJSON_AddObjectToObject(o, "like");
+    cJSON_AddNumberToObject(like, "post_id", s.like_post);
+    cJSON_AddBoolToObject(like, "liked", s.like_liked);
+    cJSON_AddBoolToObject(like, "pending", s.like_pending);
+    cJSON_AddStringToObject(like, "error", s.like_error.c_str());
+  }
   cJSON_AddNumberToObject(o, "cert_expires_at", s.cert_expires_at);
   cJSON_AddNumberToObject(o, "refreshes", s.refreshes);
   cJSON_AddNumberToObject(o, "downloads", s.downloads);
@@ -137,10 +144,24 @@ esp_err_t like_handler(httpd_req_t *req) {
   if (post_id < 0) return reply_error(req, "400 Bad Request", "INVALID_POST", "post_id required");
   if (!hooks().like) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no Makapix");
   std::string error;
-  if (!hooks().like(post_id, want, error)) return reply_error(req, "409 Conflict", "LIKE_FAILED", error);
+  bool queued = false;
+  if (!hooks().like(post_id, want, error, &queued)) return reply_error(req, "409 Conflict", "LIKE_FAILED", error);
   cJSON *d = cJSON_CreateObject();
   cJSON_AddNumberToObject(d, "post_id", post_id);
   cJSON_AddBoolToObject(d, "liked", want);
+  if (queued) {
+    // The Makapix worker is busy: the like is queued and the status document's
+    // makapix.like says how it ended. 202, as every action that finishes later.
+    cJSON_AddBoolToObject(d, "queued", true);
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddBoolToObject(root, "ok", true);
+    cJSON_AddItemToObject(root, "data", d);
+    char *text = cJSON_PrintUnformatted(root);
+    const esp_err_t r = net::http::send(req, "202 Accepted", "application/json", text ? text : "{\"ok\":true}");
+    cJSON_free(text);
+    cJSON_Delete(root);
+    return r;
+  }
   return reply_ok(req, d);
 }
 

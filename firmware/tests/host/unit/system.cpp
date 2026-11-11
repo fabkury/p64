@@ -307,4 +307,52 @@ TEST_CASE("text: a field read back from memory becomes printable ASCII (F-03)") 
   }
 }
 
+
+// --- the API's strict reading (decision D28, 2026-11-11) ------------------------------
+
+TEST_CASE("settings: the API refuses a wrong type and names the key; a stored document is read leniently") {
+  using p64::system::Settings;
+  Settings s;
+  s.brightness = 77;
+  std::string error;
+  const char *code = "";
+  struct Case {
+    const char *json;
+    const char *key;
+  };
+  const Case wrong[] = {
+      {R"({"display":{"brightness":"bright"}})", "brightness"},
+      {R"({"display":{"brightness":null}})", "brightness"},
+      {R"({"display":{"mirror":1}})", "mirror"},
+      {R"({"display":{"panel_mode":3}})", "panel_mode"},
+      {R"({"display":{"panel_mode":"cinema"}})", "panel_mode"},
+      {R"({"display":"x"})", "display"},
+      {R"({"show":{"clock_overlay":{"font":7}}})", "font"},
+      {R"({"display":{"night":[1,2]}})", "night"},
+  };
+  for (const Case &c : wrong) {
+    CAPTURE(c.json);
+    error.clear();
+    CHECK(!s.apply_json(c.json, error, &code, true));
+    CHECK(std::string(code) == "INVALID_SETTINGS");
+    CHECK(error.find(c.key) == 0);  // the message starts with the key's name
+    CHECK_EQ(s.brightness, 77);     // nothing of the document was applied
+    // The same document from NVS (an older or newer firmware wrote it) is read, the
+    // unusable key skipped: a device must never lose its settings to one odd value.
+    Settings stored = s;
+    CHECK(stored.apply_json(c.json, error));
+  }
+  // An unknown enum value says which ones exist.
+  CHECK(!s.apply_json(R"({"display":{"panel_mode":"cinema"}})", error, &code, true));
+  CHECK(error == "panel_mode: expected one of quality, photo");
+  // A wrong key beside good ones refuses the whole document.
+  CHECK(!s.apply_json(R"({"display":{"brightness":10,"mirror":"yes"}})", error, &code, true));
+  CHECK_EQ(s.brightness, 77);
+  // Unknown keys are ignored and numbers out of range clamped, strict or not.
+  CHECK(s.apply_json(R"({"display":{"brightness":999,"no_such_key":true},"no_such_group":{"x":1}})", error, &code, true));
+  CHECK_EQ(s.brightness, 255);
+  // What the firmware writes passes its own strict reading.
+  CHECK(s.apply_json(s.to_json().c_str(), error, &code, true));
+}
+
 }  // namespace

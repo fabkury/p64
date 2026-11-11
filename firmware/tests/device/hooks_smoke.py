@@ -6,9 +6,10 @@ built with -DP64_TEST=ON; docs/testing-strategy/infrastructure.md):
 
 It REBOOTS THE DEVICE several times. In this order:
 
-- like:  holds the Makapix worker for 30 s and sends a like meanwhile. The like times out
-         after 20 s; the worker then runs it and frees the job (finding F-10: it used to
-         write into the waiter's dead stack frame). Needs a pairing.
+- like:  holds the Makapix worker for 30 s and sends a like meanwhile. The like is
+         answered 202 "queued" after 5 s (decision D25); the worker then runs it, records
+         the outcome in the status and frees the job (finding F-10: it used to write into
+         the waiter's dead stack frame). Needs a pairing.
 - time:  withholds the time at run time, then across a reboot: the device must say it is
          not synced, keep playing what it has, and recover when the time is released.
 - panic: a deliberate panic. The device must come back, count it, keep a crash summary
@@ -92,6 +93,20 @@ def playing(d):
     return bool(d["playback"].get("artwork"))
 
 
+def settle_like(base, pid, want):
+    """Sends a like or an unlike and waits for it to be done, answered at once (200) or
+    queued behind a busy worker (202, the outcome in the status)."""
+    st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": want}, timeout=60)
+    if st == 200:
+        return j["data"]["liked"] == want
+    if st != 202:
+        return False
+    d = wait_status(base, lambda s: (s["makapix"].get("like") or {}).get("pending") is False and
+                    (s["makapix"].get("like") or {}).get("liked") == want, 60)
+    like = d["makapix"].get("like") or {}
+    return like.get("pending") is False and like.get("error") == "" and like.get("liked") == want
+
+
 def test_like(base):
     d = harness.status(base)
     if d["makapix"]["state"] != "paired":
@@ -110,22 +125,26 @@ def test_like(base):
         t0 = time.time()
         st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": True}, timeout=60)
         took = time.time() - t0
-        check(st != 200 and 18 <= took <= 26, "like: with the worker held, the like gives up after its 20 s (%.1f s, %s %s)" % (took, st, str(j)[:70]))
+        check(st == 202 and j["data"].get("queued") and 4.0 <= took <= 7.5,
+              "like: with the worker held, the like is queued after its 5 s (%.1f s, %s %s)" % (took, st, str(j)[:70]))
+        like = harness.status(base)["makapix"].get("like") or {}
+        check(like.get("post_id") == pid and like.get("pending") is True, "like: the status shows it pending (%s)" % like)
         # The worker wakes, finds the abandoned job, runs it and frees it. Before the fix
-        # this wrote into the handler's dead stack frame.
-        time.sleep(14)
+        # of F-10 this wrote into the handler's dead stack frame.
+        done = wait_status(base, lambda s: (s["makapix"].get("like") or {}).get("pending") is False, 45)
+        like = done["makapix"].get("like") or {}
+        check(like.get("pending") is False and like.get("error") == "" and like.get("liked") is True,
+              "like: the worker ran it and the status shows the outcome (%s)" % like)
         after = harness.status(base)
         check(after["uptime_s"] > d["uptime_s"], "like: the device is still up after the worker ran the abandoned job")
-        st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": False}, timeout=60)
-        check(st == 200 and not j["data"]["liked"], "like: the worker serves the next request (unlike post %d: %s)" % (pid, st))
+        check(settle_like(base, pid, False), "like: the worker serves the next request (unlike post %d)" % pid)
         # Twice more, back to back: a job abandoned while another waits behind it.
         hook(base, hold_worker_ms=25000)
         time.sleep(1.5)
         st1, _ = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": True}, timeout=60)
-        check(st1 != 200, "like: a second abandoned like (%s)" % st1)
-        time.sleep(10)
-        st, j = request(base, "POST", "/api/v1/makapix/like", {"post_id": pid, "like": False}, timeout=60)
-        check(st == 200, "like: and the worker still answers (%s)" % st)
+        check(st1 == 202, "like: a second queued like (%s)" % st1)
+        wait_status(base, lambda s: (s["makapix"].get("like") or {}).get("pending") is False, 45)
+        check(settle_like(base, pid, False), "like: and the worker still answers (unlike)")
         h = harness.status(base)["heap"]
         check(h["internal_free"] >= harness.budgets()["internal_free_min"], "like: internal heap %d above its floor" % h["internal_free"])
     finally:
@@ -208,6 +227,10 @@ def test_reset(base):
     rng = random.Random(64)
     try:
         request(base, "PUT", "/api/v1/settings", {"display": {"brightness": values[0]}})
+        # A change is stored within 2 s (0.3 s after the last one, decision D30): wait
+        # until the first value is in flash, so that from here on the stored document is
+        # always one of the two being written.
+        time.sleep(3)
         for n in range(5):
             stop.clear()
             t = threading.Thread(target=writer, daemon=True)

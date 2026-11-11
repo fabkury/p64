@@ -29,6 +29,9 @@ esp_err_t ws_handler(httpd_req_t *req) {
   if (req->method == HTTP_GET) {
     const int fd = httpd_req_to_sockfd(req);
     std::lock_guard<std::mutex> lock(g_mutex);
+    // One entry per socket: a descriptor whose connection the server purged is reused
+    // by the next client, and a stale entry would send it everything twice (F-22).
+    g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
     g_clients.push_back(fd);
     ESP_LOGI(TAG, "client %d connected (%u total)", fd, static_cast<unsigned>(g_clients.size()));
     g_wake = true;

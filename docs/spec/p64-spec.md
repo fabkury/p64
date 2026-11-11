@@ -686,7 +686,14 @@ embedded table to the POSIX rule, so daylight saving is automatic; default UTC.
 Optional 4 to 8 digit PIN, off by default, set, changed or cleared in Settings, cleared
 by factory reset. When on: every page and API route requires it, entered once per browser
 (session cookie) or sent by scripts in a header; after 5 failures the device delays
-answers for 30 s. The setup portal in setup mode and the UDP streams are not covered.
+answers for 30 s (for everyone: the count is the device's, not a client's, and a restart
+clears it). The setup portal in setup mode and the UDP streams are not covered; the
+portal's routes that change the device answer only in setup mode.
+
+Whatever changes the device, and the WebSocket, is refused when it comes from another
+site's page (a request whose `Origin` header does not name the device, since
+2026-11-11): a page on the internet cannot drive a p64 through its visitor's browser.
+Scripts and tools, which send no `Origin`, are served as before.
 
 ## 11. Web UI
 
@@ -734,7 +741,12 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
 ### 11.2 Behaviour
 
 - Status changes (now playing, counters, banners) are pushed to open pages over a
-  WebSocket; polling every 4 s is the fallback.
+  WebSocket; polling every 4 s is the fallback. Four pages open at once are supported
+  (any mix of tabs and devices); beyond that the page idle longest loses its WebSocket
+  and polls.
+- One request is served at a time (ADR 0019). A client that stalls holds the others for
+  at most 5 s; a file being uploaded holds them for as long as it takes (up to about
+  18 s for 5 MB), and the pages say so.
 - Every destructive action (delete, format, unpair, factory reset, erase Wi-Fi) asks for
   confirmation in the UI.
 - The UI never assumes a source URL: the preview comes from the device.
@@ -748,6 +760,16 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   history, Makapix, network, update, diagnostics; one WebSocket for status push and the
   live preview; an API version number reported in status. Route-level detail lives in the
   API reference written with the architecture.
+- A JSON body is at most 32 KB and 16 levels deep. A settings write merges the keys it
+  knows: numbers out of range are clamped, unknown keys ignored, and a known key with a
+  value of the wrong type (or an unknown name for a choice) refuses the whole document
+  with 400 and the key's name. A change takes effect at once and is stored a moment
+  later (within 2 s; an orderly restart stores it first), so a burst of changes costs
+  one write; a change that changes nothing costs none.
+- A burst of `next`, `previous` and history jumps is coalesced (the last one plays). A
+  command the device cannot take at that moment is answered 503 with `Retry-After`,
+  never accepted and dropped. An unknown route or a wrong method answers in the same
+  envelope as every other error.
 - No route is disabled in release builds; the optional PIN covers all of them.
 - The API is the only way the web UI talks to the device; anything the UI can do, a
   script can do.

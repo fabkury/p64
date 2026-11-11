@@ -68,7 +68,16 @@ void finish(Job *job, bool ok, const std::string &error) {
   } else if (job->handoff.finish()) {
     xSemaphoreGive(job->done);  // the submitter is waiting and owns the job
   } else {
-    vSemaphoreDelete(job->done);  // the submitter gave up (its wait timed out): ours to free
+    // The submitter gave up (its wait timed out): the outcome goes to the status and the
+    // job is ours to free.
+    if (job->type == JobType::Like) {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      if (g_status.like_post == job->number) {
+        g_status.like_pending = false;
+        g_status.like_error = ok ? "" : (error.empty() ? "failed" : error);
+      }
+    }
+    vSemaphoreDelete(job->done);
     delete job;
   }
 }

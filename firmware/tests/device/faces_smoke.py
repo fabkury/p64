@@ -162,10 +162,14 @@ def main():
     check(a != b, "the aquarium moves between two frames 0.5 s apart")
     settings(base, {"clock": {"face": "bracket"}})
     time.sleep(2.0)
+    # Three frames: the bob dwells at the ends of its swing, and two frames taken either
+    # side of an end can be the same picture (the check failed one run in a few).
     a = frame(base)
     time.sleep(0.5)
     b = frame(base)
-    check(a != b, "the bracket clock's bob moves between two frames 0.5 s apart")
+    time.sleep(0.3)
+    c = frame(base)
+    check(a != b or b != c, "the bracket clock's bob moves across three frames in 0.8 s")
     settings(base, {"clock": {"face": "station", "seconds": True}})
     time.sleep(2.0)
     a = frame(base)

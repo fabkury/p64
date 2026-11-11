@@ -26,18 +26,18 @@ void restore();
 [[noreturn]] void run();
 
 // Commands, from any task (queued to the main task).
-void next();
-void previous();
-void go_to(size_t history_index);
-void pause();
-void resume();
+bool next();
+bool previous();
+bool go_to(size_t history_index);
+bool pause();
+bool resume();
 void set_paused(bool paused);
 // The brightness knob was turned past its maximum (spec 9, p095): the sun notice goes
 // over the panel now (widgets/notice.hpp) and fades kNoticeHoldUs after the last call.
 // From any task.
 void notice_brightness_max();
-void reset_timer();
-void refresh();
+bool reset_timer();
+bool refresh();
 // Play a widget ("clock", "weather", "temperature") as an interlude now: one auto-swap
 // slot inside the Animation show, into history. False with a reason when the name is
 // unknown or the main state is not the show.

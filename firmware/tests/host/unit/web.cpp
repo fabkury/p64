@@ -1,5 +1,6 @@
 // Host unit tests: the PIN's rules (p64_web/src/auth_rules.cpp, spec 10.3).
 #include "common.hpp"
+#include "p64/net/origin.hpp"
 #include "auth_rules.hpp"
 
 #include <set>
@@ -73,6 +74,26 @@ TEST_CASE("pin: sessions, eviction of the least recently seen, sign-out") {
   s.end_all();  // a PIN change signs every browser out
   CHECK_EQ(s.count(), 0);
   CHECK(!s.touch(ninth.c_str(), 104 * kS));
+}
+
+
+// --- the Origin of a request (decision D29, 2026-11-11) -------------------------------
+
+TEST_CASE("web: a request that changes the device is the device's own page or no page at all") {
+  using p64::net::http::same_origin;
+  CHECK(same_origin("", "p64.local"));  // a script, curl, the firmware's own tests
+  CHECK(same_origin("http://p64.local", "p64.local"));
+  CHECK(same_origin("http://P64.local", "p64.LOCAL"));
+  CHECK(same_origin("http://192.168.4.46", "192.168.4.46"));
+  CHECK(same_origin("http://p64-desk.local:8080", "p64-desk.local:8080"));
+  CHECK(same_origin("http://192.168.4.1", "192.168.4.1"));  // the setup portal
+  CHECK(!same_origin("https://example.com", "p64.local"));  // another site's page
+  CHECK(!same_origin("http://p64.local.example.com", "p64.local"));
+  CHECK(!same_origin("http://p64.local:8080", "p64.local"));
+  CHECK(!same_origin("http://evil-p64.local", "p64.local"));
+  CHECK(!same_origin("null", "p64.local"));  // a sandboxed frame, a local file
+  CHECK(!same_origin("http://p64.local", ""));
+  CHECK(!same_origin("p64.local", "p64.local"));  // not an origin at all
 }
 
 }  // namespace

@@ -238,21 +238,25 @@ class DeviceEnv : public ShowEnv {
 
 DeviceEnv g_env;
 
-void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
+// Queues a command for the show loop. False when the queue stayed full for 100 ms: the
+// command is not taken, the caller says so (an API route answers 503, decision D26), and
+// nothing is dropped behind a "200".
+bool send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::LoadResult *load = nullptr,
           loader::ScanResult *scan = nullptr, std::string *text2 = nullptr, content::Playset *playset = nullptr,
           std::string *text3 = nullptr) {
   Command c{type, number, text, text2, text3, load, scan, playset};
-  if (!g_commands || xQueueSend(g_commands, &c, pdMS_TO_TICKS(500)) != pdTRUE) {
-    ESP_LOGW(TAG, "command queue full; dropped command %d", static_cast<int>(type));
+  if (!g_commands || xQueueSend(g_commands, &c, pdMS_TO_TICKS(100)) != pdTRUE) {
+    ESP_LOGW(TAG, "command queue full; command %d refused", static_cast<int>(type));
     delete text;
     delete text2;
     delete text3;
     delete load;
     delete scan;
     delete playset;
-    return;
+    return false;
   }
   wake_loop();
+  return true;
 }
 
 // A loader result, from the loader task: waits for room as long as it takes (the loader
@@ -404,16 +408,16 @@ void restore() {
   }
 }
 
-void next() { send(Cmd::Next); }
-void previous() { send(Cmd::Previous); }
-void go_to(size_t history_index) { send(Cmd::GoTo, static_cast<uint32_t>(history_index)); }
-void pause() { send(Cmd::Pause); }
-void resume() { send(Cmd::Resume); }
+bool next() { return send(Cmd::Next); }
+bool previous() { return send(Cmd::Previous); }
+bool go_to(size_t history_index) { return send(Cmd::GoTo, static_cast<uint32_t>(history_index)); }
+bool pause() { return send(Cmd::Pause); }
+bool resume() { return send(Cmd::Resume); }
 void notice_brightness_max() { g_notice_hit_us = esp_timer_get_time(); }
 
 void set_paused(bool paused) { send(paused ? Cmd::Pause : Cmd::Resume); }
-void reset_timer() { send(Cmd::ResetTimer); }
-void refresh() { send(Cmd::Refresh); }
+bool reset_timer() { return send(Cmd::ResetTimer); }
+bool refresh() { return send(Cmd::Refresh); }
 
 bool interlude(const std::string &widget, std::string &error) {
   static const char *const kNames[] = {"clock", "weather", "temperature", "air"};
@@ -429,7 +433,10 @@ bool interlude(const std::string &widget, std::string &error) {
     error = "interludes happen inside the Animation show";
     return false;
   }
-  send(Cmd::Interlude, static_cast<uint32_t>(kind));
+  if (!send(Cmd::Interlude, static_cast<uint32_t>(kind))) {
+    error = web::kBusyError;
+    return false;
+  }
   return true;
 }
 
@@ -449,7 +456,10 @@ bool play_intro(std::string &name, std::string &error) {
     error = "intro animations play inside the Animation show";
     return false;
   }
-  send(Cmd::PlayIntro, static_cast<uint32_t>(index));
+  if (!send(Cmd::PlayIntro, static_cast<uint32_t>(index))) {
+    error = web::kBusyError;
+    return false;
+  }
   return true;
 }
 
@@ -462,7 +472,10 @@ bool play_file(const std::string &absolute_path, std::string &error) {
     error = "not an artwork file (.gif, .png, .apng, .webp, .bmp)";
     return false;
   }
-  send(Cmd::PlayFile, 0, new std::string(absolute_path));
+  if (!send(Cmd::PlayFile, 0, new std::string(absolute_path))) {
+    error = web::kBusyError;
+    return false;
+  }
   return true;
 }
 
@@ -482,7 +495,10 @@ bool activate_playset(const std::string &name, std::string &error) {
     error = "no such playset";
     return false;
   }
-  send(Cmd::Activate, 0, new std::string(name));
+  if (!send(Cmd::Activate, 0, new std::string(name))) {
+    error = web::kBusyError;
+    return false;
+  }
   return true;
 }
 

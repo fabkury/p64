@@ -1191,4 +1191,43 @@ TEST_CASE("show core: an intro animation plays for one slot on request, then a f
   CHECK(show.env.last_played() == "widget:clock");
 }
 
+
+// --- F-06 (2026-11-11): the interlude plan was rolled on every tick while the next
+// artwork was not ready, so a late artwork made an interlude almost certain.
+
+TEST_CASE("show core: the interlude plan is rolled once per due swap, however long the next artwork takes (F-06)") {
+  Show show;
+  show.env.cfg->auto_swap_seconds = 5;
+  show.env.cfg->interlude_clock = 5;  // about 1.1 % per swap at this interval
+  show.env.cfg->interlude_weather = 0;
+  show.env.cfg->interlude_temperature = 0;
+  show.env.cfg->interlude_air = 0;
+  int interludes = 0;
+  for (int swap = 0; swap < 20; ++swap) {
+    show.advance_s(5);         // the prepared artwork goes up; the next one is asked for
+    show.env.loads.clear();    // ...and is late: its result does not come
+    show.env.now += 5 * 1000000;
+    const size_t played = show.env.played.size();
+    for (int tick = 0; tick < 400; ++tick) {  // the swap is due and nothing is ready, tick after tick
+      show.env.now += 1000;
+      core::tick();
+    }
+    for (size_t i = played; i < show.env.played.size(); ++i) {
+      if (show.env.played[i].rfind("widget:", 0) == 0) ++interludes;
+    }
+    if (core::state().widget_up) {  // an interlude did win its one roll: let it pass
+      show.env.now += 31 * 1000000;
+      core::tick();
+    }
+    for (int i = 0; i < 4; ++i) {  // the lost load times out and the show goes on
+      show.env.now += 31 * 1000000;
+      core::tick();
+      show.env.complete_loads();
+    }
+  }
+  // 20 swaps at 1.1 % each: an interlude or two at the very most. Rolling on each of the
+  // 400 ticks made it 99 % per swap, close to 20 of 20.
+  CHECK(interludes <= 2);
+}
+
 }  // namespace

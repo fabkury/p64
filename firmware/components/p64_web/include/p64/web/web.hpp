@@ -17,14 +17,15 @@
 namespace p64::web {
 
 struct Hooks {
-  // Show commands (queued to the main task; they return at once).
-  std::function<void()> next;
-  std::function<void()> previous;
-  std::function<void()> pause;
-  std::function<void()> resume;
-  std::function<void()> reset_timer;
-  std::function<void()> refresh;
-  std::function<void(size_t history_index)> go_to;
+  // Show commands (queued to the main task; they return at once). False: the show could
+  // not take the command now (its queue is full) and the route answers 503.
+  std::function<bool()> next;
+  std::function<bool()> previous;
+  std::function<bool()> pause;
+  std::function<bool()> resume;
+  std::function<bool()> reset_timer;
+  std::function<bool()> refresh;
+  std::function<bool(size_t history_index)> go_to;
   std::function<bool(const std::string &widget, std::string &error)> interlude;  // a widget for one slot, now
   // An intro animation for one slot, now (p101): `name` is a registry name or "random",
   // and comes back as the name that plays.
@@ -32,7 +33,8 @@ struct Hooks {
   std::function<bool(const std::string &absolute_path, std::string &error)> play_file;
   std::function<bool(const std::string &sqid_or_url, std::string &error)> play_post;  // Makapix post
   std::function<bool(const std::string &url, std::string &error)> play_url;           // arbitrary URL
-  std::function<bool(int32_t post_id, bool liked, std::string &error)> like;          // blocks briefly
+  // Waits up to 5 s; `*queued` when the Makapix worker is busy and the like runs later.
+  std::function<bool(int32_t post_id, bool liked, std::string &error, bool *queued)> like;
   std::function<bool(const std::string &name, std::string &error)> activate_playset;
   std::function<void(const std::string &old_name, const std::string &new_name)> playset_renamed;  // p108
   // Snapshots: each returns a new object the caller owns.
@@ -64,6 +66,11 @@ void notify();
 cJSON *build_status();
 // The UI page handler, for the setup portal to fall through to when not in setup mode.
 esp_err_t ui_handler(httpd_req_t *req);
+
+// The error text of a hook that could not queue its command (the routes answer 503).
+inline constexpr const char *kBusyError = "the device is busy; try again";
+// 503 with Retry-After: the device could not take the command now (decision D26).
+esp_err_t reply_busy(httpd_req_t *req);
 
 // Shared helpers for route handlers.
 esp_err_t reply_ok(httpd_req_t *req, cJSON *data);  // takes ownership of data (may be null)

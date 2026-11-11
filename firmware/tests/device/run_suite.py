@@ -127,6 +127,12 @@ def main():
     os.makedirs(out, exist_ok=True)
 
     first = harness.status(base)
+    # A device that has just booted is still joining the network, syncing the time and
+    # reading its indexes: timing checks fail on it for no fault of theirs (the intro
+    # bench did, started 4 s after a reboot on 2026-11-11).
+    while first["uptime_s"] < 30:
+        time.sleep(2)
+        first = harness.status(base)
     facts = harness.facts(first)
     print("device %s: firmware %s%s, card %s, time %s, paired %s, uptime %d s" % (
         base, facts["version"], " (test hooks)" if facts["hooks"] else "", facts["card"], facts["ntp"], facts["paired"],

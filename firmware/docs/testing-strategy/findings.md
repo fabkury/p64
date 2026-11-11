@@ -93,7 +93,14 @@ F-28, F-29 and the divergences of section D) were decided the same day:
 - **Tests**: a host test of the crash summary's serialisation with hostile bytes; the
   oracle validates every status document as strict UTF-8 JSON.
 
-### F-04 One stalled client freezes the web server for every other (major)
+### F-04 One stalled client freezes the web server for every other (major; bounded 2026-11-11)
+
+- **Bounded** (ADR 0019, decision D25): timeouts of 5 s each way, and a refused body closes the
+  connection instead of being drained. Measured on the p64b with `abuse_smoke.py`: behind
+  one half-sent request another client is answered in 4.8 s; behind six in 29.7 s (they
+  are timed out in turn; 90 s before); a refused 8 MB upload is cut off after 16 KB and
+  others are answered in 0.2 s (27 s before). A legitimate upload still holds the server
+  for its duration, by decision.
 
 - **Seen**, three ways:
   - ten connections that each sent half a request header: no other request was answered
@@ -110,7 +117,12 @@ F-28, F-29 and the divergences of section D) were decided the same day:
 - This is a design question before it is a test:
   [web-ui-and-api.md, Q1](web-ui-and-api.md#q1-one-stalled-client-freezes-every-other).
 
-### F-05 Events are dropped under a burst of settings writes (major)
+### F-05 Events are dropped under a burst of settings writes (major; fixed 2026-11-11)
+
+- **Fixed**: events that only say "read again" are coalesced in the bus (one queued at a time),
+  a settings change that changes nothing notifies nobody, and the flash write is deferred
+  and merged. On the device: 120 changes from 8 connections in 3.2 s cost 2 flash writes,
+  dropped no event, and what the panel applied equalled what was stored.
 
 - **Seen**: 100 `PUT /api/v1/settings` from 8 connections in 3.1 s, all answered 200;
   the log shows `events: queue full; dropped settings changed` many times.
@@ -121,7 +133,10 @@ F-28, F-29 and the divergences of section D) were decided the same day:
 - Also seen: every PUT, including an empty `{}`, is a full NVS write with no debounce
   (audit, `components/p64_system/src/settings.cpp:96-118`).
 
-### F-06 The interlude roll repeats while no artwork is ready (major)
+### F-06 The interlude roll repeats while no artwork is ready (major; fixed 2026-11-11)
+
+- **Fixed**: one roll per due swap. Host scenario: 20 late swaps of 400 ticks each give at most
+  two interludes at a 1.1 % chance (close to 20 before).
 
 - **Seen** in F-01's stuck state: an interlude at every interval.
 - **Cause (source)**: `main/show_core.cpp:1056-1057` runs `if (!roll_interlude())
@@ -147,7 +162,11 @@ F-28, F-29 and the divergences of section D) were decided the same day:
   largest block and lowest-ever free sampled over days, on the public image, with a slope
   limit instead of a floor.
 
-### F-08 Small protocol faults (minor)
+### F-08 Small protocol faults (minor; partly fixed 2026-11-11)
+
+- **Fixed**: a wrong type or an unknown choice in a settings write is a 400 naming the key
+  (decision D28); unknown routes and wrong methods answer in the JSON envelope. Still
+  open: the over-long request line.
 
 - A request line over 512 bytes gets a connection reset, not a 414 with a body.
 - Wrong types and unknown keys in a settings write are ignored and answered 200 (by
@@ -247,7 +266,11 @@ API; no code reads them (the root is the constant `p64`, `card.cpp:27`). The
 specification (14, 16) describes both as working. Either implement or remove before 1.0.0:
 a setting that does nothing is a broken promise.
 
-### F-17 A command that cannot be queued is answered 200 (major)
+### F-17 A command that cannot be queued is answered 200 (major; fixed 2026-11-11)
+
+**Fixed**: the show's `send()` reports a full queue and the routes answer 503 `BUSY` with
+`Retry-After`. Not provoked on the device: since F-01's fix the queue no longer fills
+under the bursts of `abuse_smoke.py`; it needs the queue-pressure hook.
 
 `main/show.cpp:232-245`: `send()` returns nothing; the handler has already decided to
 answer. Confirmed in F-01's log. To define: the answer when the device cannot take a
@@ -259,13 +282,13 @@ command ([web-ui-and-api.md, Q2](web-ui-and-api.md#q2-the-answer-when-a-command-
 |---|---|---|---|
 | F-20 | A lost `Scanned` result leaves `scan_running` true: no later rescan | `show_core.cpp:812-813` | major |
 | F-21 | Cardless PSRAM has no worst-case bound: the 6 MB cache, a 5 MB download, the copy made on store, the current and the prepared artwork (each a copy of up to 5 MB) and the indexes can exceed 16 MB; with C++ exceptions off a failed allocation aborts | `cache.cpp`, `sdkconfig.defaults:111` | blocker for D5 |
-| F-22 | The WebSocket client list keeps a dead descriptor that a new client can reuse (double sends); a client whose buffer is full costs the HTTP task up to 10 s per broadcast | `ws.cpp:24-68` | major |
+| F-22 | (2026-11-11: one entry per descriptor now; five WebSocket clients served and a request answered in 0.2 s beside them; the stalled-client case is still not reproduced) The WebSocket client list keeps a dead descriptor that a new client can reuse (double sends); a client whose buffer is full costs the HTTP task up to 10 s per broadcast | `ws.cpp:24-68` | major |
 | F-23 | `POST /api/v1/wifi` overwrites the saved credentials before trying the new ones, and starts a task per call without checking the result | `wifi.cpp:318-333`, `api.cpp:558,566` | major (a typo in the password strands the device until setup mode) |
 | F-24 | Rename has no protected-folder check (delete has); an upload overwrites a file of the same name silently | `files.cpp:115-155`, `card.cpp:376` | minor |
 | F-25 | Reboot does not unmount the card; format holds the mount mutex while the loader, the fetcher and the status builder wait | `api.cpp:378-389`, `card.cpp:94-115` | major |
 | F-26 | With Wi-Fi up and NTP unanswered the device calls itself "offline"; `last_error` is never cleared, so the Home banner sticks | `makapix.cpp:117,485`, `show_core.cpp:759,782` | major (misleads) |
 | F-27 | Play-this by URL or post: one job per press, no dedupe and no cancel; Followed makes a server call per press | `makapix.cpp:474-520,706-718` | minor |
-| F-28 | PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
+| F-28 | (2026-11-11: a foreign Origin is refused on every changing request and on the WebSocket, decision D29; the global lockout and the session eviction stay as documented limits; a WebSocket open across a PIN change is still not closed) PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
 | F-29 | A card without a FAT file system cannot be formatted from the web UI (format needs a mounted card), against ADR 0006; Home says only "No card" | `card.cpp:64,96` | major |
 | F-30 | The boot mount runs on the main task; its duration with an empty slot is unknown | `main.cpp:282` | to measure |
 | F-31 | The brightness notice (the sun at 255) goes up with the artwork's next frame: over an animation with long frame delays it appears late and shortened, and can be missed. Found by the suite on 2026-11-11 when `encoders_smoke.py` failed one run in three | `show.cpp` (the player's overlay) | minor |

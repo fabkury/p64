@@ -519,7 +519,8 @@ bool play_url(const std::string &url, std::string &error) {
   return true;
 }
 
-bool like(int32_t post_id, bool liked, std::string &error) {
+bool like(int32_t post_id, bool liked, std::string &error, bool *queued) {
+  if (queued) *queued = false;
   if (!paired()) {
     error = "likes need pairing";
     return false;
@@ -541,12 +542,28 @@ bool like(int32_t post_id, bool liked, std::string &error) {
     error = "busy";
     return false;
   }
-  if (xSemaphoreTake(job->done, pdMS_TO_TICKS(20000)) != pdTRUE) {
+  // 5 s: a like takes about 3 s with the worker free (2.8 to 3.2 s measured on
+  // 2026-11-11, once 4.8 s: a TLS session to the server each time), so most finish inside
+  // the wait. Longer than that and the caller (the one HTTP task, a knob press) is not
+  // kept: the like stays queued and its outcome goes to the status (decision D25; the
+  // wait was 20 s before).
+  if (xSemaphoreTake(job->done, pdMS_TO_TICKS(5000)) != pdTRUE) {
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_status.like_post = post_id;
+      g_status.like_liked = liked;
+      g_status.like_pending = true;
+      g_status.like_error.clear();
+    }
     if (job->handoff.abandon()) {
       // The worker is busy elsewhere (a download, a walk, the TLS slot). The job is its
-      // own now: it runs the like when it gets there and frees the job.
-      error = "timed out";
-      return false;
+      // own now: it runs the like when it gets there, records the outcome and frees it.
+      if (queued) *queued = true;
+      return true;
+    }
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_status.like_pending = false;
     }
     xSemaphoreTake(job->done, portMAX_DELAY);  // it finished this instant: its signal is on the way
   }

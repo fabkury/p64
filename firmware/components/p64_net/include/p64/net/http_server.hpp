@@ -19,6 +19,9 @@ bool add(const httpd_uri_t &uri, bool open = false);
 // the request proceed; when it returns false it has already sent the refusal.
 using Gate = std::function<bool(httpd_req_t *)>;
 void set_gate(Gate gate);
+// What a handler returns after it refused a request without reading its body: ESP_OK, or
+// ESP_FAIL (the connection is closed) when the unread body is large.
+esp_err_t after_refusal(httpd_req_t *req);
 // Sends a small text or JSON body with the status and content type given.
 esp_err_t send(httpd_req_t *req, const char *status, const char *content_type, const char *body);
 // Reads the whole request body (up to max_len) into `out`; false when it is larger.
