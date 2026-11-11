@@ -32,7 +32,7 @@ def arg(name, default):
     return default
 
 
-class WsLoad(threading.Thread):
+class PollLoad(threading.Thread):
     """Keeps one status poll per second going, as an open web page would."""
 
     def __init__(self, base):
@@ -66,7 +66,7 @@ def main():
     heap_min = d0["heap"]["internal_free"]
     b = budgets()
     cpu0 = request(base, "GET", "/api/v1/diag/memory")[1]["data"]
-    load = WsLoad(base)
+    load = PollLoad(base)
     load.start()
     t0 = time.time()
     last_uptime = d0["uptime_s"]
@@ -102,7 +102,8 @@ def main():
     check(r["panic"] == r0["panic"] and r["watchdog"] == r0["watchdog"], "no panic or watchdog counted")
     check(p["timeouts"] == p0["timeouts"], "no panel timeouts (%d)" % (p["timeouts"] - p0["timeouts"]))
     check(not stalled and not p["stalled"], "no DMA stall")
-    check(p["late_flips"] - p0["late_flips"] <= 2, "late flips stayed at zero or one (%d)" % (p["late_flips"] - p0["late_flips"]))
+    check(p["late_flips"] - p0["late_flips"] <= b["late_flips_per_soak_max"],
+          "late flips %d <= budget %d" % (p["late_flips"] - p0["late_flips"], b["late_flips_per_soak_max"]))
     check(d["playback"]["swaps"] - swaps0 >= (minutes * 60 / interval) * 0.6, "artworks swapped (%d in %.0f min)" % (d["playback"]["swaps"] - swaps0, minutes))
     check(heap_min >= b["soak_internal_free_min"], "internal heap floor %d >= budget %d" % (heap_min, b["soak_internal_free_min"]))
     cpu1 = request(base, "GET", "/api/v1/diag/memory")[1]["data"]

@@ -93,9 +93,9 @@ def main():
 
 
 if __name__ == "__main__":
+    import api_smoke
     try:
         main()
     finally:
-        import api_smoke
-        print(f"{api_smoke.FAILURES} failures" if hasattr(api_smoke, "FAILURES") else "")
-    sys.exit(1 if getattr(sys.modules.get("api_smoke"), "FAILURES", 0) else 0)
+        print("intro smoke: %d failures" % api_smoke.failures)
+    sys.exit(1 if api_smoke.failures else 0)

@@ -52,6 +52,16 @@ def request(base, method, path, body=None, content_type="application/json", time
             return e.code, payload
 
 
+SKIPPED = 2  # exit code of a test that could not run: its precondition is missing
+
+
+def skipped(reason):
+    """A test that cannot run says so and exits with SKIPPED, never with 0: a skip is not
+    a pass (until 2026-11-11 two scripts printed a line and passed)."""
+    print("SKIP " + reason)
+    return SKIPPED
+
+
 @contextlib.contextmanager
 def playset_restored(base):
     """Puts back the playset that was active when the block began, even when the block

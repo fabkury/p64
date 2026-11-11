@@ -29,8 +29,7 @@ def run(base):
           "network.tls_slot carries the slot's fields (%s)" % s)
     check(s["depth"] <= 2 and s["waiters"] <= 3, "the slot is not piled up at rest (depth %d, waiters %d)" % (s["depth"], s["waiters"]))
     if d["makapix"]["state"] != "paired":
-        check(True, "not paired: the paused-walk case needs the All channel; skipped")
-        return
+        return api_smoke.skipped("not paired: the paused-walk case needs the All channel")
 
     st, j = request(base, "GET", "/api/v1/channels")
     before = j["data"]["playset"]
@@ -93,6 +92,6 @@ if __name__ == "__main__":
         sys.exit(2)
     base = sys.argv[1].rstrip("/")
     with playset_restored(base):
-        run(base)
+        code = run(base) or 0
     print("tls slot smoke: %d failures" % api_smoke.failures)
-    sys.exit(1 if api_smoke.failures else 0)
+    sys.exit(1 if api_smoke.failures else code)

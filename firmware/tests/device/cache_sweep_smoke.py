@@ -25,7 +25,7 @@ import threading
 import time
 import urllib.request
 
-from api_smoke import budgets, check, playset_restored, request
+from api_smoke import budgets, check, playset_restored, request, skipped
 
 
 def status(base):
@@ -110,8 +110,7 @@ def sweep(base, older_than_s=None, dry_run=True, timeout=300.0):
 def run(base, delete):
     d = status(base)
     if not d.get("card", {}).get("mounted"):
-        print("no card mounted: nothing to sweep")
-        return 0
+        return skipped("no card mounted: the cache sweep needs one")
     check(d.get("time", {}).get("synced"), "clock synced")
     b = budgets()
 
