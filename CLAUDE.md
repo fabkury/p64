@@ -176,9 +176,20 @@ scan in flight, cJSON's nesting limit of 16 in `firmware/CMakeLists.txt` and
 `tests/host/run.py`, `p64/system/text.hpp`, `p64_makapix/src/handoff.hpp`) and
 `tests\device\abuse_smoke.py http://<ip>` reproduces the probes (a firmware older than
 0.2.2 reboots on it); a device test whose precondition is missing exits 2 with SKIP.
-Nothing else of the plan is implemented yet. When a finding is fixed, mark it in the
-register in the same commit. The p64b runs the public image since 2026-11-11 (build
-it with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
+The harness followed (p125, same day): `python tests\device\run_suite.py http://<ip>
+--lane smoke|full|abuse|hooks|update|soak` runs the device tests with the health oracle
+of `tests\device\harness.py` between them (a test that leaves the device wrong fails;
+a missing requirement is a skip, exit 2) and writes `tests/device/reports/` (ignored);
+the test build is `-B build_test -DP64_NO_PRIVATE=ON -DP64_TEST=ON
+-DSDKCONFIG=build_test/sdkconfig` (`sdkconfig.test`, `CONFIG_P64_TEST_HOOKS`, version
+`+test`, hooks at `GET`/`POST /api/v1/test`: card eject at boot, time withheld, worker
+held, panic, abrupt reset; seams are `#ifdef` and `p64/system/test_hooks.hpp` holds the
+flags; `tests\device\hooks_smoke.py` uses them and reboots the device about ten times).
+A new hook is a seam that changes what the code sees, never its logic, and costs the
+release image nothing. Fake servers, the browser lane and the fuzzers are not started;
+the web hardening and cardless are not implemented. When a finding is fixed, mark it in
+the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
+the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).
 
 Releases (since 2026-10-19, `firmware/docs/release-build.md`): pushing a tag `v<PROJECT_VER>`

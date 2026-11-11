@@ -169,8 +169,9 @@ unknown routes and methods; an aborted upload left no temporary file.
 
 **Fixed** (2026-11-11, commit 4fcc308): the job is on the heap and `handoff.hpp` decides which
 side frees it; host test with 2000 races. The 20 s wait on the HTTP task stays until the
-like is queued and reported through the status (D25). No device test yet: it needs the
-hook that holds the worker.
+like is queued and reported through the status (D25). On the device since the test build
+exists (`hooks_smoke.py`, 2026-11-11): with the worker held 30 s the like gives up at
+20.1 s, the worker then runs and frees the abandoned job, twice, and the device stays up.
 
 `makapix::like()` builds a `Job` on its own stack, queues its address and waits 20 s
 (`components/p64_makapix/src/makapix.cpp:522-550`). On a timeout it returns; the comment
@@ -195,6 +196,12 @@ last 48 files survive. Eviction does not clear an entry's "cached" flag; the sho
 among all flagged entries, misses, and each miss clears one flag and triggers one
 download (audit: `provider.cpp:55-65`, `loader.cpp:57-62`, `makapix.cpp:433-445`).
 Decided: the rolling window (D7). Details in [no-card-mode.md](no-card-mode.md).
+
+**Confirmed on the device** (2026-11-11, `hooks_smoke.py` with the card ejected virtually,
+Promoted, firmware `0.2.2+test`): 85 downloads in the first 73 s of a cardless boot and 40
+in 38 s of the next, more than one a second for as long as it was watched; PSRAM fell to
+13.3 MB free. The first artwork was up 7 to 8 s after the reset, which also answers Q7's
+estimate (10 to 30 s was a guess; the budget can be set near 15 s).
 
 ### F-12 The card is mounted once and its loss is never noticed (major; D6 defines the fix)
 
@@ -261,6 +268,7 @@ command ([web-ui-and-api.md, Q2](web-ui-and-api.md#q2-the-answer-when-a-command-
 | F-28 | PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
 | F-29 | A card without a FAT file system cannot be formatted from the web UI (format needs a mounted card), against ADR 0006; Home says only "No card" | `card.cpp:64,96` | major |
 | F-30 | The boot mount runs on the main task; its duration with an empty slot is unknown | `main.cpp:282` | to measure |
+| F-31 | The brightness notice (the sun at 255) goes up with the artwork's next frame: over an animation with long frame delays it appears late and shortened, and can be missed. Found by the suite on 2026-11-11 when `encoders_smoke.py` failed one run in three | `show.cpp` (the player's overlay) | minor |
 
 Web UI leads (audit of `components/p64_web/ui/`):
 
@@ -295,12 +303,12 @@ Web UI leads (audit of `components/p64_web/ui/`):
 | T-01 | (fixed 2026-11-11, commit 9a9dbb0) `intro_smoke.py` cannot fail: it reads `api_smoke.FAILURES`, the counter is `failures` | `tests/device/intro_smoke.py:100-101`, `api_smoke.py:24` (source) |
 | T-02 | (fixed 2026-11-11, commit 9a9dbb0: a missing precondition prints SKIP and exits 2) False passes: `cache_sweep_smoke.py` passes with no card, `tls_slot_smoke.py` passes unpaired | audit (`:112-114`, `:31-33`) |
 | T-03 | (fixed 2026-11-11, commit 9a9dbb0: the limit is the budget's and the poller is named for what it is; a soak with a WebSocket and commands is LONG-1) `soak.py` hard-codes its late-flip limit instead of reading `budgets.json`; its "WsLoad" opens no WebSocket and sends no command | audit (`soak.py:105`) |
-| T-04 | Scripts leave the device changed: `content_smoke.py` (auto-swap left at 30), `stream_smoke.py` (both listeners left on), `imu_smoke.py` (calibration rewritten), `pin_smoke.py` (a PIN left set when aborted), `ota_smoke.py` (the other slot when aborted); most restore only on the happy path | audit |
-| T-05 | No suite: 20 scripts, no runner, no shared fixture, no report; nothing device-side gates a release | audit; review item P-T5 was never done |
+| T-04 | (2026-11-11: the suite's oracle now reports any setting or playset a test leaves changed and puts it back; `stream_smoke.py` fixed. The others still restore only on the happy path) Scripts leave the device changed: `content_smoke.py` (auto-swap left at 30), `stream_smoke.py` (both listeners left on), `imu_smoke.py` (calibration rewritten), `pin_smoke.py` (a PIN left set when aborted), `ota_smoke.py` (the other slot when aborted); most restore only on the happy path | audit |
+| T-05 | (fixed 2026-11-11: `run_suite.py`, `harness.py`) No suite: 20 scripts, no runner, no shared fixture, no report; nothing device-side gates a release | audit; review item P-T5 was never done |
 | T-06 | The scaler's Python twin in `tests/host/run.py` still encodes the fractional downscale that ADR 0016 retired; latent because no corpus canvas is a non-power-of-two above 64 px | audit (`run.py:301-304`) |
-| T-07 | `release.yml` runs no host tests; CI checks 2 of the 10 keys of `budgets.json` | audit |
+| T-07 | (2026-11-11: `release.yml` now runs the host tests and needs them to publish; the runtime budgets are checked by the oracle around every device test) `release.yml` runs no host tests; CI checks 2 of the 10 keys of `budgets.json` | audit |
 | T-08 | `firmware/docs/testing.md` omitted `tls_slot_smoke.py` (closed 2026-11-11: the row was added with this register) | audit |
-| T-09 | Every Python device test parses the status strictly and dies after a panic (F-03) | device |
+| T-09 | (closed by F-03's fix; `hooks_smoke.py` panics the device on purpose and reads the status strictly) Every Python device test parses the status strictly and dies after a panic (F-03) | device |
 | T-10 | `timing_smoke.py` is flaky (one pass in four on 2026-10-04): two non-simultaneous HTTP reads | PROGRESS.md |
 | T-11 | The probes of this session changed a setting by accident: a clamp test left brightness at 1 until restored by hand. Any test that writes a setting must snapshot and restore the whole document | this session |
 

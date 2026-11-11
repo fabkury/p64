@@ -2,10 +2,22 @@
 
 [Strategy](README.md) · [Findings](findings.md) · 2026-11-11
 
-The tests of the other chapters need six things that do not exist: a suite, an oracle,
-fixtures, a test build with fault-injection hooks, fake servers, and a browser lane.
-This chapter specifies each to the level needed to argue about it. Nothing here is
-built.
+The tests of the other chapters need six things that did not exist on 2026-11-11: a
+suite, an oracle, fixtures, a test build with fault-injection hooks, fake servers, and a
+browser lane. This chapter specifies each.
+
+**Built so far** (2026-11-11, the first step of phase 1):
+
+| Piece | State |
+|---|---|
+| Suite runner | `tests/device/run_suite.py`: lanes `smoke`, `full`, `abuse`, `hooks`, `update`, `soak`; declared requirements; skips never count as passes; `summary.md`, `junit.xml` and a log per test under `tests/device/reports/` |
+| Health oracle | `tests/device/harness.py`, asked around every test: up, show alive, heap floors, panel lock, clean log, settings and playset as before |
+| Fixtures | the settings document and the playset (the runner puts back what a test left changed; `harness.settings_restored`). Not yet: the test folder, the PIN, the NVS snapshot over USB |
+| Serial capture | in the runner: the USB console recorded without resetting the board, a panic attached to the test it hit. Not yet: the backtrace decoded against the ELF |
+| Test build | `-DP64_TEST=ON` (`sdkconfig.test`, `CONFIG_P64_TEST_HOOKS`), version `+test`, `test_hooks: true` in the status; CI builds it and checks the release image has none of it. It costs the release image nothing (16 bytes) and the test image 1.8 KB |
+| Hooks | `GET`/`POST /api/v1/test`: `card_eject` (a reason; the next boots mount no card), `time_withheld`, `hold_worker_ms`, `panic`, `reset` (abrupt). Not yet: card I/O failing while running, a full card, latency, Wi-Fi drops, host overrides, queue pressure, low memory, time injection, interval scaling, the panel stress |
+| Hook tests | `tests/device/hooks_smoke.py`: the like with the worker held (F-10), the time withheld at run time and across a boot, a deliberate panic (F-03), five abrupt resets during settings writes, two cardless boots observed |
+| Fake servers, browser lane, fuzzers | not started |
 
 ## The suite runner
 

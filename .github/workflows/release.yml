@@ -26,6 +26,28 @@ permissions:
   contents: write
 
 jobs:
+  # The host tests gate a release too (until 2026-11-11 only pushes to main ran them).
+  host:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain and Pillow
+        run: |
+          apt-get update -qq && apt-get install -y -qq g++ > /dev/null
+          . "$IDF_PATH/export.sh" > /dev/null
+          python -m pip install -q pillow
+      - name: Host tests (ASan, UBSan, -Werror)
+        working-directory: firmware
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py reconfigure > /dev/null
+          python tests/host/run.py --sanitize --werror
+
   build:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.4
@@ -48,6 +70,11 @@ jobs:
         run: |
           . "$IDF_PATH/export.sh" > /dev/null
           python tools/check_size.py
+      - name: No test hook in a release
+        working-directory: firmware
+        run: |
+          ! grep -q '^CONFIG_P64_TEST_HOOKS=y' sdkconfig
+          ! grep -a -q '/api/v1/test' build/p64.bin
       - name: Collect the release assets
         working-directory: firmware
         run: python3 tools/release_assets.py --check-tag "${GITHUB_REF_NAME}"
@@ -58,7 +85,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [build, host]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

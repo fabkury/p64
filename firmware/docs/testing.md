@@ -45,6 +45,38 @@ runs host tests with sanitizers and `-Werror`. It does not run hardware tests.
 
 ## Device tests
 
+The suite runs them for you, with a health check of the device between tests (did it
+stay up, does the show go on, did memory come back, are the settings what they were) and
+one report:
+
+```powershell
+python tests/device/run_suite.py http://192.168.1.100 --lane smoke   # about two minutes
+python tests/device/run_suite.py http://192.168.1.100 --lane full    # every feature test, about ten
+python tests/device/run_suite.py --list                              # the tests, their lanes and needs
+```
+
+Lanes: `smoke`, `full`, `abuse`, `hooks` (needs the test build, below; it reboots the
+device several times), `update` (installs your build over the air and rolls back),
+`soak` (`--minutes N`). A test the device cannot run (no card, no pairing, no hooks) is
+reported as skipped with the reason, never as passed; the exit code is 2 when something
+was skipped and nothing failed. Reports go to `tests/device/reports/` (git-ignored). With
+the board on USB the console is recorded too.
+
+The test build carries fault-injection hooks that no release has:
+
+```powershell
+idf.py -B build_test -DP64_TEST=ON -DSDKCONFIG=build_test/sdkconfig build
+idf.py -B build_test -p COM13 flash
+python tests/device/run_suite.py http://192.168.1.100 --lane hooks
+```
+
+Its version ends in `+test` and its status document says `test_hooks: true`. The hooks
+are `GET` and `POST /api/v1/test`: boot as if no card had mounted, withhold the time,
+hold the Makapix worker, panic, reset abruptly
+([infrastructure](testing-strategy/infrastructure.md)).
+
+The individual scripts still run alone:
+
 Use a development device on your LAN. Read each script's opening instructions before
 running it: tests can change settings and playback, upload/delete files, contact online
 services, or reboot. Many restore settings on normal completion, but an interrupted
@@ -75,6 +107,7 @@ python tests/device/ui_smoke.py $p64Url
 | `cache_sweep_smoke.py` | Card and NTP; dry-run by default. `--delete` actually removes older cached/downloaded files and indexes. |
 | `tls_slot_smoke.py` | Pairing; checks that a paused provider walk frees the TLS slot. |
 | `abuse_smoke.py` | The findings of 2026-11-11: the setup routes outside setup mode, request bodies nested up to 15000 levels, bursts of navigation and activations from 16 connections, then the show must go on by itself. Sets the auto-swap interval to 5 s and restores the settings and the playset. A firmware older than 0.2.2 reboots on it. |
+| `hooks_smoke.py` | The test build only. Reboots the device about ten times: the like path with the worker held, the time withheld, a deliberate panic, abrupt resets during settings writes, two boots without the card. Clears every hook at the end. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |
 

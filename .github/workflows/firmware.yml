@@ -7,7 +7,11 @@
 #           firmware/CMakeLists.txt), the size budgets of firmware/budgets.json
 #           (tools/check_size.py), and the image with its SHA256 as artifacts.
 #
-# The device tests (tests/device/) stay manual: they need the board on the LAN.
+#           It also builds the test image (-DP64_TEST=ON, the fault-injection hooks of
+#           docs/testing-strategy/infrastructure.md) so that code keeps compiling, and
+#           checks that the release image carries none of it.
+#
+# The device tests (tests/device/, run_suite.py) stay manual: they need the board on the LAN.
 
 name: firmware
 
@@ -80,6 +84,18 @@ jobs:
           . "$IDF_PATH/export.sh" > /dev/null
           idf.py size | tail -30
           python tools/check_size.py
+      - name: The release image carries no test hook
+        working-directory: firmware
+        run: |
+          ! grep -q '^CONFIG_P64_TEST_HOOKS=y' sdkconfig
+          ! grep -a -q '/api/v1/test' build/p64.bin
+      - name: The test image builds (fault-injection hooks on; never released)
+        working-directory: firmware
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          idf.py -B build_test -DP64_TEST=ON -DSDKCONFIG=build_test/sdkconfig build
+          grep -a -q '/api/v1/test' build_test/p64.bin
+          ls -l build/p64.bin build_test/p64.bin
       - name: Image and checksum
         working-directory: firmware/build
         run: sha256sum p64.bin | tee p64.bin.sha256

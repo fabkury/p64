@@ -1389,6 +1389,35 @@ them. Newest entries are at the bottom of [Log](#log).
 - The p64b stays on the public image from here on (decision D40); it restarted seven
   times that day for the probes, an NVS reading over USB and the flash.
 
+### 2026-11-11 (the harness, p125)
+
+- The device suite: `tests/device/run_suite.py` (lanes, declared requirements, skips that
+  are not passes, a report with JUnit, the USB console recorded) and `harness.py` (the
+  health oracle around every test). First full lane on the p64b, public 0.2.2: 17 of 20
+  passed; the three failures were the tests' own (`stream_smoke.py` left both listeners
+  on, caught by the oracle; `encoders_smoke.py` missed the sun notice one run in three
+  because over an animation the notice goes up with the artwork's next frame; the
+  unpaired variant of `makapix_smoke.py` was run on a paired device). Fixed; 20 of 20.
+- The test build: `-DP64_TEST=ON` adds `sdkconfig.test` (`CONFIG_P64_TEST_HOOKS`), marks
+  the version `+test` and the status `test_hooks`; `GET`/`POST /api/v1/test` set the
+  hooks (card eject at boot, time withheld, Makapix worker held, panic, abrupt reset),
+  each a seam written `#ifdef`. Public image 2,492,672 bytes (16 more than 0.2.2), test
+  image 2,494,496. CI builds both and checks the release image for the route's string.
+- Device, `0.2.2+test` on the p64b, `hooks_smoke.py` 0 failures: with the worker held
+  30 s a like gives up at 20.1 s (409 `LIKE_FAILED`, "timed out"), the worker then runs
+  and frees the abandoned job, twice over, and the device stays up (F-10 on the device);
+  the time withheld at run time and across a reboot (not synced, the Makapix client
+  offline, an artwork playing from the card, synced again on release); a deliberate
+  panic counted once with the crash summary's task `httpd` and a valid status (F-03);
+  five abrupt resets during settings writes, the document each time one of the two
+  being written; the smoke lane 6 of 6 on the test image.
+- The first cardless boots ever observed (the card ejected virtually, Promoted): the
+  first artwork up 7 and 8 s after the reset; 85 downloads in the first 73 s and 40 in
+  38 s (finding F-11 confirmed: more than one a second, for as long as watched); PSRAM
+  low 13.3 MB free; internal heap never under 65 KB (higher than with a card); the
+  status truthful about the card and its reason; with the hook cleared the card and the
+  saved playset back.
+
 ### 2026-11-03
 
 - Aquarium: the near fish swam in front of the sign's post (p118). `sign.png` held the
