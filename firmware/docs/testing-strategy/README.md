@@ -3,9 +3,10 @@
 [Developer guide](../../README.md) · [Testing today](../testing.md) ·
 [Specification](../../../docs/spec/p64-spec.md) · [Status](../../../docs/status.md)
 
-Draft for discussion, written 2026-11-11 (prompt p123). Nothing here is implemented yet:
-this folder is the plan and the evidence behind it. It will guide the testing work and is
-meant to be argued with first.
+Written 2026-11-11 (prompt p123) and reviewed with the owner question by question the
+same day: every open point of this folder was decided, and [decisions.md](decisions.md)
+is the record. Nothing here is implemented yet: this folder is the plan and the evidence
+behind it, and it guides the testing work.
 
 ## Why
 
@@ -44,6 +45,8 @@ The results are in [findings.md](findings.md). They are the best argument for th
 | D6 | Card inserted, removed or failing while powered | **Power-off only**: the card is changed with the device unpowered, and the documentation says so. Removal or failure while running must be survivable (no crash, no download loop, a banner, a reboot recovers). The specification's "remount" promise is withdrawn. |
 | D7 | Cardless Makapix feed | **Rolling window**: fill the memory cache once, then at most one new artwork per swap, replacing the least recently played. |
 | D8 | This session | The documents plus quick probes; no fixes yet. |
+
+D9 to D45, taken later the same day, are in [decisions.md](decisions.md).
 
 ## The strategy on one page
 
@@ -87,6 +90,7 @@ Layers, cheapest first:
 
 | Document | Content |
 |---|---|
+| [decisions.md](decisions.md) | Every decision of 2026-11-11, with the questions they answer. Read it before the chapters: where a chapter still shows a question with options, this page says how it was answered. |
 | [findings.md](findings.md) | The register: defects confirmed on the device, defects found by reading, divergences between the specification and the code, defects in the tests themselves. Each with evidence and the test that would catch it. |
 | [no-card-mode.md](no-card-mode.md) | Cardless operation: what the code does today, the decisions taken, the design questions still open (with a recommendation each), and the test plan. |
 | [web-ui-and-api.md](web-ui-and-api.md) | The web server, the API and the pages under rapid, concurrent, malformed and stalled use: the model, the probe results, the design questions and the test plan. |
@@ -94,36 +98,24 @@ Layers, cheapest first:
 | [infrastructure.md](infrastructure.md) | What has to be built to run all this: the suite runner, the health oracle, the test build and its hooks, the fake servers, serial capture, browser automation, CI. |
 | [release-gates.md](release-gates.md) | What must be true to tag 1.0.0: blockers, required runs, the hands-on checklist, accepted limits, documents to update. |
 
-## Proposed order of work
+## Order of work
 
-Each phase ends with the device suite green on the test unit and its findings closed or
-explicitly deferred.
+Decided (D36 to D39): phase 0 is released at once as 0.2.2; the rest lands through 0.9.x
+release candidates. Each phase ends with its tests green on the test unit and its
+findings closed or explicitly deferred.
 
 | Phase | Content | Why now |
 |---|---|---|
-| 0. Stop the bleeding | Fix the two defects that take the device down or freeze the show from a browser (F-01, F-02), the unsafe like path (F-10) and the crash summary's invalid text (F-03), each with its test. Fix the tests that cannot fail (T-01 to T-03). | They are confirmed, cheap, and every later test trips over them. |
+| 0. Stop the bleeding (0.2.2) | Fix the two defects that take the device down or freeze the show from a browser (F-01, F-02), the unsafe like path (F-10), the crash summary's invalid text (F-03) and the setup routes open on a running device (F-14), each with its test. Fix the tests that cannot fail (T-01 to T-03). | They are confirmed, cheap, and every later test trips over them. |
 | 1. The harness | The suite runner, the health oracle, settings and NVS snapshot/restore, serial capture, the test build with the first hooks (virtual eject, withheld time, queue pressure). | Everything after this is written once and run forever. |
 | 2. The web under abuse | Decide the open questions of [web-ui-and-api.md](web-ui-and-api.md#3-design-questions), then the abuse suite, parser fuzzing on the host, and the browser lane. | The owner's first concern; mostly independent of the cardless design. |
 | 3. Cardless, designed | Settle [the open questions](no-card-mode.md#3-open-design-questions), write the specification text and the ADR, implement, and test with the virtual eject and one physical session. | The largest piece of design; needs the harness. |
 | 4. Faults and recovery | Abrupt resets at random instants, Wi-Fi and server faults through hooks and fake servers, OTA failure paths, factory reset, first boot of a blank device. | Needs the hooks and fake servers of phase 1. |
 | 5. Long runs and the release candidate | The 12 h and 24 h soaks of the acceptance list, a week of chaos soak, cardless soak, then the release candidate on the plain public image, the hands-on session, and the tag. | Last, on the image that ships. |
 
-## Questions to settle in the discussion
+## Questions settled
 
-The two design chapters end with their own lists; these are the ones that shape the
-whole plan:
-
-1. Where cardless playsets and uploads live: NVS, the unused 15.5 MB internal data
-   partition, or a hybrid ([no-card-mode.md, Q1](no-card-mode.md#q1-where-cardless-data-lives)).
-   This decides how much of "first-class" is reachable for 1.0.0.
-2. What the web server owes a second client while a first one stalls or uploads
-   ([web-ui-and-api.md, Q1](web-ui-and-api.md#q1-one-stalled-client-freezes-every-other)).
-   The honest fix is architectural (more than one request at a time).
-3. Whether the public image or the private build is the unit's everyday test image
-   ([infrastructure.md](infrastructure.md#which-image-runs-on-the-test-unit)).
-4. Whether to buy a switched USB hub or a smart plug (about 15 to 30 USD) for real power
-   cuts, or to accept abrupt chip resets as the stand-in
-   ([test-catalogue.md, power](test-catalogue.md#power-boot-and-recovery)).
-5. Which of the acceptance criteria that need instruments (240 fps camera, power meter)
-   are 1.0.0 gates and which become documented, unmeasured claims
-   ([release-gates.md](release-gates.md#instrument-measurements)).
+The five questions this page first listed (where cardless data lives, what the web
+server owes a second client, the test unit's image, optional hardware, the instrument
+gates) and every question of the two design chapters were answered on 2026-11-11:
+[decisions.md](decisions.md).

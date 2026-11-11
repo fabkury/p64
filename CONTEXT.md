@@ -80,10 +80,21 @@ A channel whose artworks are posts from Makapix Club, selected by the server-sid
 kinds (Promoted, All, Own, Artist by sqid, Hashtag, Reactions by sqid).
 
 **Playset**:
-A named mix of up to 64 weighted channels that the device plays from. The user has up to
-32 of them; built-in playsets exist for each single source. A name is up to 32 characters
-of printable text; names equal up to ASCII case and spacing are one playset (ADR 0017).
+A named mix of weighted channels that the device plays from. The user's own are card
+playsets or device playsets; built-in playsets exist for each single source. A name is
+up to 32 characters of printable text; names equal up to ASCII case and spacing are one
+playset (ADR 0017).
 _Avoid_: playlist (Makapix's word for a curated post list), mix, queue
+
+**Card playset**:
+A user playset kept on the card: up to 32 of them, up to 64 channels each. Listed and
+playable only while the card is mounted.
+
+**Device playset**:
+A user playset kept in the device itself for cardless use: up to 8 of them, up to 16
+channels each, none of them local. Listed and playable only while the device is cardless;
+the two lists are separate and nothing moves between them.
+_Avoid_: cardless playset, NVS playset, internal playset
 
 **Built-in playset**:
 A playset the device provides without the user creating it: Promoted, All, Followed and
@@ -94,7 +105,10 @@ The built-in playset the Makapix server generates for a paired device: one Artis
 per artist the owner follows (server name `followed_artists`).
 
 **Active playset**:
-The playset the Animation show is currently drawing from. Restored at boot.
+The playset the Animation show is currently drawing from. One is remembered per storage
+mode and restored at boot; a device on which none was ever chosen plays Promoted. When
+the remembered one cannot play, the panel says why; the device never plays a playset
+the user did not choose.
 
 **Channel weight**:
 The relative share of picks a channel gets within its playset. 0 mutes the channel; all
@@ -116,9 +130,31 @@ The device's list of the artworks a channel contains (up to the per-channel cap)
 on a schedule from the source. Not the files themselves.
 
 **Artwork cache**:
-The files of channel artworks downloaded to the card so playback never waits on the
-network. Playback picks only among cached files.
+The files of channel artworks the device holds so playback never waits on the network:
+on the card, or in the memory window when cardless. Playback picks only among cached
+files.
 _Avoid_: vault (Makapix's word for its own file store)
+
+**Memory window**:
+The cardless form of the artwork cache: a bounded set of files in memory, filled once,
+then renewed by at most one new artwork per swap in place of the least recently played.
+Lost at a restart.
+_Avoid_: memory cache, RAM cache, rolling window
+
+**Storage mode**:
+Whether the device runs with a mounted card or cardless. Decided at boot; afterwards it
+changes only when the card fails.
+
+**Cardless**:
+The storage mode with no mounted card: none in the slot, one without a FAT32 file
+system, or one that failed. A supported way to run the device, with device playsets and
+the memory window in place of card playsets and the card's cache.
+_Avoid_: no-card mode, degraded mode, SD-less
+
+**Card failed**:
+A card that was mounted and stopped answering while the device ran. The device goes on
+cardless and says so until it is restarted; the card is never mounted again without a
+restart.
 
 **Refresh**:
 Bringing a channel index up to date with its source. Scheduled per channel.
@@ -289,8 +325,9 @@ the hostname (`p64-<name>`) and is shown in the web UI and on Makapix.
 An optional 4 to 8 digit code that gates the web UI and the HTTP API. Off by default.
 
 **Status screen**:
-Text the panel shows when the user must act or wait: setup, IP address, pairing code, no
-artwork, stream waiting, update progress. Drawn in the system fonts.
+Text the panel shows when the user must act or wait: setup, pairing code, no artwork
+(its reason, with the device's hostname and address when it is on a network), stream
+waiting, update progress. Drawn in the system fonts.
 
 **System fonts**:
 The firmware's own fonts for the text it shows outside the clock overlay and the widgets:

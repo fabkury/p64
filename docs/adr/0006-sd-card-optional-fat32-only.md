@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; its "degraded mode" superseded by ADR 0018 (2026-11-11), the rest stands
 date: 2026-09-19
 ---
 

@@ -160,11 +160,18 @@ device; defects found by reading; spec and code divergences; defects in the test
 `no-card-mode.md` the cardless design questions and tests, `web-ui-and-api.md` the abuse
 tests, `test-catalogue.md` the rest by area, `infrastructure.md` what to build (suite
 runner, health oracle, test build with hooks, fake servers, browser lane),
-`release-gates.md` the gates. Decisions of that day: 1.0.0 is stranger-proof; the p64b on
-USB is the test unit and may be erased; minimal hands; test hooks compiled out of
-releases; cardless is a first-class mode; the card is changed only with the device
-unpowered (removal while running must be survivable); the cardless feed is a rolling
-window. When a finding is fixed, mark it in the register in the same commit.
+`release-gates.md` the gates, `decisions.md` every decision of that day (D1 to D45; read
+it first, the chapters keep their questions as the record of what was weighed). The
+decisions in short: 1.0.0 is stranger-proof; the p64b on USB is the test unit, may be
+erased, and stays on the public tree's test build for the duration; minimal hands; test
+hooks compiled out of releases; cardless is a storage mode decided at boot (ADR 0018:
+no remount, a failed card goes on cardless, device playsets in NVS, 8 of 16 channels, a
+list separate from the card playsets, one active playset per storage mode, never an
+automatic fallback, the memory window renewed one artwork per swap up to 60 an hour);
+one HTTP task stays, other clients answered within 3 s except during an upload,
+commands coalesce or answer 503 (ADR 0019); 0.2.2 first with F-01, F-02, F-03, F-10 and
+F-14, then 0.9.x release candidates. None of it is implemented yet. When a finding is
+fixed, mark it in the register in the same commit.
 
 Releases (since 2026-10-19, `firmware/docs/release-build.md`): pushing a tag `v<PROJECT_VER>`
 makes `.github/workflows/release.yml` build the public firmware, collect the assets with

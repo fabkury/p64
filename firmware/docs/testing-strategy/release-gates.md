@@ -70,28 +70,28 @@ one piece; the NVS snapshot is taken before and restored after over USB.
 | # | Check | From | Minutes |
 |---|---|---|---|
 | 1 | Boot with the slot empty: the panel's sequence, the reason shown, the mount's duration in the log | NC-P1 | 3 |
-| 2 | Boot with a new exFAT card: the reason shown, nothing written | NC-P2, SD-6 | 3 |
+| 2 | Boot with a new exFAT card: the reason shown, nothing written; format it from the pages, the restart, the card mounted | NC-P2, SD-6, D20 | 4 |
 | 3 | Pull the card while a local file plays and a download runs; insert it again while running (ignored); restart (mounted) | NC-P3, NC-P4 | 4 |
 | 4 | With a phone: join `p64-setup`, the captive sheet, save the network, the countdown, the device back on the LAN | FIRST-6 | 5 |
 | 5 | BOOT held 10 s at power-on: the countdown, the reset | FIRST-6 | 3 |
 | 6 | Taps (one, two) on the closed shell; the unit turned through its four orientations with rotation on auto | INP-2 | 3 |
 | 7 | The web flasher's page: flash through the browser's port picker | DOC-4 | 5 |
-| 8 | Eyes on the panel: Photo mode, the clock faces at a glance; a slow-motion phone clip of a few swaps | 18.1, 18.6 | 4 |
+| 8 | Eyes on the panel: Photo mode, the clock faces at a glance | 18.6 | 3 |
 
-Each check is a line in the record with what was seen. Items 4 and 5 leave the hands-on
-list if the second Wi-Fi adapter is bought; item 3 mostly if a switched supply is.
+Each check is a line in the record with what was seen. No hardware is bought for now
+(D43), so the portal, the BOOT hold and the card pull stay in this list.
 
 ## Gate 7. The acceptance criteria, one by one
 
 | Criterion | Evidence required for 1.0.0 |
 |---|---|
-| 18.1 Seamless | the 12 h soak's counters; the slow-motion clip of the hands-on session as a sample |
+| 18.1 Seamless | the 12 h soak's counters; the camera sample stays unmeasured (D44) |
 | 18.2 Jitter | PLAY-3 |
 | 18.3 Best effort | PLAY-4 |
 | 18.4 Timing | PLAY-4, ten-minute runs; the known limit under a provider walk stays documented |
 | 18.5 Scaling | the host tests, plus one device check of 96 to 48 |
-| 18.6 Modes | `panel_mode_smoke.py`; the clip for the picture; the refresh figure stays "from the driver's timing" unless measured |
-| 18.7 Brightness and power | the ceiling under schedules and Makapix commands (MKP-5); the 15 W figure measured if a meter is at hand, else worded as a design value |
+| 18.6 Modes | `panel_mode_smoke.py`; the refresh figure stays "from the driver's timing" (D44) |
+| 18.7 Brightness and power | the ceiling under schedules and Makapix commands (MKP-5); the 15 W figure worded as a design value (D44) |
 | 18.8 Boot | the boot budget (exists); setup mode within 60 s and the access point gone within 5 s (NET-1, FIRST-3) |
 | 18.9 Streams | STR-1 |
 | 18.10 Pairing | MKP-1, MKP-5 |
@@ -102,9 +102,8 @@ list if the second Wi-Fi adapter is bought; item 3 mostly if a switched supply i
 
 Three claims need an instrument: no blank frame at a swap (a camera at 240 fps), the
 Photo mode refresh (the same camera), and the power at full white (a meter).
-Recommended: a phone's slow-motion mode covers the first two inside the hands-on
-session; the power figure is measured only if a USB-C meter is at hand. What stays
-unmeasured is said so in `docs/status.md`, as today.
+Decided (D44): none of them gates 1.0.0; they stay listed as unmeasured in
+`docs/status.md`, as today, and 1.0.0 ships on the counters.
 
 ## Known limits that 1.0.0 accepts
 
@@ -122,10 +121,11 @@ troubleshooting); the build guide (the card as an option, what to buy); `firmwar
 testing.md` (the suite, the lanes, the test build); `firmware/docs/api.md` (the answers
 of Q2 and Q4, the new status fields); the release notes, linking the suite's report.
 
-## A suggested path of versions
+## The path of versions
 
-Not a gate, a way to get there without one large jump: 0.3.0 with the phase 0 fixes and
-the harness; 0.4.0 with the web hardening; 0.5.0 with cardless operation as designed;
-0.9.x as release candidates, each run for a week on a unit in daily use; then 1.0.0.
-Each of these goes out through the existing release pipeline, so the update path itself
-is exercised five times before it carries the 1.0.0 image.
+Decided (D36 to D38): 0.2.2 goes out at once with the fixes for F-01, F-02, F-03, F-10
+and F-14, checked by the host tests, a regression script made from the probes, the
+existing smokes and a one-hour soak on the public image, then by the p64a's update over
+the air. Everything else lands in 0.9.x release candidates, each run for a week on a
+unit in daily use, then 1.0.0. Each release goes through the existing pipeline, so the
+update path itself is exercised several times before it carries the 1.0.0 image.

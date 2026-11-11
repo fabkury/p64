@@ -56,7 +56,7 @@ one, the portal's pages are tested through the browser lane and the join itself 
 |---|---|---|---|
 | FIRST-1 | Erase the flash, write the release files exactly as the web flasher's manifest lists them | usb | the device boots into setup mode with default settings; the panel shows the setup pages; nothing of the development build's Wi-Fi seed is present |
 | FIRST-2 | The portal end to end: probe URLs, scan list, save, the countdown page, the name | second adapter, or hands | joined within the stated time; the access point is gone within 5 s (18.8); `p64.local` answers |
-| FIRST-3 | Wrong password in the portal; wrong password through Settings > Network (F-23) | second adapter or hook | setup mode is back within 60 s (18.8); a working saved network is never lost to a typo (to define) |
+| FIRST-3 | Wrong password in the portal; wrong password through Settings > Network (F-23) | second adapter or hook | setup mode is back within 60 s (18.8); the Settings page warned before saving that a mistake means reconnecting through `p64-setup` (D31) |
 | FIRST-4 | The stranger's path: fresh device, Wi-Fi saved, no card, unpaired | usb + device | Promoted plays; the time from power-on to the first artwork is recorded as the headline number of the release |
 | FIRST-5 | Factory reset through the API | usb (NVS snapshot and restore around it) | the state equals FIRST-1's; the card is untouched |
 | FIRST-6 | Factory reset by BOOT hold; the web flasher's page in a browser; the captive sheet on a phone | hands | as written in the guides |

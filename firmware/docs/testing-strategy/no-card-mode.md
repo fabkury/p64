@@ -52,7 +52,11 @@ settled.
 
 ## 3. Open design questions
 
-Each has a recommendation; none is decided.
+**All settled on 2026-11-11**: the answers are D9 to D24 of [decisions.md](decisions.md)
+and ADR 0018. Three went against the recommendation written here: cardless playsets
+live in NVS (Q1), the two playset lists are separate with no migration (Q9), and a
+playset that cannot play shows "No artwork" with its reason instead of Promoted (Q5).
+The text below is kept as the record of what was weighed.
 
 ### Q1. Where cardless data lives
 
@@ -273,14 +277,15 @@ expected results are part of the definition work:
 | Card | Wi-Fi | Time | Saved playset | Expected on the panel (proposed) |
 |---|---|---|---|---|
 | absent | never set | - | any | setup pages |
-| absent | set, down | - | any | setup pages after 60 s; before that the held logo, then "No artwork: offline" |
-| absent | up | not yet | any | held logo, then "No artwork: waiting for the time" |
-| absent | up | known | Promoted | artwork within the Q7 budget |
-| absent | up | known | Local | per Q5 and Q1 (Promoted meanwhile, or the internal Local) |
-| absent | up | known | a user playset | plays (first-class); its card-bound channels skipped |
-| absent | up | known | Followed, unpaired | Promoted meanwhile, said in the pages |
-| unformatted | any | any | any | as absent, with the reason "Card not FAT32" |
-| failed while running | up | known | any | per Q8 |
+| absent | set, down | - | any | "No artwork: offline" at once; the setup pages after 60 s |
+| absent | up | not yet | any | "No artwork: waiting for the time", with the hostname and address |
+| absent | up | known | Promoted | "No artwork: downloading" with the address, then artwork within the budget to set |
+| absent | up | known | Local | "No artwork: needs a card" (D13) |
+| absent | up | known | a device playset | plays |
+| absent | up | known | none ever chosen while cardless | Promoted (D15); a choice made with a card is remembered for that mode only (D14) |
+| absent | up | known | Followed, unpaired | "No artwork: needs pairing" |
+| unformatted | any | any | any | as absent, with the reason "Card not FAT32"; format from the pages, then a restart (D20) |
+| failed while running | up | known | any | goes on as cardless: provider channels from the memory window, the banner (D19) |
 | present | up | not yet | any | cached artwork plays (already so) |
 
 ### Hands-on, once (part of the 30-minute session)
@@ -288,7 +293,7 @@ expected results are part of the definition work:
 | ID | Check |
 |---|---|
 | NC-P1 | Boot with the slot empty: the time the mount attempt takes (F-30), the reason shown, the boot sequence on the panel. |
-| NC-P2 | Boot with an exFAT or unformatted card: the reason shown, no write to the card. |
+| NC-P2 | Boot with an exFAT or unformatted card: the reason shown, no write to the card; then format it from the pages: the confirmation, the restart, the card mounted (D20). |
 | NC-P3 | Pull the card while a local file plays and a download runs: what the real driver reports, against what the hook simulates. |
 | NC-P4 | Insert a card while running: ignored; reboot: mounted, the saved playset back. |
 

@@ -72,7 +72,11 @@ All against the p64b test unit, firmware `0.2.1+private`, 2026-11-11.
 ## 3. Design questions
 
 The fixes for F-01 to F-05 and F-17 are choices, and the tests assert the choices.
-Recommendations first.
+
+**All settled on 2026-11-11**: D25 to D31 of [decisions.md](decisions.md) and ADR 0019.
+One answer differs from the recommendation written here: Q1 was answered with option A
+alone, so the promise is "within 3 s, except during an upload" and no worker task is
+added. The text below is kept as the record of what was weighed.
 
 ### Q1. One stalled client freezes every other
 

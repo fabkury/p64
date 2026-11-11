@@ -86,11 +86,11 @@ Three images matter:
 | **Release candidate** | CI, exactly as a release | the `smoke` lane and every test that needs no hook, last, before the tag; the migration and first-boot tests |
 | **Private build** | the owner's checkout | the owner's own use; the suite must run on it, no gate depends on it |
 
-The test unit runs the private build today (`0.2.1+private`). To decide: whether it
-returns to the private build between campaigns (then every campaign begins and ends
-with a flash and an NVS restore) or stays on the test build while the hardening lasts.
-Recommended: it stays on the test build of the public tree; the p64a keeps running the
-owner's daily image and is only observed (LONG-6).
+The test unit ran the private build on 2026-11-11 (`0.2.1+private`). Decided (D40, D41):
+it stays on the test build of the public tree while the hardening lasts, its pairing and
+Wi-Fi kept through NVS snapshots, and returns to the private build after 1.0.0; the
+p64a keeps running the owner's daily image and is only observed, by a script run by hand
+(LONG-6).
 
 A test build must be impossible to mistake for a release: its version carries a `+test`
 suffix, the status document says `test_hooks: true`, and the System page shows it.
@@ -191,7 +191,7 @@ regression lane.
 | An inline USB-C power meter | 15 USD | acceptance 18.7 |
 
 None is required by the plan; each removes an item from the hands-on session or turns a
-stand-in into the real thing.
+stand-in into the real thing. Decided (D43): none is bought for now.
 
 ## Rough sizes
 

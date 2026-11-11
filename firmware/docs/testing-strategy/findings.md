@@ -16,6 +16,9 @@ Severity is against the 1.0.0 bar (D1, stranger-proof): **blocker** (a stranger 
 it by accident and loses the device, the show or data), **major** (visible wrong
 behaviour or a risk that grows with time), **minor** (cosmetic, or needs intent).
 Nothing here has been fixed; the fixes belong to the testing work, each with its test.
+The choices the findings left open (what to do about F-04, F-13, F-14, F-16, F-17, F-23,
+F-28, F-29 and the divergences of section D) were decided the same day:
+[decisions.md](decisions.md). F-01, F-02, F-03, F-10 and F-14 are fixed first, in 0.2.2.
 
 ## A. Confirmed on the device
 
