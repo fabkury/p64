@@ -174,7 +174,18 @@ void run_deferred(DeferredAction *a) {
   }
 }
 
+// The portal is outside the PIN (spec 10.3) because it exists only in setup mode. Its two
+// routes that change the device must therefore refuse outside it: until 2026-11-11 anyone
+// on the network could replace or erase the Wi-Fi credentials of a running, PIN-protected
+// device with one POST (finding F-14).
+bool refuse_outside_setup_mode(httpd_req_t *req) {
+  if (wifi::status().setup_mode) return false;
+  http::send(req, "403 Forbidden", "text/plain", "only in setup mode");
+  return true;
+}
+
 esp_err_t save_handler(httpd_req_t *req) {
+  if (refuse_outside_setup_mode(req)) return ESP_OK;
   std::string body;
   if (!http::read_body(req, body, 1024)) return http::send(req, "400 Bad Request", "text/plain", "body too large");
   const std::string ssid = form_field(body, "ssid");
@@ -194,6 +205,7 @@ esp_err_t save_handler(httpd_req_t *req) {
 }
 
 esp_err_t erase_handler(httpd_req_t *req) {
+  if (refuse_outside_setup_mode(req)) return ESP_OK;
   const esp_err_t r = http::send(req, "200 OK", "text/html; charset=utf-8", kErased);
   run_deferred(new DeferredAction{true, "", ""});
   return r;
