@@ -4,6 +4,10 @@
 
 All commands run from `firmware/`. Tests returning zero passed their automated
 checks; this does not establish visual quality or close instrument-based acceptance.
+This page describes the tests that exist. What they do not cover, and the plan towards
+1.0.0 (a suite, fault injection, cardless and abuse tests), is in the
+[testing strategy](testing-strategy/README.md) of 2026-11-11, with its
+[findings](testing-strategy/findings.md).
 
 ## Host tests
 
@@ -67,6 +71,7 @@ python tests/device/ui_smoke.py $p64Url
 | `pin_smoke.py` | Sets/tests a PIN and lockout; **leaves the device without a PIN**. |
 | `ota_smoke.py` | Needs `build/p64.bin`; installs it over HTTP, reboots and rolls back. `--no-install` skips installation. |
 | `cache_sweep_smoke.py` | Card and NTP; dry-run by default. `--delete` actually removes older cached/downloaded files and indexes. |
+| `tls_slot_smoke.py` | Pairing; checks that a paused provider walk frees the TLS slot. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |
 

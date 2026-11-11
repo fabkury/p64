@@ -152,6 +152,20 @@ animations: the list, the render bench, one played on the panel) against the liv
 development device answers at http://p64.local; its IP is in the boot log; give the
 timing-sensitive tests the IP, since the first mDNS lookup of a process can take 3 s).
 
+Towards 1.0.0 (p123, 2026-11-11): `firmware/docs/testing-strategy/` is the testing
+strategy, a draft under discussion with nothing of it built yet: `findings.md` is the
+register (defects confirmed on the device by the probes of that day, F-01 a navigation
+burst that leaves the show without artwork, F-02 a nested-JSON body that reboots the
+device; defects found by reading; spec and code divergences; defects in the tests),
+`no-card-mode.md` the cardless design questions and tests, `web-ui-and-api.md` the abuse
+tests, `test-catalogue.md` the rest by area, `infrastructure.md` what to build (suite
+runner, health oracle, test build with hooks, fake servers, browser lane),
+`release-gates.md` the gates. Decisions of that day: 1.0.0 is stranger-proof; the p64b on
+USB is the test unit and may be erased; minimal hands; test hooks compiled out of
+releases; cardless is a first-class mode; the card is changed only with the device
+unpowered (removal while running must be survivable); the cardless feed is a rolling
+window. When a finding is fixed, mark it in the register in the same commit.
+
 Releases (since 2026-10-19, `firmware/docs/release-build.md`): pushing a tag `v<PROJECT_VER>`
 makes `.github/workflows/release.yml` build the public firmware, collect the assets with
 `tools/release_assets.py` (`p64-firmware.bin` + `.sha256` are the OTA contract; bootloader,

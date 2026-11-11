@@ -1,0 +1,292 @@
+# Findings register
+
+[Strategy](README.md) · 2026-11-11
+
+What the audits and the probes of 2026-11-11 found. Four kinds of evidence, never mixed:
+
+- **Device**: observed on the p64b test unit (firmware `0.2.1+private`, a card present,
+  paired, no PIN) through HTTP probes. The web and show code involved is public code; the
+  findings still have to be repeated on the public image.
+- **Source**: read and checked by hand in the files named.
+- **Audit**: reported by a read-only audit with file and line, not re-checked by hand.
+  Treat as a lead, not as a fact.
+- **Unverified**: an inference nobody has tested.
+
+Severity is against the 1.0.0 bar (D1, stranger-proof): **blocker** (a stranger can hit
+it by accident and loses the device, the show or data), **major** (visible wrong
+behaviour or a risk that grows with time), **minor** (cosmetic, or needs intent).
+Nothing here has been fixed; the fixes belong to the testing work, each with its test.
+
+## A. Confirmed on the device
+
+### F-01 A burst of navigation leaves the show without artwork for good (blocker)
+
+- **Seen**: 120 `previous`/`next` requests alternating, from 16 parallel connections,
+  then the same with `history_go`. For about 21 s each time the log alternated
+  `loader: queue full; request dropped` and `show: command queue full; dropped command
+  14` every 500 ms, the web server answered nothing (ten connection timeouts), and the
+  internal heap fell to 33 KB. The history lost healthy items (32 to 23). Afterwards
+  `playback.prepared` stayed false: no artwork played again. At every auto-swap the show
+  put up an interlude instead (seven in a row over 3.5 minutes, see F-06); with every
+  interlude gap at 0 it would have frozen on its last picture.
+- **Recovery**: `next` and `previous` answered 200 and did nothing. Activating the
+  playset again recovered it; a reboot would too. Nothing in the web UI tells the user.
+- **Cause (source)**: the loader's results travel through the same 16-deep queue as the
+  commands (`main/show.cpp:232-245`), sent with a 500 ms timeout and deleted when the
+  queue is full. A lost `Loaded` leaves `prepared_load_id` set, and nothing ever times
+  it out (`main/show_core.cpp:753-774`). The main task meanwhile blocks 500 ms per
+  request on the loader's 8-deep queue (`main/loader.cpp:147-154`). Each `previous`,
+  `history_go` or forward `next` submits its own load; nothing is cancelled or
+  coalesced.
+- **Not yet known**: the smallest burst that does it (40 sequential `next` were served
+  correctly, one swap each, and 120 parallel `next` at the end of the history coalesced
+  into 20 swaps without harm); whether one browser can reach it with key repeat, or two
+  tabs; the same on the public image.
+- **Tests**: a show-core scenario that drops a `Loaded` and a `Scanned` result and
+  expects the show to recover by itself (host); the navigation storm in the abuse suite
+  ending in the health oracle's "a swap happens within one interval" (device).
+
+### F-02 A 400-byte request reboots the device (blocker)
+
+- **Seen**: `PUT /api/v1/settings` with a body of 200 `[` followed by 200 `]`. The
+  request hung, the device panicked and rebooted (uptime back to 0, reset reason
+  `panic`). Depths 600, 1000, 5000 and 15000 did the same within 4 s. Depth 50 was
+  answered 400 as it should. Five requests, five panics.
+- **Cause (source and audit)**: cJSON parses recursively with its default nesting limit
+  of 1000 on the HTTP task's 8 KB stack (4 KB free at rest, `diag/memory`); the body cap
+  is 32 KB (`components/p64_web/src/api.cpp:143-155`).
+- **Reach**: every route that parses a JSON body. With a PIN set, `/api/v1/auth/login`
+  parses its body before any authentication (audit, `auth.cpp:187`), so the PIN does
+  not protect against it.
+- **Tests**: a table of nesting depths against every body-taking route, expecting 400
+  and an unchanged uptime (device); the JSON entry points fuzzed on the host with a
+  stack limit.
+
+### F-03 After a panic the status document is not valid UTF-8 (major)
+
+- **Seen**: after F-02's panic, `reliability.crash.task` carried raw bytes
+  (`\xaa4\xce?\xa4\xb7\xc9?`), read from a corrupted task block. Python's strict JSON
+  parser refused the whole status document, so every device test would have failed at
+  its first line until the core dump was erased (`POST /api/v1/diag/coredump/erase`).
+  Browsers replace the bytes, so the pages kept working.
+- **Class**: the same as the `/history` failure of 2026-10-01 (invalid UTF-8 from a file
+  name). Text that did not originate in the firmware must be sanitised wherever it enters
+  a JSON document.
+- **Tests**: a host test of the crash summary's serialisation with hostile bytes; the
+  oracle validates every status document as strict UTF-8 JSON.
+
+### F-04 One stalled client freezes the web server for every other (major)
+
+- **Seen**, three ways:
+  - ten connections that each sent half a request header: no other request was answered
+    for about 90 s (two 30 s timeouts, then a 28 s wait);
+  - an 8 MB upload, refused at once with 413: the server kept reading the body for 27 s
+    and every other request waited that long (two timed out);
+  - an upload that stopped mid-body: a status request waited 19 s.
+- **Cause (source and audit)**: one HTTP task serves every request to completion
+  (`components/p64_net/src/http_server.cpp:37-46`), with 10 s receive and send
+  timeouts; a refused body is still drained.
+- **Why it matters to a stranger**: a phone that walks out of Wi-Fi range mid-request, or
+  a file dragged into the file manager that is too large, freezes every page (the pages
+  abort at 8 s and report failures for work that is still going on).
+- This is a design question before it is a test:
+  [web-ui-and-api.md, Q1](web-ui-and-api.md#q1-one-stalled-client-freezes-every-other).
+
+### F-05 Events are dropped under a burst of settings writes (major)
+
+- **Seen**: 100 `PUT /api/v1/settings` from 8 connections in 3.1 s, all answered 200;
+  the log shows `events: queue full; dropped settings changed` many times.
+- **Consequence (unverified)**: a setting saved to NVS whose "changed" event was dropped
+  is stored but not applied until something else changes. The probe did not demonstrate
+  a stale value; the test must look for one (write A, B, A, B at speed, then compare the
+  panel's `brightness` in force with the stored value).
+- Also seen: every PUT, including an empty `{}`, is a full NVS write with no debounce
+  (audit, `components/p64_system/src/settings.cpp:96-118`).
+
+### F-06 The interlude roll repeats while no artwork is ready (major)
+
+- **Seen** in F-01's stuck state: an interlude at every interval.
+- **Cause (source)**: `main/show_core.cpp:1056-1057` runs `if (!roll_interlude())
+  swap_fresh();` whenever the auto-swap is due. When `swap_fresh()` has nothing prepared
+  the timer stays due, and the roll is made again on the next loop tick, until a widget
+  wins.
+- **Consequence**: whenever the next artwork is late at the deadline (a slow download,
+  the cardless feed, a slow card), an interlude appears almost surely instead of
+  rarely, which defeats the median gaps of ADR 0014. Unmeasured in normal use.
+- **Tests**: a show-core scenario with the prepared artwork late by many ticks and a
+  fixed random sequence: exactly one roll per due swap.
+
+### F-07 Internal heap after two days of uptime (major, to be measured)
+
+- **Seen** at the start of the probes (49 h uptime): internal free 52 KB, largest free
+  block 24.6 KB (the floor in `budgets.json` is 28.7 KB), lowest free since boot 2.3 KB.
+  Five minutes after the reboot: 61 KB free, largest block 29.7 to 34.8 KB, lowest
+  11.5 KB.
+- **Caveats**: the private build (which costs about 8 KB more static RAM); one sample.
+  The floors are checked by `api_smoke.py` and `soak.py` only when someone runs them,
+  and the longest instrumented run so far is 55 minutes.
+- **Tests**: the trend soak ([test-catalogue.md, long uptime](test-catalogue.md#long-uptime)):
+  largest block and lowest-ever free sampled over days, on the public image, with a slope
+  limit instead of a floor.
+
+### F-08 Small protocol faults (minor)
+
+- A request line over 512 bytes gets a connection reset, not a 414 with a body.
+- Wrong types and unknown keys in a settings write are ignored and answered 200 (by
+  design today; the pages rely on clamping). To decide: keep, or answer 400 for a wrong
+  type so a script learns of its mistake.
+
+### What the probes did not break
+
+For the record, served correctly: 40 sequential and 120 parallel `next`; 20 idle
+connections (least-recently-used purge); six WebSocket clients reading; six WebSocket
+clients not reading for 25 s (the predicted stall of F-22 did not appear, probably
+because the PC's receive window never closed); invalid JSON, non-objects, a 40 KB body
+(413), bad history positions, path traversal in `play` and `files`, a NUL in a path,
+unknown routes and methods; an aborted upload left no temporary file.
+
+## B. Found by reading (source checked by hand)
+
+### F-10 The like path hands the worker a stack object (blocker)
+
+`makapix::like()` builds a `Job` on its own stack, queues its address and waits 20 s
+(`components/p64_makapix/src/makapix.cpp:522-550`). On a timeout it returns; the comment
+there says the job must not be freed while it may run, but the job is not on the heap:
+the stack frame is gone. The worker later writes `job->ok`, assigns `job->error` (a
+`std::string`) and gives `job->done` (`fetcher.cpp:61-70`) into whatever now occupies
+that stack. It is reachable whenever the worker is busy for more than 20 s (a slow
+play-this download, a channel walk, a wait for the TLS slot) and the user presses like,
+from the page or from knob B. The web handler also blocks the only HTTP task for those
+20 s. **Tests**: a fake-server delay in the device suite (like while the worker is held)
+with the oracle; in the fix, the job lives on the heap with shared ownership, and a host
+test covers the timeout order.
+
+### F-11 The cardless feed downloads everything and keeps almost nothing (blocker for D5)
+
+`components/p64_makapix/src/cache.cpp:19-46`: the memory cache holds 48 files or 6 MB,
+evicts first-in first-out (the specification says least recently played), and never
+refuses a file (one bigger than the room left evicts everything). `fetcher.cpp:400-469`
+has no "cache full" stop: the free-space floor applies only with a card, so the whole
+listing (2048 entries per channel by default) is downloaded at every boot and only the
+last 48 files survive. Eviction does not clear an entry's "cached" flag; the show picks
+among all flagged entries, misses, and each miss clears one flag and triggers one
+download (audit: `provider.cpp:55-65`, `loader.cpp:57-62`, `makapix.cpp:433-445`).
+Decided: the rolling window (D7). Details in [no-card-mode.md](no-card-mode.md).
+
+### F-12 The card is mounted once and its loss is never noticed (major; D6 defines the fix)
+
+`main/main.cpp:282-286` mounts at boot and publishes `CardMounted` or `CardFailed`;
+nothing else ever calls `mount()`, and `storage::remount()`
+(`components/p64_storage/src/card.cpp:131`) has no caller. There is no detection of
+I/O errors at run time: a card pulled while playing leaves `card.mounted` true and no
+banner. Audit: provider downloads then fail to store and retry another entry every 5 s
+for as long as the device runs (`fetcher.cpp:451-456`).
+
+### F-13 A saved Local playset without a card shows "no card" forever (major)
+
+`main/show_core.cpp:1185-1198`: a saved user playset that cannot be read falls back, but
+a saved "Local" resolves as a built-in and is activated with nothing to play, even with
+Wi-Fi up and Promoted available. The fallback itself is chosen by the card's presence
+(Local with a card, Promoted without), where the specification (5.2) says by the
+network's.
+
+### F-14 The setup portal's save and erase routes are always open (major)
+
+`components/p64_net/src/setup_portal.cpp:177-233`: `/setup/save` and `/setup/erase` are
+registered outside the PIN gate ("the setup portal is never behind the PIN") and their
+handlers do not check that the device is in setup mode. On a running, PIN-protected
+device, any client on the network can replace or erase the Wi-Fi credentials with one
+POST. The specification (10.3) exempts the portal "in setup mode" only.
+**Tests**: the two routes outside setup mode answer 403 or 404 (device; the virtual
+setup-mode hook covers the positive case).
+
+### F-15 A channel index that fails to parse is deleted (minor)
+
+`cache.cpp:80-83`. The specification (14) says nothing is deleted because a read failed,
+since a dying card misreads healthy files. The index is rebuilt from the server, so the
+cost is a re-walk; with a marginal card it is a loop.
+
+### F-16 Two settings are stored and never used (minor)
+
+`storage.card_root` and `storage.downloads_cap_mb` exist in the settings model and the
+API; no code reads them (the root is the constant `p64`, `card.cpp:27`). The
+specification (14, 16) describes both as working. Either implement or remove before 1.0.0:
+a setting that does nothing is a broken promise.
+
+### F-17 A command that cannot be queued is answered 200 (major)
+
+`main/show.cpp:232-245`: `send()` returns nothing; the handler has already decided to
+answer. Confirmed in F-01's log. To define: the answer when the device cannot take a
+command ([web-ui-and-api.md, Q2](web-ui-and-api.md#q2-the-answer-when-a-command-cannot-be-taken)).
+
+## C. Reported by the audits (leads, not re-checked)
+
+| # | Lead | Where | Severity if true |
+|---|---|---|---|
+| F-20 | A lost `Scanned` result leaves `scan_running` true: no later rescan | `show_core.cpp:812-813` | major |
+| F-21 | Cardless PSRAM has no worst-case bound: the 6 MB cache, a 5 MB download, the copy made on store, the current and the prepared artwork (each a copy of up to 5 MB) and the indexes can exceed 16 MB; with C++ exceptions off a failed allocation aborts | `cache.cpp`, `sdkconfig.defaults:111` | blocker for D5 |
+| F-22 | The WebSocket client list keeps a dead descriptor that a new client can reuse (double sends); a client whose buffer is full costs the HTTP task up to 10 s per broadcast | `ws.cpp:24-68` | major |
+| F-23 | `POST /api/v1/wifi` overwrites the saved credentials before trying the new ones, and starts a task per call without checking the result | `wifi.cpp:318-333`, `api.cpp:558,566` | major (a typo in the password strands the device until setup mode) |
+| F-24 | Rename has no protected-folder check (delete has); an upload overwrites a file of the same name silently | `files.cpp:115-155`, `card.cpp:376` | minor |
+| F-25 | Reboot does not unmount the card; format holds the mount mutex while the loader, the fetcher and the status builder wait | `api.cpp:378-389`, `card.cpp:94-115` | major |
+| F-26 | With Wi-Fi up and NTP unanswered the device calls itself "offline"; `last_error` is never cleared, so the Home banner sticks | `makapix.cpp:117,485`, `show_core.cpp:759,782` | major (misleads) |
+| F-27 | Play-this by URL or post: one job per press, no dedupe and no cancel; Followed makes a server call per press | `makapix.cpp:474-520,706-718` | minor |
+| F-28 | PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
+| F-29 | A card without a FAT file system cannot be formatted from the web UI (format needs a mounted card), against ADR 0006; Home says only "No card" | `card.cpp:64,96` | major |
+| F-30 | The boot mount runs on the main task; its duration with an empty slot is unknown | `main.cpp:282` | to measure |
+
+Web UI leads (audit of `components/p64_web/ui/`):
+
+| # | Lead |
+|---|---|
+| U-01 | Next, previous, like, pause, playset pills, interlude, intro, mode and rotation buttons are not disabled while their request is in flight (upload and "Show URL" are) |
+| U-02 | The polling fallback has no in-flight guard; the WebSocket reconnect is scheduled from both `onclose` and `onerror`, which can double the attempts at every cycle while the device is away |
+| U-03 | Every request aborts at 8 s; slow handlers (format, like, a large upload) are reported as failures while the device carries on |
+| U-04 | Without a card the Playsets page says "No playsets yet. Create your first mix!" and fails only on save; upload, new folder and format stay enabled; the banner is on Home only |
+| U-05 | Optimistic state: `liked` always starts false; the active playset is set on the POST's success though activation is asynchronous |
+
+## D. The specification and the code disagree
+
+| # | The specification says | The code does | To do |
+|---|---|---|---|
+| S-01 | 5.4: the memory cache evicts least recently played | first-in first-out | D7 rewrites this |
+| S-02 | 14: card failures latch a "card failed" state; a swapped card is picked up on the next mount attempt | neither exists | D6: keep the latch, withdraw the remount |
+| S-03 | 5.2: an unrestorable playset falls back to Promoted, or Local without a network | Local with a card, Promoted without | decide the rule (no-card-mode.md, Q5) |
+| S-04 | 5.4: history persistence is unavailable without a card (so it exists with one) | history is in memory only, always (4.6 agrees); `state/` is created and unused | fix the sentence |
+| S-05 | 14, 16: configurable card root, downloads cap | F-16 | implement or remove |
+| S-06 | 14: settings written double-buffered | one NVS blob (`settings.cpp:28-40`); NVS itself writes the new entry before retiring the old | reword, and test it (PWR-3) |
+| S-07 | 15.5, 18.11: a panel stress test | does not exist in the product firmware | build it as a test hook, or drop the sentence |
+| S-08 | 12 and architecture 8: the WebSocket carries the live preview; 3.7: pushed at 2 to 4 fps | the pages poll `GET /api/v1/frame` once a second | reword or implement |
+| S-09 | architecture 6: memory cache of at most 8 MB | 6 MB | align with the cardless design |
+| S-10 | 18.9: 60 fps, under 30 ms, silence after 5 s | `stream_smoke.py` checks 30 fps, 50 ms, 1.5 s | test what the criterion says |
+| S-11 | 14: nothing is deleted because a read failed | F-15 | fix |
+
+## E. Defects in the tests
+
+| # | Defect | Evidence |
+|---|---|---|
+| T-01 | `intro_smoke.py` cannot fail: it reads `api_smoke.FAILURES`, the counter is `failures` | `tests/device/intro_smoke.py:100-101`, `api_smoke.py:24` (source) |
+| T-02 | False passes: `cache_sweep_smoke.py` passes with no card, `tls_slot_smoke.py` passes unpaired | audit (`:112-114`, `:31-33`) |
+| T-03 | `soak.py` hard-codes its late-flip limit instead of reading `budgets.json`; its "WsLoad" opens no WebSocket and sends no command | audit (`soak.py:105`) |
+| T-04 | Scripts leave the device changed: `content_smoke.py` (auto-swap left at 30), `stream_smoke.py` (both listeners left on), `imu_smoke.py` (calibration rewritten), `pin_smoke.py` (a PIN left set when aborted), `ota_smoke.py` (the other slot when aborted); most restore only on the happy path | audit |
+| T-05 | No suite: 20 scripts, no runner, no shared fixture, no report; nothing device-side gates a release | audit; review item P-T5 was never done |
+| T-06 | The scaler's Python twin in `tests/host/run.py` still encodes the fractional downscale that ADR 0016 retired; latent because no corpus canvas is a non-power-of-two above 64 px | audit (`run.py:301-304`) |
+| T-07 | `release.yml` runs no host tests; CI checks 2 of the 10 keys of `budgets.json` | audit |
+| T-08 | `firmware/docs/testing.md` omitted `tls_slot_smoke.py` (closed 2026-11-11: the row was added with this register) | audit |
+| T-09 | Every Python device test parses the status strictly and dies after a panic (F-03) | device |
+| T-10 | `timing_smoke.py` is flaky (one pass in four on 2026-10-04): two non-simultaneous HTTP reads | PROGRESS.md |
+| T-11 | The probes of this session changed a setting by accident: a clamp test left brightness at 1 until restored by hand. Any test that writes a setting must snapshot and restore the whole document | this session |
+
+## F. Never run, though the acceptance list asks
+
+From the coverage audit; details in [test-catalogue.md](test-catalogue.md) and
+[release-gates.md](release-gates.md).
+
+- 18.1 and 18.11: the 12 h and 24 h soaks (longest instrumented run: 55 minutes).
+- 18.2: the corpus played on the device with the late counters read.
+- 18.8: setup mode within 60 s with wrong credentials; the access point gone within 5 s.
+- 18.10: pairing timings.
+- 18.12: power pulled mid-download; a corrupt cached file on the device.
+- Factory reset (by API and by BOOT), the automatic rollback of an image that fails to
+  boot, the captive portal on a phone, real taps, certificate renewal, a full card,
+  format, DST transitions.

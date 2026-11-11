@@ -38,6 +38,9 @@ These records describe dated work, not necessarily current instructions:
 - [Earlier enclosures](../enclosure/archive/pre-v7/README.md),
   [one-encoder experiment](hardware/encoders-solderless.md), and
   [encoder development record](hardware/encoder-history.md).
+- [Testing strategy towards 1.0.0](../firmware/docs/testing-strategy/README.md): the plan
+  of 2026-11-11 (a draft under discussion, nothing of it built yet), its findings
+  register, the cardless design questions and the release gates.
 - [Intro animations](../firmware/docs/intro-animations.md): the catalogue of the boot
   animations, how to see them and how to add one.
 - [Widget research](../firmware/docs/widget-research/README.md),
