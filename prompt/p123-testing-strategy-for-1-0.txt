@@ -1,0 +1,5 @@
+p64 (both its p64a and p64b) has been working great since it's been built. I want to progress towards a 1.0.0 version of the firmware, but I fear it may be lacking more testing. Things such as "user spamming buttons on the web UI" have not been properly tested (or tested at all). Also, the entire "no microSD card mode of operation" has so far gone largely untested (if not worse: somewhat not-yet-fully-designed).
+
+Please device a comprehensive testing strategy for p64, including but not limited to the two items I mentioned above. As I said, our ultimate goal is to harden and polish p64 as appropriate for a version 1.0.0 release. For the no-microSD-card-mode-of-operation, also check whether there are design gaps in that context, as in, fundamental behaviors that have not yet been defined to begin with.
+
+Document your testing strategy inside a new folder inside firmware/docs/. We will be discussing your findings and ideas, and eventually using that documented knowledge to guide the actual testing work.
