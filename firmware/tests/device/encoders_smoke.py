@@ -102,22 +102,32 @@ def main():
     check(st == 400, "a turn of 0 detents is refused (%s)" % st)
     st, _ = request(base, "POST", "/api/v1/diag/encoders/turn", {"detents": 1})
     check(st == 200, "a turn past the maximum is accepted (%s)" % st)
-    time.sleep(0.25)  # the next frame carries it (a static frame is re-emitted within 100 ms)
-    st, during = request(base, "GET", "/api/v1/frame.raw", raw=True, timeout=5)
+    def sun_pixels(frame):
+        n = 0
+        for y in range(21, 43):
+            for x in range(21, 43):
+                r, g, b = frame[(y * 64 + x) * 3:(y * 64 + x) * 3 + 3]
+                n += r >= 230 and 140 <= g <= 220 and b <= 70
+        return n
+
+    # The notice goes up with the next frame the player emits: within 100 ms over a static
+    # image, at the artwork's own next frame over an animation. So the frame is polled for
+    # up to a second rather than taken once (a single frame at 250 ms missed it one run in
+    # three over a slow animation, 2026-11-11).
+    best, st = 0, 0
+    deadline = time.time() + 1.0
+    while time.time() < deadline and best < 200:
+        st, during = request(base, "GET", "/api/v1/frame.raw", raw=True, timeout=5)
+        if st == 200 and len(during) == 64 * 64 * 3:
+            best = max(best, sun_pixels(during))
+        time.sleep(0.05)
     time.sleep(1.5)
     st2, after = request(base, "GET", "/api/v1/frame.raw", raw=True, timeout=5)
-    check(st == 200 and st2 == 200 and len(during) == 64 * 64 * 3 and len(after) == 64 * 64 * 3, "two frames captured")
+    check(st == 200 and st2 == 200 and len(after) == 64 * 64 * 3, "frames captured")
     if st == 200 and st2 == 200:
-        suns = []
-        for frame in (during, after):
-            n = 0
-            for y in range(21, 43):
-                for x in range(21, 43):
-                    r, g, b = frame[(y * 64 + x) * 3:(y * 64 + x) * 3 + 3]
-                    n += r >= 230 and 140 <= g <= 220 and b <= 70
-            suns.append(n)
-        check(suns[0] >= 200, "the sun is on the panel right after the turn (%d sun-coloured pixels in the middle box)" % suns[0])
-        check(suns[1] < suns[0] - 100, "the sun is gone 1.5 s later (%d left)" % suns[1])
+        gone = sun_pixels(after)
+        check(best >= 200, "the sun is on the panel within a second of the turn (%d sun-coloured pixels in the middle box)" % best)
+        check(gone < best - 100, "the sun is gone 1.5 s later (%d left)" % gone)
     st, j = request(base, "GET", "/api/v1/settings")
     check(j["data"]["display"]["brightness"] == 255, "brightness stays 255 past the top")
     request(base, "PUT", "/api/v1/settings", {"display": {"brightness": brightness}})

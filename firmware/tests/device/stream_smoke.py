@@ -18,6 +18,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools"))
+import harness
 from api_smoke import check, request  # noqa: E402
 from stream_send import DDP_PORT, RAW_PORT, ddp_datagrams, raw_datagrams, to_rgb565  # noqa: E402
 
@@ -131,7 +132,7 @@ def expect_frame(base, expected, what, tolerance=0):
     check(bad <= tolerance, "%s: %d of 4096 pixels differ" % (what, bad))
 
 
-def main():
+def run(base):
     base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
     host = urllib.parse.urlparse(base).hostname
     udp = Udp(socket.gethostbyname(host))
@@ -259,6 +260,15 @@ def main():
     from api_smoke import failures
     print("stream smoke: %d failures" % failures)
     return 1 if failures else 0
+
+
+def main():
+    base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local")
+    # The whole settings document is put back at the end (the test turns both
+    # listeners on and used to leave them on: finding T-04).
+    with harness.settings_restored(base):
+        return run(base)
+
 
 
 if __name__ == "__main__":
