@@ -1380,6 +1380,12 @@ them. Newest entries are at the bottom of [Log](#log).
   low 36,967 (floor 32,768), core 0 busy 10.7 % (budget 14 %). Not verified on the
   device: F-10 (it needs a worker held for 20 s; host test only) and the setup routes
   inside setup mode.
+- Release v0.2.2: CI green on the release commit (36869b1), tag pushed, the release
+  workflow built the public image (2,492,320 bytes), published the seven assets with
+  the hand-written notes and redeployed the web flasher, whose index lists v0.2.2,
+  v0.2.1 and v0.2.0. The p64b (already on a local build of the same commit) checked
+  and answered `up_to_date`, checksum published. The over-the-air install of 0.2.2 was
+  not exercised on it; the p64a's update is the maintainer's to do.
 - The p64b stays on the public image from here on (decision D40); it restarted seven
   times that day for the probes, an NVS reading over USB and the flash.
 

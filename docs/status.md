@@ -2,24 +2,28 @@
 
 [Home](../README.md) · [Build guide](build-your-own.md) · [Owner's guide](using-p64.md)
 
-Documentation reviewed 2026-10-15, updated 2026-10-20. Both p64 variants are finished as
+Documentation reviewed 2026-10-15, updated 2026-11-11. Both p64 variants are finished as
 designed and work well: the maintainer's two devices, one p64a and one p64b, run
-essentially around the clock (reported 2026-10-20). The firmware is at version 0.2.1 and in
-good working order, and stays under development for an unspecified time: new faces,
-widgets and refinements keep arriving, and each release is announced on the
-[releases page](https://github.com/fabkury/p64/releases). The latest release,
-[v0.2.1](https://github.com/fabkury/p64/releases/tag/v0.2.1) (the intro animations), was
-published by CI on 2026-10-20 after [v0.2.0](https://github.com/fabkury/p64/releases/tag/v0.2.0)
-on 2026-10-19, and the [web flasher](https://fabkury.github.io/p64/web-flasher/) lists both.
-The development device runs the private build of the same version (`0.2.1+private`).
+essentially around the clock (reported 2026-10-20). The firmware is at version 0.2.2 and in
+good working order, and is being hardened towards 1.0.0 by a written
+[testing strategy](../firmware/docs/testing-strategy/README.md) (2026-11-11); each release
+is announced on the [releases page](https://github.com/fabkury/p64/releases). The latest,
+[v0.2.2](https://github.com/fabkury/p64/releases/tag/v0.2.2) (2026-11-11), fixes five
+defects that the strategy's first abuse tests found, two of which a browser could trigger
+by accident: rapid previous/next from several tabs could stop the show, and a malformed
+request rebooted the device. It follows
+[v0.2.1](https://github.com/fabkury/p64/releases/tag/v0.2.1) (the intro animations,
+2026-10-20) and [v0.2.0](https://github.com/fabkury/p64/releases/tag/v0.2.0) (2026-10-19);
+the [web flasher](https://fabkury.github.io/p64/web-flasher/) lists all three. The p64b is
+the test unit and runs the public image; the p64a runs the maintainer's daily image.
 
 | Area | Current state | Evidence or next step |
 |---|---|---|
 | p64a | v7a, finished as designed; assembled 2026-10-09, in continuous use since; no soldering. The shell source changed in place on 2026-10-20: the rim is 0.5 mm taller (mask 0.5 mm proud instead of 1.0), not printed yet | Maintainer confirmation, 2026-10-15 and 2026-10-20 |
 | p64b | v7b, finished as designed; assembled 2026-10-17, in continuous use since: pull-ups soldered on board 1, harness mated, both boards on the pegs, panel seated, knobs working through the closed shell; turn direction matched to the hand on 2026-10-19 (0.2.0-dev), confirmed by the maintainer. Same 0.5 mm rim change as p64a on 2026-10-20, not printed yet | `encoders_smoke.py` 0 failures with the shell closed, both boards polled with 0 read errors; [bench record](hardware/encoder-history.md) |
-| Firmware | 0.2.1, working and under continued development: the product features of the specification are implemented, including encoders, Air, 12 clock faces, 21 intro animations (2026-10-20), PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
-| Installation | v0.2.1 published 2026-10-20 (v0.2.0 on 2026-10-19); pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | Verified 2026-10-19 on the development board: the published v0.2.0 files flashed with the guide's esptool command over native USB (21 s, self-reset, booted 0.2.0, Wi-Fi settings kept), and the device's update check found the release and its checksum (`up_to_date`). The first field OTA was exercised on 2026-10-20: the development device (on the private 0.2.0 build) found v0.2.1 on its Update page, downloaded and verified the 2.5 MB image in 54 s, booted it from the other slot, confirmed it and played a boot animation; it was then rolled back and reflashed with the private build of 0.2.1. Not yet exercised: a flash through the browser page (it needs a hand on the port picker). Process and image audit: [release build](../firmware/docs/release-build.md) |
-| Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware |
+| Firmware | 0.2.2, working and under continued development: the product features of the specification are implemented, including encoders, Air, 12 clock faces, 21 intro animations (2026-10-20), PIN and OTA | [Specification](spec/p64-spec.md), [device and host test history](../firmware/docs/PROGRESS.md) |
+| Installation | v0.2.2 published 2026-11-11 (v0.2.1 on 2026-10-20, v0.2.0 on 2026-10-19); pre-built releases flash from the [web flasher](https://fabkury.github.io/p64/web-flasher/) or with [one esptool command](flash-firmware.md); building from source stays documented for developers | Verified 2026-10-19 on the development board: the published v0.2.0 files flashed with the guide's esptool command over native USB (21 s, self-reset, booted 0.2.0, Wi-Fi settings kept), and the device's update check found the release and its checksum (`up_to_date`). The first field OTA was exercised on 2026-10-20: the development device (on the private 0.2.0 build) found v0.2.1 on its Update page, downloaded and verified the 2.5 MB image in 54 s, booted it from the other slot, confirmed it and played a boot animation; it was then rolled back and reflashed with the private build of 0.2.1. Not yet exercised: a flash through the browser page (it needs a hand on the port picker). Process and image audit: [release build](../firmware/docs/release-build.md) |
+| Automated checks | CI builds the public firmware, checks size budgets, and runs host tests with sanitizers | [Workflow](../.github/workflows/firmware.yml); device tests require hardware. What the tests do not cover yet, and the defects found so far, are in the [findings register](../firmware/docs/testing-strategy/findings.md) |
 | Reliability | Proven in use: two devices running continuously since their assembly (2026-10-09 and 2026-10-17) without issues, through Makapix refreshes, downloads, clocks and widgets | Maintainer's report, 2026-10-20; the unattended [soak harness](../firmware/docs/PROGRESS.md#log) passed every run up to 55 minutes |
 
 ## Remaining checks
@@ -68,6 +72,12 @@ device in normal use:
   its own fps samples. This is a known limit of the hardware budget, not a defect.
 - A cold boot needs NTP before clocks, night scheduling and online refreshes work.
   Cached artwork on a card can play before Wi-Fi or time synchronization.
+- Cardless operation is being redesigned for 1.0.0 (ADR 0018). Until then it has known
+  defects: the device downloads a channel's whole listing at each boot to keep 48
+  files, and the pages offer actions that need a card
+  ([findings](../firmware/docs/testing-strategy/findings.md), F-11 to F-13).
+- One slow or stalled browser connection, or an upload, makes the web pages wait for
+  every other client (F-04); the fix is planned (ADR 0019).
 - Cardless playback uses memory for downloaded artwork; it does not provide durable
   artwork storage. See [offline and cardless use](using-p64.md#offline-and-cardless-use).
 
