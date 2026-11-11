@@ -39,6 +39,20 @@ menu "p64"
 
     endmenu
 
+    menu "Testing"
+
+        config P64_TEST_HOOKS
+            bool "Fault-injection hooks (test build only)"
+            default n
+            help
+                Adds GET and POST /api/v1/test and the seams they drive: boot as if no
+                card had mounted, withhold the time, hold the Makapix worker, panic,
+                reset abruptly. For the device suite's `hooks` lane
+                (docs/testing-strategy/infrastructure.md). Never set in a release:
+                build with -DP64_TEST=ON, which also marks the version "+test".
+
+    endmenu
+
     menu "Inputs"
 
         config P64_BOOT_GPIO

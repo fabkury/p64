@@ -1,0 +1,4 @@
+# The test build (-DP64_TEST=ON, see CMakeLists.txt): applied after sdkconfig.defaults.
+# Never part of a release; its image says "+test" in its version and "test_hooks" in its
+# status document. docs/testing-strategy/infrastructure.md describes the hooks.
+CONFIG_P64_TEST_HOOKS=y

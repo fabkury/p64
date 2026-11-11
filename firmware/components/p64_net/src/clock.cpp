@@ -1,4 +1,5 @@
 #include "p64/net/clock.hpp"
+#include "p64/system/test_hooks.hpp"
 
 #include <atomic>
 #include <cstdlib>
@@ -246,12 +247,21 @@ void set_ntp_server(const std::string &server) {
   esp_sntp_restart();  // ask the new server now
 }
 
-bool synced() { return g_synced.load(); }
+// Whether the time is trusted: NTP answered in this boot (ADR 0011). The test build can
+// withhold it (system/test_hooks.hpp) to reach "connected, no time yet" at will.
+bool trusted() {
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (system::test::time_withheld.load()) return false;
+#endif
+  return g_synced.load();
+}
 
-const char *source() { return g_synced.load() ? "ntp" : "none"; }
+bool synced() { return trusted(); }
+
+const char *source() { return trusted() ? "ntp" : "none"; }
 
 bool now_utc(time_t &out) {
-  if (!g_synced.load()) return false;
+  if (!trusted()) return false;
   out = time(nullptr);
   return true;
 }
@@ -273,7 +283,7 @@ int64_t file_date_floor() { return g_file_floor; }
 Status status() {
   Status s;
   const int64_t now = esp_timer_get_time();
-  s.synced = g_synced.load();
+  s.synced = trusted();
   if (s.synced) s.last_sync_s = (now - g_last_sync_us.load()) / kSecondUs;
   s.syncs = g_syncs.load();
   s.rejected = g_rejected.load();

@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "sdkconfig.h"
+
 namespace p64::storage {
 
 struct FileInfo {
@@ -34,6 +36,13 @@ std::string downloads_dir();         // root()/downloads
 std::string cache_dir();             // root()/cache
 std::string channels_dir();          // root()/channels
 std::string state_dir();             // root()/state
+
+#ifdef CONFIG_P64_TEST_HOOKS
+// The test build's virtual eject (system/test_hooks.hpp): from now until the reboot the
+// card counts as not mounted for `reason` (one of the mount errors, e.g. "no card
+// answers"), and mount() refuses. Call it before the first mount().
+void test_eject(const std::string &reason);
+#endif
 
 // Mounts the card. Never formats it (spec: formatting is an explicit user action).
 // Creates the p64 folders when the card is writable. Returns whether the card is usable.

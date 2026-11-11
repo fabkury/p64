@@ -17,6 +17,7 @@
 #include "policy.hpp"
 #include "mqtt.hpp"
 #include "p64/content/makapix_index.hpp"
+#include "p64/system/test_hooks.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/playback/artwork.hpp"
@@ -726,6 +727,12 @@ void run_job(Job *job) {
 void task(void *) {
   g_next_renewal_check_us = esp_timer_get_time() + 90 * kSecond;
   while (true) {
+#ifdef CONFIG_P64_TEST_HOOKS
+    if (const uint32_t hold = system::test::hold_worker_ms.exchange(0)) {
+      ESP_LOGW(TAG, "test hook: the worker is held for %u ms", static_cast<unsigned>(hold));
+      vTaskDelay(pdMS_TO_TICKS(hold));
+    }
+#endif
     Job *job = nullptr;
     if (xQueueReceive(g_jobs, &job, pdMS_TO_TICKS(500)) == pdTRUE && job) {
       switch (policy::job_disposition(online(), job->type == JobType::Like, job->type == JobType::Followed,

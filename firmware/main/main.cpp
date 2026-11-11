@@ -22,6 +22,8 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
+#include "p64/system/state_store.hpp"
+#include "p64/system/test_hooks.hpp"
 
 #include "p64/display/display.hpp"
 #include "p64/gfx/frame.hpp"
@@ -279,6 +281,18 @@ extern "C" void app_main() {
   mk.current_post_id = p64::show::current_post_id;
   mk.is_paused = p64::show::is_paused;
 
+#ifdef CONFIG_P64_TEST_HOOKS
+  {
+    // The persisted hooks of the test build (system/test_hooks.hpp).
+    std::string value;
+    if (p64::system::state::get(p64::system::test::kNoTimeKey, value) && value == "1") {
+      p64::system::test::time_withheld = true;
+      ESP_LOGW(TAG, "test hook: the time is withheld");
+    }
+    value.clear();
+    if (p64::system::state::get(p64::system::test::kEjectKey, value) && !value.empty()) p64::storage::test_eject(value);
+  }
+#endif
   if (p64::storage::mount()) {
     p64::system::publish(p64::system::Event::CardMounted);
   } else {

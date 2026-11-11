@@ -32,6 +32,9 @@
 #include "p64/system/log_ring.hpp"
 #include "p64/system/reliability.hpp"
 #include "p64/system/settings.hpp"
+#include "p64/system/state_store.hpp"
+#include "p64/system/test_hooks.hpp"
+#include "esp_rom_sys.h"
 #include "p64/web/web.hpp"
 #include "p64/inputs/inputs.hpp"
 #include "p64/ota/ota.hpp"
@@ -275,6 +278,9 @@ cJSON *build_status() {
   cJSON_AddItemToObject(d, "reliability", system::reliability::json());
   cJSON_AddStringToObject(d, "update_state", ota::state_name(ota::status().state));
   cJSON_AddNumberToObject(d, "playsets_version", g_playsets_version.load());
+#ifdef CONFIG_P64_TEST_HOOKS
+  cJSON_AddBoolToObject(d, "test_hooks", true);  // a test build can never pass for a release
+#endif
   {
     cJSON *in = cJSON_AddObjectToObject(d, "inputs");
     cJSON_AddBoolToObject(in, "imu_present", inputs::imu_present());
@@ -823,6 +829,67 @@ esp_err_t diag_bench(httpd_req_t *req) {
   return reply_ok(req, d);
 }
 
+#ifdef CONFIG_P64_TEST_HOOKS
+// --- the test build's hooks (system/test_hooks.hpp) ------------------------------------
+
+cJSON *test_state() {
+  cJSON *d = cJSON_CreateObject();
+  std::string eject;
+  system::state::get(system::test::kEjectKey, eject);
+  cJSON_AddStringToObject(d, "card_eject", eject.c_str());  // takes effect at the next boot
+  cJSON_AddBoolToObject(d, "card_mounted", storage::mounted());
+  cJSON_AddBoolToObject(d, "time_withheld", system::test::time_withheld.load());
+  cJSON_AddNumberToObject(d, "hold_worker_ms", system::test::hold_worker_ms.load());
+  return d;
+}
+
+esp_err_t test_get(httpd_req_t *req) { return reply_ok(req, test_state()); }
+
+// POST /api/v1/test: any of {"card_eject": "<reason>" | "", "time_withheld": bool,
+// "hold_worker_ms": N, "panic": true, "reset": true}. The first two persist across
+// reboots until cleared; the eject takes effect at the next boot.
+esp_err_t test_post(httpd_req_t *req) {
+  cJSON *body = parse_body(req);
+  if (!body) return ESP_OK;
+  if (const cJSON *e = cJSON_GetObjectItem(body, "card_eject"); cJSON_IsString(e)) {
+    if (e->valuestring[0]) {
+      system::state::set(system::test::kEjectKey, e->valuestring);
+    } else {
+      system::state::erase(system::test::kEjectKey);
+    }
+  }
+  if (const cJSON *t = cJSON_GetObjectItem(body, "time_withheld"); cJSON_IsBool(t)) {
+    const bool on = cJSON_IsTrue(t);
+    if (on) {
+      system::state::set(system::test::kNoTimeKey, "1");
+    } else {
+      system::state::erase(system::test::kNoTimeKey);
+    }
+    const bool was = system::test::time_withheld.exchange(on);
+    // Whoever depends on the time re-reads it: released, it is there now; withheld,
+    // net::clock::synced() says no from here on.
+    if (was != on) system::publish(system::Event::TimeSynced, on ? 0 : 1);
+  }
+  if (const cJSON *h = cJSON_GetObjectItem(body, "hold_worker_ms"); cJSON_IsNumber(h)) {
+    const double ms = h->valuedouble;
+    system::test::hold_worker_ms = ms < 0 ? 0u : ms > 120000 ? 120000u : static_cast<uint32_t>(ms);
+  }
+  const bool panic = cJSON_IsTrue(cJSON_GetObjectItem(body, "panic"));
+  const bool reset = cJSON_IsTrue(cJSON_GetObjectItem(body, "reset"));
+  cJSON_Delete(body);
+  const esp_err_t r = reply_ok(req, test_state());
+  if (panic || reset) {
+    vTaskDelay(pdMS_TO_TICKS(200));  // the answer leaves first
+    if (panic) {
+      ESP_LOGE(TAG, "test hook: panic");
+      abort();
+    }
+    esp_rom_software_reset_system();  // abrupt: no shutdown handler runs, nothing is flushed
+  }
+  return r;
+}
+#endif  // CONFIG_P64_TEST_HOOKS
+
 }  // namespace
 
 const Hooks &hooks() { return g_hooks; }
@@ -862,6 +929,11 @@ void init(const Hooks &hooks) {
       {"/api/v1/diag/intro_bench", HTTP_GET, diag_intro_bench, nullptr, false, false, nullptr},
   };
   for (const httpd_uri_t &r : routes) net::http::add(r);
+#ifdef CONFIG_P64_TEST_HOOKS
+  net::http::add({"/api/v1/test", HTTP_GET, test_get, nullptr, false, false, nullptr});
+  net::http::add({"/api/v1/test", HTTP_POST, test_post, nullptr, false, false, nullptr});
+  ESP_LOGW(TAG, "TEST BUILD: fault-injection hooks at /api/v1/test");
+#endif
   files::register_routes();
   content::register_routes();
   makapix_routes::register_routes();

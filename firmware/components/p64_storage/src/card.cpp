@@ -122,9 +122,24 @@ std::string cache_dir() { return root() + "/cache"; }
 std::string channels_dir() { return root() + "/channels"; }
 std::string state_dir() { return root() + "/state"; }
 
+#ifdef CONFIG_P64_TEST_HOOKS
+namespace {
+bool g_test_ejected = false;
+}
+void test_eject(const std::string &reason) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_test_ejected = true;
+  g_error = reason;
+  ESP_LOGW(TAG, "test hook: the card is ejected for this boot (%s)", reason.c_str());
+}
+#endif
+
 bool mount() {
   std::lock_guard<std::mutex> lock(g_mutex);
   if (g_card) return true;
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (g_test_ejected) return false;
+#endif
   return do_mount();
 }
 
@@ -134,6 +149,9 @@ bool remount() {
     esp_vfs_fat_sdcard_unmount(kMountPoint, g_card);
     g_card = nullptr;
   }
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (g_test_ejected) return false;
+#endif
   return do_mount();
 }
 

@@ -11,6 +11,17 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.secrets")
     message(STATUS "p64: applying sdkconfig.secrets (development Wi-Fi seed)")
 endif()
 
+# The test build: -DP64_TEST=ON turns the fault-injection hooks on (sdkconfig.test,
+# CONFIG_P64_TEST_HOOKS; docs/testing-strategy/infrastructure.md) and marks the version
+# "+test". Use a build folder and an sdkconfig of its own:
+#   tools/idf.ps1 -B build_test -DP64_NO_PRIVATE=ON -DP64_TEST=ON -DSDKCONFIG=build_test/sdkconfig build
+# No release is built this way; CI builds it only to keep the hook code compiling.
+option(P64_TEST "Build the test image: fault-injection hooks on (never released)" OFF)
+if(P64_TEST)
+    list(APPEND SDKCONFIG_DEFAULTS "sdkconfig.test")
+    message(STATUS "p64: TEST build (fault-injection hooks on; not for release)")
+endif()
+
 # The private area (private/, a separate repository mounted there, git-ignored; see
 # README.md "Private area"): when present, its components join the build, its
 # sdkconfig.private is applied last, and the version carries "+private" so a private
@@ -34,6 +45,9 @@ endif()
 set(PROJECT_VER "0.2.2")
 if(P64_PRIVATE)
     string(APPEND PROJECT_VER "+private")
+endif()
+if(P64_TEST)
+    string(APPEND PROJECT_VER "+test")
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
