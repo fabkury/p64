@@ -22,7 +22,13 @@ F-28, F-29 and the divergences of section D) were decided the same day:
 
 ## A. Confirmed on the device
 
-### F-01 A burst of navigation leaves the show without artwork for good (blocker)
+### F-01 A burst of navigation leaves the show without artwork for good (blocker; fixed in 0.2.2)
+
+- **Fixed** (2026-11-11, commit b32f29c): the loader's results have their own queue and are never
+  dropped; the show never waits on the loader; one navigation load and one scan in flight
+  at a time, the latest target wins; a load not back after 30 s is asked for again. Five
+  host scenarios; on the device `abuse_smoke.py` serves the 240-request burst in 7 s and
+  the show goes on.
 
 - **Seen**: 120 `previous`/`next` requests alternating, from 16 parallel connections,
   then the same with `history_go`. For about 21 s each time the log alternated
@@ -49,7 +55,11 @@ F-28, F-29 and the divergences of section D) were decided the same day:
   expects the show to recover by itself (host); the navigation storm in the abuse suite
   ending in the health oracle's "a swap happens within one interval" (device).
 
-### F-02 A 400-byte request reboots the device (blocker)
+### F-02 A 400-byte request reboots the device (blocker; fixed in 0.2.2)
+
+- **Fixed** (2026-11-11, commit 9294ea3): cJSON is built with a nesting limit of 16 for every
+  parse in the firmware. Host test of the limit; on the device bodies of 17 to 15000
+  levels answer 400 on six routes with no reboot (`abuse_smoke.py`).
 
 - **Seen**: `PUT /api/v1/settings` with a body of 200 `[` followed by 200 `]`. The
   request hung, the device panicked and rebooted (uptime back to 0, reset reason
@@ -65,7 +75,12 @@ F-28, F-29 and the divergences of section D) were decided the same day:
   and an unchanged uptime (device); the JSON entry points fuzzed on the host with a
   stack limit.
 
-### F-03 After a panic the status document is not valid UTF-8 (major)
+### F-03 After a panic the status document is not valid UTF-8 (major; fixed in 0.2.2)
+
+- **Fixed** (2026-11-11, commit 9294ea3): the crash summary's task name passes through
+  `system::printable_ascii`. Host test with the bytes seen on the device. The wider rule
+  (every outside string sanitised where it enters a JSON document, checked by the
+  oracle) stays open.
 
 - **Seen**: after F-02's panic, `reliability.crash.task` carried raw bytes
   (`\xaa4\xce?\xa4\xb7\xc9?`), read from a corrupted task block. Python's strict JSON
@@ -150,7 +165,12 @@ unknown routes and methods; an aborted upload left no temporary file.
 
 ## B. Found by reading (source checked by hand)
 
-### F-10 The like path hands the worker a stack object (blocker)
+### F-10 The like path hands the worker a stack object (blocker; fixed in 0.2.2)
+
+**Fixed** (2026-11-11, commit 4fcc308): the job is on the heap and `handoff.hpp` decides which
+side frees it; host test with 2000 races. The 20 s wait on the HTTP task stays until the
+like is queued and reported through the status (D25). No device test yet: it needs the
+hook that holds the worker.
 
 `makapix::like()` builds a `Job` on its own stack, queues its address and waits 20 s
 (`components/p64_makapix/src/makapix.cpp:522-550`). On a timeout it returns; the comment
@@ -193,7 +213,11 @@ Wi-Fi up and Promoted available. The fallback itself is chosen by the card's pre
 (Local with a card, Promoted without), where the specification (5.2) says by the
 network's.
 
-### F-14 The setup portal's save and erase routes are always open (major)
+### F-14 The setup portal's save and erase routes are always open (major; fixed in 0.2.2)
+
+**Fixed** (2026-11-11, commit 4035fbf): both answer 403 outside setup mode; checked on the
+device by `abuse_smoke.py`. The positive case (they work in setup mode) waits for the
+setup-mode hook or the hands-on session.
 
 `components/p64_net/src/setup_portal.cpp:177-233`: `/setup/save` and `/setup/erase` are
 registered outside the PIN gate ("the setup portal is never behind the PIN") and their
@@ -268,9 +292,9 @@ Web UI leads (audit of `components/p64_web/ui/`):
 
 | # | Defect | Evidence |
 |---|---|---|
-| T-01 | `intro_smoke.py` cannot fail: it reads `api_smoke.FAILURES`, the counter is `failures` | `tests/device/intro_smoke.py:100-101`, `api_smoke.py:24` (source) |
-| T-02 | False passes: `cache_sweep_smoke.py` passes with no card, `tls_slot_smoke.py` passes unpaired | audit (`:112-114`, `:31-33`) |
-| T-03 | `soak.py` hard-codes its late-flip limit instead of reading `budgets.json`; its "WsLoad" opens no WebSocket and sends no command | audit (`soak.py:105`) |
+| T-01 | (fixed 2026-11-11, commit 9a9dbb0) `intro_smoke.py` cannot fail: it reads `api_smoke.FAILURES`, the counter is `failures` | `tests/device/intro_smoke.py:100-101`, `api_smoke.py:24` (source) |
+| T-02 | (fixed 2026-11-11, commit 9a9dbb0: a missing precondition prints SKIP and exits 2) False passes: `cache_sweep_smoke.py` passes with no card, `tls_slot_smoke.py` passes unpaired | audit (`:112-114`, `:31-33`) |
+| T-03 | (fixed 2026-11-11, commit 9a9dbb0: the limit is the budget's and the poller is named for what it is; a soak with a WebSocket and commands is LONG-1) `soak.py` hard-codes its late-flip limit instead of reading `budgets.json`; its "WsLoad" opens no WebSocket and sends no command | audit (`soak.py:105`) |
 | T-04 | Scripts leave the device changed: `content_smoke.py` (auto-swap left at 30), `stream_smoke.py` (both listeners left on), `imu_smoke.py` (calibration rewritten), `pin_smoke.py` (a PIN left set when aborted), `ota_smoke.py` (the other slot when aborted); most restore only on the happy path | audit |
 | T-05 | No suite: 20 scripts, no runner, no shared fixture, no report; nothing device-side gates a release | audit; review item P-T5 was never done |
 | T-06 | The scaler's Python twin in `tests/host/run.py` still encodes the fractional downscale that ADR 0016 retired; latent because no corpus canvas is a non-power-of-two above 64 px | audit (`run.py:301-304`) |

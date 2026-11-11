@@ -48,7 +48,9 @@ runs host tests with sanitizers and `-Werror`. It does not run hardware tests.
 Use a development device on your LAN. Read each script's opening instructions before
 running it: tests can change settings and playback, upload/delete files, contact online
 services, or reboot. Many restore settings on normal completion, but an interrupted
-test may not. Use the IP address for timing tests to avoid mDNS lookup delays.
+test may not. Use the IP address for timing tests to avoid mDNS lookup delays. A script exits 0
+when its checks passed, 1 when one failed, and 2 (printing `SKIP`) when it could not run
+because a precondition is missing: a skip is not a pass.
 
 ```powershell
 $p64Url = 'http://192.168.1.100' # replace with the device IP
@@ -72,6 +74,7 @@ python tests/device/ui_smoke.py $p64Url
 | `ota_smoke.py` | Needs `build/p64.bin`; installs it over HTTP, reboots and rolls back. `--no-install` skips installation. |
 | `cache_sweep_smoke.py` | Card and NTP; dry-run by default. `--delete` actually removes older cached/downloaded files and indexes. |
 | `tls_slot_smoke.py` | Pairing; checks that a paused provider walk frees the TLS slot. |
+| `abuse_smoke.py` | The findings of 2026-11-11: the setup routes outside setup mode, request bodies nested up to 15000 levels, bursts of navigation and activations from 16 connections, then the show must go on by itself. Sets the auto-swap interval to 5 s and restores the settings and the playset. A firmware older than 0.2.2 reboots on it. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |
 

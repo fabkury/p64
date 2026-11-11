@@ -36,6 +36,13 @@ PowerShell throws on HTTP errors; inspect the response body for the device's err
 An accepted action can finish later: watch status or WebSocket updates for its outcome.
 Some routes, such as likes, wait for network work; see each route's description.
 
+A JSON request body may be up to 32 KB and nest up to 16 levels (since 0.2.2; nothing
+the API takes nests deeper than 4); a deeper or malformed body is answered 400
+`INVALID_JSON`. A burst of `next`, `previous` and `history_go` is coalesced: one file
+loads at a time and the last request is the one that plays (since 0.2.2). The setup
+portal's `/setup/save` and `/setup/erase` answer 403 unless the device is in setup mode
+(since 0.2.2).
+
 File paths are relative to the configured p64 storage root: `animations/demo.gif`
 means `p64/animations/demo.gif` on a card using the default root. URL-encode query values.
 PNG, raw-frame and log responses are not JSON envelopes.
