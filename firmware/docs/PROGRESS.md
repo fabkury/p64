@@ -1346,6 +1346,43 @@ them. Newest entries are at the bottom of [Log](#log).
   Still open as remaining checks: the instrument measurements, the unrecorded hands-on
   checks (taps, BOOT hold, Photo picture) and the enclosure dimensions. No code change.
 
+### 2026-11-11
+
+- Testing strategy towards 1.0.0 (p123): `docs/testing-strategy/`, written from three code
+  audits and HTTP probes against the p64b (then on `0.2.1+private`, 49 h up). The probes
+  confirmed on the device: 240 previous/next requests from 16 connections overflow the
+  loader's and the show's queues for 21 s (the web server unreachable meanwhile) and
+  leave the show without artwork until the playset is activated again (F-01); a request
+  body of 200 nested brackets panics the device (F-02, five panics in five requests);
+  the crash summary's task name then makes the status document invalid UTF-8 (F-03); ten
+  half-sent requests hold the single HTTP task for about 90 s and a refused 8 MB upload
+  for 27 s (F-04); "settings changed" events are dropped under 100 writes in 3 s (F-05).
+  Also read that day: internal heap after 49 h, 52 KB free, largest block 24.6 KB (under
+  the 28.7 KB floor), lowest since boot 2.3 KB, on the private build. The owner decided
+  every open point the same day (`decisions.md`, D1 to D45; ADR 0018 and 0019).
+- 0.2.2 (p124), the fixes for F-01, F-02, F-03, F-10 and F-14: the loader's results on a
+  queue of their own, never dropped, and a show that never waits on the loader, with one
+  navigation load and one scan in flight at a time and a 30 s lost-result timeout; cJSON
+  built with a nesting limit of 16; the crash summary's task name through
+  `system::printable_ascii`; the like job on the heap with `handoff.hpp` deciding who
+  frees it; `/setup/save` and `/setup/erase` refused outside setup mode. Host tests:
+  233 cases with `--werror` (nine new). Three device tests that could not fail repaired
+  (`intro_smoke.py`, and a missing precondition now exits 2 with SKIP).
+- Device, the public image (built with `-DP64_NO_PRIVATE=ON` and its own sdkconfig,
+  2,492,656 bytes, static DIRAM 122,139) flashed on the p64b: `abuse_smoke.py` 0
+  failures (the setup routes 403; bodies of 17 to 15000 levels 400 on six routes with no
+  reboot; 240 previous/next, 120 history jumps, 40 activations and 120 next from 16
+  connections each served in about 7 s, a new artwork up by itself and the next one
+  prepared after each, nothing dropped in the log; heap 54.6 KB free afterwards);
+  `api_smoke`, `content_smoke`, `ws_smoke`, `ui_smoke`, `pin_smoke`, `ops_smoke`,
+  `makapix_smoke --paired` and `intro_smoke` 0 failures each; `soak.py --minutes 60` on
+  Promoted at 5 s: 720 swaps, 43,031 frames, 0 late flips, 0 timeouts, no reboot, heap
+  low 36,967 (floor 32,768), core 0 busy 10.7 % (budget 14 %). Not verified on the
+  device: F-10 (it needs a worker held for 20 s; host test only) and the setup routes
+  inside setup mode.
+- The p64b stays on the public image from here on (decision D40); it restarted seven
+  times that day for the probes, an NVS reading over USB and the flash.
+
 ### 2026-11-03
 
 - Aquarium: the near fish swam in front of the sign's post (p118). `sign.png` held the

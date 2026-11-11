@@ -170,8 +170,16 @@ list separate from the card playsets, one active playset per storage mode, never
 automatic fallback, the memory window renewed one artwork per swap up to 60 an hour);
 one HTTP task stays, other clients answered within 3 s except during an upload,
 commands coalesce or answer 503 (ADR 0019); 0.2.2 first with F-01, F-02, F-03, F-10 and
-F-14, then 0.9.x release candidates. None of it is implemented yet. When a finding is
-fixed, mark it in the register in the same commit.
+F-14, then 0.9.x release candidates. 0.2.2 (p124, the same day) carries those five fixes
+(the loader's results on their own queue and never dropped, one navigation load and one
+scan in flight, cJSON's nesting limit of 16 in `firmware/CMakeLists.txt` and
+`tests/host/run.py`, `p64/system/text.hpp`, `p64_makapix/src/handoff.hpp`) and
+`tests\device\abuse_smoke.py http://<ip>` reproduces the probes (a firmware older than
+0.2.2 reboots on it); a device test whose precondition is missing exits 2 with SKIP.
+Nothing else of the plan is implemented yet. When a finding is fixed, mark it in the
+register in the same commit. The p64b runs the public image since 2026-11-11 (build
+it with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
+build`, flash with `idf.py -B build_public -p COM13 flash`).
 
 Releases (since 2026-10-19, `firmware/docs/release-build.md`): pushing a tag `v<PROJECT_VER>`
 makes `.github/workflows/release.yml` build the public firmware, collect the assets with
