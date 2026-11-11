@@ -147,6 +147,15 @@ std::shared_ptr<playback::FrameSource> make_intro(int index, uint32_t duration_m
 // The core runs on the main task; g_mutex makes its state readable by the API's tasks.
 std::mutex g_mutex;
 QueueHandle_t g_commands = nullptr;
+// The loader's results travel apart from the commands and are never dropped (F-01,
+// 2026-11-11: they shared the command queue, a burst of navigation filled it, a result
+// was dropped after its 500 ms wait and the show waited for it for good).
+QueueHandle_t g_results = nullptr;
+std::atomic<TaskHandle_t> g_loop_task{nullptr};
+
+void wake_loop() {
+  if (TaskHandle_t t = g_loop_task.load()) xTaskNotifyGive(t);
+}
 playback::Player *g_player = nullptr;
 playback::Renderer *g_renderer = nullptr;
 gfx::Frame *g_scratch = nullptr;  // PSRAM; status screens are drawn here
@@ -186,7 +195,7 @@ class DeviceEnv : public ShowEnv {
     return t;
   }
   uint32_t load(const std::string &path, gfx::Rgb background) override { return loader::load(path, background); }
-  void scan(uint32_t generation, const content::Playset &playset) override { loader::scan(generation, playset); }
+  bool scan(uint32_t generation, const content::Playset &playset) override { return loader::scan(generation, playset); }
   bool card_mounted() override { return storage::mounted(); }
   std::string storage_root() override { return storage::root(); }
   std::string animations_dir() override { return storage::animations_dir(); }
@@ -241,7 +250,17 @@ void send(Cmd type, uint32_t number = 0, std::string *text = nullptr, loader::Lo
     delete load;
     delete scan;
     delete playset;
+    return;
   }
+  wake_loop();
+}
+
+// A loader result, from the loader task: waits for room as long as it takes (the loader
+// has nothing else to do with it), feeding its watchdog meanwhile.
+void send_result(Cmd type, loader::LoadResult *load, loader::ScanResult *scan) {
+  Command c{type, 0, nullptr, nullptr, nullptr, load, scan, nullptr};
+  while (xQueueSend(g_results, &c, pdMS_TO_TICKS(500)) != pdTRUE) esp_task_wdt_reset();
+  wake_loop();
 }
 
 void handle(Command &c) {
@@ -310,9 +329,10 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
   void *mem = heap_caps_malloc(sizeof(gfx::Frame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   g_scratch = mem ? new (mem) gfx::Frame() : new gfx::Frame();
   g_commands = xQueueCreate(16, sizeof(Command));
-  if (!g_commands) return false;
-  if (!loader::start([](loader::LoadResult *r) { send(Cmd::Loaded, 0, nullptr, r, nullptr); },
-                     [](loader::ScanResult *r) { send(Cmd::Scanned, 0, nullptr, nullptr, r); })) {
+  g_results = xQueueCreate(4, sizeof(Command));
+  if (!g_commands || !g_results) return false;
+  if (!loader::start([](loader::LoadResult *r) { send_result(Cmd::Loaded, r, nullptr); },
+                     [](loader::ScanResult *r) { send_result(Cmd::Scanned, nullptr, r); })) {
     ESP_LOGE(TAG, "loader task failed to start");
     return false;
   }
@@ -365,10 +385,19 @@ void restore() {
 [[noreturn]] void run() {
   ESP_LOGI(TAG, "show loop running");
   esp_task_wdt_add(nullptr);  // wait_ticks() is at most a second
+  g_loop_task = xTaskGetCurrentTaskHandle();
+  // Results first: they free the loader and are what the show is waiting for.
+  const auto take = [](Command &c) {
+    return xQueueReceive(g_results, &c, 0) == pdTRUE || xQueueReceive(g_commands, &c, 0) == pdTRUE;
+  };
   while (true) {
     esp_task_wdt_reset();
     Command c{};
-    const bool got = xQueueReceive(g_commands, &c, wait_ticks()) == pdTRUE;
+    bool got = take(c);
+    if (!got) {
+      ulTaskNotifyTake(pdTRUE, wait_ticks());  // a sender wakes the loop; else the core's own deadline
+      got = take(c);
+    }
     std::lock_guard<std::mutex> lock(g_mutex);
     if (got) handle(c);
     core::tick();

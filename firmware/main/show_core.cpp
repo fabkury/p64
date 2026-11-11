@@ -28,6 +28,12 @@ constexpr int64_t kUpdateFailedScreenUs = 10 * kSecond;  // "Update failed", the
 constexpr int64_t kConnectedScreenUs = 15 * kSecond;     // spec 6.4: the IP, when nothing plays
 constexpr int64_t kConnectedMinUs = 2 * kSecond;         // ...readable for this long before an artwork replaces it
 constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
+// A load whose result has not come back after this long is taken for lost and asked for
+// again (F-01, 2026-11-11: a result dropped from a full queue left the show waiting for
+// good). Far beyond a real load: 5 MB from the card and its decoder take about a second,
+// and a scan of the largest playset ahead of it in the loader's queue some seconds more.
+constexpr int64_t kLoadTimeoutUs = 30 * kSecond;
+constexpr int64_t kLoadRetryUs = kSecond / 5;        // after the loader refused a request (its queue was full)
 
 ShowEnv *g_env = nullptr;
 gfx::Frame *g_scratch = nullptr;  // the status screens are drawn here (PSRAM on the device)
@@ -261,12 +267,32 @@ void mark_entry(const Pick &pick, bool missing) {
   if (ch.available == 0) st.scheduler.set_count(pick.channel, 0);
 }
 
+// Asks the loader for the pick's file as the prepared artwork. A refusal (0: the loader's
+// queue is full) leaves nothing in flight, and the next swap_fresh() or request_prepare()
+// picks again.
+void load_prepared(const Pick &p) {
+  st.prepared_pick = p;
+  st.prepared_load_id = g_env->load(p.path, settings().background);
+  st.prepared_load_at_us = now_us();
+}
+
 void request_prepare() {
   if (st.prepared || st.prepared_load_id) return;
   Pick p;
   if (!pick_fresh(p)) return;
-  st.prepared_pick = p;
-  st.prepared_load_id = g_env->load(p.path, settings().background);
+  load_prepared(p);
+}
+
+// Loads the pending target (navigation, play-this, resume). One such load is in flight at
+// a time (F-01): a request that arrives meanwhile only replaces the target, and when the
+// load in flight lands its result is discarded and the latest target is loaded. A burst
+// of previous/next therefore costs two loads, not one per press, and can never fill the
+// loader's queue. A refusal leaves the target standing; tick() asks again.
+void start_pending_load() {
+  if (st.pending.load_id || st.pending.purpose == Pending::Purpose::None) return;
+  st.pending.loading_path = st.pending.item.path;
+  st.pending.load_at_us = now_us();
+  st.pending.load_id = g_env->load(st.pending.item.path, settings().background);
 }
 
 // Every provider hears what is on the panel: the item's own provider gets note_shown
@@ -578,8 +604,7 @@ void swap_fresh() {
   }
   Pick p;
   if (pick_fresh(p)) {
-    st.prepared_pick = p;
-    st.prepared_load_id = g_env->load(p.path, settings().background);
+    load_prepared(p);
     st.want_prepared_now = true;
     return;
   }
@@ -607,21 +632,40 @@ void load_current_history_item(Pending::Purpose purpose, int direction) {
   if (item->kind == content::ItemKind::Interlude) {
     play_widget(static_cast<system::WidgetKind>(item->widget), false, item->face == 255 ? -1 : item->face);
     if (content::HistoryItem *cur = st.history.current()) cur->shown_at_us = now_us();
+    st.pending.purpose = Pending::Purpose::None;  // an artwork still loading for an earlier target is not wanted now
     return;
   }
   st.pending.purpose = purpose;
   st.pending.direction = direction;
   st.pending.item = *item;
-  st.pending.load_id = g_env->load(item->path, settings().background);
+  start_pending_load();
 }
 
 // --- scans and playsets ---------------------------------------------------------------
 
+// Hands a scan to the loader with the current generation. A refusal keeps it queued.
+void run_scan(const content::Playset &playset) {
+  st.scan_running = true;
+  st.scan_queued = false;
+  if (g_env->scan(st.generation, playset)) return;
+  st.scan_running = false;
+  st.queued_scan = playset;
+  st.scan_queued = true;
+  st.scan_retry_at_us = now_us() + kLoadRetryUs;
+}
+
 void start_scan(const content::Playset &playset, bool activation) {
   ++st.generation;
-  st.scan_running = true;
   if (activation) st.activate_after_scan = true;
-  g_env->scan(st.generation, playset);
+  if (st.scan_running) {
+    // One scan at a time (F-01: a burst of activations queued a scan each). The one in
+    // flight is stale now; this one follows it, and a later one replaces this one.
+    st.queued_scan = playset;
+    st.scan_queued = true;
+    st.scan_retry_at_us = 0;
+    return;
+  }
+  run_scan(playset);
 }
 
 bool same_channels(const content::Playset &a, const content::Playset &b) {
@@ -774,6 +818,17 @@ void on_loaded_impl(std::unique_ptr<loader::LoadResult> res) {
   }
   if (res->id == st.pending.load_id) {
     st.pending.load_id = 0;
+    if (st.pending.purpose == Pending::Purpose::None) {
+      LOGD("load of %s no longer wanted", res->path.c_str());
+      return;
+    }
+    if (res->path != st.pending.item.path) {
+      // The target changed while this file loaded (a newer navigation or play-this):
+      // the latest one wins.
+      LOGD("load of %s superseded by %s", res->path.c_str(), st.pending.item.path.c_str());
+      start_pending_load();
+      return;
+    }
     const Pending::Purpose purpose = st.pending.purpose;
     st.pending.purpose = Pending::Purpose::None;
     if (!res->artwork) {
@@ -815,6 +870,10 @@ void on_scanned_impl(std::unique_ptr<loader::ScanResult> res) {
     LOGD("stale scan result ignored");
   } else {
     install(*res);
+  }
+  if (st.scan_queued) {
+    const content::Playset next = std::move(st.queued_scan);
+    run_scan(next);
   }
   if (st.scan_again) {
     st.scan_again = false;
@@ -939,7 +998,7 @@ void do_play_file(const std::string &path, const std::string &provider, int32_t 
   st.pending.purpose = Pending::Purpose::PlayThis;
   st.pending.direction = 0;
   st.pending.item = std::move(item);
-  st.pending.load_id = g_env->load(path, settings().background);
+  start_pending_load();
 }
 
 // The auto-swap timer runs while an artwork is up, whatever the state says (an artwork
@@ -1045,6 +1104,25 @@ void tick_impl() {
     st.intro_name.clear();
     if (show_active() && !st.current && !st.widget_up && !st.paused && st.screen == Screen::None) swap_fresh();
   }
+  // Loads that never came back, or that the loader refused (F-01): asked for again, so
+  // no lost message can leave the show waiting for good.
+  if (st.prepared_load_id && now - st.prepared_load_at_us >= kLoadTimeoutUs) {
+    LOGW("the prepared artwork's load never came back (%s); picking again", st.prepared_pick.path.c_str());
+    st.prepared_load_id = 0;
+    if (st.want_prepared_now) {
+      swap_fresh();
+    } else {
+      request_prepare();
+    }
+  }
+  if (st.pending.load_id && now - st.pending.load_at_us >= kLoadTimeoutUs) {
+    LOGW("the load of %s never came back; asking again", st.pending.loading_path.c_str());
+    st.pending.load_id = 0;
+    start_pending_load();
+  } else if (!st.pending.load_id && st.pending.purpose != Pending::Purpose::None &&
+             now - st.pending.load_at_us >= kLoadRetryUs) {
+    start_pending_load();
+  }
   if (st.want_prepared_now && st.prepared && can_swap_now() && show_active()) play_prepared();
   if (st.status_pending && now >= st.boot_until_us) {
     st.status_pending = false;
@@ -1056,8 +1134,12 @@ void tick_impl() {
   if (rules::auto_swap_due(swap_timer_runs(), s.auto_swap_seconds, now, st.swap_at_us)) {
     if (!roll_interlude()) swap_fresh();
   }
+  if (st.scan_queued && !st.scan_running && now >= st.scan_retry_at_us) {  // the loader refused it earlier
+    const content::Playset next = std::move(st.queued_scan);
+    run_scan(next);
+  }
   if (st.rescan_due_us && now >= st.rescan_due_us) {
-    if (st.scan_running) {
+    if (st.scan_running || st.scan_queued) {
       st.scan_again = true;
     } else {
       start_scan(st.playset, false);
@@ -1091,6 +1173,8 @@ int64_t wait_us_impl() {
   if (st.screen == Screen::Connected && st.prepared) consider(st.connected_yield_us);
   consider(st.rescan_due_us);
   consider(st.screen_until_us);
+  if (!st.pending.load_id && st.pending.purpose != Pending::Purpose::None) consider(st.pending.load_at_us + kLoadRetryUs);
+  if (st.scan_queued && !st.scan_running) consider(st.scan_retry_at_us ? st.scan_retry_at_us : now);
   if (st.setup_pages_up) consider(st.setup_page_at_us);
   if (!st.current && !st.paused && !st.status_reason.empty()) consider(st.retry_at_us);
   return wait;

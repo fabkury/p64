@@ -259,8 +259,15 @@ commands; the API's readers take a mutex and build JSON from the state. Card I/O
 runs on the main task: `main/loader.cpp` (core 0, priority 4, PSRAM stack) reads files
 and opens their decoders (`LoadResult`) and scans the playset's local folders
 (`ScanResult`, which also rebuilds the Local built-in's channel list); results come back
-as commands. Activation and refresh are scans carrying a generation number, so stale
-results are ignored. A fresh pick is made and its file loaded right after each swap
+on a queue of their own, which the loader waits on and the show drains first, so a
+result is never dropped; the show never waits on the loader either (a refused request
+is asked again from its tick). One navigation or play-this load is in flight at a time
+and the latest target wins; one scan runs at a time; a load that has not come back
+after 30 s is asked for again. All of that since 0.2.2 (finding F-01 of
+`docs/testing-strategy/findings.md`: results shared the command queue, a burst of
+previous/next from 16 connections filled both queues, a result was dropped and the
+show waited for it for good). Activation and refresh are scans carrying a generation
+number, so stale results are ignored. A fresh pick is made and its file loaded right after each swap
 (`prepared`), so the auto-swap and "next at the end of history" swaps are immediate;
 navigation loads on demand. The boot animation is a `FrameSource` played first (`IntroSource` in `show.cpp`: one of `p64_intro`'s 21 animations, the setting's or a random one, at 50 fps, the finished logo held from 85 % of the window; the same source plays for one slot on request, `core::play_intro`, p101), and the
 show holds its first swap until the animation has run its course.

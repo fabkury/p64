@@ -61,8 +61,10 @@ class ShowEnv {
   virtual RenderTotals render_totals() = 0;
 
   // The card (through the loader task: results come back as on_loaded/on_scanned).
+  // Neither waits: load() answers 0 and scan() false when the loader cannot take the
+  // request now (its queue is full), and the core asks again from tick().
   virtual uint32_t load(const std::string &path, gfx::Rgb background) = 0;
-  virtual void scan(uint32_t generation, const content::Playset &playset) = 0;
+  virtual bool scan(uint32_t generation, const content::Playset &playset) = 0;
   virtual bool card_mounted() = 0;
   virtual std::string storage_root() = 0;
   virtual std::string animations_dir() = 0;
@@ -123,9 +125,11 @@ struct Pick {
 
 struct Pending {
   enum class Purpose : uint8_t { None, Navigate, PlayThis, Resume } purpose = Purpose::None;
-  uint32_t load_id = 0;
+  uint32_t load_id = 0;       // the load in flight (0 = none): one at a time, the latest target wins
+  std::string loading_path;   // ...and the file it reads; a result for another target is discarded
+  int64_t load_at_us = 0;     // when it was asked for (the lost-result timeout), or last refused
   int direction = 0;  // navigation: -1 previous, +1 next, 0 exact
-  content::HistoryItem item;
+  content::HistoryItem item;  // the target: what goes up when its load lands
 };
 
 enum class Screen : uint8_t { None, Pairing, Paired, Connected, Setup, Update };
@@ -179,12 +183,18 @@ struct State {
   Pick prepared_pick;
   std::shared_ptr<playback::Artwork> prepared;
   uint32_t prepared_load_id = 0;
+  int64_t prepared_load_at_us = 0;  // when that load was asked for (the lost-result timeout)
   bool want_prepared_now = false;
   uint32_t prepare_failures = 0;
   Pending pending;
 
   bool scan_running = false;
   bool scan_again = false;
+  // One scan in the loader at a time (F-01): a scan asked for while another runs, or
+  // one the loader refused, waits here; the one in flight is stale by its generation.
+  bool scan_queued = false;
+  content::Playset queued_scan;
+  int64_t scan_retry_at_us = 0;
   bool activate_after_scan = false;
   int64_t rescan_due_us = 0;
   int64_t retry_at_us = 0;

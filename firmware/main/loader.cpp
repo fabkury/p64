@@ -144,9 +144,12 @@ void task(void *) {
   }
 }
 
+// Never waits: the caller is the show loop, which must not stall on a busy loader (F-01,
+// 2026-11-11: it waited 500 ms per request here while its own queue overflowed). A
+// refusal is the caller's to handle; the show asks again from its tick.
 bool submit(Request *r) {
-  if (!g_queue || xQueueSend(g_queue, &r, pdMS_TO_TICKS(500)) != pdTRUE) {
-    ESP_LOGW(TAG, "queue full; request dropped");
+  if (!g_queue || xQueueSend(g_queue, &r, 0) != pdTRUE) {
+    ESP_LOGW(TAG, "queue full; request refused");
     delete r;
     return false;
   }
@@ -174,9 +177,9 @@ uint32_t load(const std::string &path, gfx::Rgb background) {
   return submit(r) ? id : 0;
 }
 
-void scan(uint32_t generation, const content::Playset &playset) {
+bool scan(uint32_t generation, const content::Playset &playset) {
   auto *r = new Request{Kind::Scan, 0, "", gfx::kBlack, generation, playset};
-  submit(r);
+  return submit(r);
 }
 
 }  // namespace p64::loader

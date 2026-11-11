@@ -1,7 +1,8 @@
 // p64 -- Loader: the core-0 worker that does the show's card I/O: reading artwork files
 // into PSRAM and opening their decoders, and scanning the folders of local channels.
 // Results come back through callbacks on the loader task; the show forwards them to
-// its own queue, so the main task never blocks on the card (architecture section 2).
+// its results queue, so the main task never blocks on the card (architecture section 2).
+// A callback may block until the show has taken the result: a result is never dropped.
 #pragma once
 
 #include <cstdint>
@@ -41,10 +42,12 @@ using LoadCallback = std::function<void(LoadResult *)>;  // the callee owns the 
 using ScanCallback = std::function<void(ScanResult *)>;
 
 bool start(LoadCallback on_load, ScanCallback on_scan);
-// Reads and opens an artwork; returns the request id (never 0) the result will carry.
+// Reads and opens an artwork; returns the request id the result will carry, or 0 when
+// the loader cannot take the request now (it never waits).
 uint32_t load(const std::string &path, gfx::Rgb background);
 // Scans the local channels of a playset (rebuilding the Local built-in's channel list
-// from the folders present). The result carries `generation` back.
-void scan(uint32_t generation, const content::Playset &playset);
+// from the folders present). The result carries `generation` back. False when the loader
+// cannot take the request now.
+bool scan(uint32_t generation, const content::Playset &playset);
 
 }  // namespace p64::loader

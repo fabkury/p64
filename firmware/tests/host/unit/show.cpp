@@ -352,11 +352,17 @@ class FakeEnv : public p64::show::ShowEnv {
   void stream_wake() override {}
   p64::stream::Status stream_status() override { return {}; }
   RenderTotals render_totals() override { return {}; }
+  bool loader_full = false;  // the loader refuses every request (its queue is full)
   uint32_t load(const std::string &path, Rgb) override {
+    if (loader_full) return 0;
     loads.push_back({next_id, path});
     return next_id++;
   }
-  void scan(uint32_t generation, const p64::content::Playset &playset) override { scans.emplace_back(generation, playset); }
+  bool scan(uint32_t generation, const p64::content::Playset &playset) override {
+    if (loader_full) return false;
+    scans.emplace_back(generation, playset);
+    return true;
+  }
   bool card_mounted() override { return true; }
   std::string storage_root() override { return "/sd/p64"; }
   std::string animations_dir() override { return "/sd/p64/animations"; }
@@ -891,6 +897,127 @@ TEST_CASE("show core: history navigation goes back and forward through what was 
   show.env.complete_loads();
   CHECK(show.current() == b);
   CHECK_EQ(core::state().history.size(), 2u);
+}
+
+// --- F-01 (2026-11-11): 240 previous/next requests from 16 connections filled the
+// loader's queue and the show's own, a loader result was dropped, and no artwork played
+// again until the playset was activated anew.
+
+TEST_CASE("show core: a burst of navigation keeps one load in flight and the last target wins (F-01)") {
+  Show show;
+  show.env.cfg->auto_swap_seconds = 5;
+  const std::string a = show.current();
+  show.advance_s(5);
+  show.env.complete_loads();
+  const std::string b = show.current();
+  show.advance_s(5);
+  show.env.complete_loads();
+  const std::string c = show.current();
+  show.env.complete_loads();  // the next one is prepared; nothing in flight now
+  REQUIRE(show.env.loads.empty());
+  show.env.cfg->auto_swap_seconds = 0;
+  size_t most = 0;
+  for (int i = 0; i < 101; ++i) {  // previous, next, previous, ... ending on previous: b
+    if (i % 2 == 0) {
+      core::previous();
+    } else {
+      core::next();
+    }
+    most = std::max(most, show.env.loads.size());
+  }
+  CHECK_EQ(most, 1u);  // one load in flight, whatever the number of presses
+  for (int i = 0; i < 4 && !show.env.loads.empty(); ++i) show.env.complete_loads();
+  CHECK(show.current() == b);
+  CHECK(show.env.loads.empty());
+  CHECK(core::state().pending.purpose == core::Pending::Purpose::None);
+  // And jumps: the last position asked for is the one that plays.
+  core::go_to(0);
+  core::go_to(2);
+  core::go_to(0);
+  for (int i = 0; i < 4 && !show.env.loads.empty(); ++i) show.env.complete_loads();
+  CHECK(show.current() == a);
+  (void)c;
+}
+
+TEST_CASE("show core: a load whose result never comes back is asked for again (F-01)") {
+  Show show;
+  show.env.cfg->auto_swap_seconds = 5;
+  const std::string a = show.current();
+  show.advance_s(5);  // the prepared artwork goes up and the next one is asked for
+  REQUIRE_EQ(show.env.loads.size(), 1u);
+  show.env.loads.clear();  // ...and its result is lost
+  show.env.cfg->auto_swap_seconds = 0;
+  REQUIRE(core::state().prepared_load_id != 0);
+  show.advance_s(29);
+  CHECK(show.env.loads.empty());  // not yet: a slow card is not a lost result
+  show.advance_s(2);
+  REQUIRE_EQ(show.env.loads.size(), 1u);  // picked and asked for again
+  show.env.complete_loads();
+  CHECK(core::state().prepared);
+  // The same for a navigation.
+  core::previous();
+  REQUIRE_EQ(show.env.loads.size(), 1u);
+  show.env.loads.clear();
+  show.advance_s(31);
+  REQUIRE_EQ(show.env.loads.size(), 1u);
+  show.env.complete_loads();
+  CHECK(show.current() == a);
+}
+
+TEST_CASE("show core: a lost result at an auto-swap does not stop the show (F-01)") {
+  Show show;
+  show.env.cfg->auto_swap_seconds = 5;
+  show.advance_s(5);
+  show.env.loads.clear();  // the next artwork's result is lost
+  const uint32_t swaps = core::state().swaps;
+  for (int i = 0; i < 40; ++i) show.advance_s(1);  // the swap falls due with nothing prepared, then the timeout
+  show.env.complete_loads();
+  show.advance_s(1);
+  CHECK(core::state().swaps > swaps);  // the show went on by itself
+  CHECK(core::state().current);
+}
+
+TEST_CASE("show core: a loader that refuses a request is asked again (F-01)") {
+  Show show;
+  show.env.cfg->auto_swap_seconds = 5;
+  const std::string a = show.current();
+  show.advance_s(5);
+  show.env.complete_loads();
+  show.env.cfg->auto_swap_seconds = 0;
+  show.env.loader_full = true;
+  core::previous();
+  CHECK(show.env.loads.empty());
+  show.advance_s(1);
+  CHECK(show.env.loads.empty());
+  show.env.loader_full = false;
+  show.advance_s(1);
+  REQUIRE_EQ(show.env.loads.size(), 1u);
+  show.env.complete_loads();
+  CHECK(show.current() == a);
+  // A refused scan waits and runs too.
+  show.env.loader_full = true;
+  core::activate("Local");
+  CHECK(show.env.scans.empty());
+  show.env.loader_full = false;
+  show.advance_s(1);
+  REQUIRE_EQ(show.env.scans.size(), 1u);
+  show.env.complete_scan({"a.gif", "b.gif", "c.gif"});
+  CHECK(!core::state().scan_running);
+}
+
+TEST_CASE("show core: a burst of activations runs one scan at a time and the last one counts (F-01)") {
+  Show show;
+  for (int i = 0; i < 6; ++i) core::activate("Local");
+  CHECK_EQ(show.env.scans.size(), 1u);
+  show.env.complete_scan({"a.gif"});  // stale by its generation: ignored
+  REQUIRE_EQ(show.env.scans.size(), 1u);  // the queued one follows
+  show.env.complete_scan({"x.gif", "y.gif"});
+  CHECK(show.env.scans.empty());
+  CHECK(!core::state().scan_running);
+  REQUIRE_EQ(core::state().channels.size(), 1u);
+  CHECK_EQ(core::state().channels[0].entries.size(), 2u);
+  for (int i = 0; i < 3 && !show.env.loads.empty(); ++i) show.env.complete_loads();
+  CHECK((show.current() == "x.gif" || show.current() == "y.gif"));
 }
 
 
