@@ -62,3 +62,11 @@ foreach(comp ${P64_STRICT_COMPONENTS})
     idf_component_get_property(lib ${comp} COMPONENT_LIB)
     target_compile_options(${lib} PRIVATE ${P64_STRICT_WARNINGS})
 endforeach()
+
+# cJSON parses recursively, and its default nesting limit of 1000 is far more than the
+# 8 KB stack of the HTTP task holds: a request body of 200 nested brackets overflowed it
+# and rebooted the device (finding F-02, 2026-11-11). Nothing p64 reads or writes nests
+# deeper than 6; 16 is the limit for every parse in the firmware, whoever calls it.
+# tests/host/run.py builds cJSON with the same value.
+idf_component_get_property(json_lib json COMPONENT_LIB)
+target_compile_definitions(${json_lib} PRIVATE CJSON_NESTING_LIMIT=16)

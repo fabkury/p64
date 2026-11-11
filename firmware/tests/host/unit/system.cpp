@@ -1,5 +1,6 @@
 // Host unit tests: the night rule and the settings document.
 #include "common.hpp"
+#include "p64/system/text.hpp"
 
 namespace {
 
@@ -243,6 +244,67 @@ TEST_CASE("settings: a partial document merges, bad JSON is refused") {
   CHECK(error == "invalid JSON");
   CHECK(!s.apply_json("[1,2]", error));
   CHECK(error == "expected an object");
+}
+
+
+// --- F-02 (2026-11-11): a request body of 200 nested brackets overflowed the HTTP task's
+// stack inside cJSON's recursive parser and rebooted the device.
+
+std::string nested(int depth, const char *open = "[", const char *close = "]") {
+  std::string s;
+  for (int i = 0; i < depth; ++i) s += open;
+  for (int i = 0; i < depth; ++i) s += close;
+  return s;
+}
+
+TEST_CASE("json: nothing nests deeper than 16, whoever parses (F-02)") {
+  cJSON *ok = cJSON_Parse(nested(16).c_str());
+  CHECK(ok != nullptr);
+  cJSON_Delete(ok);
+  for (int depth : {17, 50, 200, 1000, 15000}) {
+    CAPTURE(depth);
+    CHECK(cJSON_Parse(nested(depth).c_str()) == nullptr);
+    CHECK(cJSON_Parse(nested(depth, "{\"a\":", "}").c_str()) == nullptr);
+  }
+  // The settings document refuses it as any other unreadable body, and stays what it was.
+  p64::system::Settings s;
+  s.brightness = 77;
+  std::string error;
+  CHECK(!s.apply_json(nested(200).c_str(), error));
+  CHECK(!s.apply_json(("{\"display\":" + nested(200) + "}").c_str(), error));
+  CHECK_EQ(s.brightness, 77);
+  // What the firmware itself writes is far inside the limit.
+  CHECK(s.apply_json(s.to_json().c_str(), error));
+}
+
+// --- F-03 (2026-11-11): after a stack overflow the core dump's task name was raw bytes,
+// and the status document that carried it was not valid UTF-8.
+
+TEST_CASE("text: a field read back from memory becomes printable ASCII (F-03)") {
+  using p64::system::printable_ascii;
+  const char seen[16] = {'\xaa', '4', '\xce', '?', '\xa4', '\xb7', '\xc9', '?', '\x04', 0};  // as on the device
+  CHECK(printable_ascii(seen, sizeof seen) == "?4???????");
+  CHECK(printable_ascii("httpd", 16) == "httpd");
+  const char full[4] = {'m', 'a', 'i', 'n'};  // no terminator: the size bounds it
+  CHECK(printable_ascii(full, sizeof full) == "main");
+  CHECK(printable_ascii("a\tb\x7f\"c", 16) == "a?b?\"c");
+  CHECK(printable_ascii(nullptr, 16).empty());
+  // Whatever the bytes, the result serialises to a document a strict parser accepts.
+  char noise[16];
+  for (int seed = 0; seed < 64; ++seed) {
+    for (int i = 0; i < 16; ++i) noise[i] = static_cast<char>((seed * 131 + i * 71 + 7) & 0xFF);
+    const std::string name = printable_ascii(noise, sizeof noise);
+    for (char c : name) CHECK((c >= 0x20 && c <= 0x7E));
+    cJSON *doc = cJSON_CreateObject();
+    cJSON_AddStringToObject(doc, "task", name.c_str());
+    char *text = cJSON_PrintUnformatted(doc);
+    cJSON *back = cJSON_Parse(text);
+    REQUIRE(back != nullptr);
+    CHECK(name == cJSON_GetObjectItem(back, "task")->valuestring);
+    cJSON_Delete(back);
+    cJSON_free(text);
+    cJSON_Delete(doc);
+  }
 }
 
 }  // namespace

@@ -12,6 +12,7 @@
 #include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "p64/system/state_store.hpp"
+#include "p64/system/text.hpp"
 
 namespace p64::system::reliability {
 namespace {
@@ -81,7 +82,9 @@ void read_crash() {
   if (!summary) return;
   if (esp_core_dump_get_summary(summary) == ESP_OK) {
     g_crash = true;
-    g_crash_task = summary->exc_task;
+    // The name is read back from the crashed task's control block, which a stack overflow
+    // may have overwritten: printable ASCII only (F-03).
+    g_crash_task = printable_ascii(summary->exc_task, sizeof(summary->exc_task));
     g_crash_pc = summary->exc_pc;
     g_crash_cause = summary->ex_info.exc_cause;
     char buf[16];

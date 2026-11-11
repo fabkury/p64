@@ -259,7 +259,8 @@ def compile_object(src, obj, is_cxx, header_mtime):
         tests_dir = "-DP64_HOST_TESTS_DIR=\"" + HERE.replace("\\", "/") + "\""
         cmd = ["g++", "-std=c++20", "-O2", *warn, "-D__LINUX__", tests_dir, *sanitizer_flags(src), *inc, "-c", src, "-o", obj]
     else:
-        cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
+        # CJSON_NESTING_LIMIT: the firmware's value (firmware/CMakeLists.txt, finding F-02).
+        cmd = ["gcc", "-O2", "-w", "-DHAVE_UNISTD_H", "-DCJSON_NESTING_LIMIT=16", *sanitizer_flags(), *inc, "-c", src, "-o", obj]
     subprocess.run(cmd, check=True)
 
 
