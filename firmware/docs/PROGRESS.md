@@ -1438,6 +1438,11 @@ them. Newest entries are at the bottom of [Log](#log).
   closed. No failure, almost no margin: to be bounded.
 - The Makapix worker's activity line stayed "looking up <post>" after a play-this of a
   post whose file was at hand; cleared now.
+- A first cardless soak, 30 minutes at the default 30 s interval on Promoted
+  (`cardless_soak.py`): 0 failures; after the fill exactly 60 downloads an hour against
+  118 swaps an hour (the ceiling of D16 is what paces it), 35 different artworks seen,
+  no refusal, no miss, no late flip, internal heap never under 54.9 KB, core 0 at 10.9 %.
+  The 12-hour run is still to do.
 - Not done of cardless: the card-failed latch (D19), formatting an unformatted card
   from the pages (D20), the PSRAM worst case (NC-D3), the soak (NC-D14). The
   show re-prepares its next artwork on every provider change (ten loads for one swap
