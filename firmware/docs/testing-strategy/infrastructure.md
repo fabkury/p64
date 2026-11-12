@@ -15,9 +15,10 @@ browser lane. This chapter specifies each.
 | Fixtures | the settings document and the playset (the runner puts back what a test left changed; `harness.settings_restored`). Not yet: the test folder, the PIN, the NVS snapshot over USB |
 | Serial capture | in the runner: the USB console recorded without resetting the board, a panic attached to the test it hit. Not yet: the backtrace decoded against the ELF |
 | Test build | `-DP64_TEST=ON` (`sdkconfig.test`, `CONFIG_P64_TEST_HOOKS`), version `+test`, `test_hooks: true` in the status; CI builds it and checks the release image has none of it. It costs the release image nothing (16 bytes) and the test image 1.8 KB |
-| Hooks | `GET`/`POST /api/v1/test`: `card_eject` (a reason; the next boots mount no card), `time_withheld`, `hold_worker_ms`, `panic`, `reset` (abrupt). Not yet: card I/O failing while running, a full card, latency, Wi-Fi drops, host overrides, queue pressure, low memory, time injection, interval scaling, the panel stress |
+| Hooks | `GET`/`POST /api/v1/test`: `card_eject` (a reason; the next boots mount no card), `time_withheld`, `hold_worker_ms`, `imu_absent_s` (the IMU is not found before that uptime of the next boots), `panic`, `reset` (abrupt). Not yet: card I/O failing while running, a full card, latency, Wi-Fi drops, host overrides, queue pressure, low memory, time injection, interval scaling, the panel stress |
 | Hook tests | `tests/device/hooks_smoke.py`: the like with the worker held (F-10), the time withheld at run time and across a boot, a deliberate panic (F-03), five abrupt resets during settings writes, two cardless boots observed |
-| Fake servers, browser lane, fuzzers | not started |
+| Browser lane | `tests/ui/run_ui.py` (Playwright, Chromium): against `tests/ui/fake_device.py`, which serves the firmware's own page files and a scripted `/api/v1` from sanitised fixtures and counts every request (it can be slow, refusing or gone on command; it has no WebSocket, so the pages' fallback and retries are what runs); and against a real device, ending in the oracle. CI runs the fake lane |
+| Fake servers (Makapix, Open-Meteo, GitHub, NTP), fuzzers | not started |
 
 ## The suite runner
 

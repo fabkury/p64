@@ -259,7 +259,10 @@ setup-mode hook covers the positive case).
 since a dying card misreads healthy files. The index is rebuilt from the server, so the
 cost is a re-walk; with a marginal card it is a loop.
 
-### F-16 Two settings are stored and never used (minor)
+### F-16 Two settings are stored and never used (minor; removed 2026-11-12)
+
+**Removed** from the settings model, the pages and the specification (decision D32); a document
+that still carries the keys is read and they are not written back.
 
 `storage.card_root` and `storage.downloads_cap_mb` exist in the settings model and the
 API; no code reads them (the root is the constant `p64`, `card.cpp:27`). The
@@ -291,17 +294,19 @@ command ([web-ui-and-api.md, Q2](web-ui-and-api.md#q2-the-answer-when-a-command-
 | F-28 | (2026-11-11: a foreign Origin is refused on every changing request and on the WebSocket, decision D29; the global lockout and the session eviction stay as documented limits; a WebSocket open across a PIN change is still not closed) PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
 | F-29 | A card without a FAT file system cannot be formatted from the web UI (format needs a mounted card), against ADR 0006; Home says only "No card" | `card.cpp:64,96` | major |
 | F-30 | The boot mount runs on the main task; its duration with an empty slot is unknown | `main.cpp:282` | to measure |
+| F-33 | (fixed 2026-11-12) The IMU was probed once at boot. On the boot after a flash that day the probe missed: `imu_present` false for the whole run, no taps, and the unit, set to auto-rotation, showed its picture at the fallback rotation (90 where it stands at 270) until a restart, which found the sensor at once. Now three probes at boot, then one every 5 s by the IMU task, with the calibration loaded when it answers; a probe that fails after the chip was found removes its device so the next one starts clean. `hooks_smoke.py` `imu` withholds the sensor for 25 s of a boot and sees it found without a restart. Seen once; how often a probe misses is not known | `p64_inputs/src/inputs.cpp`, `qmi8658.cpp` | major |
+| F-32 | Open pages cost internal RAM that the idle floors do not show. Measured 2026-11-12 with a browser on the p64b: idle 58 KB free and a 32.8 KB largest block; with one to five pages open the lows over 12 s were 40 to 54 KB free and a largest block of 14.3 to 25.6 KB (14.3 KB with four pages), back to the idle values the moment the pages close. A TLS session needs 12 to 13 KB. Not new (the soak's floor of 32.8 KB with one poller already allowed for it), but never measured with real pages, and four pages are now promised (D27) | the HTTP server's per-connection memory | major: to test whether a TLS operation fails with four pages open (LONG-1) |
 | F-31 | The brightness notice (the sun at 255) goes up with the artwork's next frame: over an animation with long frame delays it appears late and shortened, and can be missed. Found by the suite on 2026-11-11 when `encoders_smoke.py` failed one run in three | `show.cpp` (the player's overlay) | minor |
 
 Web UI leads (audit of `components/p64_web/ui/`):
 
 | # | Lead |
 |---|---|
-| U-01 | Next, previous, like, pause, playset pills, interlude, intro, mode and rotation buttons are not disabled while their request is in flight (upload and "Show URL" are) |
-| U-02 | The polling fallback has no in-flight guard; the WebSocket reconnect is scheduled from both `onclose` and `onerror`, which can double the attempts at every cycle while the device is away |
-| U-03 | Every request aborts at 8 s; slow handlers (format, like, a large upload) are reported as failures while the device carries on |
+| U-01 | (fixed 2026-11-12: the shared script merges identical requests in flight, whichever control sent them; `run_ui.py` storm: 40 presses in 2 s send 5 requests, 40 before) Next, previous, like, pause, playset pills, interlude, intro, mode and rotation buttons are not disabled while their request is in flight (upload and "Show URL" are) |
+| U-02 | (fixed 2026-11-12: one poll at a time; the socket is retried after 2, 4, 8 and every 15 s, one retry pending at a time. The suspected doubling was real: 15 attempts in 33 s before, 5 now) The polling fallback has no in-flight guard; the WebSocket reconnect is scheduled from both `onclose` and `onerror`, which can double the attempts at every cycle while the device is away |
+| U-03 | (2026-11-12: a request that got no answer says so, "the device did not answer" or "cannot be reached", instead of a raw browser error; the 8 s limit stays, and the like, the longest inline wait, now takes 5 s at most) Every request aborts at 8 s; slow handlers (format, like, a large upload) are reported as failures while the device carries on |
 | U-04 | Without a card the Playsets page says "No playsets yet. Create your first mix!" and fails only on save; upload, new folder and format stay enabled; the banner is on Home only |
-| U-05 | Optimistic state: `liked` always starts false; the active playset is set on the POST's success though activation is asynchronous |
+| U-05 | (partly fixed 2026-11-12: the heart follows the like's outcome, also a queued one; the active playset is still set on the POST's success) Optimistic state: `liked` always starts false; the active playset is set on the POST's success though activation is asynchronous |
 
 ## D. The specification and the code disagree
 

@@ -136,7 +136,7 @@ def facts(d):
     }
 
 
-def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(), settle_s=20, panics_expected=0):
+def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(), settle_s=40, panics_expected=0):
     """Asks the device the questions that every test must leave answered well. Returns a
     list of failures (strings); the second value is a dict of numbers for the report."""
     base = before.base
@@ -205,7 +205,8 @@ def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(
     if before.status["playback"].get("no_artwork") == "" and now["playback"].get("no_artwork"):
         problems.append("the panel now shows 'no artwork: %s'" % now["playback"]["no_artwork"])
 
-    # 5. Did memory come back? (Polled: sockets of the test close within seconds.)
+    # 5. Did memory come back? (Polled for up to settle_s: sockets of the test close within
+    #    seconds, a provider's keep-alive session after 20 s of idleness.)
     b = budgets()
 
     def heap_ok(d):

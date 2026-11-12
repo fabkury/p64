@@ -141,7 +141,6 @@ TEST_CASE("settings: out-of-range numbers clamp, never wrap (the M4 bug)") {
   CHECK_EQ(a.temperature.offset_temperature, -10);
   CHECK_EQ(a.stream_silence_ms, 500u);
   CHECK_EQ(a.tap_sensitivity, 1);
-  CHECK_EQ(a.downloads_cap_mb, 16);
   CHECK_EQ(a.makapix_refresh_seconds, 60u);
   CHECK_EQ(a.channel_cache_size, 4096);
   CHECK_EQ(a.cache_retention_days, 1);
@@ -227,7 +226,10 @@ TEST_CASE("settings: invalid values fall back, unknown enum names leave the valu
   CHECK(a.device_name.empty());
   CHECK(a.timezone == "UTC");
   CHECK(a.ntp_server == "pool.ntp.org");
-  CHECK(a.card_root == "/p64");
+  // The card root and the downloads cap were settings that did nothing (removed 2026-11-12,
+  // decision D32): a document that still carries them is read, and they are not written back.
+  CHECK(a.to_json().find("card_root") == std::string::npos);
+  CHECK(a.to_json().find("downloads_cap_mb") == std::string::npos);
   CHECK_EQ(a.ddp_port, 4048);
   CHECK(applied(R"({"network":{"device_name":"-edge"}})").device_name.empty());
   CHECK(applied(R"({"network":{"device_name":"seventeen-chars-x"}})").device_name.empty());

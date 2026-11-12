@@ -11,6 +11,8 @@
 #           docs/testing-strategy/infrastructure.md) so that code keeps compiling, and
 #           checks that the release image carries none of it.
 #
+# pages:    the web UI in headless Chromium against a fake device (tests/ui/run_ui.py).
+#
 # The device tests (tests/device/, run_suite.py) stay manual: they need the board on the LAN.
 
 name: firmware
@@ -63,6 +65,23 @@ jobs:
           name: host-junit
           path: firmware/host-junit.xml
           if-no-files-found: ignore
+
+  # The web UI's own JavaScript in a real browser, against the fake device of
+  # tests/ui/fake_device.py (docs/testing-strategy/infrastructure.md). No ESP-IDF needed.
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Playwright and its browser
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+      - name: The pages against the fake device
+        working-directory: firmware
+        run: python tests/ui/run_ui.py
 
   firmware:
     runs-on: ubuntu-latest

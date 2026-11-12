@@ -368,8 +368,7 @@ Semantics are p3a's, unchanged:
 - From the web UI: a local file (file manager), a Makapix post (pasted URL or sqid), or an
   arbitrary URL.
 - From Makapix: "send to device" commands (show artwork, play channel, play playset).
-- URL downloads are transient: stored in `downloads/` on the card (capped in size, oldest
-  evicted, and aged out by the cache sweep like cached artworks; in memory without a
+- URL downloads are transient: stored in `downloads/` on the card (aged out by the cache sweep like cached artworks; in memory without a
   card), so they replay from history but do not enter any local channel. Uploads from the file manager are local files in the folder the user
   chose (default `animations/`).
 - A play-this artwork holds the panel for one auto-swap interval like any artwork, then
@@ -749,6 +748,10 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   18 s for 5 MB), and the pages say so.
 - Every destructive action (delete, format, unpair, factory reset, erase Wi-Fi) asks for
   confirmation in the UI.
+- A control pressed again before the device has answered sends nothing more (the page
+  merges identical requests in flight), a refusal by the device is shown, one status
+  poll runs at a time, and a lost WebSocket is retried after 2, 4, 8 and then every
+  15 s. A file larger than 5 MB is refused in the page, before it is sent.
 - The UI never assumes a source URL: the preview comes from the device.
 
 ## 12. HTTP API
@@ -816,11 +819,9 @@ p3a's client is the reference implementation. p64 uses:
 - microSD card, optional (5.4), FAT32 only (exFAT is out; a card without a FAT file system
   is reported, never formatted automatically). Formatting is an explicit, confirmed action
   in the web UI.
-- Layout under a configurable root, default `/sdcard/p64/`:
-  `animations/` (local files and folders, the user's), `downloads/` (transient URL plays,
-  capped), `cache/` (channel artworks, sharded), `channels/` (indexes and playsets),
-  `state/` (reserved for larger on-card state). Existing files are never moved when the
-  root changes. The active playset's name lives in NVS (namespace `p64state`), not on
+- Layout under the root `/sdcard/p64/`:
+  `animations/` (local files and folders, the user's), `downloads/` (transient URL plays), `cache/` (channel artworks, sharded), `channels/` (indexes and playsets),
+  `state/` (reserved for larger on-card state). The active playset's name lives in NVS (namespace `p64state`), not on
   the card, so a device without a card still remembers which built-in it plays
   (ADR 0006).
 - Every write is atomic (temporary file, sync, rename); nothing is deleted because a read
@@ -919,8 +920,6 @@ All persisted unless noted. Ranges are inclusive.
 | Network | device name | up to 16 chars `[a-z0-9-]`, no edge hyphen | empty |
 | Network | time zone; NTP server | IANA name; host | UTC; pool.ntp.org |
 | Network | PIN | 4 to 8 digits, stored hashed | off |
-| Storage | card root | path under `/sdcard` | `/p64` |
-| Storage | downloads cap | 16 to 1024 MB | 64 |
 | Makapix | refresh interval; channel cache size | 60 to 86400 s; 32 to 4096 | 14400; 2048 |
 | Makapix | minimum artwork size | 16, 32, 64 or 128 (pixels per side; other values snap up; never above the maximum, the pair is refused) | 16 |
 | Makapix | maximum artwork size | 32, 64, 128 or 256 (pixels per side; other values snap up) | 128 |
@@ -946,7 +945,7 @@ Runtime, not persisted: pause, current stream, history, live preview subscribers
 | Channel display name | 64 characters |
 | Device name | 16 characters |
 | PIN | 4 to 8 digits |
-| Downloads folder | capped by setting, default 64 MB |
+| Downloads folder | aged out by the cache sweep (no size cap) |
 | Fonts bundled | 7 (5 offered for the clock overlay); enumerate with `/api/v1/fonts` |
 | Clock faces | 13 (digital, analogue and eleven themed; the LED in five styles) |
 

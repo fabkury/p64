@@ -323,8 +323,6 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Space</span><span class="info-value" id="card-space">-</span></div>
         <div class="info-row"><span class="info-label">Makapix cache</span><span class="info-value" id="cache-size">-</span></div>
         <div class="info-row"><span class="info-label">Last sweep</span><span class="info-value" id="cache-sweep">-</span></div>
-        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Downloads cap</label><input class="num-input" type="number" id="dl-cap" min="16" max="1024" onchange="save({storage:{downloads_cap_mb:+this.value}})"><span class="setting-hint" style="margin:0">MB kept for Makapix downloads</span></div>
-        <div class="info-row"><span class="info-label">Root folder</span><span class="info-value mono" id="card-root">-</span></div>
         <div class="toggle-row" style="margin-top:8px"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatCard()">Format the card&hellip;</button></div>
         <div class="setting-hint">Erases everything on the card (FAT32) and recreates the p64 folders. Cached Makapix artworks download again.</div>
     </div>
@@ -505,7 +503,6 @@ function fill(s) {
     sc('st-takeover', s.stream.takeover); sv('st-silence', s.stream.silence_ms); sc('st-ddp', s.stream.ddp_enabled); sv('st-ddp-port', s.stream.ddp_port); sc('st-raw', s.stream.raw_udp_enabled); sv('st-raw-port', s.stream.raw_udp_port);
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
-    sv('dl-cap', s.storage.downloads_cap_mb); document.getElementById('card-root').textContent = s.storage.card_root;
     sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size); sv('mk-min', s.makapix.min_size); sv('mk-size', s.makapix.max_size); sv('mk-retention', s.makapix.cache_retention_days);
     sizeLimits(s.makapix.min_size, s.makapix.max_size);
     sc('auto-check', s.updates.auto_check);
@@ -592,10 +589,18 @@ function formatCard() {
     p64.toast('Formatting...');
     p64.post('/api/v1/files/format', { confirm: 'FORMAT' }).then(function () { p64.toast('Card formatted'); fmPath = ''; fmList(); }).catch(function (e) { p64.toast(e.message, true); });
 }
+var fmUploading = false;
 function fmUpload() {
     var f = document.getElementById('fm-file').files[0]; if (!f) return;
+    // Checked here: the device refuses a larger file and closes the connection, which a
+    // browser reports as a network error with no reason. One upload at a time: the
+    // device serves nothing else while a file comes in.
+    if (f.size > 5 * 1024 * 1024) { p64.toast('Too large: artworks are at most 5 MB', true); document.getElementById('fm-file').value = ''; return; }
+    if (fmUploading) { p64.toast('An upload is already running', true); document.getElementById('fm-file').value = ''; return; }
+    fmUploading = true;
+    p64.toast('Uploading ' + f.name + '... the device answers other requests when this is done');
     var rel = (fmPath ? fmPath + '/' : '') + f.name;
-    fetch('/api/v1/files?path=' + encodeURIComponent(rel), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f }).then(function (r) { return r.json(); }).then(function (j) { if (j.ok) { p64.toast('Uploaded'); fmList(); } else p64.toast(j.error || 'upload failed', true); }).catch(function (e) { p64.toast(e.message, true); });
+    fetch('/api/v1/files?path=' + encodeURIComponent(rel), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f }).then(function (r) { fmUploading = false; return r.json(); }, function (e) { fmUploading = false; throw new Error('the upload did not go through'); }).then(function (j) { if (j.ok) { p64.toast('Uploaded'); fmList(); } else p64.toast(j.error || 'upload failed', true); }).catch(function (e) { p64.toast(e.message, true); });
     document.getElementById('fm-file').value = '';
 }
 

@@ -62,7 +62,7 @@ Since 2026-11-11 (after 0.2.2):
   no card, a bad path) is answered and the connection closed; the body is not read.
 - **Timeouts**: the server waits 5 s for a stalled client (10 before).
 
-File paths are relative to the configured p64 storage root: `animations/demo.gif`
+File paths are relative to the p64 storage root: `animations/demo.gif`
 means `p64/animations/demo.gif` on a card using the default root. URL-encode query values.
 PNG, raw-frame and log responses are not JSON envelopes.
 
@@ -395,7 +395,7 @@ never enter history and the clock overlay is not drawn over them.
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/files?path=<rel>` | GET | list a folder (relative to the configured p64 storage root) |
+| `/api/v1/files?path=<rel>` | GET | list a folder (relative to the p64 storage root) |
 | `/api/v1/files?path=<rel>` | POST | upload the raw body as that file (sniffed and trial-decoded first; 5 MB cap) |
 | `/api/v1/files/get?path=<rel>` | GET | download a file |
 | `/api/v1/files?path=<rel>` | DELETE | delete a file or empty folder (the p64 folders are protected) |

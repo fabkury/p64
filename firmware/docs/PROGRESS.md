@@ -1389,6 +1389,47 @@ them. Newest entries are at the bottom of [Log](#log).
 - The p64b stays on the public image from here on (decision D40); it restarted seven
   times that day for the probes, an NVS reading over USB and the flash.
 
+### 2026-11-12 (the pages' side of the web hardening and the browser lane, p127)
+
+- The pages (decision D30, findings U-01, U-02, U-03, U-05). The shared script merges
+  identical changing requests in flight (same method, path and body), so no control on
+  any page can pile requests on the device; a request with no answer says "the device
+  did not answer" or "cannot be reached"; one status poll at a time; the WebSocket is
+  retried after 2, 4, 8 and then every 15 s, one retry pending at a time. Previous and
+  Next show a refusal. The heart follows a queued like (202) through
+  `status.makapix.like`: "Like sent", then "Liked" or the reason it failed. The file
+  manager refuses a file over 5 MB in the page and runs one upload at a time.
+- D32: `storage.card_root` and `storage.downloads_cap_mb` removed from the settings
+  model, the Settings page and the specification (they were stored and never read).
+- D31: no page offers a change of network (Settings only erases it), so the warning
+  has no page to live on; noted in the decision.
+- The browser lane: `tests/ui/run_ui.py` (Playwright, Chromium) with
+  `tests/ui/fake_device.py`, which serves the firmware's own page files and a scripted
+  `/api/v1` from synthetic fixtures, can be slow, refusing or gone on command, and counts
+  what a page sends. 41 checks pass on the new pages; the same tests on the pages of
+  the day before fail 14 of them: 40 presses in 2 s sent 40 requests with 6 in flight
+  (5 and 1 now), two polls at once on a device answering in 6 s, 15 WebSocket attempts
+  in 33 s (5 now: the retry was scheduled from both the error and the close of each
+  failure), a queued like shown as done, a 6 MB file sent. CI runs the fake lane (job
+  `pages`). Against the p64b: 160 presses from two tabs moved the show 45 to 48 swaps
+  with no script error, and the oracle passed once the browser had closed.
+- Measured with real pages for the first time (F-32): one to five pages open take the
+  internal heap from 58 KB free and a 32.8 KB largest block down to lows of 40 to 54 KB
+  and 14.3 to 25.6 KB, back at once when they close.
+- Found on the way, and fixed (F-33): on the boot after one flash the IMU missed its
+  single probe, and the unit ran without taps and at the fallback rotation until a
+  restart. Three probes at boot now, then one every 5 s; hook `imu_absent_s` and
+  `hooks_smoke.py` `imu` (found 26 s into a boot that withheld it, calibration loaded,
+  rotation as before).
+- Two faults of the tooling: a `git stash` on Windows rewrote the page files with CRLF,
+  which `ui_smoke.py` caught on the device; `.gitattributes` now pins the embedded UI to
+  LF. The oracle's memory check waits 40 s (20 before): a provider's idle TLS session
+  can outlast 20 s.
+- Images: public 2,502,256 bytes, static DIRAM 122,243. Host tests: 236 cases.
+- Not done: UI-B3 in full (every form, the five themes), UI-B5, UI-B6; the 503 path on
+  the device (needs the queue-pressure hook); whether a TLS operation fails with four
+  pages open (F-32).
+
 ### 2026-11-12 (the web hardening, firmware side, p126)
 
 - Decisions D25 to D30, firmware side. HTTP: timeouts of 5 s each way (10 before), a

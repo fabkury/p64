@@ -75,6 +75,20 @@ are `GET` and `POST /api/v1/test`: boot as if no card had mounted, withhold the 
 hold the Makapix worker, panic, reset abruptly
 ([infrastructure](testing-strategy/infrastructure.md)).
 
+The pages themselves run in a real browser (Playwright):
+
+```powershell
+python -m pip install playwright; python -m playwright install chromium   # once
+python tests/ui/run_ui.py                              # against a fake device on this PC
+python tests/ui/run_ui.py --device http://192.168.1.100   # the real pages, then the health check
+```
+
+The fake device (`tests/ui/fake_device.py`) serves the firmware's own page files and a
+scripted API, so the tests can make the "device" slow, busy or absent and count what a
+page sends: a button pressed 40 times must not send 40 requests, a slow device must not
+be polled twice at once, a lost WebSocket must be retried with a back-off. CI runs this
+lane on every push.
+
 The individual scripts still run alone:
 
 Use a development device on your LAN. Read each script's opening instructions before
@@ -107,7 +121,7 @@ python tests/device/ui_smoke.py $p64Url
 | `cache_sweep_smoke.py` | Card and NTP; dry-run by default. `--delete` actually removes older cached/downloaded files and indexes. |
 | `tls_slot_smoke.py` | Pairing; checks that a paused provider walk frees the TLS slot. |
 | `abuse_smoke.py` | The findings of 2026-11-11: the setup routes outside setup mode, request bodies nested up to 15000 levels, bursts of navigation and activations from 16 connections, then the show must go on by itself. Sets the auto-swap interval to 5 s and restores the settings and the playset. A firmware older than 0.2.2 reboots on it. |
-| `hooks_smoke.py` | The test build only. Reboots the device about ten times: the like path with the worker held, the time withheld, a deliberate panic, abrupt resets during settings writes, two boots without the card. Clears every hook at the end. |
+| `hooks_smoke.py` | The test build only. Reboots the device about ten times: the like path with the worker held, the time withheld, the IMU found late, a deliberate panic, abrupt resets during settings writes, two boots without the card. Clears every hook at the end. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |
 

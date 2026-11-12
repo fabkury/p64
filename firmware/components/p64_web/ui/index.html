@@ -147,11 +147,11 @@ body { justify-content: flex-start; overflow-x: hidden; }
     <div class="now-playing-channels" id="now-playing-channels"></div>
 </div>
 <div class="arrow-row">
-    <button class="arrow-btn" id="back-btn" onclick="p64.post('/api/v1/action/previous')" title="Previous">&#9664;</button>
+    <button class="arrow-btn" id="back-btn" onclick="p64.act('/api/v1/action/previous')" title="Previous">&#9664;</button>
     <button class="round-btn ghost" id="like-btn" type="button" title="Like on Makapix" onclick="toggleLike()">&#9829;</button>
     <button class="pause-btn" id="pause-btn" onclick="togglePause()">Pause</button>
     <button class="round-btn" id="info-btn" type="button" title="Artwork info" onclick="toggleInfo()">&#8505;&#65039;</button>
-    <button class="arrow-btn" id="next-btn" onclick="p64.post('/api/v1/action/next')" title="Next">&#9654;</button>
+    <button class="arrow-btn" id="next-btn" onclick="p64.act('/api/v1/action/next')" title="Next">&#9654;</button>
 </div>
 <div class="pill-bar" id="pill-bar"></div>
 <div class="upload-section collapsed" id="upload-section">
@@ -217,10 +217,25 @@ function toggleInfo() {
 function togglePause() { p64.post('/api/v1/action/' + (paused ? 'resume' : 'pause')).catch(function (e) { p64.toast(e.message, true); }); }
 function toggleLike() {
     if (!current || current.post_id == null) return;
-    var liked = !!current.liked;
-    p64.post('/api/v1/makapix/like', { post_id: current.post_id, like: !liked }).then(function () {
+    var liked = !!current.liked, post = current.post_id;
+    p64.post('/api/v1/makapix/like', { post_id: post, like: !liked }).then(function (d) {
+        if (!current || current.post_id !== post) return;
+        if (d && d.queued) {
+            // The device is busy with Makapix: the like is queued, and the status
+            // document says how it ended (makapix.like, read in the status handler).
+            current.likeWaiting = !liked; renderLike(); p64.toast(liked ? 'Unlike sent' : 'Like sent');
+            return;
+        }
         current.liked = !liked; renderLike(); p64.toast(liked ? 'Unliked' : 'Liked');
     }).catch(function (e) { p64.toast(e.message, true); });
+}
+// A queued like's outcome, from the status document.
+function settleLike(like) {
+    if (!current || current.likeWaiting == null || !like || like.post_id !== current.post_id || like.pending) return;
+    if (like.liked !== current.likeWaiting) return;  // an older one
+    current.likeWaiting = null;
+    if (like.error) { p64.toast('Like failed: ' + like.error, true); }
+    else { current.liked = like.liked; p64.toast(like.liked ? 'Liked' : 'Unliked'); }
 }
 function toggleShuffle() {
     var btn = document.getElementById('shuffle-btn');
@@ -239,7 +254,8 @@ function renderLike() {
     var b = document.getElementById('like-btn');
     var show = current && current.post_id != null && S && S.makapix && S.makapix.state === 'paired';
     b.classList.toggle('ghost', !show);
-    b.classList.toggle('active', !!(current && current.liked));
+    b.classList.toggle('active', !!(current && (current.likeWaiting != null ? current.likeWaiting : current.liked)));
+    b.style.opacity = current && current.likeWaiting != null ? '0.6' : '';
 }
 // ── The info box: what is playing, looked up on demand ──
 // Title, Author, Date, Channel and a link to the post. The channel comes with the status
@@ -462,6 +478,7 @@ p64.onStatus(function (d) {
     var a = p.artwork;
     if (a && (!current || current.name !== a.name || current.post_id !== a.post_id)) current = { name: a.name, post_id: a.post_id, liked: false };
     if (!a) current = null;
+    settleLike((d.makapix || {}).like);
     renderLike();
     renderInfo();
     if (!shufflePending && d.settings_pick_mode) setShuffle(d.settings_pick_mode === 'random');
@@ -503,6 +520,7 @@ function uploadFile(ev) {
     var xhr = new XMLHttpRequest();
     var prog = document.getElementById('upload-progress'), fill = document.getElementById('progress-fill');
     prog.classList.add('active'); fill.style.width = '0%'; uploadBtn.disabled = true;
+    p64.toast('Uploading... the device answers other requests when this is done');
     xhr.upload.onprogress = function (e) { if (e.lengthComputable) fill.style.width = Math.round(100 * e.loaded / e.total) + '%'; };
     xhr.onload = function () {
         prog.classList.remove('active');

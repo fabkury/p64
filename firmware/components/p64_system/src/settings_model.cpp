@@ -159,8 +159,6 @@ void Settings::clamp() {
   if (!valid_device_name(device_name)) device_name.clear();
   if (timezone.empty()) timezone = "UTC";
   if (ntp_server.empty()) ntp_server = "pool.ntp.org";
-  if (card_root.empty() || card_root.front() != '/') card_root = "/p64";
-  downloads_cap_mb = clamp_to<uint16_t>(downloads_cap_mb, 16, 1024);
   makapix_refresh_seconds = clamp_to<uint32_t>(makapix_refresh_seconds, 60, 86400);
   channel_cache_size = clamp_to<uint16_t>(channel_cache_size, 32, 4096);
   makapix_min_side = snap_min_side(makapix_min_side);
@@ -271,9 +269,6 @@ std::string Settings::to_json() const {
   cJSON_AddStringToObject(net, "timezone", timezone.c_str());
   cJSON_AddStringToObject(net, "ntp_server", ntp_server.c_str());
 
-  cJSON *sto = obj(root, "storage");
-  cJSON_AddStringToObject(sto, "card_root", card_root.c_str());
-  cJSON_AddNumberToObject(sto, "downloads_cap_mb", downloads_cap_mb);
 
   cJSON *mk = obj(root, "makapix");
   cJSON_AddNumberToObject(mk, "refresh_seconds", makapix_refresh_seconds);
@@ -438,9 +433,6 @@ bool Settings::read_json(const cJSON *root) {
   get_str(net, "timezone", timezone, 64);
   get_str(net, "ntp_server", ntp_server, 64);
 
-  const cJSON *sto = sub(root, "storage");
-  get_str(sto, "card_root", card_root, 64);
-  get_num(sto, "downloads_cap_mb", downloads_cap_mb);
 
   const cJSON *mk = sub(root, "makapix");
   get_num(mk, "refresh_seconds", makapix_refresh_seconds);

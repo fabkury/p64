@@ -194,8 +194,15 @@ documents stay lenient), settings applied at once and written to NVS a moment la
 (0.3 s after the last change, 2 s at most; `system::settings_flush()` runs at an orderly
 restart, so never assume a PUT is in flash when it returns), coalesced "read again"
 events in the bus, the like waiting 5 s then answering 202 with `status.makapix.like`
-(a like takes about 3 s on the device). Fake servers, the browser lane and the fuzzers
-are not started; the pages' side of the web hardening and cardless are not implemented. When a finding is fixed, mark it in
+(a like takes about 3 s on the device). The pages' side and the browser lane followed the same day (p127): `static/app.js` merges
+identical changing requests in flight, polls once at a time and retries the WebSocket
+after 2, 4, 8, 15 s; `python tests\ui\run_ui.py` runs the pages in Chromium (Playwright)
+against `tests\ui\fake_device.py` (the firmware's own page files, a scripted API from
+synthetic fixtures; CI job `pages`), and with `--device http://<ip>` against a real unit,
+ending in the oracle. A change to a page gets a check there. The embedded UI files are LF
+(`.gitattributes`); open pages cost internal RAM (F-32: largest block down to 14 KB with
+four). The IMU is probed again every 5 s when it missed its boot probe (F-33). Fake
+servers and the fuzzers are not started; cardless is not implemented. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

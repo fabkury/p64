@@ -1,0 +1,744 @@
+{
+ "auth": {
+  "authenticated": true,
+  "locked_for_s": 0,
+  "pin_set": false
+ },
+ "boot_animations": {
+  "frame_ms": 20,
+  "hold_from": 0.850000023841858,
+  "names": [
+   "fade_duet",
+   "slide_cross",
+   "bounce_drop",
+   "bands_cross",
+   "dissolve_duet",
+   "venetian_cross",
+   "assemble",
+   "glitch_settle",
+   "channel_emerge",
+   "hue_spin",
+   "swirl_orbit",
+   "blinds_flip",
+   "scanline_cross",
+   "shatter_letters",
+   "wave_settle",
+   "plasma_duet",
+   "starburst_sparkle",
+   "tiles_diagonal",
+   "flip_card",
+   "spotlight_sweep",
+   "tune_in"
+  ],
+  "setting": "random"
+ },
+ "channels": {
+  "channels": [
+   {
+    "available": 23,
+    "credit": 0,
+    "cursor": 0,
+    "display_name": "animations",
+    "entries": 23,
+    "identifier": "",
+    "index": 0,
+    "kind": "local",
+    "offset": 0,
+    "share": 75,
+    "status": "",
+    "weight": 300
+   },
+   {
+    "available": 120,
+    "cached": 120,
+    "credit": 0,
+    "cursor": 0,
+    "display_name": "Promoted",
+    "entries": 120,
+    "error": "",
+    "identifier": "",
+    "index": 1,
+    "kind": "promoted",
+    "last_refresh": 1790000000,
+    "offset": 0,
+    "oversized": 0,
+    "provider": "makapix",
+    "refreshing": false,
+    "share": 25,
+    "status": "",
+    "unchecked": 0,
+    "weight": 100
+   }
+  ],
+  "last_scan_ms": 12,
+  "playset": "Desk mix",
+  "scanning": false,
+  "version": 3
+ },
+ "encoders": {
+  "acting": true,
+  "enabled": true,
+  "invert": false,
+  "knobs": [
+   {
+    "address": 54,
+    "detents": 0,
+    "hw_id": 85,
+    "last_event": "",
+    "last_event_age_s": -1,
+    "long_presses": 0,
+    "lost": 0,
+    "name": "A",
+    "polls": 170787,
+    "position": 0,
+    "present": true,
+    "pressed": false,
+    "presses": 0,
+    "read_errors": 0,
+    "role": "brightness"
+   },
+   {
+    "address": 55,
+    "detents": 0,
+    "hw_id": 85,
+    "last_event": "",
+    "last_event_age_s": -1,
+    "long_presses": 0,
+    "lost": 0,
+    "name": "B",
+    "polls": 170787,
+    "position": 0,
+    "present": true,
+    "pressed": false,
+    "presses": 0,
+    "read_errors": 0,
+    "role": "navigate"
+   }
+  ],
+  "polls": 170787,
+  "scl": 46,
+  "scl_level": 1,
+  "sda": 45,
+  "sda_level": 1,
+  "swap": false
+ },
+ "files": {
+  "entries": [
+   {
+    "dir": true,
+    "name": "animations",
+    "size": 0
+   },
+   {
+    "dir": true,
+    "name": "cache",
+    "size": 0
+   },
+   {
+    "dir": true,
+    "name": "channels",
+    "size": 0
+   },
+   {
+    "dir": true,
+    "name": "downloads",
+    "size": 0
+   },
+   {
+    "dir": true,
+    "name": "state",
+    "size": 0
+   }
+  ],
+  "path": ""
+ },
+ "folders": [
+  {
+   "files": 23,
+   "folder": "",
+   "name": "animations"
+  },
+  {
+   "files": 4,
+   "folder": "pixel-cats",
+   "name": "pixel-cats"
+  }
+ ],
+ "fonts": [
+  {
+   "label": "Capital Hill",
+   "name": "capital-hill",
+   "overlay": true,
+   "size": 6
+  },
+  {
+   "label": "Everyday Slight",
+   "name": "everyday-slight",
+   "overlay": true,
+   "size": 5
+  },
+  {
+   "label": "Everyday Standard",
+   "name": "everyday-standard",
+   "overlay": true,
+   "size": 6
+  },
+  {
+   "label": "Everyday Typical",
+   "name": "everyday-typical",
+   "overlay": true,
+   "size": 7
+  },
+  {
+   "label": "Everyday Ample",
+   "name": "everyday-ample",
+   "overlay": true,
+   "size": 9
+  },
+  {
+   "label": "High Birth",
+   "name": "high-birth",
+   "overlay": false,
+   "size": 9
+  },
+  {
+   "label": "Everyday Vast Black",
+   "name": "everyday-vast-black",
+   "overlay": false,
+   "size": 11
+  }
+ ],
+ "history": {
+  "count": 3,
+  "items": [
+   {
+    "channel": "Promoted",
+    "channel_index": 1,
+    "current": false,
+    "index": 0,
+    "kind": "artwork",
+    "name": "artwork 5",
+    "path": "cache/00/artwork-5.webp",
+    "playset": "Desk mix",
+    "post_id": 1005,
+    "provider": "makapix",
+    "shown_s_ago": 120,
+    "source": "channel"
+   },
+   {
+    "channel": "Promoted",
+    "channel_index": 1,
+    "current": false,
+    "index": 1,
+    "kind": "artwork",
+    "name": "artwork 6",
+    "path": "cache/00/artwork-6.webp",
+    "playset": "Desk mix",
+    "post_id": 1006,
+    "provider": "makapix",
+    "shown_s_ago": 60,
+    "source": "channel"
+   },
+   {
+    "channel": "Promoted",
+    "channel_index": 1,
+    "current": true,
+    "index": 2,
+    "kind": "artwork",
+    "name": "artwork 7",
+    "path": "cache/00/artwork-7.webp",
+    "playset": "Desk mix",
+    "post_id": 1007,
+    "provider": "makapix",
+    "shown_s_ago": 0,
+    "source": "channel"
+   }
+  ],
+  "position": 2
+ },
+ "playset:Desk mix": {
+  "channels": [
+   {
+    "display_name": "animations",
+    "identifier": "",
+    "kind": "local",
+    "offset": 0,
+    "weight": 300
+   },
+   {
+    "display_name": "Promoted",
+    "identifier": "",
+    "kind": "promoted",
+    "offset": 0,
+    "weight": 100
+   }
+  ],
+  "name": "Desk mix"
+ },
+ "playsets": {
+  "active": "Desk mix",
+  "builtins": [
+   {
+    "enabled": true,
+    "name": "Promoted",
+    "reason": ""
+   },
+   {
+    "enabled": true,
+    "name": "All",
+    "reason": ""
+   },
+   {
+    "enabled": true,
+    "name": "Followed",
+    "reason": ""
+   },
+   {
+    "enabled": true,
+    "name": "Local",
+    "reason": ""
+   }
+  ],
+  "max_playsets": 32,
+  "playsets": [
+   {
+    "channels": 2,
+    "name": "Desk mix"
+   }
+  ]
+ },
+ "settings": {
+  "air": {
+   "index": "us"
+  },
+  "clock": {
+   "background": {
+    "b": 0,
+    "g": 0,
+    "r": 0
+   },
+   "blink_colon": false,
+   "colour": {
+    "b": 255,
+    "g": 255,
+    "r": 255
+   },
+   "date_order": "day_month",
+   "face": "horizon_rd",
+   "font": "capital-hill",
+   "h24": true,
+   "led_style": "red",
+   "scale": 1,
+   "seconds": true
+  },
+  "display": {
+   "background": {
+    "b": 0,
+    "g": 0,
+    "r": 0
+   },
+   "boot_animation": "random",
+   "boot_animation_ms": 3000,
+   "brightness": 255,
+   "brightness_ceiling": 255,
+   "gains": {
+    "b": 100,
+    "g": 100,
+    "r": 100
+   },
+   "mirror": false,
+   "night": {
+    "brightness": 0,
+    "enabled": false,
+    "end_minutes": 420,
+    "start_minutes": 1320
+   },
+   "panel_mode": "quality",
+   "rotation": 90,
+   "rotation_auto": true
+  },
+  "inputs": {
+   "encoders_enabled": true,
+   "encoders_invert": false,
+   "encoders_swap": false,
+   "tap_enabled": true,
+   "tap_sensitivity": 6
+  },
+  "makapix": {
+   "cache_retention_days": 30,
+   "channel_cache_size": 192,
+   "max_size": 64,
+   "min_size": 32,
+   "refresh_seconds": 14400
+  },
+  "network": {
+   "device_name": "",
+   "ntp_server": "pool.ntp.org",
+   "timezone": "US/Eastern"
+  },
+  "show": {
+   "auto_swap_seconds": 30,
+   "channel_select": "stochastic",
+   "clock_overlay": {
+    "border": true,
+    "border_colour": {
+     "b": 0,
+     "g": 0,
+     "r": 0
+    },
+    "border_opacity": 200,
+    "colour": {
+     "b": 255,
+     "g": 255,
+     "r": 255
+    },
+    "corner": "top_left",
+    "enabled": true,
+    "font": "everyday-slight",
+    "h24": true
+   },
+   "main_state": "animation_show",
+   "pick_mode": "random"
+  },
+  "storage": {
+   "card_root": "/p64",
+   "downloads_cap_mb": 64
+  },
+  "stream": {
+   "ddp_enabled": false,
+   "ddp_port": 4048,
+   "raw_udp_enabled": false,
+   "raw_udp_port": 4064,
+   "silence_ms": 5000,
+   "takeover": false
+  },
+  "temperature": {
+   "offset_humidity": 0,
+   "offset_temperature": 0,
+   "trend": true
+  },
+  "updates": {
+   "auto_check": true
+  },
+  "weather": {
+   "latitude": 0,
+   "location_set": true,
+   "longitude": 0,
+   "refresh_minutes": 30,
+   "units": "metric"
+  },
+  "widgets": {
+   "interlude_minutes": {
+    "air": 60,
+    "clock": 20,
+    "temperature": 0,
+    "weather": 1440
+   },
+   "interlude_random_clock_face": true,
+   "widget": "clock"
+  }
+ },
+ "status": {
+  "air": {
+   "age_s": -1,
+   "error": "",
+   "valid": false
+  },
+  "api_version": 1,
+  "card": {
+   "error": "",
+   "free_bytes": 30758879232,
+   "mounted": true,
+   "name": "SD",
+   "total_bytes": 31251120128
+  },
+  "firmware": {
+   "built": "Nov 11 2026 15:17:11",
+   "idf": "v5.5.4",
+   "version": "0.0.0-fake"
+  },
+  "heap": {
+   "internal_free": 58643,
+   "internal_largest": 34816,
+   "psram_free": 16161976
+  },
+  "inputs": {
+   "auto_rotation": 270,
+   "auto_rotation_resolved": true,
+   "calibrated": true,
+   "encoders_present": 2,
+   "imu_present": true
+  },
+  "makapix": {
+   "activity": "",
+   "cache": {
+    "bytes": 0,
+    "files": 0,
+    "last_deleted": 0,
+    "last_freed_bytes": 0,
+    "last_sweep": 0,
+    "sweep": {
+     "last": null,
+     "queued": false,
+     "running": false
+    }
+   },
+   "cert_expires_at": 1886887581,
+   "code": "",
+   "code_seconds_left": 0,
+   "commands": 0,
+   "download_failures": 0,
+   "downloads": 0,
+   "host": "makapix.club",
+   "last_error": "",
+   "mqtt_connected": true,
+   "online": true,
+   "player_key": "00000000-0000-4000-8000-000000000000",
+   "refreshes": 0,
+   "state": "paired",
+   "views_sent": 109
+  },
+  "network": {
+   "connected": true,
+   "gateway": "192.168.1.1",
+   "hostname": "p64",
+   "ip": "192.168.1.64",
+   "netmask": "255.255.255.0",
+   "rssi": -53,
+   "setup_mode": false,
+   "ssid": "example-network",
+   "tls_slot": {
+    "depth": 0,
+    "grants": 5,
+    "handoffs": 0,
+    "held": false,
+    "holder": "",
+    "max_wait_ms": 0,
+    "waiters": 0,
+    "waits": 0
+   }
+  },
+  "panel": {
+   "bit_depth": 11,
+   "brightness": 255,
+   "dma_moving": true,
+   "dma_priority": 5,
+   "dma_sync": true,
+   "frames": 27387,
+   "late_flips": 0,
+   "light": 1,
+   "lut_scale": 1,
+   "mirror": false,
+   "mode": "quality",
+   "night_active": false,
+   "oe_level": 255,
+   "refresh_hz": 263.93580740934055,
+   "restarts": 0,
+   "rotation": 270,
+   "stalled": false,
+   "timeouts": 0,
+   "transition_bit": 5
+  },
+  "playback": {
+   "artwork": {
+    "animated": true,
+    "bytes": 20480,
+    "channel": "Promoted",
+    "channel_index": 0,
+    "format": "webp",
+    "frames_decoded": 120,
+    "height": 64,
+    "name": "artwork 7",
+    "path": "cache/00/artwork-7.webp",
+    "post_id": 1007,
+    "provider": "makapix",
+    "since_s": 4,
+    "source": "channel",
+    "width": 64
+   },
+   "auto_swap": {
+    "interval_s": 30,
+    "remaining_s": 6
+   },
+   "boot": {
+    "animation": "dissolve_duet",
+    "animation_end_ms": 3109,
+    "first_artwork_ms": 3110
+   },
+   "frames": 27387,
+   "history": {
+    "can_back": true,
+    "can_forward": false,
+    "count": 3,
+    "position": 2
+   },
+   "interludes": {
+    "air": {
+     "median_minutes": 60,
+     "per_swap_percent": 0.6,
+     "state": "rolled"
+    },
+    "clock": {
+     "median_minutes": 20,
+     "per_swap_percent": 1.7,
+     "state": "rolled"
+    },
+    "temperature": {
+     "median_minutes": 0,
+     "per_swap_percent": 0,
+     "state": "never"
+    },
+    "weather": {
+     "median_minutes": 1440,
+     "per_swap_percent": 0,
+     "state": "rolled"
+    }
+   },
+   "intro": null,
+   "last_error": "",
+   "late": 17,
+   "load_failures": 0,
+   "no_artwork": "",
+   "paused": false,
+   "playset": {
+    "builtin": false,
+    "channels": 6,
+    "name": "Desk mix",
+    "scanning": false,
+    "version": 14
+   },
+   "prepared": true,
+   "screen": "",
+   "skipped": 270,
+   "state": "animation_show",
+   "stream_up": false,
+   "swaps": 127
+  },
+  "playsets_version": 23,
+  "providers": [
+   {
+    "authorized": true,
+    "channels": [],
+    "id": "makapix",
+    "label": "Makapix Club",
+    "online": true
+   }
+  ],
+  "reliability": {
+   "counters": {
+    "brownout": 0,
+    "deep_sleep": 0,
+    "other": 0,
+    "panic": 9,
+    "power": 4,
+    "software": 38,
+    "usb": 17,
+    "watchdog": 0
+   },
+   "crash": {
+    "present": false
+   },
+   "image": {
+    "other_date": "Oct 20 2026",
+    "other_partition": "ota_1",
+    "other_version": "0.2.1",
+    "partition": "ota_0",
+    "pending_verify": false
+   },
+   "reset_reason": "software"
+  },
+  "sensor": {
+   "humidity": 26.06201171875,
+   "temperature_c": 31.877593994140625,
+   "trend_c_per_hour": 0.40903061628341675,
+   "valid": true
+  },
+  "settings_nvs_writes": 2,
+  "stream": {
+   "active": false,
+   "datagrams": 0,
+   "ddp_listening": false,
+   "fps": 0,
+   "frames": 0,
+   "height": 0,
+   "incomplete": 0,
+   "last_latency_ms": 0,
+   "lost": 0,
+   "protocol": "",
+   "raw_listening": false,
+   "rejected": 0,
+   "sender": "",
+   "width": 0
+  },
+  "time": {
+   "interval_s": 21600,
+   "last_sync_s": 3409,
+   "local": "2026-11-12T11:13:17",
+   "rejected": 0,
+   "rule": "EST5EDT,M3.2.0,M11.1.0",
+   "servers": [
+    {
+     "answered": true,
+     "dhcp": true,
+     "host": "192.168.1.1",
+     "reach": 1
+    },
+    {
+     "answered": false,
+     "dhcp": false,
+     "host": "pool.ntp.org",
+     "reach": 0
+    },
+    {
+     "answered": false,
+     "dhcp": false,
+     "host": "time.google.com",
+     "reach": 0
+    },
+    {
+     "answered": false,
+     "dhcp": false,
+     "host": "time.cloudflare.com",
+     "reach": 0
+    }
+   ],
+   "source": "ntp",
+   "synced": true,
+   "syncs": 1
+  },
+  "update_state": "up_to_date",
+  "uptime_s": 3415,
+  "weather": {
+   "age_s": -1,
+   "error": "",
+   "valid": false
+  }
+ },
+ "timezones": [
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Asia/Tokyo",
+  "Europe/Lisbon",
+  "UTC"
+ ],
+ "update": {
+  "asset": "p64-firmware.bin",
+  "available_size": 2492320,
+  "available_version": "",
+  "bytes_read": 0,
+  "can_rollback": true,
+  "current_version": "0.0.0-fake",
+  "download_url": "https://github.com/fabkury/p64/releases/download/v0.2.2/p64-firmware.bin",
+  "error": "",
+  "image_size": 0,
+  "last_check_age_s": 3323.580619,
+  "notes": "",
+  "private_build": false,
+  "progress_percent": 0,
+  "repository": "fabkury/p64",
+  "rollback_partition": "ota_1",
+  "rollback_version": "0.2.1",
+  "sha256_published": true,
+  "state": "up_to_date"
+ }
+}

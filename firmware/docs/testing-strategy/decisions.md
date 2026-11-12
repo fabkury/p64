@@ -59,7 +59,7 @@ window"), **card failed**, **card playset**, **device playset**.
 | D28 | Malformed requests (Q4) | A known settings key with a value of the wrong type answers **400**; unknown keys stay ignored; out-of-range numbers stay clamped. A JSON nesting limit of 16. Errors in the API's envelope where ESP-IDF allows. |
 | D29 | LAN trust (Q5) | State-changing requests with a **foreign Origin are refused**; `/setup/save` and `/setup/erase` answer **only in setup mode**; the PIN's global lockout stays, documented, and does not survive a restart. |
 | D30 | Settings writes and page rules (Q6, Q7) | Accepted as proposed: a write that changes nothing writes nothing; bursts coalesce into one NVS write; applied equals stored after the last write; controls are disabled or coalesce in flight; one poll at a time; the reconnect backs off; long actions answer 202. |
-| D31 | New Wi-Fi credentials that are wrong (F-23) | **As today, with a warning first**: the page says the device will leave the network and that a mistake means reconnecting through `p64-setup`. |
+| D31 | New Wi-Fi credentials that are wrong (F-23) | (2026-11-12: no page offers a change of network; Settings only erases it, with its confirmation. The route `POST /api/v1/wifi` is the API's alone, and its reference carries the warning.) **As today, with a warning first**: the page says the device will leave the network and that a mistake means reconnecting through `p64-setup`. |
 
 Implemented on 2026-11-11, the firmware side (D25 to D30 except the pages' own rules,
 which with D31 belong to the pages): see [findings.md](findings.md) for what each closed.
@@ -68,7 +68,7 @@ which with D31 belong to the pages): see [findings.md](findings.md) for what eac
 
 | # | Divergence | Decision |
 |---|---|---|
-| D32 | The card root and downloads cap settings (F-16) | **Removed**: the root is `/p64`, the downloads folder is bounded by the cache sweep; the keys are ignored on input. |
+| D32 | The card root and downloads cap settings (F-16) | (done 2026-11-12) **Removed**: the root is `/p64`, the downloads folder is bounded by the cache sweep; the keys are ignored on input. |
 | D33 | The live preview (S-08) | **Polling at 1 fps**; the specification and the architecture are corrected. |
 | D34 | The panel stress test (S-07) | **A test hook only**; it leaves the product's diagnostics list and 18.11 names the test build. |
 | D35 | Housekeeping | Stray temporary files are removed at mount; two units with one hostname follow the mDNS library's renaming, checked once and documented. |

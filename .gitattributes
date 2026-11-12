@@ -1,0 +1,5 @@
+# The web UI is embedded in the firmware image byte for byte: its files are LF on every
+# machine, whatever core.autocrlf says (CRLF copies made the image larger and failed
+# tests/device/ui_smoke.py on 2026-11-12, after a git stash on Windows).
+firmware/components/p64_web/ui/** text eol=lf
+firmware/components/p64_web/ui/**/*.png binary

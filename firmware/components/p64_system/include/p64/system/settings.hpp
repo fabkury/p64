@@ -129,8 +129,6 @@ struct Settings {
   std::string ntp_server = "pool.ntp.org";
 
   // Storage
-  std::string card_root = "/p64";
-  uint16_t downloads_cap_mb = 64;  // 16..1024
 
   // Makapix
   uint32_t makapix_refresh_seconds = 14400;  // 60..86400

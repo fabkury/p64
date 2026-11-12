@@ -80,10 +80,13 @@ added. The text below is kept as the record of what was weighed.
 
 **Implemented on 2026-11-11, the firmware side**: Q1 (5 s by the owner's later choice),
 Q2, Q4, Q5 and Q6, with `abuse_smoke.py` extended to assert each (WEB-D4 to WEB-D8 in a
-first form). Open: Q3 is tested at five clients but nothing closes the oldest page's
-WebSocket on purpose; Q7 (the pages' JavaScript) and the browser lane; the monkey
-(WEB-D3), the overlaps of heavy actions (WEB-D9), the PIN variant (WEB-D10) and the
-latency budgets (WEB-D11).
+first form). **The pages' side followed on 2026-11-12**: Q7 in the shared script, and the
+browser lane (`tests/ui/run_ui.py` with `fake_device.py`): UI-B1 and UI-B2 against the
+fake device, a first UI-B3 (every page loads without a script error at 1280 and 360 px,
+two controls round-trip) and UI-B4 on the real device. Open: Q3 is tested at five
+clients but nothing closes the oldest page's WebSocket on purpose; every form of
+UI-B3 and the five themes; UI-B5 and UI-B6; the monkey (WEB-D3), the overlaps of heavy
+actions (WEB-D9), the PIN variant (WEB-D10) and the latency budgets (WEB-D11).
 
 ### Q1. One stalled client freezes every other
 

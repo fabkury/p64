@@ -20,15 +20,37 @@
             throw e;
         });
     }
-    P.api = function (path, opt) {
+    // A request that changes the device and is identical to one still in flight (the same
+    // method, path and body: a button pressed again before the device answered) is not
+    // sent again: the caller gets the answer of the one in flight. So no control can pile
+    // requests on the device, whichever page it is on (decision D30 of
+    // firmware/docs/testing-strategy/decisions.md).
+    var inFlight = {};
+    function call(path, opt) {
         return fetchWithTimeout(path, opt, 0).then(function (r) {
             if (r.status === 401) { P.showPin(''); throw new Error('PIN required'); }
             if (r.status === 429) { P.showPin('Too many wrong PINs; wait ' + (r.headers.get('Retry-After') || '30') + ' s'); throw new Error('locked'); }
             return r.json().then(function (j) {
                 if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
                 return j.data;
-            });
+            }, function () { throw new Error('HTTP ' + r.status); });
+        }, function (e) {
+            throw new Error(e && e.name === 'AbortError' ? 'the device did not answer' : 'the device cannot be reached');
         });
+    }
+    P.api = function (path, opt) {
+        if (!opt || !opt.method || opt.method === 'GET') return call(path, opt);
+        var key = opt.method + ' ' + path + ' ' + (opt.body || '');
+        if (inFlight[key]) return inFlight[key];
+        var p = call(path, opt);
+        inFlight[key] = p;
+        var done = function () { if (inFlight[key] === p) delete inFlight[key]; };
+        p.then(done, done);
+        return p;
+    };
+    // A button's action: the request, and the device's refusal shown instead of lost.
+    P.act = function (path, body) {
+        return P.post(path, body).catch(function (e) { P.toast(e.message, true); });
     };
     P.get = function (path) { return P.api(path); };
     P.post = function (path, body) {
@@ -169,26 +191,44 @@
         P.updateBadge(d.update_state);
         listeners.forEach(function (fn) { try { fn(d); } catch (e) { console.error(e); } });
     }
+    // One poll at a time: a device slower than the 4 s interval is not asked again
+    // until it has answered (or the request has timed out).
+    var polling = false;
     function poll() {
-        P.get('/api/v1/status').then(deliver).catch(function () {});
+        if (polling) return;
+        polling = true;
+        var done = function () { polling = false; };
+        P.get('/api/v1/status').then(deliver).catch(function () {}).then(done, done);
     }
+    // The WebSocket is retried after 2 s, then 4, 8 and every 15 s, counted from the last
+    // time it was open; one retry is pending at a time, however many events a failed
+    // socket fires (close and error both come for one failure).
+    var retryTimer = null, retries = 0;
     function connect() {
-        if (!('WebSocket' in window)) { poll(); pollTimer = setInterval(poll, 4000); return; }
+        retryTimer = null;
+        if (!('WebSocket' in window)) { poll(); if (!pollTimer) pollTimer = setInterval(poll, 4000); return; }
+        var sock;
         try {
-            ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/v1/ws');
-        } catch (e) { poll(); pollTimer = setInterval(poll, 4000); return; }
-        var opened = false;
-        ws.onopen = function () { opened = true; if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
-        ws.onmessage = function (ev) {
+            sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/v1/ws');
+        } catch (e) { poll(); if (!pollTimer) pollTimer = setInterval(poll, 4000); return; }
+        ws = sock;
+        sock.onopen = function () { retries = 0; if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
+        sock.onmessage = function (ev) {
             try {
                 var m = JSON.parse(ev.data);
                 if (m.type === 'status' && m.data) deliver(m.data);
             } catch (e) {}
         };
-        ws.onclose = ws.onerror = function () {
-            ws = null;
+        var gone = false;
+        sock.onclose = sock.onerror = function () {
+            if (gone) return;
+            gone = true;
+            if (ws === sock) ws = null;
             if (!pollTimer) { poll(); pollTimer = setInterval(poll, 4000); }
-            setTimeout(connect, opened ? 3000 : 10000);
+            if (retryTimer) return;
+            var delay = Math.min(15000, 2000 * Math.pow(2, retries));
+            retries += 1;
+            retryTimer = setTimeout(connect, delay);
         };
     }
     P.startStatus = function () { poll(); connect(); };
