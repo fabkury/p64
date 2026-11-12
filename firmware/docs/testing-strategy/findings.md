@@ -332,7 +332,7 @@ Web UI leads (audit of `components/p64_web/ui/`):
 | T-07 | (2026-11-11: `release.yml` now runs the host tests and needs them to publish; the runtime budgets are checked by the oracle around every device test) `release.yml` runs no host tests; CI checks 2 of the 10 keys of `budgets.json` | audit |
 | T-08 | `firmware/docs/testing.md` omitted `tls_slot_smoke.py` (closed 2026-11-11: the row was added with this register) | audit |
 | T-09 | (closed by F-03's fix; `hooks_smoke.py` panics the device on purpose and reads the status strictly) Every Python device test parses the status strictly and dies after a panic (F-03) | device |
-| T-10 | `timing_smoke.py` is flaky (one pass in four on 2026-10-04): two non-simultaneous HTTP reads | PROGRESS.md |
+| T-10 | (2026-11-12: the remaining flake was the check itself: it demanded zero late frames at 60 fps, where a rare one is the known limit of Quality mode; one run in five showed one late frame in 1200 with the Makapix worker idle. One is allowed at 60 fps now and the test waits for an idle worker; the fps reading from two requests is unchanged) `timing_smoke.py` is flaky (one pass in four on 2026-10-04): two non-simultaneous HTTP reads | PROGRESS.md |
 | T-11 | The probes of this session changed a setting by accident: a clamp test left brightness at 1 until restored by hand. Any test that writes a setting must snapshot and restore the whole document | this session |
 
 ## F. Never run, though the acceptance list asks

@@ -1389,6 +1389,51 @@ them. Newest entries are at the bottom of [Log](#log).
 - The p64b stays on the public image from here on (decision D40); it restarted seven
   times that day for the probes, an NVS reading over USB and the flash.
 
+### 2026-11-12 (the web hardening, firmware side, p126)
+
+- Decisions D25 to D30, firmware side. HTTP: timeouts of 5 s each way (10 before), a
+  refused request with a large body closes the connection instead of draining it,
+  requests that change the device and the WebSocket are refused from a foreign Origin
+  (`p64/net/origin.hpp`, pure), unknown routes and wrong methods answer in the JSON
+  envelope. Commands: a full queue answers 503 `BUSY` with Retry-After (F-17).
+  Settings: the API refuses a wrong type or an unknown choice with 400 and the key's
+  name (a stored document is still read leniently); a change applies at once and is
+  written to NVS 0.3 s after the last one, 2 s at most after the first, and at an
+  orderly restart; no change, no write. Events that only say "read again" are
+  coalesced in the bus (F-05). The like waits 5 s for the worker, then answers 202 and
+  reports through `status.makapix.like`. One interlude roll per due swap (F-06). One
+  WebSocket list entry per socket.
+- A wrong assumption corrected on the way: a like does not take "under a second" but
+  about 3 s on the device (2.8 to 3.2 s over six, once 4.8 s: a TLS session each time);
+  with the 2 s wait first chosen every like answered 202, so the owner set the wait at
+  5 s.
+- Host tests: 236 cases with `--werror` (the strict settings reading, the Origin rule,
+  the single interlude roll). Images: public 2,501,776 bytes, static DIRAM 122,275.
+- Device, `0.2.2+test` on the p64b. `abuse_smoke.py` 0 failures with the new checks: a
+  foreign Origin 403 on changing requests (reads served) and a foreign WebSocket closed
+  with no frame; 404 and 405 in the envelope; five wrong-type settings bodies 400 naming
+  the key; 120 settings changes from 8 connections in 3.2 s costing 2 flash writes,
+  applied equal to stored, no event dropped, and a no-op write writing nothing; behind
+  one half-sent request another client answered in 4.8 s, behind six in 29.7 s (they
+  time out in turn; about 90 s on 0.2.1); a refused 8 MB upload cut off after 16 KB with
+  others answered in 0.2 s (27 s before); five WebSocket clients served with requests
+  answered in 0.2 s beside them. Lanes through `run_suite.py`: smoke 6 of 6, hooks 1 of
+  1 (the like queued at 5 s with the worker held, then run and reported), abuse 1 of 1,
+  full 18 of 19 and the nineteenth on its rerun.
+- The run found three more faults in the tests, none in the firmware: the oracle counted
+  the hooks test's deliberate panic (it now declares it); `content_smoke.py` took the
+  previous test's play-this for the new playset's first artwork (it now waits for an
+  artwork that carries a channel); `timing_smoke.py` demanded zero late frames at 60 fps,
+  where a rare one is the known limit of the eleven-plane mode (one run in five showed
+  one in 1200 frames with the Makapix worker idle; one is now allowed at 60 fps and the
+  test waits for an idle worker). Also: the runner waits for a device 30 s into its
+  boot, and the bracket clock's bob is checked across three frames.
+- Overnight, unattended: the p64b ran this code for 16.7 hours without a reboot, ending
+  at 54 KB of internal heap free, largest block 32.8 KB.
+- Not done: the pages' side (controls disabled in flight, one poll at a time, the heart
+  from the status, the Wi-Fi warning) and the browser lane; the 503 path was not
+  provoked on the device (the queue no longer fills; it needs the queue-pressure hook).
+
 ### 2026-11-11 (the harness, p125)
 
 - The device suite: `tests/device/run_suite.py` (lanes, declared requirements, skips that

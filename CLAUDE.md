@@ -186,8 +186,16 @@ the test build is `-B build_test -DP64_NO_PRIVATE=ON -DP64_TEST=ON
 held, panic, abrupt reset; seams are `#ifdef` and `p64/system/test_hooks.hpp` holds the
 flags; `tests\device\hooks_smoke.py` uses them and reboots the device about ten times).
 A new hook is a seam that changes what the code sees, never its logic, and costs the
-release image nothing. Fake servers, the browser lane and the fuzzers are not started;
-the web hardening and cardless are not implemented. When a finding is fixed, mark it in
+release image nothing. The web hardening's firmware side followed on 2026-11-12 (p126, ADR 0019): HTTP timeouts
+of 5 s, a refused large body closes the connection, a foreign `Origin` is refused on
+every changing request and on the WebSocket (`p64/net/origin.hpp`), 503 `BUSY` when a
+command cannot be queued, the API's strict settings reading (400 naming the key; stored
+documents stay lenient), settings applied at once and written to NVS a moment later
+(0.3 s after the last change, 2 s at most; `system::settings_flush()` runs at an orderly
+restart, so never assume a PUT is in flash when it returns), coalesced "read again"
+events in the bus, the like waiting 5 s then answering 202 with `status.makapix.like`
+(a like takes about 3 s on the device). Fake servers, the browser lane and the fuzzers
+are not started; the pages' side of the web hardening and cardless are not implemented. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

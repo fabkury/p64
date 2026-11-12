@@ -38,7 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # name: (script arguments, requirements, lanes, timeout in seconds, oracle allowances)
 # Requirements: card ("required" or "any"), internet, ntp, paired, encoders, hooks,
 # build (this PC's build/p64.bin exists). Allowances: reboot (the test reboots the
-# device on purpose).
+# device on purpose), panics (how many deliberate panics it causes).
 TESTS = {
     "api_smoke": ([], {"card": "required"}, ("smoke", "full"), 300, {}),
     "content_smoke": ([], {"card": "required"}, ("smoke", "full"), 300, {}),
@@ -61,7 +61,7 @@ TESTS = {
     "ota_smoke:check": (["--no-install"], {"internet": True, "ntp": True}, ("full",), 300, {}),
     "ota_smoke": ([], {"internet": True, "ntp": True, "build": True}, ("update",), 900, {"reboot": True}),
     "abuse_smoke": ([], {}, ("abuse",), 600, {}),
-    "hooks_smoke": ([], {"hooks": True}, ("hooks",), 900, {"reboot": True}),
+    "hooks_smoke": ([], {"hooks": True}, ("hooks",), 900, {"reboot": True, "panics": 1}),
     "soak": (["--minutes", "{minutes}"], {"internet": True, "ntp": True}, ("soak",), None, {}),
 }
 
@@ -197,7 +197,7 @@ def main():
             problems.append("exit code %d%s" % (code, ": " + "; ".join(fails[:3]) if fails else ""))
         if allow.get("reboot"):
             harness.wait_for_device(base, 90)
-        found, numbers = harness.oracle(before, reboot_expected=bool(allow.get("reboot")))
+        found, numbers = harness.oracle(before, reboot_expected=bool(allow.get("reboot")), panics_expected=allow.get("panics", 0))
         problems += ["oracle: " + p for p in found]
         panic = capture.panic_since(mark) if capture and not allow.get("reboot") else []
         if panic:

@@ -81,8 +81,11 @@ def run(base):
     check(st == 200 and j["data"]["activating"], "POST action/play_playset smoke_test")
     # Right after a boot the "connected" screen holds the panel for 15 s (spec 15.1), and
     # the first artwork waits for it; hence the longer wait (2026-09-22).
-    p = wait_for(base, lambda p: p["playset"]["name"] == "smoke_test" and p.get("artwork"), "smoke_test plays an artwork",
-                 30)
+    # The name changes at once, the artwork when the playset's scan has landed: wait for
+    # an artwork that carries a channel (what was up before, a play-this of the previous
+    # test for instance, has none; the check failed on that race on 2026-11-12).
+    p = wait_for(base, lambda p: p["playset"]["name"] == "smoke_test" and not p["playset"].get("scanning") and
+                 (p.get("artwork") or {}).get("channel"), "smoke_test plays an artwork", 30)
     # The channel pick is stochastic (weights 3:1 with credits, scheduler.cpp), so the
     # first artwork is the local channel's three times in four; what must hold is that
     # it came from one of the playset's two channels (2026-09-29: the check used to

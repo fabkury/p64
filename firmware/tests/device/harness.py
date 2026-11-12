@@ -136,7 +136,7 @@ def facts(d):
     }
 
 
-def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(), settle_s=20):
+def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(), settle_s=20, panics_expected=0):
     """Asks the device the questions that every test must leave answered well. Returns a
     list of failures (strings); the second value is a dict of numbers for the report."""
     base = before.base
@@ -163,7 +163,8 @@ def oracle(before, reboot_expected=False, settings_may_change=False, log_allow=(
         problems.append("the device rebooted (uptime %d -> %d s, reset reason %s)" %
                         (before.status["uptime_s"], now["uptime_s"], now["reliability"].get("reset_reason")))
     for cause in ("panic", "watchdog", "brownout"):
-        if r1.get(cause, 0) != r0.get(cause, 0):
+        expected = panics_expected if cause == "panic" else 0
+        if r1.get(cause, 0) != r0.get(cause, 0) + expected:
             problems.append("the %s counter moved (%d -> %d)" % (cause, r0.get(cause, 0), r1.get(cause, 0)))
 
     # 3. Did the panel keep its lock?
