@@ -2,7 +2,7 @@
 r"""Device tests that need the test build's fault-injection hooks (CONFIG_P64_TEST_HOOKS,
 built with -DP64_TEST=ON; docs/testing-strategy/infrastructure.md):
 
-    python tests\device\hooks_smoke.py [http://p64.local] [--only like,panic,reset,time,eject]
+    python tests\device\hooks_smoke.py [http://p64.local] [--only like,panic,reset,time,imu,eject]
 
 It REBOOTS THE DEVICE several times. In this order:
 
@@ -47,7 +47,7 @@ def hook(base, **body):
 
 def clear_hooks(base):
     try:
-        hook(base, card_eject="", time_withheld=False, hold_worker_ms=0)
+        hook(base, card_eject="", time_withheld=False, hold_worker_ms=0, imu_absent_s=0)
     except Exception as e:  # noqa: BLE001
         print("     could not clear the hooks: %r" % e)
 
@@ -188,6 +188,29 @@ def test_time(base):
         hook(base, time_withheld=False)
 
 
+def test_imu(base):
+    """An IMU that misses its probe at boot is found later (finding F-33): until
+    2026-11-12 one miss left the device without taps and auto-rotation, at the fallback
+    rotation, until the next restart."""
+    d = harness.status(base)
+    if not d["inputs"]["imu_present"]:
+        print("     imu: this device has no IMU answering; not tested")
+        return
+    want = d["inputs"]["auto_rotation"]
+    try:
+        hook(base, imu_absent_s=25)
+        d = reboot(base)
+        if not check(d is not None, "imu: the device came back from the reboot"):
+            return
+        check(not d["inputs"]["imu_present"], "imu: withheld, the device boots without it (uptime %s s)" % d["uptime_s"])
+        d = wait_status(base, lambda s: s["inputs"]["imu_present"] and s["inputs"]["auto_rotation_resolved"], 45)
+        check(d["inputs"]["imu_present"], "imu: found later, without a restart (uptime %s s)" % d["uptime_s"])
+        check(d["inputs"]["calibrated"] and d["inputs"]["auto_rotation"] == want,
+              "imu: its calibration is loaded and the rotation is the one before (%s, was %s)" % (d["inputs"]["auto_rotation"], want))
+    finally:
+        hook(base, imu_absent_s=0)
+
+
 def test_panic(base):
     before = harness.status(base)
     request(base, "POST", "/api/v1/diag/coredump/erase")
@@ -314,7 +337,7 @@ def main():
     if not d.get("test_hooks"):
         return skipped("firmware %s has no test hooks (build with -DP64_TEST=ON)" % d["firmware"]["version"])
     only = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
-    tests = [("like", test_like), ("time", test_time), ("panic", test_panic), ("reset", test_reset), ("eject", test_eject)]
+    tests = [("like", test_like), ("time", test_time), ("panic", test_panic), ("reset", test_reset), ("imu", test_imu), ("eject", test_eject)]
     print("device: firmware %s, uptime %d s" % (d["firmware"]["version"], d["uptime_s"]))
     try:
         for name, fn in tests:

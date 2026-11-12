@@ -851,14 +851,18 @@ cJSON *test_state() {
   cJSON_AddBoolToObject(d, "card_mounted", storage::mounted());
   cJSON_AddBoolToObject(d, "time_withheld", system::test::time_withheld.load());
   cJSON_AddNumberToObject(d, "hold_worker_ms", system::test::hold_worker_ms.load());
+  std::string no_imu;
+  system::state::get(system::test::kNoImuKey, no_imu);
+  cJSON_AddNumberToObject(d, "imu_absent_s", std::atoi(no_imu.c_str()));  // takes effect at the next boot
   return d;
 }
 
 esp_err_t test_get(httpd_req_t *req) { return reply_ok(req, test_state()); }
 
 // POST /api/v1/test: any of {"card_eject": "<reason>" | "", "time_withheld": bool,
-// "hold_worker_ms": N, "panic": true, "reset": true}. The first two persist across
-// reboots until cleared; the eject takes effect at the next boot.
+// "hold_worker_ms": N, "imu_absent_s": N, "panic": true, "reset": true}. The eject, the
+// time and the IMU persist across reboots until cleared; the eject and the IMU take
+// effect at the next boot.
 esp_err_t test_post(httpd_req_t *req) {
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
@@ -884,6 +888,14 @@ esp_err_t test_post(httpd_req_t *req) {
   if (const cJSON *h = cJSON_GetObjectItem(body, "hold_worker_ms"); cJSON_IsNumber(h)) {
     const double ms = h->valuedouble;
     system::test::hold_worker_ms = ms < 0 ? 0u : ms > 120000 ? 120000u : static_cast<uint32_t>(ms);
+  }
+  if (const cJSON *i = cJSON_GetObjectItem(body, "imu_absent_s"); cJSON_IsNumber(i)) {
+    const int s = i->valueint < 0 ? 0 : i->valueint > 600 ? 600 : i->valueint;
+    if (s) {
+      system::state::set(system::test::kNoImuKey, std::to_string(s));
+    } else {
+      system::state::erase(system::test::kNoImuKey);
+    }
   }
   const bool panic = cJSON_IsTrue(cJSON_GetObjectItem(body, "panic"));
   const bool reset = cJSON_IsTrue(cJSON_GetObjectItem(body, "reset"));

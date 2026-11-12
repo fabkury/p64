@@ -291,6 +291,11 @@ extern "C" void app_main() {
       ESP_LOGW(TAG, "test hook: the time is withheld");
     }
     value.clear();
+    if (p64::system::state::get(p64::system::test::kNoImuKey, value) && !value.empty()) {
+      p64::system::test::imu_absent_s = static_cast<uint32_t>(std::strtoul(value.c_str(), nullptr, 10));
+      ESP_LOGW(TAG, "test hook: the IMU is withheld for %s s", value.c_str());
+    }
+    value.clear();
     if (p64::system::state::get(p64::system::test::kEjectKey, value) && !value.empty()) p64::storage::test_eject(value);
   }
 #endif

@@ -23,10 +23,14 @@ inline std::atomic<bool> time_withheld{false};
 // The Makapix worker sleeps this long before its next job (one shot): what a long
 // download or a held TLS slot does to whoever waits on the worker.
 inline std::atomic<uint32_t> hold_worker_ms{0};
+// The IMU does not answer its probe until the device has been up this long (seconds; set
+// at boot from kNoImuKey): a sensor that misses its first probe and is found later.
+inline std::atomic<uint32_t> imu_absent_s{0};
 
 // Keys in the state store (NVS namespace p64state) that only a test build reads.
 inline constexpr const char *kEjectKey = "t_eject";    // a reason: the next boots mount no card
 inline constexpr const char *kNoTimeKey = "t_notime";  // "1": the time is withheld from boot
+inline constexpr const char *kNoImuKey = "t_noimu";    // seconds: the IMU is not found before that uptime
 
 }  // namespace p64::system::test
 

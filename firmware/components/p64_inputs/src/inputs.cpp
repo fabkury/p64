@@ -32,7 +32,7 @@ Hooks g_hooks;
 std::mutex g_mutex;
 TapDetector g_taps;
 OrientationTracker g_orientation;
-bool g_present = false;
+std::atomic<bool> g_present{false};
 std::atomic<bool> g_tap_enabled{true};
 std::atomic<bool> g_auto{false};
 float g_ax = 0, g_ay = 0, g_az = 0;
@@ -63,6 +63,15 @@ void load_calibration() {
 
 void task(void *) {
   TickType_t wake = xTaskGetTickCount();
+  while (!g_present) {  // not found at boot: keep asking (finding F-33)
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    if (qmi8658::init()) {
+      g_present = true;
+      load_calibration();
+      ESP_LOGI(TAG, "the IMU answers now");
+      wake = xTaskGetTickCount();
+    }
+  }
   while (true) {
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(kSampleMs));
     float ax, ay, az;
@@ -115,12 +124,23 @@ bool start(const Hooks &hooks) {
   apply_settings(system::settings());
   system::subscribe(system::Event::SettingsChanged, [](const system::Message &) { apply_settings(system::settings()); });
   encoders::start(hooks);
-  if (!qmi8658::init()) return false;
-  g_present = true;
-  load_calibration();
+  // The IMU is tried three times now and, if it still does not answer, every 5 s by the
+  // task for as long as the device runs. Until 2026-11-12 one failed probe at boot left
+  // the device without taps and without auto-rotation until the next restart: on such a
+  // boot (seen once that day, after a flash) a unit set to auto-rotation showed
+  // its picture at the fallback rotation, upside down (finding F-33).
+  for (int attempt = 0; attempt < 3 && !g_present; ++attempt) {
+    if (attempt) vTaskDelay(pdMS_TO_TICKS(60));
+    if (qmi8658::init()) g_present = true;
+  }
+  if (g_present) {
+    load_calibration();
+  } else {
+    ESP_LOGW(TAG, "the IMU does not answer; trying again every 5 s");
+  }
   // I2C reads and arithmetic only: the stack can live in PSRAM.
   xTaskCreatePinnedToCoreWithCaps(task, "imu", 4096, nullptr, 6, nullptr, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  return true;
+  return g_present;
 }
 
 bool imu_present() { return g_present; }

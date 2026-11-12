@@ -6,6 +6,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "p64/system/i2c_bus.hpp"
+#include "esp_timer.h"
+#include "p64/system/test_hooks.hpp"
 
 namespace p64::inputs::qmi8658 {
 namespace {
@@ -42,6 +44,9 @@ bool probe(uint16_t address) {
 
 bool init() {
   if (g_dev) return true;
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (esp_timer_get_time() / 1000000 < static_cast<int64_t>(system::test::imu_absent_s.load())) return false;
+#endif
   if (!probe(0x6B) && !probe(0x6A)) {
     ESP_LOGW(TAG, "no QMI8658 on the I2C bus");
     return false;
@@ -59,6 +64,8 @@ bool init() {
   float ax, ay, az;
   if (!ok || !read(ax, ay, az)) {
     ESP_LOGW(TAG, "QMI8658 found but not answering samples");
+    i2c_master_bus_rm_device(g_dev);  // so that a later init() probes again
+    g_dev = nullptr;
     return false;
   }
   ESP_LOGI(TAG, "QMI8658 ready (revision 0x%02x): %.2f %.2f %.2f g", rev, static_cast<double>(ax), static_cast<double>(ay),
