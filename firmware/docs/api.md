@@ -156,7 +156,7 @@ as the title.
 
 | Route | Method | What |
 |---|---|---|
-| `/api/v1/playsets` | GET | `{active, playsets:[{name, channels}], builtins:[{name, enabled, reason}], max_playsets}` |
+| `/api/v1/playsets` | GET | `{active, playsets:[{name, channels}], builtins:[{name, enabled, reason}], store, max_playsets, max_channels}`. `store` is `card` or, on a device that booted without a card, `device` (ADR 0018): the device's own list of up to 8 playsets of up to 16 channels, none local. Every playset route works on the list of the mode in force; a limit of the device's store is refused with 409 `SAVE_FAILED` and its reason |
 | `/api/v1/playsets/<name>` | GET | the playset (`{name, builtin, channels:[...]}`); built-in names work too |
 | `/api/v1/playsets/<name>` | PUT | create or replace: `{"channels":[{kind, identifier, display_name, weight, offset}]}` |
 | `/api/v1/playsets/<name>` | DELETE | remove a user playset |

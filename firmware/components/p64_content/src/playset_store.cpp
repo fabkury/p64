@@ -5,9 +5,11 @@
 
 #include "cJSON.h"
 #include "esp_log.h"
+#include "p64/content/device_playsets.hpp"
 #include "p64/content/playset_json.hpp"
 #include "p64/content/playset_name.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/state_store.hpp"
 
 namespace p64::content::store {
 namespace {
@@ -96,16 +98,26 @@ Located locate(const std::string &name) {
   return l;
 }
 
+// The device playsets' slots are strings of the NVS state store (flash-guarded there).
+device_playsets::Backend device() {
+  device_playsets::Backend b;
+  b.get = [](const std::string &key, std::string &value) { return system::state::get(key.c_str(), value); };
+  b.set = [](const std::string &key, const std::string &value) { return system::state::set(key.c_str(), value); };
+  b.erase = [](const std::string &key) { return system::state::erase(key.c_str()); };
+  return b;
+}
+
 }  // namespace
 
 std::string playsets_dir() { return storage::channels_dir() + "/playsets"; }
 
+bool on_device() { return !storage::mounted(); }
+size_t max_playsets() { return on_device() ? device_playsets::kMaxPlaysets : kMaxPlaysets; }
+size_t max_channels() { return on_device() ? device_playsets::kMaxChannels : kMaxChannels; }
+
 bool list(std::vector<Summary> &out, std::string &error) {
   out.clear();
-  if (!storage::mounted()) {
-    error = "no card";
-    return false;
-  }
+  if (on_device()) return device_playsets::list(device(), out, error);
   const std::string dir = playsets_dir();
   if (!storage::exists(dir)) return true;  // nothing saved yet
   for (const storage::FileInfo &f : storage::list(dir)) {
@@ -138,7 +150,8 @@ bool list(std::vector<Summary> &out, std::string &error) {
 }
 
 bool exists(const std::string &name) {
-  if (!valid_playset_name(name) || !storage::mounted()) return false;
+  if (on_device()) return device_playsets::exists(device(), name);
+  if (!valid_playset_name(name)) return false;
   return locate(name).exists;
 }
 
@@ -147,10 +160,7 @@ bool load(const std::string &name, Playset &out, std::string &error) {
     error = "invalid playset name";
     return false;
   }
-  if (!storage::mounted()) {
-    error = "no card";
-    return false;
-  }
+  if (on_device()) return device_playsets::load(device(), name, out, error);
   const Located l = locate(name);
   if (!l.exists) {
     error = "no such playset";
@@ -168,9 +178,10 @@ bool save(Playset &playset, std::string &error) {
     return false;
   }
   if (!playset.validate(error)) return false;
-  if (!storage::mounted()) {
-    error = "no card";
-    return false;
+  if (on_device()) {
+    const bool ok = device_playsets::save(device(), playset, error);
+    if (ok) ESP_LOGI(TAG, "saved device playset '%s' (%u channels)", playset.name.c_str(), static_cast<unsigned>(playset.channels.size()));
+    return ok;
   }
   const std::string dir = playsets_dir();
   if (!storage::exists(dir) && !storage::make_dir(dir, error)) return false;
@@ -209,10 +220,7 @@ bool remove(const std::string &name, std::string &error) {
     error = "invalid playset name";
     return false;
   }
-  if (!storage::mounted()) {
-    error = "no card";
-    return false;
-  }
+  if (on_device()) return device_playsets::remove(device(), name, error);
   const Located l = locate(name);
   if (!l.exists) {
     error = "no such playset";
@@ -231,10 +239,7 @@ bool rename(const std::string &old_name, const std::string &new_name, std::strin
     error = "that name is reserved for a built-in playset";
     return false;
   }
-  if (!storage::mounted()) {
-    error = "no card";
-    return false;
-  }
+  if (on_device()) return device_playsets::rename(device(), old_name, new_name, error);
   const Located from = locate(old_name);
   if (!from.exists) {
     error = "no such playset";

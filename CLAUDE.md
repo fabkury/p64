@@ -202,7 +202,16 @@ synthetic fixtures; CI job `pages`), and with `--device http://<ip>` against a r
 ending in the oracle. A change to a page gets a check there. The embedded UI files are LF
 (`.gitattributes`); open pages cost internal RAM (F-32: largest block down to 14 KB with
 four). The IMU is probed again every 5 s when it missed its boot probe (F-33). Fake
-servers and the fuzzers are not started; cardless is not implemented. When a finding is fixed, mark it in
+servers and the fuzzers are not started. Cardless (ADR 0018) is implemented in part since
+2026-11-12 (p128): the memory window (`p64/content/memory_window.hpp`: 48 files, 6 MB,
+one new file per swap and per minute; artworks share its bytes), the playset rule
+(`rules::restore_choice`: the owner's choice per storage mode, state keys `playset` and
+`playset_nc`, or Promoted, never a stand-in), the one "No artwork" screen with the
+address (the "connected" screen is gone), "waiting for the time", and device playsets
+(`p64/content/device_playsets.hpp`: 8 of 16 channels in NVS slots `dps0`..`dps7`;
+`content::store` follows the storage mode). `tests\device\cardless_smoke.py` runs them
+with the card ejected virtually (hooks lane). Open: the card-failed latch, formatting
+from the pages, uploads as play-this, the pages' cardless side, one `409 NO_CARD`. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

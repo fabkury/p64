@@ -586,7 +586,11 @@ cJSON *playsets_json() {
     cJSON_AddStringToObject(o, "reason", reason);
     cJSON_AddItemToArray(builtins, o);
   }
-  cJSON_AddNumberToObject(root, "max_playsets", static_cast<double>(content::kMaxPlaysets));
+  // Which list this is (ADR 0018): the card's playsets, or the device's while cardless,
+  // with the limits of that store.
+  cJSON_AddStringToObject(root, "store", content::store::on_device() ? "device" : "card");
+  cJSON_AddNumberToObject(root, "max_playsets", static_cast<double>(content::store::max_playsets()));
+  cJSON_AddNumberToObject(root, "max_channels", static_cast<double>(content::store::max_channels()));
   return root;
 }
 

@@ -300,6 +300,12 @@ A local folder is a channel; subfolders are separate channels (one level below
 
 Semantics are p3a's, unchanged:
 
+- User playsets live where the storage mode puts them (ADR 0018): on the card (card
+  playsets, up to 32 of up to 64 channels), or, on a device that booted without a
+  card, on the device itself (device playsets: up to 8 of up to 16 channels, none of
+  them local, about 16 KB in all). The two lists are separate: each is shown and
+  edited only in its own mode and nothing moves between them. The name rules are the
+  same in both.
 - Up to 32 user playsets; names up to 32 characters of any printable text, with no
   leading or trailing space (ADR 0017, since 2026-10-27; before that, letters, digits
   and underscore). Names that differ only in ASCII case or in the spacing between

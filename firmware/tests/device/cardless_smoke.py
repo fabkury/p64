@@ -4,7 +4,7 @@ the card is ejected virtually (hook `card_eject`), the device reboots without it
 the tests watch what it does. The card stays in its slot and is back after the last
 reboot. Needs the test build, a network and a card to give back.
 
-    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore]
+    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore,playsets]
 
 window  NC-D1 and a short NC-D2: on Promoted the first artwork is up within the budget,
         the memory window fills once and never beyond its capacity, then takes at most
@@ -16,6 +16,12 @@ restore the playset rule (decisions D13 to D15): the choice made with a card is 
         the panel's "No artwork" screen carries the address; back with the card, the
         card's choice returns. With the time withheld from boot: "waiting for the
         time", then playback when it arrives (D22).
+playsets NC-D5, device playsets (D9 to D12): cardless, the list is the device's own,
+        with its limits (8 playsets of 16 channels, none local); a playset saved there
+        is listed, read back, activated, plays, survives a restart as the active one,
+        can be renamed and deleted; each limit is refused with its own words; a
+        deleted playset that was the choice leaves "No artwork: playset not found";
+        with the card back the card's list shows none of it.
 
 Exit code 1 on any failure, 2 when the firmware has no test hooks.
 """
@@ -27,6 +33,7 @@ import harness
 from api_smoke import check, request, skipped
 from hooks_smoke import hook, playing, reboot, wait_status
 
+CARD_CHOICE = ""       # the active playset with the card, read before the first eject
 FIRST_ARTWORK_S = 30   # uptime; measured 7 to 11 s on 2026-11-12 (to become a budget)
 FILL_S = 150           # uptime by which a window of 48 small files is full (51 s measured)
 
@@ -45,8 +52,9 @@ def boot_cardless(base, reason="no card answers"):
 
 
 def test_window(base):
-    request(base, "POST", "/api/v1/action/play_playset", {"name": "Promoted"})
-    time.sleep(1)
+    # The cardless choice is its own (D14): Promoted is chosen after the boot, so the
+    # card's choice is not touched.
+    hook(base, forget_cardless_playset=True)
     if boot_cardless(base) is None:
         return
     d = wait_status(base, playing, FIRST_ARTWORK_S + 10)
@@ -125,8 +133,7 @@ def frame_png(base):
 
 
 def test_restore(base):
-    before = harness.status(base)
-    card_choice = before["playback"]["playset"]["name"]
+    card_choice = CARD_CHOICE
     # Cardless, and the cardless choice forgotten: Promoted, whatever the card's choice is.
     hook(base, forget_cardless_playset=True)
     d = boot_cardless(base)
@@ -182,6 +189,106 @@ def test_restore(base):
     check(d["playback"]["playset"]["name"] == card_choice, "restore: with the card, the card's choice is back (%s)" % d["playback"]["playset"]["name"])
 
 
+MIX = "p64 test mix"   # a name the legacy rule could not store: a space
+
+
+def url(name):
+    import urllib.parse
+    return "/api/v1/playsets/" + urllib.parse.quote(name)
+
+
+def names(base):
+    st, j = request(base, "GET", "/api/v1/playsets")
+    return j["data"], [x["name"] for x in j["data"]["playsets"]]
+
+
+def test_playsets(base):
+    _, card_names = names(base)
+    if boot_cardless(base) is None:
+        return
+    doc, mine = names(base)
+    check(doc.get("store") == "device" and doc["max_playsets"] == 8 and doc.get("max_channels") == 16,
+          "playsets: cardless, the list is the device's (store %r, %s playsets of %s channels)" % (doc.get("store"), doc["max_playsets"], doc.get("max_channels")))
+    check(not any(n in mine for n in card_names if n not in mine) and "error" not in doc, "playsets: the card's playsets are not in it (%s)" % mine)
+    made = []
+    try:
+        body = {"channels": [{"kind": "promoted", "weight": 2}, {"kind": "hashtag", "identifier": "pixelart", "weight": 1}]}
+        st, j = request(base, "PUT", url(MIX), body)
+        if not check(st == 200 and j["data"]["name"] == MIX, "playsets: a device playset is saved (%s)" % st):
+            return
+        made.append(MIX)
+        st, j = request(base, "GET", url(MIX))
+        check(st == 200 and [c["kind"] for c in j["data"]["channels"]] == ["promoted", "hashtag"] and j["data"]["channels"][0]["weight"] == 2,
+              "playsets: and read back as written")
+        _, mine = names(base)
+        check(MIX in mine, "playsets: it is in the list")
+
+        # The limits, each with its own words.
+        st, j = request(base, "PUT", url("p64 test wide"), {"channels": [{"kind": "hashtag", "identifier": "t%d" % i} for i in range(17)]})
+        check(st == 409 and "at most 16" in j.get("error", ""), "playsets: 17 channels are refused (%s %r)" % (st, j.get("error")))
+        st, j = request(base, "PUT", url("p64 test local"), {"channels": [{"kind": "local", "identifier": ""}]})
+        check(st == 409 and "need a card" in j.get("error", ""), "playsets: a local channel is refused (%s %r)" % (st, j.get("error")))
+        free = doc["max_playsets"] - len(mine)
+        for i in range(free):
+            n = "p64 test fill %d" % i
+            st, j = request(base, "PUT", url(n), {"channels": [{"kind": "promoted"}]})
+            if check(st == 200, "playsets: playset %d of 8 is saved" % (len(mine) + i + 1)):
+                made.append(n)
+        st, j = request(base, "PUT", url("p64 test ninth"), {"channels": [{"kind": "promoted"}]})
+        check(st == 409 and "already 8" in j.get("error", ""), "playsets: a ninth is refused (%s %r)" % (st, j.get("error")))
+        st, j = request(base, "PUT", url(MIX), {"channels": [{"kind": "promoted", "weight": 5}]})
+        check(st == 200, "playsets: a full list still takes a change to one of its playsets")
+        for n in [m for m in made if m.startswith("p64 test fill")]:
+            request(base, "DELETE", url(n))
+            made.remove(n)
+
+        # Activated, it plays; after a restart it is still the choice and still there.
+        st, j = request(base, "POST", "/api/v1/action/play_playset", {"name": MIX})
+        d = wait_status(base, lambda s: playing(s) and s["playback"]["playset"]["name"] == MIX, 40)
+        check(playing(d) and d["playback"]["playset"]["name"] == MIX, "playsets: activated, it plays")
+        d = boot_cardless(base)
+        if d is None:
+            return
+        d = wait_status(base, lambda s: playing(s) and s["playback"]["playset"]["name"] == MIX, FIRST_ARTWORK_S + 15)
+        check(playing(d) and d["playback"]["playset"]["name"] == MIX, "playsets: after a restart it is still the choice and plays (%s)" % d["playback"]["playset"]["name"])
+
+        # Renamed while active: the show follows.
+        renamed = MIX + " 2"
+        st, j = request(base, "POST", url(MIX) + "/rename", {"name": renamed})
+        if check(st == 200, "playsets: renamed (%s)" % st):
+            made[made.index(MIX)] = renamed
+            time.sleep(1)
+            check(harness.status(base)["playback"]["playset"]["name"] == renamed, "playsets: the active playset follows the new name")
+            _, mine = names(base)
+            check(renamed in mine and MIX not in mine, "playsets: the list has the new name only")
+
+        # Deleted while it is the choice: after a restart the panel says so, nothing stands in.
+        st, j = request(base, "DELETE", url(made[0]))
+        check(st == 200, "playsets: deleted (%s)" % st)
+        gone = made.pop(0)
+        d = boot_cardless(base)
+        if d is None:
+            return
+        time.sleep(12)
+        d = harness.status(base)
+        check(d["playback"]["playset"]["name"] == gone and d["playback"]["no_artwork"] == "playset not found" and not d["playback"].get("artwork"),
+              "playsets: a deleted choice leaves \"No artwork: playset not found\" (%s, %r)" % (d["playback"]["playset"]["name"], d["playback"]["no_artwork"]))
+        request(base, "POST", "/api/v1/action/play_playset", {"name": "Promoted"})
+        d = wait_status(base, playing, 40)
+        check(playing(d), "playsets: and Promoted, once chosen, plays")
+    finally:
+        for n in made:
+            request(base, "DELETE", url(n))
+    # Back with the card: the card's list, with nothing of the device's in it.
+    hook(base, card_eject="")
+    d = reboot(base)
+    if not check(d is not None and d["card"]["mounted"], "playsets: the card is mounted again"):
+        return
+    doc, now = names(base)
+    check(doc.get("store") == "card" and doc["max_playsets"] == 32 and sorted(now) == sorted(card_names),
+          "playsets: with the card, the card's list is as it was (%s)" % doc.get("store"))
+
+
 def main():
     base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local").rstrip("/")
     d = harness.status(base)
@@ -190,11 +297,12 @@ def main():
     if not d["card"]["mounted"]:
         return skipped("no card mounted to begin with: these tests eject one virtually and give it back")
     only = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
-    name = d["playback"]["playset"]["name"]
+    global CARD_CHOICE
+    name = CARD_CHOICE = d["playback"]["playset"]["name"]
     print("device: firmware %s, playset %s" % (d["firmware"]["version"], name))
     import api_smoke
     try:
-        for label, fn in [("window", test_window), ("restore", test_restore)]:
+        for label, fn in [("window", test_window), ("restore", test_restore), ("playsets", test_playsets)]:
             if only and label not in only:
                 continue
             print("--- %s" % label)

@@ -1389,6 +1389,41 @@ them. Newest entries are at the bottom of [Log](#log).
 - The p64b stays on the public image from here on (decision D40); it restarted seven
   times that day for the probes, an NVS reading over USB and the flash.
 
+### 2026-11-12 (cardless, first part, p128)
+
+- The memory window (`p64/content/memory_window.hpp`, pure, host-tested): one store in
+  PSRAM owned by the content layer, 48 files and 6 MB, filled once, then one new file
+  per swap and per minute in place of the least recently played; the eight played last
+  are never evicted; an artwork plays from the window's own bytes (`Artwork` holds a
+  shared pointer, nothing is copied); an eviction clears the Makapix entry's flag in the
+  same step. Cardless, a listing is walked 100 entries deep, and 100 deeper each time
+  a lap has shown every entry (`policy::end_window_lap`). F-11 is fixed: on the p64b,
+  ejected, 48 files in 46 s and then 2 downloads in 150 s of 30 swaps, where 85 in 73 s
+  were counted the day before. First artwork 9 s into the boot.
+- The playset rule (`rules::restore_choice`, decisions D13 to D15): the active playset
+  is remembered per storage mode (state keys `playset` and `playset_nc`); nothing chosen
+  in a mode means Promoted, also with a card (it was Local); a choice that cannot play
+  stays the choice with its reason on the panel and nothing stands in (F-13, S-03); a
+  playset chosen while another plays takes the panel at once when its reason is final
+  (`rules::reason_is_final`).
+- One status screen (D17, D18): "No artwork", the reason, and on a network the hostname
+  and the address; the "connected" screen and its rules are gone. Channels that wait
+  for NTP say "waiting for the time" (F-26); "no card" reads "needs a card".
+- Device playsets (`p64/content/device_playsets.hpp`, pure, host-tested; D9, D11, D12):
+  8 slots in the NVS state store (`dps0` to `dps7`), 16 channels at most, none local,
+  16 KB in all; `content::store` follows the storage mode, so every playset route and
+  the show work unchanged; the playsets document says which list it is and its limits.
+- The status document gains `storage.mode` and the window's figures.
+- Tests: 252 host cases (the window, the laps, the restore matrix, the status screen
+  with an address, device playsets against a fake NVS). `cardless_smoke.py` (window,
+  restore, playsets) on the test build with the card ejected virtually. Hooks:
+  `forget_cardless_playset`.
+- Not done of cardless: the card-failed latch (D19), formatting an unformatted card
+  from the pages (D20), uploads as play-this (D21), the pages' cardless side and the
+  single `409 NO_CARD` (D24), the PSRAM worst case (NC-D3), the soak (NC-D14). The
+  show re-prepares its next artwork on every provider change (ten loads for one swap
+  during the first fill): harmless, to be looked at.
+
 ### 2026-11-12 (the pages' side of the web hardening and the browser lane, p127)
 
 - The pages (decision D30, findings U-01, U-02, U-03, U-05). The shared script merges

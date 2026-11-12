@@ -1,5 +1,5 @@
 ---
-status: accepted (decided 2026-11-11; not implemented yet)
+status: accepted (decided 2026-11-11; implemented in part since 2026-11-12, see firmware/docs/testing-strategy/decisions.md)
 date: 2026-11-11
 ---
 

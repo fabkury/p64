@@ -2,6 +2,11 @@
 // channels/playsets/ folder, one per playset, written atomically (spec 5.2, 14). The
 // built-in playsets are never stored. Card I/O: core-0 tasks only.
 //
+// Cardless (ADR 0018) the same functions work on the device playsets instead: up to 8
+// playsets of up to 16 channels, none local, kept in NVS (device_playsets.hpp). The two
+// lists are separate; which one these functions see is the storage mode the device
+// booted in, and nothing moves between them.
+//
 // File naming (ADR 0017): a name that fits the legacy rule is stored as <name>.json,
 // exactly as before, and the stem stays its identity; any other name is stored as
 // <slug>~<hash>.json with the name inside (playset_name.hpp). Names are the same
@@ -21,6 +26,11 @@ struct Summary {
 };
 
 std::string playsets_dir();
+// The limits of the store in use: 32 playsets of 64 channels on the card, 8 of 16 on the
+// device.
+bool on_device();
+size_t max_playsets();
+size_t max_channels();
 // The user playsets on the card, sorted by canonical name (files that fail to parse or
 // are not where their name puts them are skipped and logged). False when the folder
 // cannot be read.

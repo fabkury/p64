@@ -75,7 +75,6 @@ esp_err_t put_handler(httpd_req_t *req) {
   p.name = name;  // the URL names the playset; the body's "name" is ignored
   p.builtin = false;
   if (!p.validate(error)) return reply_error(req, "400 Bad Request", "INVALID_PLAYSET", error);
-  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "playsets are stored on the card");
   if (!p64::content::store::save(p, error)) return reply_error(req, "409 Conflict", "SAVE_FAILED", error);
   system::publish(system::Event::PlaysetsChanged);
   notify();
@@ -111,7 +110,6 @@ esp_err_t rename_handler(httpd_req_t *req) {
   p64::content::Builtin b;
   if (p64::content::builtin_from_name(new_name, b)) return reply_error(req, "400 Bad Request", "INVALID_NAME", "that name is reserved for a built-in playset");
   if (p64::content::builtin_from_name(name, b)) return reply_error(req, "400 Bad Request", "INVALID_NAME", "built-in playsets cannot be renamed");
-  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "playsets are stored on the card");
   std::string error;
   if (!p64::content::store::exists(name)) return reply_error(req, "404 Not Found", "NOT_FOUND", "no such playset");
   if (!p64::content::store::rename(name, new_name, error)) return reply_error(req, "409 Conflict", "RENAME_FAILED", error);
