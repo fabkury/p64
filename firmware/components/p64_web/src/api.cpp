@@ -247,6 +247,8 @@ cJSON *build_status() {
   cJSON_AddNumberToObject(card, "total_bytes", static_cast<double>(c.total));
   cJSON_AddNumberToObject(card, "free_bytes", static_cast<double>(c.free));
   cJSON_AddStringToObject(card, "error", c.error.c_str());
+  cJSON_AddBoolToObject(card, "failed", c.failed);            // it stopped answering; until the restart
+  cJSON_AddBoolToObject(card, "unformatted", c.unformatted);  // no FAT file system: POST /api/v1/files/format takes it
 
   // The storage mode (ADR 0018) and the memory window's figures.
   cJSON *sto = cJSON_AddObjectToObject(d, "storage");
@@ -924,6 +926,8 @@ esp_err_t test_post(httpd_req_t *req) {
   }
   // "Nothing was ever chosen while cardless": a state no route leads back to.
   if (cJSON_IsTrue(cJSON_GetObjectItem(body, "forget_cardless_playset"))) system::state::erase("playset_nc");
+  // A card pulled out while the device runs: its reads and writes fail from now on.
+  if (cJSON_IsTrue(cJSON_GetObjectItem(body, "card_fail_io"))) storage::test_fail_io();
   const bool panic = cJSON_IsTrue(cJSON_GetObjectItem(body, "panic"));
   const bool reset = cJSON_IsTrue(cJSON_GetObjectItem(body, "reset"));
   cJSON_Delete(body);

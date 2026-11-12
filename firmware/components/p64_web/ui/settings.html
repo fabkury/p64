@@ -324,6 +324,10 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Makapix cache</span><span class="info-value" id="cache-size">-</span></div>
         <div class="info-row"><span class="info-label">Last sweep</span><span class="info-value" id="cache-sweep">-</span></div>
         <div id="cardless-note" style="display:none;margin-top:8px;font-size:0.85rem;color:var(--c-card-fg-muted)">The device is running without a microSD card. Artwork is kept in memory (<span id="cardless-window">-</span>) and downloaded again after a restart. Local channels, the file manager and formatting need a card; a card is read when the device starts, so insert it with the device unpowered.</div>
+        <div id="card-unformatted" style="display:none;margin-top:8px">
+            <div class="toggle-row"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatUnformatted()">Format this card&hellip;</button></div>
+            <div class="setting-hint">The card in the slot has no FAT32 file system. Formatting erases everything on it; the device then restarts and uses it.</div>
+        </div>
         <div id="card-only">
         <div class="toggle-row" style="margin-top:8px"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatCard()">Format the card&hellip;</button></div>
         <div class="setting-hint">Erases everything on the card (FAT32) and recreates the p64 folders. Cached Makapix artworks download again.</div>
@@ -587,6 +591,11 @@ function fmPlay(rel) { p64.post('/api/v1/action/play', { path: rel }).then(funct
 function fmRename(rel) { var name = rel.split('/').pop(); var n = prompt('New name', name); if (!n || n === name) return; var to = (fmPath ? fmPath + '/' : '') + n; p64.post('/api/v1/files/rename', { from: rel, to: to }).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
 function fmDelete(rel) { if (!confirm('Delete ' + rel + '?')) return; p64.del('/api/v1/files?path=' + encodeURIComponent(rel)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
 function fmMkdir() { var n = prompt('Folder name'); if (!n) return; p64.post('/api/v1/files/mkdir?path=' + encodeURIComponent((fmPath ? fmPath + '/' : '') + n)).then(fmList).catch(function (e) { p64.toast(e.message, true); }); }
+function formatUnformatted() {
+    if (!p64.confirmWord('Erase everything on the microSD card and format it? This cannot be undone. The device restarts afterwards.', 'FORMAT')) return;
+    p64.toast('Formatting... the device restarts when it is done');
+    p64.post('/api/v1/files/format', { confirm: 'FORMAT' }).then(function () { p64.toast('Card formatted; the device is restarting'); }).catch(function (e) { p64.toast(e.message, true); });
+}
 function formatCard() {
     if (!p64.confirmWord('Erase everything on the microSD card and format it? This cannot be undone.', 'FORMAT')) return;
     p64.toast('Formatting...');
@@ -631,6 +640,8 @@ p64.onStatus(function (d) {
     var sto = d.storage || {}, win = sto.window || {};
     document.getElementById('card-only').style.display = c.mounted ? '' : 'none';
     document.getElementById('files-section').style.display = c.mounted ? '' : 'none';
+    document.getElementById('card-unformatted').style.display = !c.mounted && c.unformatted ? '' : 'none';
+    if (c.failed) document.getElementById('card-status').textContent = 'the card stopped answering; restart the device to use it again';
     document.getElementById('cardless-note').style.display = c.mounted ? 'none' : '';
     if (!c.mounted) {
         document.getElementById('cardless-window').textContent = (win.files || 0) + ' of ' + (win.capacity_files || 0) + ' artworks, ' +

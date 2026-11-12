@@ -92,7 +92,8 @@ class Fake:
         """The device booted without a card (ADR 0018): what the documents then say."""
         with self.lock:
             self.cardless = on
-            self.status["card"].update({"mounted": not on, "error": error if on else ""})
+            self.status["card"].update({"mounted": not on, "error": error if on else "", "failed": on and "stopped" in error,
+                                        "unformatted": on and "FAT" in error})
             self.status.setdefault("storage", {})["mode"] = "cardless" if on else "card"
             self.status["storage"]["window"] = {"files": 31 if on else 0, "bytes": 900000 if on else 0, "capacity_files": 48,
                                                 "capacity_bytes": 6291456, "filled": False, "stored": 31 if on else 0, "evictions": 0,

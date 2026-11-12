@@ -1,7 +1,9 @@
 // p64 -- the microSD card: SDMMC 1-bit (CLK 1, CMD 44, D0 17 on the Waveshare board),
-// FAT at /sdcard, the p64 layout under a root folder (spec section 14). No card-detect
-// line: a swapped card is picked up on the next mount attempt. Every call here does
-// card I/O and must run on a core-0 task, never on the render or player task.
+// FAT at /sdcard, the p64 layout under a root folder (spec section 14). The card is
+// mounted once, at boot (ADR 0018): there is no card-detect line and no remount; a card
+// that stops answering trips a latch (fail_latch.hpp) and counts as not mounted until
+// the restart. Every call here does card I/O and must run on a core-0 task, never on the
+// render or player task.
 #pragma once
 
 #include <cstddef>
@@ -9,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "p64/storage/fail_latch.hpp"
 #include "sdkconfig.h"
 
 namespace p64::storage {
@@ -25,7 +28,9 @@ struct CardInfo {
   std::string card;    // product name from the CID
   uint64_t total = 0;  // FAT capacity in bytes
   uint64_t free = 0;   // free bytes
-  std::string error;   // last mount failure, empty when mounted
+  std::string error;   // why no card is in use ("" when mounted): the mount failure, or the failure since
+  bool failed = false;       // it was mounted and stopped answering (the latch; until the restart)
+  bool unformatted = false;  // a card answers but has no FAT file system: format_unformatted() can take it
 };
 
 // Mount point of the card and the p64 root under it.
@@ -42,17 +47,25 @@ std::string state_dir();             // root()/state
 // card counts as not mounted for `reason` (one of the mount errors, e.g. "no card
 // answers"), and mount() refuses. Call it before the first mount().
 void test_eject(const std::string &reason);
+// From now on every read and write of a file fails with an I/O error, as a card pulled
+// out would make them: the latch then trips by its own rule.
+void test_fail_io();
 #endif
 
 // Mounts the card. Never formats it (spec: formatting is an explicit user action).
 // Creates the p64 folders when the card is writable. Returns whether the card is usable.
 bool mount();
-// Unmounts and mounts again (after the user swapped the card).
-bool remount();
 // Formats the mounted card (FAT32, spec 14: an explicit user action with confirmation)
 // and recreates the p64 folders. Everything on the card is lost.
 bool format(std::string &error);
+// A card that answered at boot without a FAT file system (info().unformatted): formats
+// it (FAT32) and mounts it. The caller restarts the device afterwards (decision D20), so
+// that everything starts in card mode. Never formats a card that has a file system.
+bool format_unformatted(std::string &error);
+// Mounted and answering. False from the moment the latch trips.
 bool mounted();
+// Called once, from the task that saw the last error, when the latch trips.
+void on_failed(void (*callback)());
 CardInfo info();
 
 // True for a plain file or folder name (no path parts, no control characters).

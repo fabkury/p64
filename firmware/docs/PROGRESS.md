@@ -1443,8 +1443,27 @@ them. Newest entries are at the bottom of [Log](#log).
   118 swaps an hour (the ceiling of D16 is what paces it), 35 different artworks seen,
   no refusal, no miss, no late flip, internal heap never under 54.9 KB, core 0 at 10.9 %.
   The 12-hour run is still to do.
-- Not done of cardless: the card-failed latch (D19), formatting an unformatted card
-  from the pages (D20), the PSRAM worst case (NC-D3), the soak (NC-D14). The
+- The pages' RAM (F-32), measured per cause with raw sockets: an idle connection costs
+  about 0.6 KB; what cost was data waiting to be sent. With a 64 KB TCP send buffer a
+  socket queued a whole page, and six page loads in parallel took the internal heap to
+  23 KB free with a 9 KB largest block; with 11.5 KB (`sdkconfig.defaults`) the same six
+  leave 54 KB and 20 KB, and a page still loads in 0.15 to 0.5 s. Four WebSocket clients:
+  the largest block stays at 32.8 KB (14.8 KB before). Halving the Wi-Fi driver's
+  transmit buffers changed nothing and was not kept. With four real pages open and TLS
+  running the sampled low is still 34 KB free and a 12 KB largest block: TLS itself
+  takes the rest. Beyond four pages the one connected longest loses its WebSocket (D27).
+- The card-failed latch (`p64/storage/fail_latch.hpp`, pure; D19): a write error other
+  than a full card, or three read errors in a row, and `storage::mounted()` is false
+  until the restart; `remount()` is gone. Makapix settles its "cached" flags against the
+  memory window and fills it from its listings; the status says `card.failed`. On the
+  p64b with card I/O made to fail (hook `card_fail_io`): tripped by the first write,
+  Promoted on the panel again from memory, no reboot, 0 load failures, the card back
+  after a restart. The three-reads path is host-tested only.
+- Formatting a card without a file system (D20): `storage::format_unformatted()` mounts
+  with "format if none", the route answers `restarting: true` and the device restarts;
+  Settings offers it only then. Tested with the virtual eject standing in (the card in
+  the slot kept its 23 files); a real unformatted card is hands-on check NC-P2.
+- Not done of cardless: the PSRAM worst case (NC-D3), the 12-hour soak (NC-D14). The
   show re-prepares its next artwork on every provider change (ten loads for one swap
   during the first fill): harmless, to be looked at.
 

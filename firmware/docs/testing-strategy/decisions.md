@@ -15,7 +15,8 @@ implemented yet; the specification changes with the code, as its own rule says.
 window (D7, D16, D23, D24 in part), the playset rule (D13 to D15), the one status screen
 (D17, D18), "waiting for the time" (D22) and device playsets (D9, D11, D12). Uploads as play-this
 (D21), the pages' cardless side and the one `409 NO_CARD` (D24) followed the same day.
-Open: the card-failed latch (D19), formatting from the pages (D20).)
+The card-failed latch (D19), formatting from the pages (D20) and the four-page limit (D27)
+followed on the same day: every cardless decision is implemented.)
 
 ## The frame
 

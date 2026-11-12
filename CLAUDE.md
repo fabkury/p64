@@ -213,8 +213,12 @@ address (the "connected" screen is gone), "waiting for the time", and device pla
 with the card ejected virtually (hooks lane). Every route that needs the card answers
 `409 NO_CARD` (`web::reply_no_card`); an upload without a card plays once from the window
 (`kept: false`); the pages hide what needs the card. A provider's worker walks a cardless
-listing by `p64/content/window_walk.hpp`. Open: the card-failed latch, formatting from
-the pages. When a finding is fixed, mark it in
+listing by `p64/content/window_walk.hpp`. The card is mounted once, at boot; a card that
+stops answering trips `storage::FailLatch` (a write error that is not a full card, or
+three read errors running) and `storage::mounted()` is false until the restart; a card
+without a file system is formatted by `storage::format_unformatted()`, then the device
+restarts. The TCP send buffer is 11.5 KB on purpose (F-32: queued data costs internal
+RAM); four WebSocket clients at most. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

@@ -19,6 +19,7 @@ namespace {
 
 constexpr const char *TAG = "ws";
 constexpr int kPeriodMs = 2000;
+constexpr size_t kMaxClients = 4;
 
 std::mutex g_mutex;
 std::vector<int> g_clients;  // socket descriptors of open WebSocket connections
@@ -34,6 +35,15 @@ esp_err_t ws_handler(httpd_req_t *req) {
     g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
     g_clients.push_back(fd);
     ESP_LOGI(TAG, "client %d connected (%u total)", fd, static_cast<unsigned>(g_clients.size()));
+    // Four pages are served (decision D27, ADR 0019). Beyond that the page connected the
+    // longest loses its push: its socket is closed, its script falls back to polling and
+    // asks for the push again after a back-off.
+    while (g_clients.size() > kMaxClients) {
+      const int oldest = g_clients.front();
+      g_clients.erase(g_clients.begin());
+      ESP_LOGI(TAG, "client %d closed: more than %u pages open", oldest, static_cast<unsigned>(kMaxClients));
+      httpd_sess_trigger_close(req->handle, oldest);
+    }
     g_wake = true;
     return ESP_OK;
   }

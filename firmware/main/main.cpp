@@ -299,6 +299,12 @@ extern "C" void app_main() {
     if (p64::system::state::get(p64::system::test::kEjectKey, value) && !value.empty()) p64::storage::test_eject(value);
   }
 #endif
+  // A card that stops answering later (the latch of storage/fail_latch.hpp): the device
+  // goes on as cardless and everyone who keeps a view of the card re-reads it.
+  p64::storage::on_failed([] {
+    p64::system::publish(p64::system::Event::CardFailed);
+    p64::system::publish(p64::system::Event::ProviderChannelChanged);
+  });
   if (p64::storage::mount()) {
     p64::system::publish(p64::system::Event::CardMounted);
   } else {

@@ -486,12 +486,15 @@ p64.onStatus(function (d) {
     var needsPairing = p.no_artwork === 'needs pairing' || (channels.some(function (c) { return c.status === 'needs pairing'; }));
     var cardless = d.card && !d.card.mounted;
     showBanner('banner-card', cardless);
-    if (cardless !== wasCardless) {
-        wasCardless = cardless;
-        var notFat = /FAT/.test((d.card || {}).error || '');
-        document.querySelector('#banner-card h4').innerHTML = notFat ? '&#9888; Card not FAT32' : '&#9888; No card';
-        document.getElementById('banner-card-text').textContent = (notFat
-            ? 'The microSD card has no FAT32 file system, so the device runs without it. '
+    var cardState = cardless ? ((d.card || {}).failed ? 'failed' : 'none') : 'card';
+    if (cardState !== wasCardless) {
+        wasCardless = cardState;
+        var notFat = !!(d.card || {}).unformatted || /FAT/.test((d.card || {}).error || ''), failed = !!(d.card || {}).failed;
+        document.querySelector('#banner-card h4').innerHTML = failed ? '&#9888; The card stopped answering' : notFat ? '&#9888; Card not FAT32' : '&#9888; No card';
+        document.getElementById('banner-card-text').textContent = (failed
+            ? 'The microSD card stopped answering, so the device goes on without it. Restart the device to use the card again. '
+            : notFat
+            ? 'The microSD card has no FAT32 file system, so the device runs without it. It can be formatted in Settings, Storage. '
             : 'No microSD card is mounted. ') +
             'Artwork is kept in memory and downloaded again after a restart; local channels and the file manager need a card. ' +
             'A card is read when the device starts: insert it with the device unpowered.';

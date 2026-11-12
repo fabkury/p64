@@ -1,5 +1,6 @@
 // Host unit tests: the night rule and the settings document.
 #include "common.hpp"
+#include "p64/storage/fail_latch.hpp"
 #include "p64/system/text.hpp"
 
 namespace {
@@ -355,6 +356,30 @@ TEST_CASE("settings: the API refuses a wrong type and names the key; a stored do
   CHECK_EQ(s.brightness, 255);
   // What the firmware writes passes its own strict reading.
   CHECK(s.apply_json(s.to_json().c_str(), error, &code, true));
+}
+
+TEST_CASE("storage: when a mounted card counts as failed (ADR 0018, D19)") {
+  using p64::storage::FailLatch;
+  FailLatch l;
+  // Reads: three I/O errors in a row; a read that works clears the count.
+  CHECK(!l.read_error());
+  CHECK(!l.read_error());
+  CHECK(!l.read_ok());
+  CHECK(!l.read_error());
+  CHECK(!l.read_error());
+  CHECK(!l.tripped());
+  CHECK(l.read_error());  // the third in a row trips it, and says so once
+  CHECK(l.tripped());
+  CHECK(!l.read_error());
+  CHECK(!l.read_ok());
+  CHECK(l.tripped());  // until the restart
+  // Writes: a full card is not a failed card; any other write error is, at once.
+  FailLatch w;
+  CHECK(!w.write_error(true));
+  CHECK(!w.tripped());
+  CHECK(w.write_error(false));
+  CHECK(w.tripped());
+  CHECK(!w.write_error(false));
 }
 
 }  // namespace

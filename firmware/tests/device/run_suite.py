@@ -161,6 +161,15 @@ def main():
         script = name.split(":")[0] + ".py"
         try:
             facts = harness.facts(harness.status(base))
+            # A test that just rebooted the device may have left it seconds from its NTP
+            # answer or its network: a requirement that only needs a moment gets one
+            # (2026-11-12: the cardless test was skipped "needs the time" right after the
+            # hooks test's last reboot).
+            waited = 0
+            while waited < 45 and ((requires.get("ntp") and not facts["ntp"]) or (requires.get("internet") and not facts["online"])):
+                time.sleep(3)
+                waited += 3
+                facts = harness.facts(harness.status(base))
         except Exception as e:  # noqa: BLE001
             results.append({"name": name, "outcome": "failed", "seconds": 0.0, "problems": ["the device does not answer before the test (%r)" % e], "tail": "", "numbers": {}})
             print("FAIL %-22s the device does not answer" % name)

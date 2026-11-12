@@ -377,6 +377,21 @@ def many_pages(base):
             worst = max(worst, timed_status(base))
             try_request(base, "GET", "/api/v1/frame", timeout=10)
         check(sum(1 for n in got if n > 0) >= 4, "pages: at least four of them receive the status push (%s bytes)" % got)
+        # Beyond four the page connected the longest loses its push (D27): the first
+        # socket is closed by the device, the other four keep receiving.
+        s0 = socks[0][0]
+        s0.settimeout(2)
+        closed = False
+        try:
+            for _ in range(20):
+                if s0.recv(65536) == b"":
+                    closed = True
+                    break
+        except socket.timeout:
+            pass
+        except OSError:
+            closed = True
+        check(closed, "pages: the fifth page costs the oldest one its WebSocket (closed by the device)")
         check(worst <= 3.0, "pages: with five pages open a request is answered in %.1f s at the most" % worst)
     finally:
         for s, _ in socks:

@@ -148,6 +148,7 @@ INCLUDES = [
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
     os.path.join(COMPONENTS, "p64_system", "include"),
+    os.path.join(COMPONENTS, "p64_storage", "include"),  # fail_latch.hpp (only that one)
     os.path.join(COMPONENTS, "p64_inputs", "include"),
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),
@@ -180,6 +181,7 @@ HEADER_DIRS = [
     os.path.join(COMPONENTS, "p64_widgets", "src"),
     os.path.join(COMPONENTS, "p64_stream", "src"),
     os.path.join(COMPONENTS, "p64_system", "include"),
+    os.path.join(COMPONENTS, "p64_storage", "include"),  # fail_latch.hpp (only that one)
     os.path.join(COMPONENTS, "p64_inputs", "include"),
     os.path.join(COMPONENTS, "p64_inputs", "src"),
     os.path.join(COMPONENTS, "p64_ota", "src"),

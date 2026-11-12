@@ -58,7 +58,11 @@ CONFIG_MBEDTLS_HARDWARE_SHA=y
 # --- Network throughput (measured in the hardware tests): 64 KB TCP window, lwIP in PSRAM,
 # TLS buffers from the default allocator, released between records ---
 CONFIG_LWIP_TCP_WND_DEFAULT=65535
-CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65535
+# The send buffer is small on purpose (2026-11-12, finding F-32): the device sends little
+# (pages, the status), and every segment queued for sending costs internal RAM for its
+# bookkeeping. With 64 KB a socket queued a whole page: six page loads in parallel took
+# the internal heap from 60 KB to 23 KB free and its largest block to 9 KB.
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=11520
 CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
 # A 128x128 DDP frame is 35 datagrams in a burst; the default mailbox of 6 drops the rest.
 CONFIG_LWIP_UDP_RECVMBOX_SIZE=48

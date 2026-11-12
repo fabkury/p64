@@ -401,7 +401,7 @@ never enter history and the clock overlay is not drawn over them.
 | `/api/v1/files?path=<rel>` | DELETE | delete a file or empty folder (the p64 folders are protected) |
 | `/api/v1/files/mkdir?path=<rel>` | POST | create a folder |
 | `/api/v1/files/rename` | POST | `{"from":..., "to":...}` |
-| `/api/v1/files/format` | POST | `{"confirm":"FORMAT"}` required: formats the card (FAT32) and recreates the p64 folders; the show rescans |
+| `/api/v1/files/format` | POST | `{"confirm":"FORMAT"}` required: formats the card (FAT32) and recreates the p64 folders; the show rescans. A card that answered at boot without a FAT file system (`status.card.unformatted`) is formatted the same way; the answer then carries `restarting: true` and the device restarts to use it. `status.card.failed` says the card stopped answering since the boot (the device then runs cardless until the restart) |
 
 Changes under `animations/` make the show rescan its local channels (2 s debounce).
 

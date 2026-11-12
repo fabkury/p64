@@ -4,7 +4,7 @@ the card is ejected virtually (hook `card_eject`), the device reboots without it
 the tests watch what it does. The card stays in its slot and is back after the last
 reboot. Needs the test build, a network and a card to give back.
 
-    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore,playsets,routes]
+    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore,playsets,routes,latch,format]
 
 window  NC-D1 and a short NC-D2: on Promoted the first artwork is up within the budget,
         the memory window fills once and never beyond its capacity, then takes at most
@@ -25,6 +25,16 @@ playsets NC-D5, device playsets (D9 to D12): cardless, the list is the device's 
 routes  NC-D4 and NC-D6: cardless, every route that needs the card answers 409 NO_CARD
         (five different codes before); an upload is played once from memory and not
         kept (D21); a file larger than 5 MB is still refused.
+latch   NC-D12 in part (D19): with the card mounted and playing, card I/O is made to
+        fail (hook `card_fail_io`). A write error trips the latch at once: the status
+        says the card stopped answering, the device goes on as cardless from the memory
+        window with no reboot and few load failures, the card routes answer 409, and a
+        restart brings the card and its playset back.
+format  D20: a boot that finds "no FAT file system" says so and offers the format; the
+        format route then formats (here the virtual eject stands in: the card in the
+        slot has its file system and is not touched), answers "restarting", and the
+        device comes back with the card mounted. A real unformatted card is the
+        hands-on check NC-P2.
 
 Exit code 1 on any failure, 2 when the firmware has no test hooks.
 """
@@ -228,6 +238,90 @@ def test_routes(base):
     check(st == 415, "routes: a file that is not an artwork is refused as with a card (%s)" % st)
 
 
+def test_latch(base):
+    d = harness.status(base)
+    if not check(d["card"]["mounted"] and not d["card"].get("failed"), "latch: the card is mounted to begin with"):
+        return
+    name = d["playback"]["playset"]["name"]
+    request(base, "POST", "/api/v1/action/play_playset", {"name": "Promoted"})
+    d = wait_status(base, lambda s: playing(s) and s["playback"]["playset"]["name"] == "Promoted", 30)
+    check(playing(d) and not d["playback"]["artwork"]["path"].startswith("mem:"), "latch: Promoted plays from the card's cache")
+    before = harness.status(base)
+    try:
+        hook(base, card_fail_io=True)
+        # A write: the latch trips at once.
+        import os
+        corpus = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "host", "corpus", "gifs")
+        gif = sorted(f for f in os.listdir(corpus) if f.endswith(".gif"))[0]
+        with open(os.path.join(corpus, gif), "rb") as f:
+            data = f.read()
+        st, j = request(base, "POST", "/api/v1/files?path=animations/p64-latch-test.gif", data, content_type="application/octet-stream")
+        check(st == 500, "latch: the write that fails is answered as a failure (%s)" % st)
+        d = wait_status(base, lambda s: s["card"].get("failed"), 5)
+        check(d["card"].get("failed") and not d["card"]["mounted"] and "stopped answering" in d["card"]["error"],
+              "latch: the status says the card stopped answering (%r)" % d["card"]["error"])
+        check(d["storage"]["mode"] == "cardless", "latch: the device goes on as cardless")
+        st, j = request(base, "GET", "/api/v1/files?path=animations")
+        check(st == 409 and j.get("code") == "NO_CARD", "latch: the card routes answer 409 NO_CARD (%s)" % st)
+        # The show goes on from the memory window: Promoted fills it from its listing.
+        d = wait_status(base, lambda s: playing(s) and s["playback"]["artwork"]["path"].startswith("mem:"), 90)
+        check(playing(d) and d["playback"]["artwork"]["path"].startswith("mem:"), "latch: the show goes on from memory (%s)" % (
+            (d["playback"].get("artwork") or {}).get("path")))
+        time.sleep(20)
+        d = harness.status(base)
+        check(d["uptime_s"] > before["uptime_s"], "latch: no reboot")
+        check(d["playback"]["load_failures"] - before["playback"]["load_failures"] <= 4, "latch: few load failures on the way (%d)" % (
+            d["playback"]["load_failures"] - before["playback"]["load_failures"]))
+        check(window(d)["files"] > 0 and window(d)["misses"] == 0, "latch: the memory window fills (%d files)" % window(d)["files"])
+        # Local, chosen now, says what it needs.
+        request(base, "POST", "/api/v1/action/play_playset", {"name": "Local"})
+        d = wait_status(base, lambda s: s["playback"]["no_artwork"] != "", 15)
+        check(d["playback"]["no_artwork"] == "needs a card", "latch: a local channel now says \"needs a card\" (%r)" % d["playback"]["no_artwork"])
+    finally:
+        d = reboot(base)   # the hook lives in RAM: a restart is the cure, as for a real card
+        check(d is not None and d["card"]["mounted"] and not d["card"].get("failed"), "latch: after a restart the card is used again")
+        request(base, "POST", "/api/v1/action/play_playset", {"name": name})
+        d = wait_status(base, lambda s: playing(s) and s["playback"]["playset"]["name"] == name, 40)
+        check(d["playback"]["playset"]["name"] == name, "latch: and the card's playset plays (%s)" % d["playback"]["playset"]["name"])
+        hook(base, forget_cardless_playset=True)
+
+
+def test_format(base):
+    d = boot_cardless(base, "no FAT file system on the card")
+    if d is None:
+        return
+    check(d["card"].get("unformatted") and not d["card"]["mounted"], "format: the status says the card has no file system (%r)" % d["card"]["error"])
+    st, j = request(base, "POST", "/api/v1/files/format", {"confirm": "nope"})
+    check(st == 400, "format: it wants its confirmation (%s)" % st)
+    hook(base, card_eject="")   # the next boot mounts; this one still believes the card is unformatted
+    up = d["uptime_s"]
+    st, j = request(base, "POST", "/api/v1/files/format", {"confirm": "FORMAT"}, timeout=90)
+    check(st == 200 and j["data"].get("formatted") and j["data"].get("restarting"), "format: the card is formatted and the device says it restarts (%s %s)" % (
+        st, j.get("data") if isinstance(j, dict) else j))
+    time.sleep(4)
+    deadline = time.time() + 60
+    d = None
+    while time.time() < deadline:
+        try:
+            d = harness.status(base, timeout=5)
+            if d["uptime_s"] < 40:
+                break
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(1)
+    check(d is not None and d["uptime_s"] < 40 and d["card"]["mounted"] and not d["card"].get("unformatted"),
+          "format: it restarted by itself and the card is mounted (uptime %s s)" % (d or {}).get("uptime_s"))
+    # The card in the slot had its file system all along: nothing on it was erased.
+    st, j = request(base, "GET", "/api/v1/files?path=animations")
+    check(st == 200 and len(j["data"]["entries"]) > 0, "format: the real card, which had a file system, was not touched (%d entries)" % (
+        len(j["data"]["entries"]) if st == 200 else -1))
+    # Without a card, or with one that works, there is nothing to format this way.
+    d = boot_cardless(base, "no card answers")
+    if d is not None:
+        st, j = request(base, "POST", "/api/v1/files/format", {"confirm": "FORMAT"})
+        check(st == 409 and j.get("code") == "NO_CARD", "format: with no card answering the route says so (%s)" % st)
+
+
 MIX = "p64 test mix"   # a name the legacy rule could not store: a space
 
 
@@ -341,10 +435,14 @@ def main():
     print("device: firmware %s, playset %s" % (d["firmware"]["version"], name))
     import api_smoke
     try:
-        for label, fn in [("window", test_window), ("restore", test_restore), ("playsets", test_playsets), ("routes", test_routes)]:
+        for label, fn in [("window", test_window), ("restore", test_restore), ("playsets", test_playsets), ("routes", test_routes),
+                          ("latch", test_latch), ("format", test_format)]:
             if only and label not in only:
                 continue
             print("--- %s" % label)
+            if label == "latch" and not harness.status(base)["card"]["mounted"]:
+                hook(base, card_eject="")
+                reboot(base)
             fn(base)
     finally:
         try:

@@ -5,6 +5,10 @@
 #include <string>
 #include <vector>
 
+#include "p64/system/settings.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
 #include "esp_log.h"
 #include "p64/content/provider.hpp"
 #include "p64/content/memory_window.hpp"
@@ -189,9 +193,12 @@ esp_err_t rename_handler(httpd_req_t *req) {
 
 }  // namespace
 
-// Formats the card: {"confirm":"FORMAT"} required. The show rescans afterwards.
+// Formats the card: {"confirm":"FORMAT"} required. The show rescans afterwards. A card
+// that answered at boot without a FAT file system is formatted too (decision D20); the
+// device then restarts, so that everything starts in card mode.
 esp_err_t format_handler(httpd_req_t *req) {
-  if (!storage::mounted()) return reply_no_card(req);
+  const bool unformatted = storage::info().unformatted;
+  if (!storage::mounted() && !unformatted) return reply_no_card(req);
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
   const cJSON *c = cJSON_GetObjectItemCaseSensitive(body, "confirm");
@@ -199,6 +206,18 @@ esp_err_t format_handler(httpd_req_t *req) {
   cJSON_Delete(body);
   if (!confirmed) return reply_error(req, "400 Bad Request", "NOT_CONFIRMED", "send {\"confirm\":\"FORMAT\"}");
   std::string error;
+  if (unformatted) {
+    if (!storage::format_unformatted(error)) return reply_error(req, "500 Internal Server Error", "FORMAT_FAILED", error);
+    cJSON *d = cJSON_CreateObject();
+    cJSON_AddBoolToObject(d, "formatted", true);
+    cJSON_AddBoolToObject(d, "restarting", true);
+    const esp_err_t r = reply_ok(req, d);
+    ESP_LOGW(TAG, "the card was formatted; restarting to use it");
+    system::settings_flush();
+    vTaskDelay(pdMS_TO_TICKS(800));  // the answer leaves first
+    esp_restart();
+    return r;
+  }
   if (!storage::format(error)) return reply_error(req, "500 Internal Server Error", "FORMAT_FAILED", error);
   system::publish(system::Event::CardMounted);
   system::publish(system::Event::LocalFilesChanged);

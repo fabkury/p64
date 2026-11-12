@@ -31,6 +31,43 @@ std::mutex g_mutex;     // mount state
 std::mutex g_io_mutex;  // the shared bounce buffer
 sdmmc_card_t *g_card = nullptr;
 std::string g_error;
+bool g_unformatted = false;  // the mount found a card without a FAT file system
+// The card-failed latch (fail_latch.hpp): under g_mutex.
+FailLatch g_latch;
+void (*g_on_failed)() = nullptr;
+constexpr const char *kFailedError = "the card stopped answering";
+
+// An error of the card itself, as opposed to a file that is not there or a full card.
+bool io_errno(int e) { return e != ENOENT && e != ENOSPC && e != EEXIST && e != ENOTEMPTY && e != 0; }
+
+void trip() {  // g_mutex not held
+  void (*callback)() = nullptr;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_error = kFailedError;
+    callback = g_on_failed;
+  }
+  ESP_LOGE(TAG, "the card stopped answering: the device goes on without it until the restart");
+  if (callback) callback();
+}
+
+void note_read(bool ok) {
+  bool tripped;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    tripped = ok ? g_latch.read_ok() : g_latch.read_error();
+  }
+  if (tripped) trip();
+}
+
+void note_write_error(bool card_full) {
+  bool tripped;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    tripped = g_latch.write_error(card_full);
+  }
+  if (tripped) trip();
+}
 
 void ensure_dir(const std::string &path) {
   struct stat st = {};
@@ -40,8 +77,9 @@ void ensure_dir(const std::string &path) {
   }
 }
 
-// Mounts under g_mutex.
-bool do_mount() {
+// Mounts under g_mutex. `format_if_none` formats a card that has no FAT file system
+// (format_unformatted(), an explicit user action); otherwise a card is never formatted.
+bool do_mount(bool format_if_none = false) {
   sdmmc_host_t host = SDMMC_HOST_DEFAULT();
   host.max_freq_khz = CONFIG_P64_SD_FREQ_KHZ;
   sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
@@ -55,13 +93,14 @@ bool do_mount() {
   slot.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
   esp_vfs_fat_sdmmc_mount_config_t cfg = {};
-  cfg.format_if_mount_failed = false;  // never (docs/adr/0006)
+  cfg.format_if_mount_failed = format_if_none;  // never on its own (docs/adr/0006)
   cfg.max_files = 8;
   cfg.allocation_unit_size = 16 * 1024;
 
   const esp_err_t err = esp_vfs_fat_sdmmc_mount(kMountPoint, &host, &slot, &cfg, &g_card);
   if (err != ESP_OK) {
     g_card = nullptr;
+    g_unformatted = err == ESP_FAIL;
     if (err == ESP_FAIL) {
       g_error = "no FAT file system on the card";
     } else if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_NOT_FOUND) {
@@ -73,6 +112,7 @@ bool do_mount() {
     return false;
   }
   g_error.clear();
+  g_unformatted = false;
   uint64_t total = 0, free_bytes = 0;
   esp_vfs_fat_info(kMountPoint, &total, &free_bytes);
   const uint64_t capacity = static_cast<uint64_t>(g_card->csd.capacity) * g_card->csd.sector_size;
@@ -91,9 +131,28 @@ bool do_mount() {
 
 }  // namespace
 
+bool format_unformatted(std::string &error) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_card || !g_unformatted) {
+    error = "there is no unformatted card to format";
+    return false;
+  }
+  ESP_LOGW(TAG, "formatting the card (it had no FAT file system)");
+#ifdef CONFIG_P64_TEST_HOOKS
+  // The virtual eject stands in for an unformatted card: the real one in the slot has its
+  // file system, so this mount formats nothing (it formats only when no file system is found).
+#endif
+  if (!do_mount(true)) {
+    error = "format failed: " + g_error;
+    return false;
+  }
+  ESP_LOGI(TAG, "card formatted and mounted; p64 folders created");
+  return true;
+}
+
 bool format(std::string &error) {
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (!g_card) {
+  if (!g_card || g_latch.tripped()) {
     error = "no card mounted";
     return false;
   }
@@ -125,10 +184,16 @@ std::string state_dir() { return root() + "/state"; }
 #ifdef CONFIG_P64_TEST_HOOKS
 namespace {
 bool g_test_ejected = false;
+bool g_test_io_fails = false;
+}
+void test_fail_io() {
+  g_test_io_fails = true;
+  ESP_LOGW(TAG, "test hook: card I/O fails from now on");
 }
 void test_eject(const std::string &reason) {
   std::lock_guard<std::mutex> lock(g_mutex);
   g_test_ejected = true;
+  g_unformatted = reason == "no FAT file system on the card";
   g_error = reason;
   ESP_LOGW(TAG, "test hook: the card is ejected for this boot (%s)", reason.c_str());
 }
@@ -143,29 +208,24 @@ bool mount() {
   return do_mount();
 }
 
-bool remount() {
-  std::lock_guard<std::mutex> lock(g_mutex);
-  if (g_card) {
-    esp_vfs_fat_sdcard_unmount(kMountPoint, g_card);
-    g_card = nullptr;
-  }
-#ifdef CONFIG_P64_TEST_HOOKS
-  if (g_test_ejected) return false;
-#endif
-  return do_mount();
-}
-
 bool mounted() {
   std::lock_guard<std::mutex> lock(g_mutex);
-  return g_card != nullptr;
+  return g_card != nullptr && !g_latch.tripped();
+}
+
+void on_failed(void (*callback)()) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_on_failed = callback;
 }
 
 CardInfo info() {
   std::lock_guard<std::mutex> lock(g_mutex);
   CardInfo i;
-  i.mounted = g_card != nullptr;
+  i.failed = g_latch.tripped();
+  i.mounted = g_card != nullptr && !i.failed;
+  i.unformatted = g_unformatted && !g_card;
   i.error = g_error;
-  if (g_card) {
+  if (i.mounted) {
     i.card = g_card->cid.name;
     esp_vfs_fat_info(kMountPoint, &i.total, &i.free);
   }
@@ -367,28 +427,46 @@ bool write_file(const std::string &path, const uint8_t *data, size_t len, std::s
     return false;
   }
   const std::string tmp = path + ".tmp";
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (g_test_io_fails) {
+    note_write_error(false);
+    error = "write failed (card full or faulty)";
+    return false;
+  }
+#endif
   const int fd = open(tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
   if (fd < 0) {
-    error = std::string("cannot create: ") + std::strerror(errno);
+    const int e = errno;
+    error = std::string("cannot create: ") + std::strerror(e);
+    if (e == EIO) note_write_error(false);
     return false;
   }
   size_t written = 0;
   bool ok = true;
+  int write_errno = 0;
   {
     std::lock_guard<std::mutex> lock(g_io_mutex);
     while (ok && written < len) {
       const size_t n = std::min(kIoChunk, len - written);
       std::memcpy(buf, data + written, n);
+      errno = 0;
       const ssize_t w = write(fd, buf, n);
-      if (w != static_cast<ssize_t>(n)) ok = false;
+      if (w != static_cast<ssize_t>(n)) {
+        ok = false;
+        write_errno = errno ? errno : ENOSPC;  // a short write with no error is a full card
+      }
       written += n;
     }
   }
-  if (ok && fsync(fd) != 0) ok = false;
+  if (ok && fsync(fd) != 0) {
+    ok = false;
+    write_errno = errno;
+  }
   close(fd);
   if (!ok) {
     unlink(tmp.c_str());
     error = "write failed (card full or faulty)";
+    note_write_error(!io_errno(write_errno));
     return false;
   }
   unlink(path.c_str());  // FAT rename does not replace
@@ -406,8 +484,17 @@ bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_by
     error = "no card mounted";
     return false;
   }
+#ifdef CONFIG_P64_TEST_HOOKS
+  if (g_test_io_fails) {
+    note_read(false);
+    error = "cannot open: I/O error";
+    return false;
+  }
+#endif
   struct stat st = {};
+  errno = 0;
   if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+    if (errno == EIO) note_read(false);  // the card, not the file
     error = "no such file";
     return false;
   }
@@ -422,7 +509,9 @@ bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_by
   }
   const int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
-    error = std::string("cannot open: ") + std::strerror(errno);
+    const int e = errno;
+    error = std::string("cannot open: ") + std::strerror(e);
+    if (io_errno(e)) note_read(false);
     return false;
   }
   out.resize(static_cast<size_t>(st.st_size));
@@ -440,8 +529,10 @@ bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_by
   if (got != out.size()) {
     error = "short read from the card";
     out.clear();
+    note_read(false);
     return false;
   }
+  note_read(true);
   return true;
 }
 

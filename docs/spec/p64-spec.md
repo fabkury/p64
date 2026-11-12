@@ -841,8 +841,15 @@ p3a's client is the reference implementation. p64 uses:
   the card, so a device without a card still remembers which built-in it plays
   (ADR 0006).
 - Every write is atomic (temporary file, sync, rename); nothing is deleted because a read
-  failed (a dying card misreads healthy files); card failures latch a "card failed" state
-  that stops writes, keeps playing from memory, and is shown in the web UI.
+  failed (a dying card misreads healthy files). A card that stops answering latches a
+  "card failed" state (ADR 0018): a write that fails for any reason but a full card, or
+  three read errors in a row, and the device goes on as cardless until the restart; the
+  running playset's provider channels continue from the memory window, local channels say
+  "needs a card", and the web UI says the card stopped answering. The card is mounted
+  once, at boot, and never remounted: it is changed with the device unpowered.
+- A card that answers at boot without a FAT file system leaves the device cardless with
+  that reason shown; Settings, Storage offers to format it (the usual confirmation), and
+  the device restarts when the format is done.
 - Settings live in NVS as one JSON document, written double-buffered; Wi-Fi credentials
   and Makapix credentials in their own NVS namespaces; nothing else in flash except the
   firmware and its embedded web UI.

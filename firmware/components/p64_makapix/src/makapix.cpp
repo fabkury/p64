@@ -357,6 +357,24 @@ bool start(const Hooks &hooks) {
   esp_timer_create(&args, &g_view_timer);
   fetcher_start();
   system::subscribe(system::Event::WifiConnected, [](const system::Message &) { on_network_change(true); });
+  // The card stopped answering (ADR 0018, decision D19): the device goes on as cardless.
+  // "Cached" meant "on the card"; from here it means "in the memory window", so every
+  // flag is settled again and the channels fill the window from their listings.
+  system::subscribe(system::Event::CardFailed, [](const system::Message &) {
+    if (cache::has_card()) return;
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      for (auto &ch : g_channels) {
+        for (content::MakapixEntry &e : ch->entries) {
+          e.flags &= static_cast<uint8_t>(~(content::kMakapixCached | content::kMakapixSeen));
+          if (cache::artwork_present(e)) e.flags |= content::kMakapixCached | content::kMakapixSeen;
+        }
+        ch->dirty = false;
+        recount_cached(*ch);
+      }
+    }
+    publish_channel_changed();
+  });
   system::subscribe(system::Event::TimeSynced, [](const system::Message &) { on_network_change(true); });
   g_min_side = system::settings().makapix_min_side;
   g_max_side = system::settings().makapix_max_side;

@@ -281,6 +281,32 @@ def t_cardless(fake, base, context):
         check(q.page.evaluate("() => document.getElementById('channelMax').textContent") == "16", "cardless playsets: 16 channels at most")
         check(not q.errors, "cardless playsets: no script error%s" % ((" (" + q.errors[0][:120] + ")") if q.errors else ""))
         q.page.close()
+        # A card without a file system: the banner says so and Settings offers the format.
+        fake.set_cardless(True, "no FAT file system on the card")
+        p = Page(context, base + "/")
+        p.page.wait_for_timeout(1500)
+        text = p.page.inner_text("#banner-card")
+        check("not FAT32" in text and "formatted" in text, "unformatted home: the banner says the card is not FAT32 and where to format it")
+        p.page.close()
+        s = Page(context, base + "/settings")
+        s.page.wait_for_timeout(1500)
+        vis = lambda sel: s.page.evaluate("(q) => getComputedStyle(document.querySelector(q)).display !== 'none'", sel)
+        check(vis("#card-unformatted") and not vis("#card-only"), "unformatted settings: \"Format this card\" is offered, the file manager is not")
+        s.page.close()
+        # A card that stopped answering.
+        fake.set_cardless(True, "the card stopped answering")
+        p = Page(context, base + "/")
+        p.page.wait_for_timeout(1500)
+        text = p.page.inner_text("#banner-card")
+        check("stopped answering" in text and "Restart" in text, "failed home: the banner says the card stopped answering and to restart")
+        check(not p.errors, "failed home: no script error%s" % ((" (" + p.errors[0][:120] + ")") if p.errors else ""))
+        p.page.close()
+        s = Page(context, base + "/settings")
+        s.page.wait_for_timeout(1500)
+        check("stopped answering" in s.page.evaluate("() => document.getElementById('card-status').textContent"), "failed settings: the status says so")
+        check(not s.page.evaluate("(q) => getComputedStyle(document.querySelector(q)).display !== 'none'", "#card-unformatted"),
+              "failed settings: no format is offered for it")
+        s.page.close()
     finally:
         fake.set_cardless(False)
     # And with a card none of it shows.
