@@ -51,7 +51,7 @@ class MemoryWindow {
 
   // Stores a file (replacing one of the same key), evicting the least recently played
   // files that are not protected until it fits. False when it cannot be kept; the bytes
-  // are then dropped. Consumes the renewal a swap granted, when the window is filled.
+  // are then dropped. Play-this files are put without a claim.
   bool put(const std::string &key, std::vector<uint8_t> &&bytes);
   bool has(const std::string &key) const;
   // The bytes, for playing now: the file becomes the most recently played. Null when it
@@ -60,10 +60,16 @@ class MemoryWindow {
   void remove(const std::string &key);
   void clear();
 
-  // The pace (D16). The show reports every artwork swap; a provider asks before it
-  // downloads for a channel. During the first fill the answer is yes; afterwards once per
-  // swap and no sooner than kRenewEveryUs after the last renewal.
+  // The pace (D16). The show reports every artwork swap; a provider's worker claims a
+  // download before it fetches a file for a channel. During the first fill every claim is
+  // granted; afterwards one per swap, no sooner than kRenewEveryUs after the last, and to
+  // one claimant only: the workers of several providers share the one window, and each
+  // asking "may I?" on its own made three downloads of one swap (2026-11-12). A worker
+  // that claimed and then found nothing to download gives the claim back.
   void note_swap(int64_t now_us);
+  bool claim_download();
+  void unclaim_download();
+  // Whether a claim would be granted now (the status; a worker claims instead).
   bool admits_download(int64_t now_us) const;
 
   // Called with the key of every file that left without being asked to (eviction, or a
@@ -90,6 +96,7 @@ class MemoryWindow {
   uint64_t clock_ = 0;
   bool filled_ = false;
   bool swap_pending_ = false;
+  bool claimed_ = false;  // the pending renewal was claimed and not given back
   int64_t last_renewal_us_ = 0;
   bool renewed_once_ = false;
   mutable Stats stats_;

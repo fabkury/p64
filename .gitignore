@@ -3,6 +3,7 @@
 firmware/build/
 firmware/build_public/
 firmware/build_test/
+firmware/build_*/
 firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/sdkconfig.secrets

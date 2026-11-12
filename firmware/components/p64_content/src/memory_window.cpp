@@ -68,9 +68,6 @@ bool MemoryWindow::put(const std::string &key, std::vector<uint8_t> &&bytes) {
       }
     }
     if (!kept) ++stats_.refused;
-    if (filled_ && swap_pending_) {  // the swap's one download is spent, kept or not
-      swap_pending_ = false;
-    }
   }
   for (const std::string &k : evicted) {
     for (const auto &listener : listeners_) listener(k);
@@ -122,10 +119,26 @@ void MemoryWindow::note_swap(int64_t now_us) {
   if (renewed_once_ && now_us - last_renewal_us_ < kRenewEveryUs) return;
   if (!swap_pending_) {
     swap_pending_ = true;
+    claimed_ = false;
     renewed_once_ = true;
     last_renewal_us_ = now_us;
     ++stats_.renewals;
   }
+}
+
+bool MemoryWindow::claim_download() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!filled_) return true;
+  if (!swap_pending_) return false;
+  swap_pending_ = false;  // the swap's one download, whoever claimed it and however it ends
+  claimed_ = true;
+  return true;
+}
+
+void MemoryWindow::unclaim_download() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (filled_ && claimed_) swap_pending_ = true;
+  claimed_ = false;
 }
 
 bool MemoryWindow::admits_download(int64_t) const {

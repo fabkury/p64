@@ -112,29 +112,31 @@ TEST_CASE("memory window: replacing a key tells nobody, removing and clearing") 
 TEST_CASE("memory window: the first fill is free, then one download per swap, one a minute") {
   MemoryWindow w(3, 1000000);
   int64_t now = 1000;
-  CHECK(w.admits_download(now));
   for (const char *k : {"a", "b"}) {
+    CHECK(w.claim_download());  // the first fill: every claim is granted
     CHECK(w.put(k, file(10)));
-    CHECK(w.admits_download(now));
     w.note_swap(now);  // swaps during the fill grant nothing and cost nothing
   }
+  CHECK(w.claim_download());
   CHECK(w.put("c", file(10)));  // full
   CHECK(w.stats().filled);
-  CHECK(!w.admits_download(now));  // no swap since: nothing new
+  CHECK(!w.admits_download(now));
+  CHECK(!w.claim_download());  // no swap since: nothing new
   w.note_swap(now);
   CHECK(w.admits_download(now));
+  CHECK(w.claim_download());
   CHECK(w.put("d", file(10)));  // the swap's one download
-  CHECK(!w.admits_download(now));
+  CHECK(!w.claim_download());
   // Swaps every 5 s: the next download waits for the minute.
   for (int i = 1; i < 12; ++i) {
     w.note_swap(now + i * 5000000LL);
-    CHECK(!w.admits_download(now + i * 5000000LL));
+    CHECK(!w.claim_download());
   }
   w.note_swap(now + kMinute);
-  CHECK(w.admits_download(now + kMinute));
-  // A swap's download that could not be kept is still that swap's download.
+  // A claim whose download could not be kept is still that swap's download.
+  CHECK(w.claim_download());
   CHECK(!w.put("huge", file(2000000)));
-  CHECK(!w.admits_download(now + kMinute));
+  CHECK(!w.claim_download());
   // An hour of swaps every 30 s: at most 60 downloads.
   MemoryWindow h(2, 1000000);
   CHECK(h.put("x", file(10)));
@@ -143,7 +145,7 @@ TEST_CASE("memory window: the first fill is free, then one download per swap, on
   for (int i = 0; i < 120; ++i) {
     const int64_t t = i * 30000000LL;
     h.note_swap(t);
-    if (h.admits_download(t)) {
+    if (h.claim_download()) {
       CHECK(h.put("n" + std::to_string(i), file(10)));
       ++downloads;
     }
@@ -152,11 +154,42 @@ TEST_CASE("memory window: the first fill is free, then one download per swap, on
   CHECK(h.stats().renewals == 60);
 }
 
+TEST_CASE("memory window: several providers share one renewal, and a claim with nothing to fetch is given back") {
+  MemoryWindow w(2, 1000000);
+  CHECK(w.put("a", file(10)));
+  CHECK(w.put("b", file(10)));
+  REQUIRE(w.stats().filled);
+  w.note_swap(0);
+  // Three workers ask in the same instant: one is granted (three downloads of one swap
+  // were counted on the device before the claim existed, 2026-11-12).
+  int granted = 0;
+  for (int worker = 0; worker < 3; ++worker) granted += w.claim_download() ? 1 : 0;
+  CHECK(granted == 1);
+  // The one that claimed has nothing to download: it gives the claim back, another takes it.
+  w.unclaim_download();
+  CHECK(w.claim_download());
+  CHECK(!w.claim_download());
+  w.unclaim_download();
+  w.unclaim_download();  // twice is once
+  CHECK(w.claim_download());
+  CHECK(!w.claim_download());
+  // A play-this file is put without a claim and costs the channels nothing.
+  w.note_swap(kMinute);
+  CHECK(w.put("dl-x", file(10)));
+  CHECK(w.claim_download());
+  // During the first fill nothing is counted: giving back changes nothing.
+  MemoryWindow f(10, 1000000);
+  CHECK(f.claim_download());
+  f.unclaim_download();
+  CHECK(f.claim_download());
+  CHECK(f.claim_download());
+}
+
 TEST_CASE("memory window: a window that never fills keeps admitting") {
   MemoryWindow w(48, 6 * 1024 * 1024);
   for (int i = 0; i < 10; ++i) CHECK(w.put("k" + std::to_string(i), file(1000)));
   CHECK(!w.stats().filled);
-  CHECK(w.admits_download(0));
+  CHECK(w.claim_download());
   // Bytes can fill it before files do.
   MemoryWindow b(48, 8000);
   for (int i = 0; i < 8; ++i) CHECK(b.put("k" + std::to_string(i), file(1000)));

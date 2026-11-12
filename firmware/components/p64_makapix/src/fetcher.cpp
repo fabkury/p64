@@ -430,8 +430,9 @@ bool download_step() {
   size_t index = 0;
   // Cardless: the window fills once, then takes one new file per swap (ADR 0018).
   const bool cardless = !cache::has_card();
-  if (cardless && !content::memory_window().admits_download(esp_timer_get_time())) return false;
+  if (cardless && !content::memory_window().claim_download()) return false;
   if (!next_download(ch, entry, index)) {
+    if (cardless) content::memory_window().unclaim_download();  // nothing to fetch: another provider may
     if (g_unsaved_downloads) save_dirty_indexes();
     return false;
   }
