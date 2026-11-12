@@ -253,7 +253,7 @@ spelling). The built-in playsets are synthesised: Local gets one channel per fol
 
 `main/show.cpp` runs on the main task and owns the runtime: the active playset and one
 `ChannelRuntime` per channel (spec, entries, available count, a status string such as
-"no card", "needs pairing" or "Makapix not available yet"), the scheduler, the history,
+"needs a card", "needs pairing" or "Makapix not available yet"), the scheduler, the history,
 the auto-swap deadline, the pause flag. Everything reaches it through a FreeRTOS queue of
 commands; the API's readers take a mutex and build JSON from the state. Card I/O never
 runs on the main task: `main/loader.cpp` (core 0, priority 4, PSRAM stack) reads files

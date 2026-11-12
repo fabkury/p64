@@ -25,6 +25,7 @@ struct ChannelFacts {
   bool needs_pairing = false;  // Makapix channels
   bool paired = false;
   bool online = true;
+  bool time_wait = false;    // on a network, the time not known yet: nothing can be listed or downloaded (ADR 0011)
   size_t index_entries = 0;  // Makapix: entries in the index
   size_t cached = 0;         // Makapix: entries cached and within the size limit
   bool refreshed = false;    // Makapix: a listing has landed (last_refresh set)
@@ -110,14 +111,24 @@ enum class StreamGate : uint8_t { No, Wait, Take };
 // that needs the user: pairing, setup, update, finish first), or does not take it at all.
 StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool boot_running, bool user_screen);
 
-// The "connected" screen (spec 6.4, 15.1; decided 2026-09-26): a normal boot shows no
-// network message. The decision waits for the boot animation to end; then the screen is
-// skipped when something is up (an artwork, a widget, the pause frame, another screen,
-// a stream) or on its way (an artwork prepared or loading), and shown otherwise. Before
-// this the screen took the panel for its 15 s on every boot: the IP landed during the
-// boot animation, nothing was "playing yet", and the first artwork waited until 18 s.
-enum class ConnectedScreen : uint8_t { Wait, Skip, Show };
-ConnectedScreen connected_screen(bool boot_running, bool something_up, bool something_coming);
+// --- the playset a boot restores (ADR 0018, decisions D13 to D15) ----------------------
+//
+// The device never plays a playset its owner did not choose. One active playset is
+// remembered per storage mode (the caller reads the name of the mode it booted in).
+// Nothing ever chosen in this mode: Promoted. A choice that cannot play now (a user
+// playset that is gone, Followed on a device that is not paired) stays the choice: its
+// name is shown with `problem` as the reason of "No artwork", and nothing else plays.
+// A reason that waiting does not cure (the playset needs a card that is not there, a
+// pairing, a playset that is gone): a playset activated with such a reason and nothing to
+// play takes the panel with it at once, where a transient reason ("downloading",
+// "offline") leaves the artwork that is up until something is ready (spec 4.5).
+bool reason_is_final(const std::string &reason);
+
+struct Restore {
+  std::string name;
+  std::string problem;  // "" when the playset can be activated
+};
+Restore restore_choice(const std::string &saved, bool is_followed, bool paired, bool resolvable);
 
 // Setup mode on the panel (spec 6.4, 10.1; settled 2026-09-23): with no network saved the
 // Setup screen holds the panel whatever plays; when a saved network is only down, artworks

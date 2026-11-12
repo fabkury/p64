@@ -137,25 +137,42 @@ void add_address(std::vector<Line> &lines, const std::string &ip, Rgb colour, in
 
 }  // namespace
 
-void no_artwork(Frame &frame, const std::string &reason) {
+void no_artwork(Frame &frame, const std::string &reason, const std::string &hostname, const std::string &ip) {
   frame.clear(gfx::kBlack);
   border(frame, kBorder);
   Rgb bar{70, 70, 70};
-  if (reason == "no card") {
+  if (reason == "needs a card" || reason == "card failed") {
     bar = Rgb{160, 40, 40};
   } else if (reason == "offline" || reason.rfind("Makapix", 0) == 0 || reason == "downloading" ||
-             reason == "checking files") {
+             reason == "checking files" || reason == "waiting for the time") {
     bar = Rgb{40, 80, 160};
   } else if (reason == "needs pairing") {
     bar = Rgb{140, 60, 160};
   } else if (reason == "empty") {
     bar = Rgb{150, 120, 30};
   }
-  std::vector<Line> lines;
-  lines.push_back(Line{&large(), "No", kInk, 1, 3});
-  lines.push_back(Line{&large(), "artwork", kInk, 1, 6});
-  add(lines, body(), sentence(reason), kDim);
-  draw_stack(frame, lines, kInnerTop, 55);
+  if (ip.empty()) {
+    std::vector<Line> lines;
+    lines.push_back(Line{&large(), "No", kInk, 1, 3});
+    lines.push_back(Line{&large(), "artwork", kInk, 1, 6});
+    add(lines, body(), sentence(reason), kDim);
+    draw_stack(frame, lines, kInnerTop, 55);
+    frame.fill_rect(20, 58, 24, 2, bar);
+    return;
+  }
+  // On a network: the title on one line, the reason, then where to reach the device. The
+  // address comes before the hostname when not everything fits, and the reason gives up
+  // its second line before the address goes.
+  for (int attempt = 0; attempt < 3; ++attempt) {
+    std::vector<Line> lines;
+    lines.push_back(Line{&body(), "No artwork", kInk, 1, 4});
+    add(lines, body(), sentence(reason), kDim, 5, attempt < 2 ? 2 : 1);
+    if (attempt == 0) add(lines, body(), hostname + ".local", kDim, 3, 1);
+    add_address(lines, ip, kAddress, 0);
+    if (attempt < 2 && stack_height(lines) > 52 - kInnerTop + 1) continue;
+    draw_stack(frame, lines, kInnerTop, 52);
+    break;
+  }
   frame.fill_rect(20, 58, 24, 2, bar);
 }
 
@@ -192,16 +209,6 @@ void paired(Frame &frame) {
   std::vector<Line> lines;
   lines.push_back(Line{&large(), "Paired", Rgb{120, 230, 140}, 1, 5});
   lines.push_back(Line{&body(), "Makapix", kDim, 1, 0});
-  draw_stack(frame, lines);
-}
-
-void connected(Frame &frame, const std::string &hostname, const std::string &ip) {
-  frame.clear(gfx::kBlack);
-  border(frame, kBorder);
-  std::vector<Line> lines;
-  lines.push_back(Line{&large(), "Wi-Fi ok", kInk, 1, 7});
-  add(lines, body(), hostname + ".local", kDim, 5);
-  add_address(lines, ip, kAddress, 0);
   draw_stack(frame, lines);
 }
 

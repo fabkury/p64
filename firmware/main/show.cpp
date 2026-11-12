@@ -25,6 +25,7 @@
 #include "p64/content/playset_store.hpp"
 #include "p64/content/psram.hpp"
 #include "p64/makapix/makapix.hpp"
+#include "p64/net/clock.hpp"
 #include "p64/net/wifi.hpp"
 #include "p64/ota/ota.hpp"
 #include "p64/playback/frame_source.hpp"
@@ -53,7 +54,11 @@ uint8_t notice_alpha_now() {
 
 
 constexpr const char *TAG = "show";
+// The active playset is remembered per storage mode (ADR 0018, decision D14): the choice
+// made with a card under the key every earlier firmware used, the cardless one beside it.
 constexpr const char *kActiveKey = "playset";
+constexpr const char *kActiveCardlessKey = "playset_nc";
+const char *active_key() { return storage::mounted() ? kActiveKey : kActiveCardlessKey; }
 
 // --- commands -------------------------------------------------------------------------
 
@@ -169,7 +174,7 @@ class DeviceEnv : public ShowEnv {
   void persist_main_state(system::MainState state) override {
     system::settings_update([state](system::Settings &s) { s.main_state = state; });
   }
-  void persist_active_playset(const std::string &name) override { system::state::set(kActiveKey, name); }
+  void persist_active_playset(const std::string &name) override { system::state::set(active_key(), name); }
   bool load_playset(const std::string &name, content::Playset &out, std::string &error) override {
     return content::store::load(name, out, error);
   }
@@ -197,6 +202,7 @@ class DeviceEnv : public ShowEnv {
   uint32_t load(const std::string &path, gfx::Rgb background) override { return loader::load(path, background); }
   bool scan(uint32_t generation, const content::Playset &playset) override { return loader::scan(generation, playset); }
   bool card_mounted() override { return storage::mounted(); }
+  bool time_synced() override { return net::clock::synced(); }
   std::string storage_root() override { return storage::root(); }
   std::string animations_dir() override { return storage::animations_dir(); }
   std::string downloads_dir() override { return storage::downloads_dir(); }
@@ -381,7 +387,7 @@ bool init(playback::Player &player, playback::Renderer &renderer, uint32_t boot_
 
 void restore() {
   std::string name;
-  system::state::get(kActiveKey, name);
+  system::state::get(active_key(), name);
   std::lock_guard<std::mutex> lock(g_mutex);
   core::restore(name);
 }
@@ -573,7 +579,7 @@ cJSON *playsets_json() {
         break;
       case content::Builtin::Local:
         enabled = storage::mounted();
-        reason = enabled ? "" : "no card";
+        reason = enabled ? "" : "needs a card";
         break;
     }
     cJSON_AddBoolToObject(o, "enabled", enabled);

@@ -237,7 +237,7 @@ I/O errors at run time: a card pulled while playing leaves `card.mounted` true a
 banner. Audit: provider downloads then fail to store and retry another entry every 5 s
 for as long as the device runs (`fetcher.cpp:451-456`).
 
-### F-13 A saved Local playset without a card shows "no card" forever (major)
+### F-13 A saved Local playset without a card shows "no card" forever (major) (fixed 2026-11-12: the playset rule of ADR 0018 (`rules::restore_choice`): the choice or Promoted, never a stand-in)
 
 `main/show_core.cpp:1185-1198`: a saved user playset that cannot be read falls back, but
 a saved "Local" resolves as a built-in and is activated with nothing to play, even with
@@ -295,7 +295,7 @@ command ([web-ui-and-api.md, Q2](web-ui-and-api.md#q2-the-answer-when-a-command-
 | F-23 | `POST /api/v1/wifi` overwrites the saved credentials before trying the new ones, and starts a task per call without checking the result | `wifi.cpp:318-333`, `api.cpp:558,566` | major (a typo in the password strands the device until setup mode) |
 | F-24 | Rename has no protected-folder check (delete has); an upload overwrites a file of the same name silently | `files.cpp:115-155`, `card.cpp:376` | minor |
 | F-25 | Reboot does not unmount the card; format holds the mount mutex while the loader, the fetcher and the status builder wait | `api.cpp:378-389`, `card.cpp:94-115` | major |
-| F-26 | With Wi-Fi up and NTP unanswered the device calls itself "offline"; `last_error` is never cleared, so the Home banner sticks | `makapix.cpp:117,485`, `show_core.cpp:759,782` | major (misleads) |
+| F-26 | (fixed 2026-11-12: the reason is "waiting for the time") With Wi-Fi up and NTP unanswered the device calls itself "offline"; `last_error` is never cleared, so the Home banner sticks | `makapix.cpp:117,485`, `show_core.cpp:759,782` | major (misleads) |
 | F-27 | Play-this by URL or post: one job per press, no dedupe and no cancel; Followed makes a server call per press | `makapix.cpp:474-520,706-718` | minor |
 | F-28 | (2026-11-11: a foreign Origin is refused on every changing request and on the WebSocket, decision D29; the global lockout and the session eviction stay as documented limits; a WebSocket open across a PIN change is still not closed) PIN: the lockout is global (five wrong tries by anyone lock everyone out of logging in for 30 s); a ninth login evicts a live session; WebSockets opened before a PIN change keep receiving status; no Origin check on any POST | `auth.cpp:96-155`, `http_server.cpp:27` | minor to major, a policy question |
 | F-29 | A card without a FAT file system cannot be formatted from the web UI (format needs a mounted card), against ADR 0006; Home says only "No card" | `card.cpp:64,96` | major |
@@ -320,7 +320,7 @@ Web UI leads (audit of `components/p64_web/ui/`):
 |---|---|---|---|
 | S-01 | 5.4: the memory cache evicts least recently played | first-in first-out | D7 rewrites this |
 | S-02 | 14: card failures latch a "card failed" state; a swapped card is picked up on the next mount attempt | neither exists | D6: keep the latch, withdraw the remount |
-| S-03 | 5.2: an unrestorable playset falls back to Promoted, or Local without a network | Local with a card, Promoted without | decide the rule (no-card-mode.md, Q5) |
+| S-03 | (settled 2026-11-12: the specification and the code follow ADR 0018, no fallback) 5.2: an unrestorable playset falls back to Promoted, or Local without a network | Local with a card, Promoted without | decide the rule (no-card-mode.md, Q5) |
 | S-04 | 5.4: history persistence is unavailable without a card (so it exists with one) | history is in memory only, always (4.6 agrees); `state/` is created and unused | fix the sentence |
 | S-05 | 14, 16: configurable card root, downloads cap | F-16 | implement or remove |
 | S-06 | 14: settings written double-buffered | one NVS blob (`settings.cpp:28-40`); NVS itself writes the new entry before retiring the old | reword, and test it (PWR-3) |

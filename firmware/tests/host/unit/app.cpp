@@ -136,9 +136,20 @@ TEST_CASE("status screens stay inside their border, long names and addresses inc
     CHECK(lit(f) > 20);
     CHECK_EQ(lit_outside_inner(f), 0);
   };
-  for (const char *r : {"no card", "offline", "needs pairing", "empty", "Makapix: no artworks yet", "downloading"}) {
+  for (const char *r : {"needs a card", "offline", "needs pairing", "empty", "Makapix: no artworks yet", "downloading",
+                        "waiting for the time", "playset not found", "nothing fits 16 to 64 px (120 outside)"}) {
     ss::no_artwork(f, r);
     check_screen(r);
+    // On a network the same screen carries the hostname and the address (D18).
+    for (const char *host : {"p64", "p64-living-room"}) {
+      for (const char *ip : {"192.168.4.92", "192.168.100.200"}) {
+        Frame alone = f;
+        ss::no_artwork(f, r, host, ip);
+        check_screen(r);
+        CHECK(std::memcmp(f.data(), alone.data(), Frame::bytes()) != 0);
+      }
+    }
+    ss::no_artwork(f, r);
   }
   ss::countdown(f, 3);
   check_screen("countdown 3");
@@ -150,8 +161,6 @@ TEST_CASE("status screens stay inside their border, long names and addresses inc
   check_screen("paired");
   for (const char *host : {"p64", "p64-living-room"}) {
     for (const char *ip : {"192.168.4.92", "192.168.100.200"}) {
-      ss::connected(f, host, ip);
-      check_screen("connected");
       ss::stream_waiting(f, host, ip, 4048, 4064);
       check_screen("stream waiting");
     }
@@ -191,7 +200,7 @@ TEST_CASE("status screens stay inside their border, long names and addresses inc
 
 TEST_CASE("status screens draw something") {
   Frame f;
-  p64::status_screens::no_artwork(f, "no card");
+  p64::status_screens::no_artwork(f, "needs a card");
   CHECK(lit(f) > 20);
   p64::status_screens::pairing_code(f, "TDPCHB");
   CHECK(lit(f) > 20);

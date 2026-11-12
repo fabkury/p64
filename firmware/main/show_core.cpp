@@ -26,8 +26,6 @@ constexpr int64_t kRetryUs = 5 * kSecond;            // while nothing can be sho
 constexpr int64_t kIdleRescanUs = 30 * kSecond;      // rescan period while nothing can be shown
 constexpr int64_t kPairedScreenUs = 10 * kSecond;    // spec 6.4
 constexpr int64_t kUpdateFailedScreenUs = 10 * kSecond;  // "Update failed", then the artwork
-constexpr int64_t kConnectedScreenUs = 15 * kSecond;     // spec 6.4: the IP, when nothing plays
-constexpr int64_t kConnectedMinUs = 2 * kSecond;         // ...readable for this long before an artwork replaces it
 constexpr uint32_t kMaxPrepareFailures = 20;         // consecutive load failures before giving up on a pick
 // A load whose result has not come back after this long is taken for lost and asked for
 // again (F-01, 2026-11-11: a result dropped from a full queue left the show waiting for
@@ -114,6 +112,7 @@ std::string channel_status(const ChannelRuntime &ch) {
     f.needs_pairing = ch.spec.needs_pairing() || ch.spec.is_external();
     f.paired = ps.authorized;
     f.online = ps.online;
+    f.time_wait = !ps.online && g_env->wifi_status().connected && !g_env->time_synced();
     f.index_entries = ch.listed;
     f.cached = ch.items.size();
     f.refreshed = ch.last_refresh != 0;
@@ -128,6 +127,7 @@ std::string channel_status(const ChannelRuntime &ch) {
 // Why nothing can be shown: the first reason among the channels, "empty" when a usable
 // channel simply has no files.
 std::string no_artwork_reason() {
+  if (st.channels.empty() && !st.playset_problem.empty()) return st.playset_problem;
   std::vector<rules::ChannelSummary> summary;
   summary.reserve(st.channels.size());
   for (const ChannelRuntime &ch : st.channels) summary.push_back({ch.status, ch.available});
@@ -401,6 +401,29 @@ bool setup_instead_of_no_artwork() {
 
 void put_status_up();
 
+// The "No artwork" screen with its reason and, on a network, the hostname and address.
+void draw_no_artwork() {
+  const net::wifi::Status w = g_env->wifi_status();
+  const bool on_network = w.connected && !w.ip.empty();
+  st.status_address = on_network ? w.hostname + " " + w.ip : "";
+  st.setup_pages_up = false;
+  status_screens::no_artwork(*g_scratch, st.status_reason, on_network ? w.hostname : "", on_network ? w.ip : "");
+  show_frame("no artwork");
+}
+
+bool status_screen_up() {
+  return !st.current && !st.widget_up && !st.paused && st.screen == Screen::None && !st.status_reason.empty() &&
+         !st.status_pending && !st.setup_pages_up && !g_stream_up && now_us() >= st.boot_until_us;
+}
+
+// The network came or went while "No artwork" is up: the address follows.
+void refresh_status_address() {
+  if (!status_screen_up()) return;
+  const net::wifi::Status w = g_env->wifi_status();
+  const std::string address = w.connected && !w.ip.empty() ? w.hostname + " " + w.ip : "";
+  if (address != st.status_address) draw_no_artwork();
+}
+
 void show_status(const std::string &reason) {
   if (st.screen != Screen::None) return;  // a screen with a purpose holds the panel
   if (!st.current && !st.paused && st.status_reason == reason) return;
@@ -427,8 +450,7 @@ void put_status_up() {
     st.setup_pages_up = true;
     return;
   }
-  status_screens::no_artwork(*g_scratch, st.status_reason);
-  show_frame("no artwork");
+  draw_no_artwork();
 }
 
 status_screens::UpdateView update_view(const ShowEnv::UpdateState &u) {
@@ -447,11 +469,6 @@ void show_screen(Screen screen, int64_t for_us) {
   switch (screen) {
     case Screen::Pairing: status_screens::pairing_code(*g_scratch, g_env->makapix_status().code); break;
     case Screen::Paired: status_screens::paired(*g_scratch); break;
-    case Screen::Connected: {
-      const net::wifi::Status w = g_env->wifi_status();
-      status_screens::connected(*g_scratch, w.hostname, w.ip);
-      break;
-    }
     case Screen::Setup: draw_setup_page(); break;
     case Screen::Update: status_screens::update(*g_scratch, update_view(st.update_drawn)); break;
     case Screen::None: return;
@@ -464,7 +481,6 @@ void show_screen(Screen screen, int64_t for_us) {
 }
 
 void load_current_history_item(Pending::Purpose purpose, int direction);
-void resolve_connected();
 
 // A widget takes the panel: the Widget state, an interlude, or an interlude revisited
 // through history (spec 6.1, 6.2).
@@ -739,6 +755,15 @@ void install(loader::ScanResult &r) {
     st.activate_after_scan = false;
     if (show_active()) {
       swap_fresh();
+      // The playset just chosen can never play as things are: say so now, instead of
+      // leaving the previous playset's artwork up under the new one's name.
+      const std::string reason = no_artwork_reason();
+      if (st.current && !st.prepared && !st.prepared_load_id && rules::reason_is_final(reason)) {
+        st.current.reset();
+        g_artwork_up = false;
+        report_hidden();
+        show_status(reason);
+      }
     } else {
       request_prepare();  // the boot restore in Widget or Stream state: ready for later
     }
@@ -759,6 +784,7 @@ bool resolve_playset(const std::string &name, content::Playset &out, std::string
 }
 
 void activate_playset(const std::string &name, bool persist) {
+  st.playset_problem.clear();
   content::Builtin b;
   if (content::builtin_from_name(name, b) && b == content::Builtin::Followed) {
     // The server generates this one; the Makapix component hands it back through
@@ -787,6 +813,7 @@ void activate_playset(const std::string &name, bool persist) {
 }
 
 void do_activate_transient(const content::Playset &p) {
+  st.playset_problem.clear();
   LOGI("activating playset %s (%u channels, from the site)", p.name.c_str(),
            static_cast<unsigned>(p.channels.size()));
   st.playset.name = p.name;
@@ -815,7 +842,6 @@ void on_loaded_impl(std::unique_ptr<loader::LoadResult> res) {
     st.prepared = res->artwork;
     LOGD("prepared %s (read %u ms, open %u ms)", res->artwork->name().c_str(), static_cast<unsigned>(res->read_ms), static_cast<unsigned>(res->open_ms));
     if (st.want_prepared_now && can_swap_now() && show_active()) play_prepared();
-    resolve_connected();  // the IP screen, if up, yields to it after its minimum stay
     return;
   }
   if (res->id == st.pending.load_id) {
@@ -890,6 +916,7 @@ void on_provider_changed() {
     snapshot_provider(ch);
     any = true;
   }
+  refresh_status_address();
   if (!any) return;
   update_counts();
   ++st.channels_version;
@@ -926,7 +953,13 @@ void on_makapix_state(uint32_t state) {
     }
   }
   update_counts();
-  if (s == makapix::State::Paired) st.rescan_due_us = now_us();  // channels that needed pairing can refresh
+  if (s == makapix::State::Paired) {
+    if (st.playset_problem == "needs pairing" && st.channels.empty()) {
+      activate_playset(st.playset.name, false);  // the remembered Followed can play now
+    } else {
+      st.rescan_due_us = now_us();  // channels that needed pairing can refresh
+    }
+  }
 }
 
 void do_next() {
@@ -1041,7 +1074,7 @@ void follow_setup() {
   const int64_t now = now_us();
   if (want == rules::SetupScreen::Holds) {
     if (now < st.boot_until_us) return;  // the boot animation finishes first
-    if (st.screen == Screen::None || st.screen == Screen::Connected) {
+    if (st.screen == Screen::None) {
       st.setup_page = 0;
       show_screen(Screen::Setup, 0);
     } else if (st.screen == Screen::Setup && now >= st.setup_page_at_us) {
@@ -1065,30 +1098,8 @@ void follow_setup() {
       st.setup_pages_up = true;
     }
   } else if (st.setup_pages_up) {  // setup mode ended with nothing to play: the reason again
-    status_screens::no_artwork(*g_scratch, st.status_reason);
-    show_frame("no artwork");
-  }
-}
-
-// The "connected" screen: decided once the boot animation has ended (rules::connected_screen),
-// and ended early by an artwork that becomes ready while it is up.
-void resolve_connected() {
-  const int64_t now = now_us();
-  if (st.screen == Screen::Connected && st.prepared && now >= st.connected_yield_us && show_active()) {
-    end_screen();  // the artwork replaces the IP (spec 15.1)
-    return;
-  }
-  if (!st.connected_pending) return;
-  const bool up = st.current || st.widget_up || st.paused || st.screen != Screen::None || g_stream_up;
-  const bool coming = st.prepared || st.prepared_load_id != 0 || st.pending.load_id != 0;
-  switch (rules::connected_screen(now < st.boot_until_us, up, coming)) {
-    case rules::ConnectedScreen::Wait: return;
-    case rules::ConnectedScreen::Skip: st.connected_pending = false; return;
-    case rules::ConnectedScreen::Show:
-      st.connected_pending = false;
-      show_screen(Screen::Connected, kConnectedScreenUs);
-      st.connected_yield_us = now + kConnectedMinUs;
-      return;
+    st.setup_pages_up = false;
+    draw_no_artwork();
   }
 }
 
@@ -1132,7 +1143,7 @@ void tick_impl() {
     const bool coming = st.prepared || st.prepared_load_id != 0 || st.pending.load_id != 0;
     if (!up && !coming && !st.status_reason.empty()) put_status_up();
   }
-  resolve_connected();
+  refresh_status_address();
   if (rules::auto_swap_due(swap_timer_runs(), s.auto_swap_seconds, now, st.swap_at_us)) {
     // One roll per due swap (finding F-06): while the next artwork is not ready the swap
     // stays due and this runs on every tick; rolling each time made an interlude almost
@@ -1159,7 +1170,6 @@ void tick_impl() {
     swap_fresh();
     if (!st.current && !st.rescan_due_us && !st.scan_running && has_local_channels()) st.rescan_due_us = now + kIdleRescanUs;
   }
-  if (st.screen == Screen::Connected && st.screen_until_us == 0) end_screen();
 }
 
 // How long the loop may sleep before tick() has something to do.
@@ -1176,8 +1186,7 @@ int64_t wait_us_impl() {
   if (st.want_widget) consider(st.boot_until_us);
   consider(st.intro_until_us);
   if (st.want_prepared_now && st.prepared) consider(st.boot_until_us);
-  if (st.connected_pending || st.status_pending) consider(st.boot_until_us);
-  if (st.screen == Screen::Connected && st.prepared) consider(st.connected_yield_us);
+  if (st.status_pending) consider(st.boot_until_us);
   consider(st.rescan_due_us);
   consider(st.screen_until_us);
   if (!st.pending.load_id && st.pending.purpose != Pending::Purpose::None) consider(st.pending.load_at_us + kLoadRetryUs);
@@ -1274,19 +1283,26 @@ void boot(std::shared_ptr<playback::FrameSource> source, uint32_t boot_ms, const
 }
 
 void restore(const std::string &saved_name) {
-  std::string name = saved_name;
   content::Playset p;
   std::string error;
   content::Builtin b;
-  const bool followed = content::builtin_from_name(name, b) && b == content::Builtin::Followed;
-  if (name.empty() || (!followed && !resolve_playset(name, p, error)) || (followed && !g_env->makapix_paired())) {
-    if (!name.empty()) LOGW("saved playset %s cannot be restored (%s)", name.c_str(), error.c_str());
-    // Spec 5.2: Promoted, or Local when there is no network. Promoted plays anonymously
-    // from its cache once the first refresh ran; Local is the safe start with a card.
-    name = g_env->card_mounted() ? content::builtin_name(content::Builtin::Local)
-                              : content::builtin_name(content::Builtin::Promoted);
+  const bool followed = content::builtin_from_name(saved_name, b) && b == content::Builtin::Followed;
+  const bool resolvable = !saved_name.empty() && !followed && resolve_playset(saved_name, p, error);
+  const rules::Restore choice = rules::restore_choice(saved_name, followed, g_env->makapix_paired(), resolvable);
+  if (choice.problem.empty()) {
+    activate_playset(choice.name, false);
+  } else {
+    // The choice stays the choice (ADR 0018): its name, no channel, and the reason on the
+    // panel. Nothing the owner did not choose plays in its place.
+    LOGW("the remembered playset %s cannot play: %s%s%s", choice.name.c_str(), choice.problem.c_str(),
+         error.empty() ? "" : " - ", error.c_str());
+    st.playset = content::Playset{};
+    st.playset.name = choice.name;
+    st.playset.builtin = followed;
+    st.channels.clear();
+    st.playset_problem = choice.problem;
+    show_status(choice.problem);
   }
-  activate_playset(name, false);
   const system::Settings s = settings();
   g_main_state = s.main_state;
   if (s.main_state == system::MainState::Widget) st.want_widget = true;
@@ -1359,11 +1375,10 @@ void provider_changed() { on_provider_changed(); }
 void makapix_state(makapix::State state) { on_makapix_state(static_cast<uint32_t>(state)); }
 
 void wifi_connected() {
-  // The IP goes on the panel only when nothing plays and nothing is on its way once the
-  // boot animation has ended (spec 15.1, rules::connected_screen).
-  st.connected_pending = true;
-  resolve_connected();
+  // A normal boot shows no network message (spec 15.1). The address is part of the "No
+  // artwork" screen, the one screen for "nothing plays" (decision D18).
   update_counts();
+  refresh_status_address();
 }
 
 void stream_started() {
@@ -1435,7 +1450,6 @@ cJSON *status_json() {
   const bool setup_up = st.screen == Screen::Setup || (st.setup_pages_up && !st.current && !st.widget_up);
   const char *screen = st.screen == Screen::Pairing     ? "pairing"
                        : st.screen == Screen::Paired    ? "paired"
-                       : st.screen == Screen::Connected ? "connected"
                        : st.screen == Screen::Update    ? "update"
                        : setup_up                       ? "setup"
                                                         : "";

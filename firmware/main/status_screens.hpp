@@ -11,16 +11,17 @@
 
 namespace p64::status_screens {
 
-// "No artwork" and the reason ("no card", "offline", "needs pairing", "empty", ...).
-void no_artwork(gfx::Frame &frame, const std::string &reason);
+// "No artwork", the reason ("needs a card", "offline", "waiting for the time", "needs
+// pairing", "empty", ...) and, when the device is on a network (`ip` not empty), where
+// to reach it: the hostname and the address. The one status screen for "nothing plays"
+// (decision D18 of 2026-11-11; the separate "Wi-Fi ok" screen is retired).
+void no_artwork(gfx::Frame &frame, const std::string &reason, const std::string &hostname = "", const std::string &ip = "");
 // The BOOT-hold factory reset countdown: 3, 2, 1 (0 = "Erasing").
 void countdown(gfx::Frame &frame, int seconds);
 void black(gfx::Frame &frame);
 // The Makapix pairing code, large, in two rows of three characters.
 void pairing_code(gfx::Frame &frame, const std::string &code);
 void paired(gfx::Frame &frame);
-// Hostname and IP address after joining a network.
-void connected(gfx::Frame &frame, const std::string &hostname, const std::string &ip);
 // The Stream state with no frames arriving: hostname, IP and the ports (spec 6.3).
 void stream_waiting(gfx::Frame &frame, const std::string &hostname, const std::string &ip, int ddp_port, int raw_port);
 

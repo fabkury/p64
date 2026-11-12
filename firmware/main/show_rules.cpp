@@ -7,7 +7,7 @@ namespace p64::show::rules {
 
 std::string channel_status(const ChannelFacts &f) {
   if (!f.supported) return "not supported yet";
-  if (f.local) return f.card_mounted ? "" : "no card";
+  if (f.local) return f.card_mounted ? "" : "needs a card";
   if (f.needs_pairing && !f.paired) return "needs pairing";
   if (f.cached == 0) {
     // A provider that holds its entries back until their files are checked is checking,
@@ -16,7 +16,7 @@ std::string channel_status(const ChannelFacts &f) {
     if (f.unchecked > 0) return "checking files";
     // An index read from the card before the network (2026-09-26) with nothing at hand
     // downloads only once online.
-    if (!f.online) return "offline";
+    if (!f.online) return f.time_wait ? "waiting for the time" : "offline";
     if (f.index_entries > 0) return "downloading";
     if (!f.refreshed) return "no listing yet";
     // The listing landed empty: the channel has nothing, or nothing within the limits.
@@ -126,9 +126,15 @@ StreamGate stream_gate(bool frames_arriving, bool already_up, bool allowed, bool
   return StreamGate::Take;
 }
 
-ConnectedScreen connected_screen(bool boot_running, bool something_up, bool something_coming) {
-  if (boot_running) return ConnectedScreen::Wait;
-  return (something_up || something_coming) ? ConnectedScreen::Skip : ConnectedScreen::Show;
+bool reason_is_final(const std::string &reason) {
+  return reason == "needs a card" || reason == "needs pairing" || reason == "not supported yet" ||
+         reason == "playset not found";
+}
+
+Restore restore_choice(const std::string &saved, bool is_followed, bool paired, bool resolvable) {
+  if (saved.empty()) return {"Promoted", ""};
+  if (is_followed) return {saved, paired ? "" : "needs pairing"};
+  return {saved, resolvable ? "" : "playset not found"};
 }
 
 SetupScreen setup_screen(bool setup_mode, bool network_saved) {

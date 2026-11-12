@@ -116,7 +116,7 @@ void do_scan(Request &r) {
     const content::ChannelSpec &spec = playset.channels[i];
     if (spec.kind != content::ChannelKind::Local) continue;
     if (!mounted) {
-      res->errors[i] = "no card";
+      res->errors[i] = "needs a card";
       continue;
     }
     const std::string dir =

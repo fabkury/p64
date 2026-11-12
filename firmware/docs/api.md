@@ -101,7 +101,7 @@ with an `ETag` of the firmware version (`If-None-Match` answers 304).
 {name, path, format, width, height, bytes, animated, frames_decoded, since_s, channel,
 channel_index, source}` (absent on a status screen or pause), `screen` (the status
 screen holding the panel: `pairing`, `paired`, `connected`, `setup`, `update`, or ""),
-`no_artwork` (reason or ""), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
+`no_artwork` (reason or "": `needs a card`, `offline`, `waiting for the time` when the device is on a network without an NTP answer yet, `downloading`, `no listing yet`, `needs pairing`, `playset not found`, `empty`, ...), `last_error`, `history {count, position, can_back, can_forward}`, `auto_swap
 {interval_s, remaining_s}`, `interludes {clock, weather, temperature, air: {median_minutes,
 per_swap_percent, state}}` (the plan of ADR 0014: the per-swap chance in percent to a
 tenth, and `state` `rolled`, `never`, `no_auto_swap` or `interval_longer`), `prepared`, `intro` (the name of an intro animation playing for one slot, else null; p101), `boot {animation (the intro animation of this boot), animation_end_ms, first_artwork_ms}` (ms since

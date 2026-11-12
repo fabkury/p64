@@ -66,6 +66,8 @@ class ShowEnv {
   virtual uint32_t load(const std::string &path, gfx::Rgb background) = 0;
   virtual bool scan(uint32_t generation, const content::Playset &playset) = 0;
   virtual bool card_mounted() = 0;
+  // The time is trusted (NTP answered in this boot, ADR 0011).
+  virtual bool time_synced() = 0;
   virtual std::string storage_root() = 0;
   virtual std::string animations_dir() = 0;
   virtual std::string downloads_dir() = 0;
@@ -132,7 +134,7 @@ struct Pending {
   content::HistoryItem item;  // the target: what goes up when its load lands
 };
 
-enum class Screen : uint8_t { None, Pairing, Paired, Connected, Setup, Update };
+enum class Screen : uint8_t { None, Pairing, Paired, Setup, Update };
 
 // Everything the show knows. One value, so a test resets it by assignment and reads it.
 struct State {
@@ -154,11 +156,12 @@ struct State {
   std::string last_error;      // the last load or activation failure, for the UI
   Screen screen = Screen::None;  // a status screen that holds the panel
   int64_t screen_until_us = 0;   // when a timed screen ends (0 = until its cause ends)
-  // The "connected" screen (rules::connected_screen): an IP landed and the decision
-  // waits for the boot animation; once up, the screen yields to a ready artwork after a
-  // short minimum stay.
-  bool connected_pending = false;
-  int64_t connected_yield_us = 0;
+  // The remembered playset cannot be activated (rules::restore_choice): the reason shown
+  // with "No artwork" while it has no channel ("" otherwise).
+  std::string playset_problem;
+  // What the "No artwork" screen on the panel says about the network (hostname and
+  // address, "" when off it): redrawn when it changes.
+  std::string status_address;
   // Time-to-first-artwork (spec 15.1, acceptance 18.8): when the first artwork of this
   // boot went up (0 = none yet); the status document reports it next to boot_until_us.
   int64_t first_artwork_us = 0;

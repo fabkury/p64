@@ -318,8 +318,15 @@ Semantics are p3a's, unchanged:
 - Followed is the server-generated `followed_artists` playset: fetched from the server at
   activation and on refresh, one Artist channel per followed artist, equal weights. The
   server's "play this playset" command is honoured (p3a never implemented it).
-- The active playset is persisted and restored at boot; if it cannot be restored, the
-  device falls back to Promoted (or Local when there is no network).
+- The active playset is persisted and restored at boot, one per storage mode (ADR 0018):
+  the choice made with a card returns with the card, the choice made cardless when the
+  device boots without one. A device on which nothing was ever chosen in the mode it
+  boots in plays Promoted. A choice that cannot play (a playset that is gone, Followed
+  without a pairing, Local without a card) stays the choice: the panel shows "No
+  artwork" with the reason and nothing the owner did not choose plays in its place.
+  A playset chosen while another plays takes the panel with that reason at once when
+  waiting cannot cure it; a transient reason (downloading, offline) leaves the artwork
+  that is up until the new playset has one ready.
 
 ### 5.3 Channel index and refresh
 
@@ -348,10 +355,14 @@ Semantics are p3a's, unchanged:
 - With a card: channel artworks are downloaded into the cache on the card, round-robin
   across the playset's channels, oldest-missing first, atomically (temporary file, sync,
   rename). Missing remote files are remembered so they are not retried every cycle.
-- Without a card: the device keeps a memory cache of Makapix and URL artworks (a bounded
-  number of files in PSRAM, evicting least recently played) so the show still runs; the
-  web UI shows a persistent "no card" notice; local channels, pinned lists and history
-  persistence are unavailable.
+- Without a card (cardless, ADR 0018): channel and play-this artworks are kept in the
+  memory window, one bounded store in PSRAM shared by every provider (48 files, 6 MB).
+  It is filled once; after that it takes at most one new artwork per swap, and no more
+  than one a minute, in place of the least recently played; the eight artworks played
+  last are never evicted, so "previous" finds them. A channel's listing is fetched again
+  at each boot and walked only as far as the window needs (100 entries, deeper when
+  every listed entry has been seen). The web UI shows a persistent notice; local
+  channels are unavailable.
 - Card space: downloads pause when free space is below a floor. The cache sweep (ADR
   0010) runs once a night, at the night schedule's start, and deletes every cached
   artwork not played for the cache retention (a setting, default 30 days), even one a
@@ -440,9 +451,8 @@ widgets have their own font settings.
 |---|---|---|
 | Boot | power-on until the first artwork | boot animation (default 3 s; 1 to 7 s, or 0 = off): one of the intro animations, a random one at each boot or the one chosen in the settings; the logo's two layers (the panel with the bird, the wordmark) arrive each in its own way, the finished logo holds from 85 % of the window (decided 2026-10-20) |
 | Setup | setup mode with no network saved (holds the panel); with a saved network only in place of "no artwork" (artworks keep playing from the cache) | pages cycling every 3 s: "Wi-Fi setup", "Join" the AP name `p64-setup`, "Open" `192.168.4.1` |
-| Connected | after joining a network, only when nothing plays and nothing is loading once the boot animation has ended; for 15 s, or until an artwork is ready | hostname and IP address |
 | Pairing | while a pairing code is valid | the 6-character code, then "paired" for 10 s |
-| No artwork | active playset has nothing available | "no artwork" plus the reason (no card, offline, empty) |
+| No artwork | the active playset has nothing available, from the boot animation's end | "No artwork" and the reason (needs a card, offline, waiting for the time, downloading, needs pairing, playset not found, empty); on a network also the hostname and the address. The one screen for "nothing plays": the separate "connected" screen was retired on 2026-11-12 |
 | Stream waiting | Stream state, no frames | hostname, IP, ports |
 | Update | from the download of a firmware update until the reboot | version and progress bar while downloading and verifying, then "Update ready, restart to run it" until the reboot; a failed install shows "Update failed" and the reason for 10 s |
 
@@ -842,12 +852,11 @@ card and a cached artwork (any playset: a local folder, or a provider channel wh
 and files are on the card; neither the network nor the time is needed). Order of
 appearance: boot animation (default 3 s) while the card mounts, the active playset is
 restored and the providers read their indexes from the card; first artwork; Wi-Fi joins
-in the background. A normal boot shows no network message at all: the "connected" status
-screen appears only when nothing plays and nothing is on its way once the boot animation
-has ended, and an artwork that becomes ready replaces it (decided 2026-09-26, after the
-screen was found holding the panel for its 15 s on every boot: the IP landed during the
-boot animation, and the first artwork waited until 18 s). The IP is in the web UI and at
-`p64.local`. The status document carries `boot.first_artwork_ms` and
+in the background. A normal boot shows no network message at all (decided 2026-09-26,
+after a "connected" screen was found holding the panel for 15 s on every boot). When
+nothing can play at the boot animation's end, the "No artwork" screen says why and, on
+a network, shows the hostname and the address (2026-11-12, ADR 0018). The IP is in the
+web UI and at `p64.local`. The status document carries `boot.first_artwork_ms` and
 `boot.animation_end_ms`; `budgets.json` holds the 2 s allowance.
 
 ### 15.2 Updates

@@ -4,12 +4,18 @@ the card is ejected virtually (hook `card_eject`), the device reboots without it
 the tests watch what it does. The card stays in its slot and is back after the last
 reboot. Needs the test build, a network and a card to give back.
 
-    python tests\device\cardless_smoke.py [http://p64.local] [--only window]
+    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore]
 
 window  NC-D1 and a short NC-D2: on Promoted the first artwork is up within the budget,
         the memory window fills once and never beyond its capacity, then takes at most
         one new file per swap and per minute; nothing the show asks for is missing;
         "previous" plays from memory; the heap floors hold.
+restore the playset rule (decisions D13 to D15): the choice made with a card is not the
+        cardless choice; cardless with nothing chosen plays Promoted; Local chosen
+        cardless stays Local and says "needs a card", and Promoted does not stand in;
+        the panel's "No artwork" screen carries the address; back with the card, the
+        card's choice returns. With the time withheld from boot: "waiting for the
+        time", then playback when it arrives (D22).
 
 Exit code 1 on any failure, 2 when the firmware has no test hooks.
 """
@@ -113,6 +119,69 @@ def test_window(base):
         time.sleep(1)
 
 
+def frame_png(base):
+    import urllib.request
+    return urllib.request.urlopen(base + "/api/v1/frame", timeout=10).read()
+
+
+def test_restore(base):
+    before = harness.status(base)
+    card_choice = before["playback"]["playset"]["name"]
+    # Cardless, and the cardless choice forgotten: Promoted, whatever the card's choice is.
+    hook(base, forget_cardless_playset=True)
+    d = boot_cardless(base)
+    if d is None:
+        return
+    d = wait_status(base, lambda s: s["playback"]["playset"]["name"] != "", 10)
+    check(d["playback"]["playset"]["name"] == "Promoted", "restore: nothing chosen cardless, the device plays Promoted (card's choice: %s; playing %s)" % (
+        card_choice, d["playback"]["playset"]["name"]))
+    d = wait_status(base, playing, FIRST_ARTWORK_S + 10)
+    check(playing(d), "restore: and Promoted plays")
+
+    # Local chosen while cardless: it stays the choice across a boot and nothing stands in.
+    request(base, "POST", "/api/v1/action/play_playset", {"name": "Local"})
+    d = wait_status(base, lambda s: s["playback"]["no_artwork"] != "", 15)
+    check(d["playback"]["playset"]["name"] == "Local" and d["playback"]["no_artwork"] == "needs a card",
+          "restore: Local chosen without a card says what it needs (%r)" % d["playback"]["no_artwork"])
+    d = boot_cardless(base)
+    if d is None:
+        return
+    time.sleep(12)  # past the boot animation
+    d = harness.status(base)
+    check(d["playback"]["playset"]["name"] == "Local" and d["playback"]["no_artwork"] == "needs a card" and not d["playback"].get("artwork"),
+          "restore: after a boot the choice is still Local, \"needs a card\", and Promoted does not stand in (%s, %r)" % (
+              d["playback"]["playset"]["name"], d["playback"]["no_artwork"]))
+    check(d["playback"]["screen"] == "", "restore: no other screen holds the panel (%r)" % d["playback"]["screen"])
+    with_address = frame_png(base)
+    check(len(with_address) > 200, "restore: the panel shows the No artwork screen (%d bytes of PNG)" % len(with_address))
+
+    # The time withheld from boot (D22): "waiting for the time", then playback.
+    request(base, "POST", "/api/v1/action/play_playset", {"name": "Promoted"})
+    time.sleep(1)
+    hook(base, time_withheld=True)
+    try:
+        d = boot_cardless(base)
+        if d is None:
+            return
+        time.sleep(14)
+        d = harness.status(base)
+        check(not d["time"]["synced"] and d["network"]["connected"], "time: on the network, the time withheld")
+        check(d["playback"]["no_artwork"] == "waiting for the time", "time: the panel says \"waiting for the time\", not \"offline\" (%r)" % d["playback"]["no_artwork"])
+        hook(base, time_withheld=False)
+        d = wait_status(base, playing, 45)
+        check(playing(d), "time: when the time arrives the device plays")
+    finally:
+        hook(base, time_withheld=False)
+
+    # Back with the card: the card's choice, untouched by what was chosen cardless.
+    hook(base, card_eject="")
+    d = reboot(base)
+    if not check(d is not None and d["card"]["mounted"], "restore: the card is mounted again"):
+        return
+    d = wait_status(base, lambda s: s["playback"]["playset"]["name"] == card_choice, 20)
+    check(d["playback"]["playset"]["name"] == card_choice, "restore: with the card, the card's choice is back (%s)" % d["playback"]["playset"]["name"])
+
+
 def main():
     base = next((a for a in sys.argv[1:] if a.startswith("http")), "http://p64.local").rstrip("/")
     d = harness.status(base)
@@ -125,7 +194,7 @@ def main():
     print("device: firmware %s, playset %s" % (d["firmware"]["version"], name))
     import api_smoke
     try:
-        for label, fn in [("window", test_window)]:
+        for label, fn in [("window", test_window), ("restore", test_restore)]:
             if only and label not in only:
                 continue
             print("--- %s" % label)

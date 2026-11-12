@@ -1,6 +1,7 @@
 // Host unit tests: the show's decision rules (main/show_rules.cpp) and the show core
 // (main/show_core.cpp) driven through whole scenarios by a fake ShowEnv, with the bugs
 // recorded in firmware/docs/PROGRESS.md replayed.
+#include <map>
 #include "common.hpp"
 #include "show_core.hpp"
 #include "show_rules.hpp"
@@ -203,7 +204,7 @@ TEST_CASE("show: channel status texts (spec 6.4)") {
   rules::ChannelFacts local;
   CHECK(rules::channel_status(local).empty());
   local.card_mounted = false;
-  CHECK(rules::channel_status(local) == "no card");
+  CHECK(rules::channel_status(local) == "needs a card");
   rules::ChannelFacts mk;
   mk.local = false;
   mk.needs_pairing = true;
@@ -259,12 +260,34 @@ TEST_CASE("show: streams take the panel when allowed, after the boot animation a
   CHECK(rules::stream_gate(false, false, true, false, false) == rules::StreamGate::No);
 }
 
-TEST_CASE("show: the connected screen waits for the boot animation, then shows only when nothing is up or coming") {
-  CHECK(rules::connected_screen(true, false, false) == rules::ConnectedScreen::Wait);
-  CHECK(rules::connected_screen(true, true, true) == rules::ConnectedScreen::Wait);
-  CHECK(rules::connected_screen(false, true, false) == rules::ConnectedScreen::Skip);
-  CHECK(rules::connected_screen(false, false, true) == rules::ConnectedScreen::Skip);
-  CHECK(rules::connected_screen(false, false, false) == rules::ConnectedScreen::Show);
+TEST_CASE("show: the playset a boot restores is the owner's choice or Promoted, never a stand-in (ADR 0018)") {
+  // Nothing ever chosen in this storage mode: Promoted, with or without a card (D15).
+  rules::Restore r = rules::restore_choice("", false, false, false);
+  CHECK(r.name == "Promoted");
+  CHECK(r.problem.empty());
+  // A user playset that is there plays; one that is gone stays the choice, with the reason (D13).
+  r = rules::restore_choice("Desk mix", false, false, true);
+  CHECK(r.name == "Desk mix");
+  CHECK(r.problem.empty());
+  r = rules::restore_choice("Desk mix", false, true, false);
+  CHECK(r.name == "Desk mix");
+  CHECK(r.problem == "playset not found");
+  // Followed on a device that is not paired: the choice, and what it needs.
+  r = rules::restore_choice("Followed", true, false, false);
+  CHECK(r.name == "Followed");
+  CHECK(r.problem == "needs pairing");
+  CHECK(rules::restore_choice("Followed", true, true, false).problem.empty());
+}
+
+TEST_CASE("show: a channel that waits for the time says so, not \"offline\" (D22)") {
+  rules::ChannelFacts mk;
+  mk.local = false;
+  mk.online = false;
+  CHECK(rules::channel_status(mk) == "offline");
+  mk.time_wait = true;  // on a network, NTP has not answered
+  CHECK(rules::channel_status(mk) == "waiting for the time");
+  mk.cached = 3;  // what is at hand plays meanwhile (with a card)
+  CHECK(rules::channel_status(mk).empty());
 }
 
 TEST_CASE("show: what the state puts up during a stream waits behind it and returns (spec 8.3)") {
@@ -328,9 +351,15 @@ class FakeEnv : public p64::show::ShowEnv {
   std::shared_ptr<const p64::system::Settings> settings() override { return cfg; }
   void persist_main_state(p64::system::MainState state) override { cfg->main_state = state; }
   void persist_active_playset(const std::string &name) override { persisted_playset = name; }
-  bool load_playset(const std::string &, p64::content::Playset &, std::string &error) override {
-    error = "no such playset";
-    return false;
+  std::map<std::string, p64::content::Playset> playsets;  // the store of the mode the device booted in
+  bool load_playset(const std::string &name, p64::content::Playset &out, std::string &error) override {
+    const auto it = playsets.find(name);
+    if (it == playsets.end()) {
+      error = "no such playset";
+      return false;
+    }
+    out = it->second;
+    return true;
   }
   void play(std::shared_ptr<FrameSource> source) override { played.push_back(source ? source->name() : "(null)"); }
   std::shared_ptr<FrameSource> static_frame(const char *name, const Frame &frame) override {
@@ -363,7 +392,10 @@ class FakeEnv : public p64::show::ShowEnv {
     scans.emplace_back(generation, playset);
     return true;
   }
-  bool card_mounted() override { return true; }
+  bool card = true;
+  bool time = true;
+  bool card_mounted() override { return card; }
+  bool time_synced() override { return time; }
   std::string storage_root() override { return "/sd/p64"; }
   std::string animations_dir() override { return "/sd/p64/animations"; }
   std::string downloads_dir() override { return "/sd/p64/downloads"; }
@@ -406,6 +438,17 @@ class FakeEnv : public p64::show::ShowEnv {
       }
       core::on_loaded(std::move(r));
     }
+  }
+  // The scanner finishes the last scan with `error` for every local channel (no card).
+  void complete_scan_errors(const std::string &error) {
+    REQUIRE(!scans.empty());
+    auto r = std::make_unique<p64::loader::ScanResult>();
+    r->generation = scans.back().first;
+    r->playset = scans.back().second;
+    scans.clear();
+    r->entries.resize(r->playset.channels.size());
+    r->errors.assign(r->playset.channels.size(), error);
+    core::on_scanned(std::move(r));
   }
   // The scanner finishes the last scan with `files` in the playset's first (local) channel.
   void complete_scan(const std::vector<std::string> &files) {
@@ -563,42 +606,136 @@ TEST_CASE("show core: an IP that lands during the boot animation never delays th
   CHECK(std::count(env.played.begin(), env.played.end(), "status") == 0);
 }
 
-TEST_CASE("show core: with nothing to play at the boot animation's end the IP shows, then yields to the first artwork") {
+TEST_CASE("show core: with nothing to play \"No artwork\" goes up at the boot animation's end, with the address when on a network (D17, D18)") {
   FakeEnv env;
   Frame scratch;
+  env.wifi.connected = false;
   core::init(env, scratch);
   core::boot(std::make_shared<p64::playback::StaticSource>("boot", Frame()), 3000);
   core::restore("Local");
   env.complete_scan({});  // an empty folder: "no artwork" waits behind the animation
-  core::wifi_connected();
   core::tick();
-  CHECK(core::state().screen == core::Screen::None);  // the animation still runs
-  CHECK(env.last_played() == "boot");                 // and nothing cut it short
+  CHECK(env.last_played() == "boot");  // nothing cut the animation short
   env.now += 3000000;
   core::tick();
-  CHECK(core::state().screen == core::Screen::Connected);
-  CHECK(env.last_played() == "status");
-  CHECK(std::count(env.played.begin(), env.played.end(), "no artwork") == 1);  // the reason went up first, at the animation's end
-  // A file appears and the rescan finds it: the pick is prepared behind the screen...
+  CHECK(env.last_played() == "no artwork");
+  CHECK(core::state().screen == core::Screen::None);
+  CHECK(core::state().status_reason == "empty");
+  CHECK(core::state().status_address.empty());
+  CHECK(std::count(env.played.begin(), env.played.end(), "no artwork") == 1);
+  // The network arrives: the same screen is drawn again with the hostname and address.
+  env.wifi.connected = true;
+  env.wifi.hostname = "p64";
+  env.wifi.ip = "192.168.1.64";
+  core::wifi_connected();
+  CHECK(std::count(env.played.begin(), env.played.end(), "no artwork") == 2);
+  CHECK(core::state().status_address == "p64 192.168.1.64");
+  core::tick();  // nothing changed: not drawn again
+  CHECK(std::count(env.played.begin(), env.played.end(), "no artwork") == 2);
+  CHECK(std::count(env.played.begin(), env.played.end(), "status") == 0);  // there is no "Wi-Fi ok" screen any more
+  // A file appears and the rescan finds it: the artwork replaces the screen at once.
   core::refresh();
   core::tick();
   env.complete_scan({"late.gif"});
   env.complete_loads();
-  CHECK(core::state().prepared);
-  CHECK(core::state().screen == core::Screen::Connected);  // ...readable for its minimum stay...
-  env.now += 1999000;
-  core::tick();
-  CHECK(core::state().screen == core::Screen::Connected);
-  env.now += 1000;
-  core::tick();  // ...then the artwork replaces it, well before the 15 s
-  CHECK(core::state().screen == core::Screen::None);
   REQUIRE(core::state().current);
   CHECK(core::state().current->name() == "late.gif");
-  CHECK_EQ(core::state().first_artwork_us, env.now);
   // A later reconnection while an artwork plays shows nothing.
   core::wifi_connected();
   core::tick();
-  CHECK(core::state().screen == core::Screen::None);
+  CHECK(env.last_played() == "late.gif");
+}
+
+TEST_CASE("show core: the restore matrix (ADR 0018: the owner's choice or Promoted, no stand-in)") {
+  Frame scratch;
+  {
+    // Nothing ever chosen: Promoted, also with a card and files on it (D15).
+    FakeEnv env;
+    core::init(env, scratch);
+    core::restore("");
+    CHECK(core::state().playset.name == "Promoted");
+    CHECK(core::state().playset_problem.empty());
+    CHECK(env.persisted_playset.empty());  // a default is not a choice
+  }
+  {
+    // A user playset that is gone: its name stays, nothing else plays, the panel says why.
+    FakeEnv env;
+    core::init(env, scratch);
+    core::restore("Desk mix");
+    CHECK(core::state().playset.name == "Desk mix");
+    CHECK(core::state().channels.empty());
+    CHECK(core::state().playset_problem == "playset not found");
+    CHECK(core::state().status_reason == "playset not found");
+    CHECK(env.last_played() == "no artwork");
+    CHECK(env.scans.empty());
+    cJSON *doc = core::status_json();
+    CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(doc, "no_artwork"))) == "playset not found");
+    CHECK(std::string(cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetObjectItem(doc, "playset"), "name"))) == "Desk mix");
+    cJSON_Delete(doc);
+    // The owner picks another one: the problem is gone.
+    core::activate("Local");
+    CHECK(core::state().playset_problem.empty());
+    env.complete_scan({"a.gif"});
+    env.complete_loads();
+    CHECK(core::state().current);
+    CHECK(env.persisted_playset == "Local");
+  }
+  {
+    // A user playset that is there plays.
+    FakeEnv env;
+    p64::content::Playset mix;
+    mix.name = "Desk mix";
+    mix.channels.push_back(p64::content::ChannelSpec{p64::content::ChannelKind::Local, "", "", 0, 0});
+    env.playsets["Desk mix"] = mix;
+    core::init(env, scratch);
+    core::restore("Desk mix");
+    CHECK(core::state().playset_problem.empty());
+    env.complete_scan({"a.gif"});
+    env.complete_loads();
+    CHECK(core::state().current);
+    CHECK(core::state().playset.name == "Desk mix");
+  }
+  {
+    // Followed on a device that is not paired: the choice stays, "needs pairing".
+    FakeEnv env;
+    core::init(env, scratch);
+    core::restore("Followed");
+    CHECK(core::state().playset.name == "Followed");
+    CHECK(core::state().playset_problem == "needs pairing");
+    CHECK(core::state().status_reason == "needs pairing");
+  }
+  {
+    // A playset that can never play as things are, chosen while another one plays: the
+    // panel says so at once; it does not keep the old artwork under the new name.
+    FakeEnv env;
+    core::init(env, scratch);
+    core::restore("Local");
+    env.complete_scan({"a.gif"});
+    env.complete_loads();
+    REQUIRE(core::state().current);
+    env.card = false;  // the card failed since
+    core::activate("Local");
+    env.complete_scan_errors("needs a card");
+    CHECK(!core::state().current);
+    CHECK(core::state().status_reason == "needs a card");
+    CHECK(env.last_played() == "no artwork");
+    CHECK(rules::reason_is_final("needs pairing"));
+    CHECK(!rules::reason_is_final("downloading"));
+    CHECK(!rules::reason_is_final("offline"));
+    CHECK(!rules::reason_is_final("waiting for the time"));
+    CHECK(!rules::reason_is_final("empty"));
+  }
+  {
+    // Local without a card: the choice stays and says what it needs (no Promoted in its place).
+    FakeEnv env;
+    env.card = false;
+    core::init(env, scratch);
+    core::restore("Local");
+    env.complete_scan_errors("needs a card");
+    CHECK(core::state().playset.name == "Local");
+    CHECK(core::state().status_reason == "needs a card");
+    CHECK(env.last_played() == "no artwork");
+  }
 }
 
 TEST_CASE("show core: a renamed playset follows in the show, the history and the persisted name (p108)") {

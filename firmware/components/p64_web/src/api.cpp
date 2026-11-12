@@ -917,6 +917,8 @@ esp_err_t test_post(httpd_req_t *req) {
       system::state::erase(system::test::kNoImuKey);
     }
   }
+  // "Nothing was ever chosen while cardless": a state no route leads back to.
+  if (cJSON_IsTrue(cJSON_GetObjectItem(body, "forget_cardless_playset"))) system::state::erase("playset_nc");
   const bool panic = cJSON_IsTrue(cJSON_GetObjectItem(body, "panic"));
   const bool reset = cJSON_IsTrue(cJSON_GetObjectItem(body, "reset"));
   cJSON_Delete(body);
