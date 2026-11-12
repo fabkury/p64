@@ -80,7 +80,13 @@ void do_load(Request &r) {
   const int64_t t1 = esp_timer_get_time();
   res->bytes = shared ? shared->size() : bytes.size();
   auto art = std::make_shared<playback::Artwork>();
-  const std::string name = r.path.substr(r.path.rfind('/') + 1);
+  // The file's name: of a memory path the key, without the play-this prefixes (the status
+  // showed "mem:<uuid>.webp" as an artwork's name until 2026-11-12).
+  std::string name = r.path.substr(r.path.rfind('/') + 1);
+  if (content::is_memory_path(name)) {
+    name = content::memory_key(name);
+    if (name.rfind("up-", 0) == 0 || name.rfind("dl-", 0) == 0) name.erase(0, 3);
+  }
   if (!(shared ? art->open(std::move(shared), name, r.background, error) : art->open(std::move(bytes), name, r.background, error))) {
     res->error = error;
     g_on_load(res);

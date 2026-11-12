@@ -396,7 +396,7 @@ never enter history and the clock overlay is not drawn over them.
 | Route | Method | What |
 |---|---|---|
 | `/api/v1/files?path=<rel>` | GET | list a folder (relative to the p64 storage root) |
-| `/api/v1/files?path=<rel>` | POST | upload the raw body as that file (sniffed and trial-decoded first; 5 MB cap) |
+| `/api/v1/files?path=<rel>` | POST | upload the raw body as that file (sniffed and trial-decoded first; 5 MB cap); the answer carries `kept: true`. On a device without a card (ADR 0018) the file is not kept: it goes into the memory window and plays once, as a play-this, and the answer carries `kept: false, playing: true`. Every other route that needs the card (`GET`/`DELETE /api/v1/files`, `files/get`, `files/mkdir`, `files/rename`, `files/format`, `/api/v1/folders`, `action/play` with a `path`) then answers `409 NO_CARD` (five different codes before 2026-11-12) |
 | `/api/v1/files/get?path=<rel>` | GET | download a file |
 | `/api/v1/files?path=<rel>` | DELETE | delete a file or empty folder (the p64 folders are protected) |
 | `/api/v1/files/mkdir?path=<rel>` | POST | create a folder |

@@ -4,7 +4,7 @@ the card is ejected virtually (hook `card_eject`), the device reboots without it
 the tests watch what it does. The card stays in its slot and is back after the last
 reboot. Needs the test build, a network and a card to give back.
 
-    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore,playsets]
+    python tests\device\cardless_smoke.py [http://p64.local] [--only window,restore,playsets,routes]
 
 window  NC-D1 and a short NC-D2: on Promoted the first artwork is up within the budget,
         the memory window fills once and never beyond its capacity, then takes at most
@@ -22,6 +22,9 @@ playsets NC-D5, device playsets (D9 to D12): cardless, the list is the device's 
         can be renamed and deleted; each limit is refused with its own words; a
         deleted playset that was the choice leaves "No artwork: playset not found";
         with the card back the card's list shows none of it.
+routes  NC-D4 and NC-D6: cardless, every route that needs the card answers 409 NO_CARD
+        (five different codes before); an upload is played once from memory and not
+        kept (D21); a file larger than 5 MB is still refused.
 
 Exit code 1 on any failure, 2 when the firmware has no test hooks.
 """
@@ -189,6 +192,42 @@ def test_restore(base):
     check(d["playback"]["playset"]["name"] == card_choice, "restore: with the card, the card's choice is back (%s)" % d["playback"]["playset"]["name"])
 
 
+def test_routes(base):
+    if boot_cardless(base) is None:
+        return
+    wait_status(base, playing, FIRST_ARTWORK_S + 10)
+    for method, path, body in (("GET", "/api/v1/files?path=animations", None), ("GET", "/api/v1/folders", None),
+                               ("GET", "/api/v1/files/get?path=animations/x.gif", None), ("DELETE", "/api/v1/files?path=animations/x.gif", None),
+                               ("POST", "/api/v1/files/mkdir?path=animations/new", None),
+                               ("POST", "/api/v1/files/rename?from=animations/a.gif&to=animations/b.gif", None),
+                               ("POST", "/api/v1/files/format", {"confirm": "FORMAT"}),
+                               ("POST", "/api/v1/action/play", {"path": "animations/x.gif"})):
+        st, j = request(base, method, path, body)
+        code = j.get("code") if isinstance(j, dict) else None
+        check(st == 409 and code == "NO_CARD", "routes: %s %s answers 409 NO_CARD (%s %s)" % (method, path.split("?")[0], st, code))
+    # An upload: played once from memory, not kept.
+    import os
+    corpus = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "host", "corpus", "gifs")
+    gif = sorted(f for f in os.listdir(corpus) if f.endswith(".gif"))[0]
+    with open(os.path.join(corpus, gif), "rb") as f:
+        data = f.read()
+    w0 = window(harness.status(base))
+    st, j = request(base, "POST", "/api/v1/files?path=animations/p64-test-upload.gif", data, content_type="application/octet-stream")
+    check(st == 200 and j["data"].get("kept") is False and j["data"].get("playing") is True, "routes: an upload answers \"played, not kept\" (%s %s)" % (
+        st, j.get("data") if isinstance(j, dict) else j))
+    d = wait_status(base, lambda s: playing(s) and s["playback"]["artwork"]["name"].startswith("p64-test-upload"), 10)
+    art = d["playback"].get("artwork") or {}
+    check(art.get("name", "").startswith("p64-test-upload") and art.get("path", "").startswith("mem:up-"), "routes: and it is on the panel, from memory (%s, name %r)" % (art.get("path"), art.get("name")))
+    check(window(harness.status(base))["stored"] > w0["stored"], "routes: it went into the memory window")
+    request(base, "POST", "/api/v1/action/next")
+    time.sleep(2)
+    request(base, "POST", "/api/v1/action/previous")
+    d = wait_status(base, lambda s: playing(s) and s["playback"]["artwork"]["name"].startswith("p64-test-upload"), 10)
+    check((d["playback"].get("artwork") or {}).get("name", "").startswith("p64-test-upload"), "routes: \"previous\" replays it while the window holds it")
+    st, j = request(base, "POST", "/api/v1/files?path=animations/junk.gif", b"this is not an image at all", content_type="application/octet-stream")
+    check(st == 415, "routes: a file that is not an artwork is refused as with a card (%s)" % st)
+
+
 MIX = "p64 test mix"   # a name the legacy rule could not store: a space
 
 
@@ -302,7 +341,7 @@ def main():
     print("device: firmware %s, playset %s" % (d["firmware"]["version"], name))
     import api_smoke
     try:
-        for label, fn in [("window", test_window), ("restore", test_restore), ("playsets", test_playsets)]:
+        for label, fn in [("window", test_window), ("restore", test_restore), ("playsets", test_playsets), ("routes", test_routes)]:
             if only and label not in only:
                 continue
             print("--- %s" % label)

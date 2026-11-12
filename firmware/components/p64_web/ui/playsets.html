@@ -95,6 +95,7 @@ h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
                 <h2 style="color:var(--c-card-fg);margin:0">My playsets <span id="psCount" style="font-size:0.8rem;color:var(--c-text-light)"></span></h2>
                 <button class="btn btn-primary btn-small" id="createNewBtn" onclick="showEditor()">+ Create new</button>
             </div>
+            <div id="storeNote" style="display:none;font-size:0.85rem;color:var(--c-card-fg-muted);margin-bottom:var(--sp-3)">The device is running without a microSD card: these playsets are kept on the device itself (up to 8, of up to 16 channels, without local channels). Playsets saved on a card are a separate list and return with the card.</div>
             <div id="playsetList" class="playset-list"></div>
         </div>
         <div class="card" style="margin-top:var(--sp-5)">
@@ -114,7 +115,7 @@ h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
             <div id="weightViz" class="weight-viz"></div>
         </div>
         <div class="form-group">
-            <label class="form-label">Channels (<span id="channelCount">0</span>/64)</label>
+            <label class="form-label">Channels (<span id="channelCount">0</span>/<span id="channelMax">64</span>)</label>
             <div id="channelList" class="channel-list"></div>
             <button type="button" class="btn btn-primary add-channel-btn" id="addChannelBtn" onclick="showAddChannel()">+ Add channel</button>
         </div>
@@ -149,7 +150,7 @@ h3 { font-size: clamp(16px, 4vw, 18px); color: var(--c-text); }
 <script src="/static/app.js"></script>
 <script>
 p64.nav('playsets');
-var state = { playsets: [], builtins: [], active: '', max: 32, editing: null, channels: [], folders: [] };
+var state = { playsets: [], builtins: [], active: '', max: 32, maxChannels: 64, onDevice: false, editing: null, channels: [], folders: [] };
 var colors = ['#8B5CFF', '#FF4D97', '#33A6FF', '#42D86E', '#FFC533', '#FF8A33', '#2BD6D6', '#E84DD6'];
 var kindLabels = { local: 'Local', promoted: 'Promoted', all: 'All artworks', own: 'Own artworks', artist: 'Artist', hashtag: 'Hashtag', reactions: 'Reactions', url_list: 'URL list', pinned: 'Pinned', external: 'External' };
 // Content providers beyond Makapix (status.providers): each offers channels as "<id>:<channel>".
@@ -170,6 +171,11 @@ var reserved = ['Promoted', 'All', 'Followed', 'Local'];
 function load() {
     p64.get('/api/v1/playsets').then(function (d) {
         state.playsets = d.playsets || []; state.builtins = d.builtins || []; state.active = d.active || ''; state.max = d.max_playsets || 32;
+        // Without a card the list is the device's own (ADR 0018): fewer, smaller, no local channels.
+        state.onDevice = d.store === 'device'; state.maxChannels = d.max_channels || 64;
+        document.getElementById('channelMax').textContent = state.maxChannels;
+        document.getElementById('storeNote').style.display = state.onDevice ? '' : 'none';
+        var local = document.querySelector('#channelSource option[value="local"]'); if (local) { local.disabled = state.onDevice; local.textContent = state.onDevice ? 'Local (needs a microSD card)' : 'Local (microSD card)'; }
         renderList();
     }).catch(function (e) { p64.toast(e.message, true); });
     p64.get('/api/v1/folders').then(function (fs) { state.folders = fs || []; }).catch(function () {});
@@ -179,7 +185,7 @@ function renderList() {
     document.getElementById('psCount').textContent = state.playsets.length + '/' + state.max;
     document.getElementById('createNewBtn').disabled = state.playsets.length >= state.max;
     if (!state.playsets.length) {
-        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#127925;</div><p>No playsets yet. Create your first mix!</p></div>';
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#127925;</div><p>' + (state.onDevice ? 'No playsets on the device yet. Create your first mix!' : 'No playsets yet. Create your first mix!') + '</p></div>';
     } else {
         list.innerHTML = state.playsets.map(function (p) {
             var active = p64.sameName(p.name, state.active), n = p64.esc(p.name);
@@ -275,7 +281,7 @@ function renderWeights() {
 function renderChannels() {
     var list = document.getElementById('channelList');
     document.getElementById('channelCount').textContent = state.channels.length;
-    document.getElementById('addChannelBtn').disabled = state.channels.length >= 64;
+    document.getElementById('addChannelBtn').disabled = state.channels.length >= state.maxChannels;
     if (!state.channels.length) { list.innerHTML = '<div class="empty-state"><p>No channels yet</p></div>'; renderWeights(); validateForm(); return; }
     list.innerHTML = state.channels.map(function (c, i) {
         return '<div class="channel-card" draggable="true" ondragstart="dragStart(event,' + i + ')" ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="drop(event,' + i + ')" ondragend="this.classList.remove(\'dragging\')">' +

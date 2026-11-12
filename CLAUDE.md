@@ -210,8 +210,11 @@ one new file per swap and per minute; artworks share its bytes), the playset rul
 address (the "connected" screen is gone), "waiting for the time", and device playsets
 (`p64/content/device_playsets.hpp`: 8 of 16 channels in NVS slots `dps0`..`dps7`;
 `content::store` follows the storage mode). `tests\device\cardless_smoke.py` runs them
-with the card ejected virtually (hooks lane). Open: the card-failed latch, formatting
-from the pages, uploads as play-this, the pages' cardless side, one `409 NO_CARD`. When a finding is fixed, mark it in
+with the card ejected virtually (hooks lane). Every route that needs the card answers
+`409 NO_CARD` (`web::reply_no_card`); an upload without a card plays once from the window
+(`kept: false`); the pages hide what needs the card. A provider's worker walks a cardless
+listing by `p64/content/window_walk.hpp`. Open: the card-failed latch, formatting from
+the pages. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

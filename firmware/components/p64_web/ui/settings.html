@@ -323,10 +323,13 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="info-row"><span class="info-label">Space</span><span class="info-value" id="card-space">-</span></div>
         <div class="info-row"><span class="info-label">Makapix cache</span><span class="info-value" id="cache-size">-</span></div>
         <div class="info-row"><span class="info-label">Last sweep</span><span class="info-value" id="cache-sweep">-</span></div>
+        <div id="cardless-note" style="display:none;margin-top:8px;font-size:0.85rem;color:var(--c-card-fg-muted)">The device is running without a microSD card. Artwork is kept in memory (<span id="cardless-window">-</span>) and downloaded again after a restart. Local channels, the file manager and formatting need a card; a card is read when the device starts, so insert it with the device unpowered.</div>
+        <div id="card-only">
         <div class="toggle-row" style="margin-top:8px"><button class="btn" style="background:var(--c-danger);color:var(--c-on-danger)" onclick="formatCard()">Format the card&hellip;</button></div>
         <div class="setting-hint">Erases everything on the card (FAT32) and recreates the p64 folders. Cached Makapix artworks download again.</div>
+        </div>
     </div>
-    <div class="section">
+    <div class="section" id="files-section">
         <h3>Files</h3>
         <div class="crumbs" id="crumbs"></div>
         <ul class="files" id="file-list"></ul>
@@ -623,7 +626,16 @@ p64.onStatus(function (d) {
       ((t.servers || []).length ? '; ' + t.servers.map(function (sv) { return sv.host + (sv.dhcp ? ' (router)' : '') + (sv.answered ? ' ✓' : ''); }).join(', ') : '') +
       (t.rejected ? '; ' + t.rejected + ' refused' : '');
     var c = d.card || {};
-    document.getElementById('card-status').textContent = c.mounted ? 'mounted' : ('no card' + (c.error ? ': ' + c.error : ''));
+    document.getElementById('card-status').textContent = c.mounted ? 'mounted' : ('running without a card' + (c.error ? ': ' + c.error : ''));
+    // Cardless (ADR 0018): what needs the card is not offered.
+    var sto = d.storage || {}, win = sto.window || {};
+    document.getElementById('card-only').style.display = c.mounted ? '' : 'none';
+    document.getElementById('files-section').style.display = c.mounted ? '' : 'none';
+    document.getElementById('cardless-note').style.display = c.mounted ? 'none' : '';
+    if (!c.mounted) {
+        document.getElementById('cardless-window').textContent = (win.files || 0) + ' of ' + (win.capacity_files || 0) + ' artworks, ' +
+            p64.fmtBytes(win.bytes || 0) + ' of ' + p64.fmtBytes(win.capacity_bytes || 0);
+    }
     document.getElementById('card-space').textContent = c.mounted ? p64.fmtBytes(c.free_bytes) + ' free of ' + p64.fmtBytes(c.total_bytes) : '-';
     var m = d.makapix || {};
     var mc = m.cache || {};

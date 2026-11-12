@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "esp_log.h"
+#include "p64/content/provider.hpp"
+#include "p64/content/memory_window.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/net/http_server.hpp"
 #include "p64/playback/artwork.hpp"
@@ -26,7 +28,7 @@ esp_err_t list_handler(httpd_req_t *req) {
   std::string rel, abs, error;
   query_param(req, "path", rel);
   if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
-  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "no card mounted");
+  if (!storage::mounted()) return reply_no_card(req);
   if (!storage::is_directory(abs)) return reply_error(req, "404 Not Found", "NOT_FOUND", "no such folder");
   cJSON *d = cJSON_CreateObject();
   cJSON_AddStringToObject(d, "path", rel.c_str());
@@ -52,7 +54,6 @@ esp_err_t upload_handler(httpd_req_t *req) {
   };
   if (!query_param(req, "path", rel) || rel.empty()) return refuse("400 Bad Request", "INVALID_PATH", "path required");
   if (!storage::resolve(rel, abs, error)) return refuse("400 Bad Request", "INVALID_PATH", error);
-  if (!storage::mounted()) return refuse("503 Service Unavailable", "NO_CARD", "no card mounted");
   if (req->content_len == 0 || req->content_len > playback::kMaxFileBytes) {
     return refuse("413 Payload Too Large", "FILE_TOO_LARGE", "files up to 5 MB");
   }
@@ -77,6 +78,27 @@ esp_err_t upload_handler(httpd_req_t *req) {
       return reply_error(req, "422 Unprocessable Entity", "REJECTED", "canvas larger than 256x256");
     }
   }
+  if (!storage::mounted()) {
+    // Cardless (ADR 0018, decision D21): the file is not kept. It goes into the memory
+    // window and plays once, as a play-this; it can be replayed from the history while
+    // the window still holds it.
+    const std::string name = rel.substr(rel.rfind('/') + 1);
+    const size_t size = bytes.size();
+    const std::string key = "up-" + name;
+    if (!content::memory_window().put(key, std::move(bytes))) {
+      return reply_error(req, "422 Unprocessable Entity", "REJECTED", "the file does not fit in the device's memory");
+    }
+    content::providers::play("mem:" + key, "", -1, name);
+    ESP_LOGI(TAG, "upload %s (%u bytes, %s) played from memory, not kept: no card", name.c_str(), static_cast<unsigned>(size),
+             decode::format_name(format));
+    cJSON *d = cJSON_CreateObject();
+    cJSON_AddStringToObject(d, "path", rel.c_str());
+    cJSON_AddNumberToObject(d, "size", static_cast<double>(size));
+    cJSON_AddStringToObject(d, "format", decode::format_name(format));
+    cJSON_AddBoolToObject(d, "kept", false);
+    cJSON_AddBoolToObject(d, "playing", true);
+    return reply_ok(req, d);
+  }
   const size_t slash = abs.rfind('/');
   if (slash != std::string::npos && !storage::is_directory(abs.substr(0, slash))) {
     return reply_error(req, "404 Not Found", "NOT_FOUND", "no such folder");
@@ -88,12 +110,14 @@ esp_err_t upload_handler(httpd_req_t *req) {
   cJSON_AddStringToObject(d, "path", rel.c_str());
   cJSON_AddNumberToObject(d, "size", static_cast<double>(bytes.size()));
   cJSON_AddStringToObject(d, "format", decode::format_name(format));
+  cJSON_AddBoolToObject(d, "kept", true);
   return reply_ok(req, d);
 }
 
 // GET /api/v1/files/get?path=... streams the file (the UI's file preview, and a way to
 // check what is on the card byte for byte).
 esp_err_t get_handler(httpd_req_t *req) {
+  if (!storage::mounted()) return reply_no_card(req);
   std::string rel, abs, error;
   if (!query_param(req, "path", rel) || rel.empty()) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
   if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
@@ -115,6 +139,7 @@ esp_err_t get_handler(httpd_req_t *req) {
 }
 
 esp_err_t delete_handler(httpd_req_t *req) {
+  if (!storage::mounted()) return reply_no_card(req);
   std::string rel, abs, error;
   if (!query_param(req, "path", rel) || rel.empty()) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
   if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
@@ -130,6 +155,7 @@ esp_err_t delete_handler(httpd_req_t *req) {
 }
 
 esp_err_t mkdir_handler(httpd_req_t *req) {
+  if (!storage::mounted()) return reply_no_card(req);
   std::string rel, abs, error;
   if (!query_param(req, "path", rel) || rel.empty()) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path required");
   if (!storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", error);
@@ -141,6 +167,7 @@ esp_err_t mkdir_handler(httpd_req_t *req) {
 }
 
 esp_err_t rename_handler(httpd_req_t *req) {
+  if (!storage::mounted()) return reply_no_card(req);
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
   const cJSON *f = cJSON_GetObjectItemCaseSensitive(body, "from");
@@ -164,6 +191,7 @@ esp_err_t rename_handler(httpd_req_t *req) {
 
 // Formats the card: {"confirm":"FORMAT"} required. The show rescans afterwards.
 esp_err_t format_handler(httpd_req_t *req) {
+  if (!storage::mounted()) return reply_no_card(req);
   cJSON *body = parse_body(req);
   if (!body) return ESP_OK;
   const cJSON *c = cJSON_GetObjectItemCaseSensitive(body, "confirm");

@@ -134,7 +134,7 @@ esp_err_t history_handler(httpd_req_t *req) {
 
 // GET /api/v1/folders: the folders that can be local channels, with their file counts.
 esp_err_t folders_handler(httpd_req_t *req) {
-  if (!storage::mounted()) return reply_error(req, "503 Service Unavailable", "NO_CARD", "no card mounted");
+  if (!storage::mounted()) return reply_no_card(req);
   std::vector<std::string> folders{""};
   std::vector<std::string> subs;
   std::string error;

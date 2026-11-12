@@ -484,7 +484,21 @@ p64.onStatus(function (d) {
     if (!shufflePending && d.settings_pick_mode) setShuffle(d.settings_pick_mode === 'random');
     var mk = d.makapix || {};
     var needsPairing = p.no_artwork === 'needs pairing' || (channels.some(function (c) { return c.status === 'needs pairing'; }));
-    showBanner('banner-card', d.card && !d.card.mounted);
+    var cardless = d.card && !d.card.mounted;
+    showBanner('banner-card', cardless);
+    if (cardless !== wasCardless) {
+        wasCardless = cardless;
+        var notFat = /FAT/.test((d.card || {}).error || '');
+        document.querySelector('#banner-card h4').innerHTML = notFat ? '&#9888; Card not FAT32' : '&#9888; No card';
+        document.getElementById('banner-card-text').textContent = (notFat
+            ? 'The microSD card has no FAT32 file system, so the device runs without it. '
+            : 'No microSD card is mounted. ') +
+            'Artwork is kept in memory and downloaded again after a restart; local channels and the file manager need a card. ' +
+            'A card is read when the device starts: insert it with the device unpowered.';
+        // Uploads are played once from memory, not kept: no folder to choose.
+        document.getElementById('folder-select').parentNode.style.display = cardless ? 'none' : '';
+        uploadBtn.textContent = cardless ? 'Play once (not kept: no card)' : 'Upload and play';
+    }
     showBanner('banner-offline', d.network && !d.network.connected && !d.network.setup_mode);
     showBanner('banner-pairing', needsPairing && mk.state !== 'paired');
     showBanner('banner-noartwork', !!p.no_artwork && !needsPairing, 'The device has no artwork to show: ' + (p.no_artwork || '') + '.');
@@ -511,6 +525,7 @@ function onFileChosen() {
     fileInfo.className = 'file-info has-file';
     uploadBtn.disabled = false;
 }
+var wasCardless = null;
 function uploadFile(ev) {
     ev.preventDefault();
     var f = fileInput.files[0];
@@ -527,8 +542,13 @@ function uploadFile(ev) {
         var j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {}
         if (xhr.status === 401) { p64.showPin(''); return; }
         if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
-            p64.toast('Uploaded; playing');
-            p64.post('/api/v1/action/play', { path: rel }).catch(function (e) { p64.toast(e.message, true); });
+            if (j.data && j.data.kept === false) {
+                // No card: the device plays the file from memory, once; it is not kept.
+                p64.toast('Playing (not kept: no card)');
+            } else {
+                p64.toast('Uploaded; playing');
+                p64.post('/api/v1/action/play', { path: rel }).catch(function (e) { p64.toast(e.message, true); });
+            }
             fileInput.value = ''; onFileChosen();
         } else { p64.toast(j.error || ('upload failed (' + xhr.status + ')'), true); uploadBtn.disabled = false; }
     };

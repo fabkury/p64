@@ -1418,9 +1418,18 @@ them. Newest entries are at the bottom of [Log](#log).
   with an address, device playsets against a fake NVS). `cardless_smoke.py` (window,
   restore, playsets) on the test build with the card ejected virtually. Hooks:
   `forget_cardless_playset`.
+- Later the same day: one answer for "needs a card", `409 NO_CARD`, on every route
+  (D24); an upload without a card goes into the memory window and plays once, the answer
+  says `kept: false` (D21); the pages' cardless side: Home's banner says what cardless
+  means (and "Card not FAT32" when that is the reason), offers "Play once (not kept)"
+  with no folder to choose; Settings hides the file manager and the format button and
+  shows the window's figures; Playsets says the list is the device's, counts out of 8,
+  allows 16 channels and no local one. An artwork played from memory has its file name
+  in the status (it read `mem:<key>`). `run_ui.py` gained the cardless pages against a
+  cardless fake device, `cardless_smoke.py` the routes and the upload. The lap rule
+  moved to `p64/content/window_walk.hpp` for every provider's worker.
 - Not done of cardless: the card-failed latch (D19), formatting an unformatted card
-  from the pages (D20), uploads as play-this (D21), the pages' cardless side and the
-  single `409 NO_CARD` (D24), the PSRAM worst case (NC-D3), the soak (NC-D14). The
+  from the pages (D20), the PSRAM worst case (NC-D3), the soak (NC-D14). The
   show re-prepares its next artwork on every provider change (ten loads for one swap
   during the first fill): harmless, to be looked at.
 

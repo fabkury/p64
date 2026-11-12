@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "p64/content/makapix_index.hpp"
+#include "p64/content/window_walk.hpp"
 
 namespace p64::makapix::policy {
 
@@ -131,22 +132,12 @@ Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, si
 // that is at its end starts over, its "seen" flags cleared. Returns whether anything
 // changed (false: no active channel has an entry, nothing to do).
 // Fields: active, loaded, entries, walk_depth, walk_more, next_refresh_us.
-constexpr uint32_t kWindowWalkStart = 100;
-constexpr uint32_t kWindowWalkStep = 100;
+using content::kWindowWalkStart;
+using content::kWindowWalkStep;
 template <typename Channel>
 bool end_window_lap(const std::vector<std::unique_ptr<Channel>> &channels, uint32_t cap) {
-  bool changed = false;
-  for (const auto &ch : channels) {
-    if (!ch->active || !ch->loaded || ch->entries.empty()) continue;
-    if (ch->walk_more && ch->walk_depth < cap) {
-      ch->walk_depth = std::min(cap, ch->walk_depth + kWindowWalkStep);
-      ch->next_refresh_us = 0;
-    } else {
-      for (auto &e : ch->entries) e.flags &= static_cast<uint8_t>(~content::kMakapixSeen);
-    }
-    changed = true;
-  }
-  return changed;
+  return content::end_window_lap(channels, cap, static_cast<uint8_t>(content::kMakapixSeen),
+                                 [](Channel &ch) -> decltype(ch.entries) & { return ch.entries; });
 }
 
 // A job taken from the queue: run it, park it until the network is up, or fail it.

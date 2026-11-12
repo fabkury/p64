@@ -75,6 +75,10 @@ esp_err_t reply_busy(httpd_req_t *req);
 // Shared helpers for route handlers.
 esp_err_t reply_ok(httpd_req_t *req, cJSON *data);  // takes ownership of data (may be null)
 esp_err_t reply_error(httpd_req_t *req, const char *status, const char *code, const std::string &message);
+// The one answer of every route that needs the card when the device runs without one
+// (ADR 0018): 409 NO_CARD. Before 2026-11-12 the same cause answered 503, 404, 500, 409
+// or 422 depending on the route.
+esp_err_t reply_no_card(httpd_req_t *req);
 // Query parameter, URL-decoded; false when absent.
 bool query_param(httpd_req_t *req, const char *name, std::string &out);
 // Percent-decoding; '+' is a space only in a query string (plus_as_space). False on a

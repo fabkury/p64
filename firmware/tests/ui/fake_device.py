@@ -74,6 +74,7 @@ class Fake:
         self.fail = {}       # "METHOD /path" -> (http status, error text, code)
         self.like_queued = False  # the like route answers 202 "queued"
         self.away = False    # the device is gone: every connection is dropped unanswered
+        self.cardless = False  # set_cardless()
         self.requests = []   # (time, method, path, body)
         self.in_flight = {}  # "METHOD /path" -> requests being served now
         self.most = {}       # "METHOD /path" -> the most at once
@@ -86,6 +87,21 @@ class Fake:
     @property
     def status(self):
         return self.docs["status"]
+
+    def set_cardless(self, on, error="no card answers"):
+        """The device booted without a card (ADR 0018): what the documents then say."""
+        with self.lock:
+            self.cardless = on
+            self.status["card"].update({"mounted": not on, "error": error if on else ""})
+            self.status.setdefault("storage", {})["mode"] = "cardless" if on else "card"
+            self.status["storage"]["window"] = {"files": 31 if on else 0, "bytes": 900000 if on else 0, "capacity_files": 48,
+                                                "capacity_bytes": 6291456, "filled": False, "stored": 31 if on else 0, "evictions": 0,
+                                                "refused": 0, "renewals": 0, "hits": 0, "misses": 0}
+            p = self.docs["playsets"]
+            p.update({"store": "device" if on else "card", "max_playsets": 8 if on else 32, "max_channels": 16 if on else 64})
+            for b in p["builtins"]:
+                if b["name"] == "Local":
+                    b.update({"enabled": not on, "reason": "needs a card" if on else ""})
 
     def count(self, method, path):
         with self.lock:
@@ -169,6 +185,10 @@ class Fake:
                         return self._send(200, f.read(), ctype)
                 if path == "/api/v1/ws":
                     return self._error(404, "no WebSocket on the fake", "NOT_FOUND")
+                card_routes = ("/api/v1/files", "/api/v1/folders", "/api/v1/files/get", "/api/v1/files/mkdir", "/api/v1/files/rename",
+                               "/api/v1/files/format")
+                if fake.cardless and path in card_routes and not (method == "POST" and path == "/api/v1/files"):
+                    return self._error(409, "this needs a microSD card, and the device is running without one", "NO_CARD")
                 if method == "GET":
                     simple = {"/api/v1/status": "status", "/api/v1/settings": "settings", "/api/v1/playsets": "playsets",
                               "/api/v1/channels": "channels", "/api/v1/history": "history", "/api/v1/folders": "folders",
@@ -217,7 +237,10 @@ class Fake:
                             d["playsets"]["active"] = body.get("name", "")
                     return self._ok({"action": action})
                 if method == "POST" and path == "/api/v1/files":
-                    return self._ok({"path": urllib.parse.parse_qs(url.query).get("path", [""])[0], "bytes": len(raw)})
+                    data = {"path": urllib.parse.parse_qs(url.query).get("path", [""])[0], "size": len(raw), "kept": not fake.cardless}
+                    if fake.cardless:
+                        data["playing"] = True
+                    return self._ok(data)
                 if method in ("POST", "DELETE", "PUT"):
                     return self._ok({})
                 return self._error(405, "this route does not take that method", "METHOD_NOT_ALLOWED")

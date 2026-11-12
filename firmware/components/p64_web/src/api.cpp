@@ -132,6 +132,10 @@ esp_err_t reply_error(httpd_req_t *req, const char *status, const char *code, co
   return r;
 }
 
+esp_err_t reply_no_card(httpd_req_t *req) {
+  return reply_error(req, "409 Conflict", "NO_CARD", "this needs a microSD card, and the device is running without one");
+}
+
 esp_err_t reply_busy(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Retry-After", "1");
   return reply_error(req, "503 Service Unavailable", "BUSY", kBusyError);
@@ -401,6 +405,7 @@ esp_err_t action_play(httpd_req_t *req) {
     return reply_ok(req, d);
   }
   if (rel.empty() || !storage::resolve(rel, abs, error)) return reply_error(req, "400 Bad Request", "INVALID_PATH", "path, post or url required");
+  if (!storage::mounted()) return reply_no_card(req);
   if (!g_hooks.play_file) return reply_error(req, "501 Not Implemented", "NOT_SUPPORTED", "no player");
   if (!g_hooks.play_file(abs, error)) {
     return error == kBusyError ? reply_busy(req) : reply_error(req, "422 Unprocessable Entity", "REJECTED", error);

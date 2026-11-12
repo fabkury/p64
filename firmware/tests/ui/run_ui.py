@@ -231,7 +231,67 @@ def t_settings(fake, base, context):
     p.page.close()
 
 
-FAKE_TESTS = [("pages", t_pages), ("storm", t_storm), ("refusals", t_refusals), ("like", t_like), ("settings", t_settings),
+def t_cardless(fake, base, context):
+    """Without a card (ADR 0018) the pages say what that means and offer nothing that
+    would fail after the click (docs/testing-strategy/no-card-mode.md, NC-D13)."""
+    fake.set_cardless(True)
+    try:
+        p = Page(context, base + "/")
+        p.page.wait_for_timeout(1500)
+        shown = p.page.evaluate("() => getComputedStyle(document.getElementById('banner-card')).display !== 'none'")
+        text = p.page.inner_text("#banner-card")
+        check(shown and "kept in memory" in text and "unpowered" in text, "cardless home: the banner says what running without a card means")
+        check(p.page.evaluate("() => document.getElementById('folder-select').parentNode.style.display") == "none",
+              "cardless home: no folder to choose for an upload")
+        check("not kept" in p.page.inner_text("#upload-btn"), "cardless home: the upload button says the file is not kept (%r)" % p.page.inner_text("#upload-btn"))
+        folder = tempfile.mkdtemp()
+        small = os.path.join(folder, "small.gif")
+        with open(small, "wb") as f:
+            f.write(b"GIF89a" + b"\0" * 1024)
+        fake.clear()
+        p.page.evaluate("() => document.getElementById('upload-section').classList.remove('collapsed')")
+        p.page.set_input_files("#file-input", small)
+        p.page.click("#upload-btn")
+        seen = p.wait_toast("not kept")
+        p.page.wait_for_timeout(500)
+        check("not kept" in seen and fake.count("POST", "/api/v1/files") == 1 and fake.count("POST", "/api/v1/action/play") == 0,
+              "cardless home: an upload is played once by the device; the page asks for nothing more (%r, %d play requests)" % (
+                  seen, fake.count("POST", "/api/v1/action/play")))
+        os.remove(small)
+        os.rmdir(folder)
+        check(not p.errors, "cardless home: no script error%s" % ((" (" + p.errors[0][:120] + ")") if p.errors else ""))
+        p.page.close()
+
+        s = Page(context, base + "/settings")
+        s.page.wait_for_timeout(1500)
+        vis = lambda sel: s.page.evaluate("(q) => getComputedStyle(document.querySelector(q)).display !== 'none'", sel)
+        check(not vis("#files-section") and not vis("#card-only"), "cardless settings: the file manager and the format button are not offered")
+        note = s.page.evaluate("() => document.getElementById('cardless-note').textContent")
+        check(s.page.evaluate("() => document.getElementById('cardless-note').style.display") != "none" and "31 of 48" in note,
+              "cardless settings: the note says where artwork is kept, with the window's figures")
+        check("without a card" in s.page.evaluate("() => document.getElementById('card-status').textContent"), "cardless settings: the status says so")
+        check(not s.errors, "cardless settings: no script error%s" % ((" (" + s.errors[0][:120] + ")") if s.errors else ""))
+        s.page.close()
+
+        q = Page(context, base + "/playsets")
+        q.page.wait_for_timeout(1500)
+        check(q.page.evaluate("() => document.getElementById('storeNote').style.display") != "none", "cardless playsets: the page says these playsets live on the device")
+        check(q.page.inner_text("#psCount").endswith("/8"), "cardless playsets: the count is out of 8 (%r)" % q.page.inner_text("#psCount"))
+        check(q.page.evaluate("() => document.querySelector('#channelSource option[value=\"local\"]').disabled"), "cardless playsets: a local channel cannot be chosen")
+        check(q.page.evaluate("() => document.getElementById('channelMax').textContent") == "16", "cardless playsets: 16 channels at most")
+        check(not q.errors, "cardless playsets: no script error%s" % ((" (" + q.errors[0][:120] + ")") if q.errors else ""))
+        q.page.close()
+    finally:
+        fake.set_cardless(False)
+    # And with a card none of it shows.
+    p = Page(context, base + "/playsets")
+    p.page.wait_for_timeout(1200)
+    check(p.page.evaluate("() => document.getElementById('storeNote').style.display") == "none" and p.page.inner_text("#psCount").endswith("/32"),
+          "with a card: the Playsets page is as before")
+    p.page.close()
+
+
+FAKE_TESTS = [("pages", t_pages), ("storm", t_storm), ("refusals", t_refusals), ("like", t_like), ("settings", t_settings), ("cardless", t_cardless),
               ("poll", t_poll), ("reconnect", t_reconnect)]
 
 

@@ -13,9 +13,9 @@ server). The words are in the [glossary](../../../CONTEXT.md). Nothing here is
 implemented yet; the specification changes with the code, as its own rule says.
 (Since then: D25 to D30 and D32 are implemented; of cardless, by 2026-11-12, the memory
 window (D7, D16, D23, D24 in part), the playset rule (D13 to D15), the one status screen
-(D17, D18), "waiting for the time" (D22) and device playsets (D9, D11, D12). Open: the
-card-failed latch (D19), formatting from the pages (D20), uploads as play-this (D21),
-the pages' cardless side and the one `409 NO_CARD` (D24).)
+(D17, D18), "waiting for the time" (D22) and device playsets (D9, D11, D12). Uploads as play-this
+(D21), the pages' cardless side and the one `409 NO_CARD` (D24) followed the same day.
+Open: the card-failed latch (D19), formatting from the pages (D20).)
 
 ## The frame
 
