@@ -3,56 +3,18 @@
 
 #include <sys/stat.h>
 
-#include <deque>
-#include <mutex>
 
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "p64/content/memory_window.hpp"
 #include "p64/storage/card.hpp"
 
 namespace p64::makapix::cache {
 namespace {
 
 constexpr const char *TAG = "makapix";
-constexpr size_t kMemoryCacheBytes = 6 * 1024 * 1024;  // without a card: what PSRAM lends the show
-constexpr size_t kMemoryCacheFiles = 48;
-
-struct MemoryFile {
-  std::string key;
-  std::vector<uint8_t> bytes;
-};
-
-std::mutex g_mem_mutex;
-std::deque<MemoryFile> g_memory;  // oldest first
-size_t g_memory_bytes = 0;
-
-void memory_store(const std::string &key, const std::vector<uint8_t> &bytes) {
-  std::lock_guard<std::mutex> lock(g_mem_mutex);
-  for (auto it = g_memory.begin(); it != g_memory.end(); ++it) {
-    if (it->key == key) {
-      g_memory_bytes -= it->bytes.size();
-      g_memory.erase(it);
-      break;
-    }
-  }
-  while (!g_memory.empty() && (g_memory_bytes + bytes.size() > kMemoryCacheBytes || g_memory.size() >= kMemoryCacheFiles)) {
-    g_memory_bytes -= g_memory.front().bytes.size();
-    g_memory.pop_front();
-  }
-  g_memory.push_back(MemoryFile{key, bytes});
-  g_memory_bytes += bytes.size();
-}
-
-bool memory_has(const std::string &key) {
-  std::lock_guard<std::mutex> lock(g_mem_mutex);
-  for (const MemoryFile &f : g_memory) {
-    if (f.key == key) return true;
-  }
-  return false;
-}
-
 std::string file_key(const content::MakapixEntry &e) {
   return content::format_uuid(e.storage_key) + content::makapix_format_ext(static_cast<content::MakapixFormat>(e.format));
 }
@@ -107,15 +69,18 @@ std::string artwork_path(const content::MakapixEntry &e) {
   return storage::root() + "/" + content::cache_relative_path(e);
 }
 
+std::string memory_key(const content::MakapixEntry &e) { return file_key(e); }
+
 bool artwork_present(const content::MakapixEntry &e) {
-  if (!has_card()) return memory_has(file_key(e));
+  if (!has_card()) return content::memory_window().has(file_key(e));
   return storage::exists(artwork_path(e));
 }
 
-bool store_artwork(const content::MakapixEntry &e, const std::vector<uint8_t> &bytes, std::string &error) {
+bool store_artwork(const content::MakapixEntry &e, std::vector<uint8_t> &bytes, std::string &error) {
   if (!has_card()) {
-    memory_store(file_key(e), bytes);
-    return true;
+    if (content::memory_window().put(file_key(e), std::move(bytes))) return true;
+    error = "it does not fit the memory window";
+    return false;
   }
   const std::string path = artwork_path(e);
   const std::string dir = path.substr(0, path.rfind('/'));
@@ -126,10 +91,13 @@ bool store_artwork(const content::MakapixEntry &e, const std::vector<uint8_t> &b
   return storage::write_file(path, bytes.data(), bytes.size(), error);
 }
 
-std::string store_download(const std::string &name, const std::vector<uint8_t> &bytes, std::string &error) {
+std::string store_download(const std::string &name, std::vector<uint8_t> &bytes, std::string &error) {
   if (!has_card()) {
     const std::string key = "dl-" + name;
-    memory_store(key, bytes);
+    if (!content::memory_window().put(key, std::move(bytes))) {
+      error = "it does not fit the memory window";
+      return "";
+    }
     return "mem:" + key;
   }
   if (!ensure_dir(storage::downloads_dir())) {
@@ -142,16 +110,11 @@ std::string store_download(const std::string &name, const std::vector<uint8_t> &
 }
 
 bool memory_bytes(const std::string &path, std::vector<uint8_t> &out) {
-  if (path.rfind("mem:", 0) != 0) return false;
-  const std::string key = path.substr(4);
-  std::lock_guard<std::mutex> lock(g_mem_mutex);
-  for (const MemoryFile &f : g_memory) {
-    if (f.key == key) {
-      out = f.bytes;
-      return true;
-    }
-  }
-  return false;
+  if (!content::is_memory_path(path)) return false;
+  const content::FileBytes bytes = content::memory_window().take(content::memory_key(path));
+  if (!bytes) return false;
+  out = *bytes;
+  return true;
 }
 
 uint64_t free_bytes() { return has_card() ? storage::info().free : 0; }

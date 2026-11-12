@@ -1,3 +1,4 @@
+#include "p64/content/memory_window.hpp"
 #include "p64/makapix/makapix.hpp"
 
 #include <algorithm>
@@ -309,8 +310,38 @@ void view_timer_fired() {
 
 // --- public API ----------------------------------------------------------------------
 
+namespace {
+
+// A file left the memory window: its entry is no longer "cached", at once, in every
+// channel that lists it (no phantom entries, finding F-11).
+void on_window_eviction(const std::string &key) {
+  uint8_t uuid[16];
+  if (key.size() < 36 || !content::parse_uuid(key.substr(0, 36).c_str(), uuid)) return;  // a play-this file
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    for (auto &ch : g_channels) {
+      bool here = false;
+      for (content::MakapixEntry &e : ch->entries) {
+        if ((e.flags & content::kMakapixCached) && std::memcmp(e.storage_key, uuid, 16) == 0) {
+          e.flags &= static_cast<uint8_t>(~content::kMakapixCached);
+          here = true;
+        }
+      }
+      if (here) {
+        recount_cached(*ch);
+        changed = true;
+      }
+    }
+  }
+  if (changed) publish_channel_changed();
+}
+
+}  // namespace
+
 bool start(const Hooks &hooks) {
   content::providers::add(&provider());
+  content::memory_window().on_evicted(on_window_eviction);
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_hooks = hooks;

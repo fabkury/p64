@@ -16,6 +16,7 @@
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "p64/content/memory_window.hpp"
 #include "p64/content/provider.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/gfx/fonts.hpp"
@@ -242,6 +243,25 @@ cJSON *build_status() {
   cJSON_AddNumberToObject(card, "total_bytes", static_cast<double>(c.total));
   cJSON_AddNumberToObject(card, "free_bytes", static_cast<double>(c.free));
   cJSON_AddStringToObject(card, "error", c.error.c_str());
+
+  // The storage mode (ADR 0018) and the memory window's figures.
+  cJSON *sto = cJSON_AddObjectToObject(d, "storage");
+  cJSON_AddStringToObject(sto, "mode", c.mounted ? "card" : "cardless");
+  {
+    const ::p64::content::MemoryWindow::Stats mw = ::p64::content::memory_window().stats();
+    cJSON *win = cJSON_AddObjectToObject(sto, "window");
+    cJSON_AddNumberToObject(win, "files", static_cast<double>(mw.files));
+    cJSON_AddNumberToObject(win, "bytes", static_cast<double>(mw.bytes));
+    cJSON_AddNumberToObject(win, "capacity_files", static_cast<double>(mw.capacity_files));
+    cJSON_AddNumberToObject(win, "capacity_bytes", static_cast<double>(mw.capacity_bytes));
+    cJSON_AddBoolToObject(win, "filled", mw.filled);
+    cJSON_AddNumberToObject(win, "stored", mw.stored);
+    cJSON_AddNumberToObject(win, "evictions", mw.evictions);
+    cJSON_AddNumberToObject(win, "refused", mw.refused);
+    cJSON_AddNumberToObject(win, "renewals", mw.renewals);
+    cJSON_AddNumberToObject(win, "hits", mw.hits);
+    cJSON_AddNumberToObject(win, "misses", mw.misses);
+  }
 
   if (g_hooks.display && g_hooks.display()) {
     const display::Display::Health h = g_hooks.display()->health();

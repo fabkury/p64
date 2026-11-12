@@ -62,6 +62,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_content", "src", "scheduler.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "history.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "provider.cpp"),
+    os.path.join(COMPONENTS, "p64_content", "src", "memory_window.cpp"),
     os.path.join(COMPONENTS, "p64_content", "src", "makapix_index.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts.cpp"),
     os.path.join(COMPONENTS, "p64_gfx", "src", "fonts_data.cpp"),

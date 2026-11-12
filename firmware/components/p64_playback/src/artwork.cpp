@@ -5,24 +5,33 @@
 namespace p64::playback {
 
 bool Artwork::open(std::vector<uint8_t> bytes, std::string name, gfx::Rgb background, std::string &error) {
+  return open(std::make_shared<const std::vector<uint8_t>>(std::move(bytes)), std::move(name), background, error);
+}
+
+bool Artwork::open(std::shared_ptr<const std::vector<uint8_t>> bytes, std::string name, gfx::Rgb background,
+                   std::string &error) {
   decoder_.reset();
   frames_ = 0;
   error_ = "";
   bytes_ = std::move(bytes);
   name_ = std::move(name);
   background_ = background;
-  if (bytes_.size() > kMaxFileBytes) {
+  if (!bytes_) {
+    error = "no file";
+    return false;
+  }
+  if (bytes_->size() > kMaxFileBytes) {
     error = "file larger than " + std::to_string(kMaxFileBytes) + " bytes";
     return false;
   }
-  format_ = decode::sniff(bytes_.data(), bytes_.size());
+  format_ = decode::sniff(bytes_->data(), bytes_->size());
   decoder_ = decode::create(format_);
   if (!decoder_) {
     error = format_ == decode::Format::Unknown ? "unknown file format"
                                                : std::string(decode::format_name(format_)) + " is not supported yet";
     return false;
   }
-  if (!decoder_->open(bytes_.data(), bytes_.size(), background_)) {
+  if (!decoder_->open(bytes_->data(), bytes_->size(), background_)) {
     error = std::string(decode::format_name(format_)) + ": " + decoder_->error();
     decoder_.reset();
     return false;

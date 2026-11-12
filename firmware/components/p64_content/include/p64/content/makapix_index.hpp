@@ -20,6 +20,10 @@ enum MakapixFlags : uint8_t {
   kMakapixCached = 1,    // the file is in the cache
   kMakapixMissing = 2,   // the server has no such file (404); not retried until the entry changes
   kMakapixRejected = 4,  // downloaded but undecodable; never retried until the entry changes
+  // Cardless only (ADR 0018), never written to a card: the entry was downloaded into the
+  // memory window in this lap of the listing. The window renews itself with entries not
+  // seen yet; when a channel has none left the lap ends and the flags are cleared.
+  kMakapixSeen = 8,
 };
 
 struct MakapixEntry {

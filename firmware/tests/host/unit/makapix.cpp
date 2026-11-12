@@ -104,6 +104,8 @@ struct FakeChannel {
   int64_t retry_at_us = 0, next_refresh_us = 0;
   MakapixEntries entries;
   uint32_t download_cursor = 0;
+  uint32_t walk_depth = 100;
+  bool walk_more = false;
 };
 
 MakapixEntry entry(int32_t id, uint8_t flags = 0, uint16_t side = 64) {
@@ -440,6 +442,51 @@ TEST_CASE("makapix handoff: exactly one side frees a job, whoever is first (F-10
     }
   }
   CHECK_EQ(waiter_owns + worker_owns, 2000);
+}
+
+TEST_CASE("makapix policy: cardless laps of a listing (ADR 0018)") {
+  using namespace p64::content;
+  std::vector<std::unique_ptr<FakeChannel>> chs;
+  chs.push_back(std::make_unique<FakeChannel>());
+  chs.push_back(std::make_unique<FakeChannel>());
+  for (int i = 0; i < 4; ++i) chs[0]->entries.push_back(entry(100 + i));
+  for (int i = 0; i < 2; ++i) chs[1]->entries.push_back(entry(200 + i));
+  const uint8_t skip = kMakapixCached | kMakapixMissing | kMakapixRejected | kMakapixSeen;
+  size_t rr = 0, index = 0;
+  int picks = 0;
+  while (FakeChannel *ch = policy::next_download(chs, rr, index, skip)) {
+    ch->entries[index].flags |= kMakapixSeen | kMakapixCached;
+    ++picks;
+  }
+  CHECK(picks == 6);  // every entry once
+  // Evictions clear "cached" but not "seen": nothing is downloaded twice in a lap.
+  chs[0]->entries[0].flags &= static_cast<uint8_t>(~kMakapixCached);
+  CHECK(policy::next_download(chs, rr, index, skip) == nullptr);
+  // The lap ends. Channel 0's listing had more: it goes deeper and is walked again,
+  // keeping its flags; channel 1 is at its end and starts over.
+  chs[0]->walk_more = true;
+  chs[0]->next_refresh_us = 12345;
+  chs[1]->next_refresh_us = 12345;
+  CHECK(policy::end_window_lap(chs, 2048));
+  CHECK(chs[0]->walk_depth == 200);
+  CHECK(chs[0]->next_refresh_us == 0);
+  CHECK((chs[0]->entries[1].flags & kMakapixSeen));
+  CHECK(chs[1]->walk_depth == 100);
+  CHECK(chs[1]->next_refresh_us == 12345);
+  CHECK(!(chs[1]->entries[0].flags & kMakapixSeen));
+  CHECK(policy::next_download(chs, rr, index, skip) == nullptr);  // channel 1's files are still cached
+  chs[1]->entries[0].flags &= static_cast<uint8_t>(~kMakapixCached);  // evicted since
+  CHECK(policy::next_download(chs, rr, index, skip) == chs[1].get());
+  // The depth stops at the channel cache size; then the channel starts over too.
+  chs[0]->walk_depth = 2000;
+  CHECK(policy::end_window_lap(chs, 2048));
+  CHECK(chs[0]->walk_depth == 2048);
+  CHECK(policy::end_window_lap(chs, 2048));
+  CHECK(chs[0]->walk_depth == 2048);
+  CHECK(!(chs[0]->entries[1].flags & kMakapixSeen));
+  // Nothing active with entries: nothing to do.
+  chs[0]->active = chs[1]->active = false;
+  CHECK(!policy::end_window_lap(chs, 2048));
 }
 
 }  // namespace

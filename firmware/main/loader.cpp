@@ -13,6 +13,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include "p64/content/memory_window.hpp"
 #include "p64/content/provider.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/storage/card.hpp"
@@ -53,11 +54,14 @@ void do_load(Request &r) {
   res->path = r.path;
   const int64_t t0 = esp_timer_get_time();
   std::vector<uint8_t> bytes;
+  content::FileBytes shared;  // a file of the memory window: its bytes are shared, not copied
   std::string error;
-  if (r.path.rfind("mem:", 0) == 0) {  // the memory cache used without a card
-    if (!content::providers::memory_bytes(r.path, bytes)) {
+  if (content::is_memory_path(r.path)) {
+    shared = content::memory_window().take(content::memory_key(r.path));
+    // A provider that keeps files of its own answers for them (a copy).
+    if (!shared && !content::providers::memory_bytes(r.path, bytes)) {
       res->missing = true;
-      res->error = "no longer in the memory cache";
+      res->error = "no longer in memory";
       g_on_load(res);
       return;
     }
@@ -74,10 +78,10 @@ void do_load(Request &r) {
     utime(r.path.c_str(), nullptr);
   }
   const int64_t t1 = esp_timer_get_time();
-  res->bytes = bytes.size();
+  res->bytes = shared ? shared->size() : bytes.size();
   auto art = std::make_shared<playback::Artwork>();
   const std::string name = r.path.substr(r.path.rfind('/') + 1);
-  if (!art->open(std::move(bytes), name, r.background, error)) {
+  if (!(shared ? art->open(std::move(shared), name, r.background, error) : art->open(std::move(bytes), name, r.background, error))) {
     res->error = error;
     g_on_load(res);
     return;

@@ -121,6 +121,7 @@ python tests/device/ui_smoke.py $p64Url
 | `cache_sweep_smoke.py` | Card and NTP; dry-run by default. `--delete` actually removes older cached/downloaded files and indexes. |
 | `tls_slot_smoke.py` | Pairing; checks that a paused provider walk frees the TLS slot. |
 | `abuse_smoke.py` | The findings of 2026-11-11: the setup routes outside setup mode, request bodies nested up to 15000 levels, bursts of navigation and activations from 16 connections, then the show must go on by itself. Sets the auto-swap interval to 5 s and restores the settings and the playset. A firmware older than 0.2.2 reboots on it. |
+| `cardless_smoke.py` | The test build only, with a card to eject virtually and give back. On Promoted without the card: the first artwork within 30 s of the boot, the memory window filled once and never beyond its capacity, then at most one new file per swap and per minute, no missing file, "previous" from memory. |
 | `hooks_smoke.py` | The test build only. Reboots the device about ten times: the like path with the worker held, the time withheld, the IMU found late, a deliberate panic, abrupt resets during settings writes, two boots without the card. Clears every hook at the end. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |

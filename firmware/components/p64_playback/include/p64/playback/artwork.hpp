@@ -26,11 +26,14 @@ class Artwork : public FrameSource {
   // format and opens the decoder. `name` is for logs and status. On failure `error`
   // says why and the artwork is unusable.
   bool open(std::vector<uint8_t> bytes, std::string name, gfx::Rgb background, std::string &error);
+  // The same with bytes that are shared, not owned: a file of the memory window plays
+  // from the window's own copy (ADR 0018) and keeps it alive while it plays.
+  bool open(std::shared_ptr<const std::vector<uint8_t>> bytes, std::string name, gfx::Rgb background, std::string &error);
 
   const std::string &name() const override { return name_; }
   const decode::Info &info() const { return decoder_->info(); }
   decode::Format format() const { return format_; }
-  size_t file_bytes() const { return bytes_.size(); }
+  size_t file_bytes() const { return bytes_ ? bytes_->size() : 0; }
   bool is_open() const { return decoder_ && decoder_->is_open(); }
 
   // Decodes the next frame and scales it into `out` (bars in the background colour).
@@ -47,7 +50,7 @@ class Artwork : public FrameSource {
   void set_background(gfx::Rgb background);
 
  private:
-  std::vector<uint8_t> bytes_;
+  std::shared_ptr<const std::vector<uint8_t>> bytes_;
   std::string name_;
   std::unique_ptr<decode::Decoder> decoder_;
   gfx::Scaler scaler_;

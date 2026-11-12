@@ -104,7 +104,8 @@ int64_t retry_delay_us(uint32_t fail_streak, const std::string &error);
 // channel from its own cursor; skips cached, missing and rejected entries. Advances the
 // cursor and the round-robin position. Fields: active, loaded, entries, download_cursor.
 template <typename Channel>
-Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, size_t &round_robin, size_t &index) {
+Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, size_t &round_robin, size_t &index,
+                       uint8_t skip = content::kMakapixCached | content::kMakapixMissing | content::kMakapixRejected) {
   const size_t n = channels.size();
   for (size_t k = 0; k < n; ++k) {
     Channel &ch = *channels[(round_robin + k) % n];
@@ -112,7 +113,7 @@ Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, si
     for (size_t t = 0; t < ch.entries.size(); ++t) {
       const size_t i = (ch.download_cursor + t) % ch.entries.size();
       const content::MakapixEntry &e = ch.entries[i];
-      if (e.flags & (content::kMakapixCached | content::kMakapixMissing | content::kMakapixRejected)) continue;
+      if (e.flags & skip) continue;
       index = i;
       ch.download_cursor = static_cast<uint32_t>((i + 1) % ch.entries.size());
       round_robin = (round_robin + k + 1) % n;
@@ -120,6 +121,32 @@ Channel *next_download(const std::vector<std::unique_ptr<Channel>> &channels, si
     }
   }
   return nullptr;
+}
+
+// Cardless (ADR 0018): a listing is walked only as far as the memory window needs. A
+// channel starts at kWindowWalkStart entries; when every entry of every active channel
+// has been seen this lap (next_download finds nothing), the lap ends: a channel whose
+// last walk stopped at its depth with more to list goes kWindowWalkStep deeper and is
+// walked again (`cap` is the channel cache size, the limit with a card too); a channel
+// that is at its end starts over, its "seen" flags cleared. Returns whether anything
+// changed (false: no active channel has an entry, nothing to do).
+// Fields: active, loaded, entries, walk_depth, walk_more, next_refresh_us.
+constexpr uint32_t kWindowWalkStart = 100;
+constexpr uint32_t kWindowWalkStep = 100;
+template <typename Channel>
+bool end_window_lap(const std::vector<std::unique_ptr<Channel>> &channels, uint32_t cap) {
+  bool changed = false;
+  for (const auto &ch : channels) {
+    if (!ch->active || !ch->loaded || ch->entries.empty()) continue;
+    if (ch->walk_more && ch->walk_depth < cap) {
+      ch->walk_depth = std::min(cap, ch->walk_depth + kWindowWalkStep);
+      ch->next_refresh_us = 0;
+    } else {
+      for (auto &e : ch->entries) e.flags &= static_cast<uint8_t>(~content::kMakapixSeen);
+    }
+    changed = true;
+  }
+  return changed;
 }
 
 // A job taken from the queue: run it, park it until the network is up, or fail it.

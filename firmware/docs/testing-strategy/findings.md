@@ -204,7 +204,13 @@ from the page or from knob B. The web handler also blocks the only HTTP task for
 with the oracle; in the fix, the job lives on the heap with shared ownership, and a host
 test covers the timeout order.
 
-### F-11 The cardless feed downloads everything and keeps almost nothing (blocker for D5)
+### F-11 The cardless feed downloads everything and keeps almost nothing (blocker for D5; fixed 2026-11-12)
+
+**Fixed** by the memory window (`p64/content/memory_window.hpp`, ADR 0018): filled once, then one
+new file per swap and per minute in place of the least recently played; an evicted file's entry
+loses its flag in the same step; the listing is walked 100 entries deep and deeper only when a lap
+runs out. On the p64b, ejected: 48 files in 46 s, then 2 downloads in 150 s of 30 swaps (85 in 73 s
+before), no miss, no load failure (`cardless_smoke.py`).
 
 `components/p64_makapix/src/cache.cpp:19-46`: the memory cache holds 48 files or 6 MB,
 evicts first-in first-out (the specification says least recently played), and never

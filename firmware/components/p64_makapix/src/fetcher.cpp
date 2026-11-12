@@ -17,6 +17,7 @@
 #include "policy.hpp"
 #include "mqtt.hpp"
 #include "p64/content/makapix_index.hpp"
+#include "p64/content/memory_window.hpp"
 #include "p64/system/test_hooks.hpp"
 #include "p64/decode/decoder.hpp"
 #include "p64/net/clock.hpp"
@@ -327,7 +328,9 @@ void refresh_step(Channel *ch) {
     finish_walk(ch, false, "needs pairing");
     return;
   }
-  const size_t cap = system::settings().channel_cache_size;
+  // Cardless: only as far as the memory window needs (policy::end_window_lap deepens it).
+  const size_t cap = cache::has_card() ? system::settings().channel_cache_size
+                                       : std::min<size_t>(system::settings().channel_cache_size, ch->walk_depth);
   const uint16_t min_side = system::settings().makapix_min_side;
   const uint16_t max_side = system::settings().makapix_max_side;
   set_activity("refreshing " + ch->id + " (page " + std::to_string(ch->walk_pages + 1) + ")");
@@ -354,6 +357,7 @@ void refresh_step(Channel *ch) {
     if (ch->walk_fresh.size() > cap) ch->walk_fresh.resize(cap);
     ++ch->walk_pages;
     ch->walk_cursor = next;
+    ch->walk_more = more && !listed_none;
     const policy::PageOutcome outcome =
         policy::after_page(ch->walk_fresh.size(), cap, more, listed_none, ch->entries.empty());
     done = outcome.done;
@@ -374,10 +378,20 @@ void refresh_step(Channel *ch) {
 
 // --- downloads ----------------------------------------------------------------------
 
-// Picks the next entry to fetch, round-robin across the active channels.
+// Picks the next entry to fetch, round-robin across the active channels. Cardless, an
+// entry already seen this lap is passed over, and a lap that ran out ends here (deeper
+// walks, or the flags cleared for the next lap).
 bool next_download(Channel *&channel, content::MakapixEntry &entry, size_t &index) {
   std::lock_guard<std::mutex> lock(g_mutex);
-  channel = policy::next_download(g_channels, g_round_robin, index);
+  const uint8_t base = content::kMakapixCached | content::kMakapixMissing | content::kMakapixRejected;
+  if (cache::has_card()) {
+    channel = policy::next_download(g_channels, g_round_robin, index);
+  } else {
+    channel = policy::next_download(g_channels, g_round_robin, index, base | content::kMakapixSeen);
+    if (!channel && policy::end_window_lap(g_channels, system::settings().channel_cache_size)) {
+      channel = policy::next_download(g_channels, g_round_robin, index, base | content::kMakapixSeen);
+    }
+  }
   if (!channel) return false;
   entry = channel->entries[index];
   return true;
@@ -414,6 +428,9 @@ bool download_step() {
   Channel *ch = nullptr;
   content::MakapixEntry entry;
   size_t index = 0;
+  // Cardless: the window fills once, then takes one new file per swap (ADR 0018).
+  const bool cardless = !cache::has_card();
+  if (cardless && !content::memory_window().admits_download(esp_timer_get_time())) return false;
   if (!next_download(ch, entry, index)) {
     if (g_unsaved_downloads) save_dirty_indexes();
     return false;
@@ -427,7 +444,7 @@ bool download_step() {
     return false;
   }
   if (cache::artwork_present(entry)) {  // already there (an index rebuilt without its flags)
-    flag_entry(ch, index, entry, content::kMakapixCached);
+    flag_entry(ch, index, entry, content::kMakapixCached | (cardless ? content::kMakapixSeen : 0));
     publish_channel_changed();
     return true;
   }
@@ -461,19 +478,24 @@ bool download_step() {
     set_activity("");
     return true;
   }
+  const size_t size = bytes.size();
   if (!cache::store_artwork(entry, bytes, error)) {
     ESP_LOGW(TAG, "post %ld: cannot store: %s", static_cast<long>(entry.post_id), error.c_str());
-    set_error(error);
     set_activity("");
+    if (cardless) {  // the window refused it: not again this lap, and no pause
+      flag_entry(ch, index, entry, content::kMakapixSeen);
+      return true;
+    }
+    set_error(error);
     vTaskDelay(pdMS_TO_TICKS(5000));
     return true;
   }
-  flag_entry(ch, index, entry, content::kMakapixCached);
+  flag_entry(ch, index, entry, content::kMakapixCached | (cardless ? content::kMakapixSeen : 0));
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_status.downloads;
   }
-  ESP_LOGI(TAG, "cached post %ld (%u bytes, %s) for %s", static_cast<long>(entry.post_id), static_cast<unsigned>(bytes.size()),
+  ESP_LOGI(TAG, "cached post %ld (%u bytes, %s) for %s", static_cast<long>(entry.post_id), static_cast<unsigned>(size),
            decode::format_name(format), ch->id.c_str());
   if (++g_unsaved_downloads >= kSaveEveryDownloads) save_dirty_indexes();
   set_activity("");

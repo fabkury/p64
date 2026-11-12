@@ -1,6 +1,6 @@
 // Where Makapix things live: channel indexes under channels/ and artwork files under
-// cache/ on the card (spec 5.4), or a bounded memory cache in PSRAM when there is no
-// card (ADR 0006); play-this downloads under downloads/. Card I/O: worker task only.
+// cache/ on the card (spec 5.4), or the content layer's memory window when there is no
+// card (ADR 0018); play-this downloads under downloads/. Card I/O: worker task only.
 #pragma once
 
 #include <cstdint>
@@ -22,10 +22,14 @@ bool remove_index(const std::string &channel_id);
 // An entry's file: an absolute card path, or "mem:<uuid>.<ext>" without a card.
 std::string artwork_path(const content::MakapixEntry &e);
 bool artwork_present(const content::MakapixEntry &e);
-bool store_artwork(const content::MakapixEntry &e, const std::vector<uint8_t> &bytes, std::string &error);
+// Without a card the bytes are moved into the memory window (content/memory_window.hpp),
+// which may refuse them (false, with the reason).
+bool store_artwork(const content::MakapixEntry &e, std::vector<uint8_t> &bytes, std::string &error);
 // A play-this download: downloads/<name> on the card, or "mem:dl-<name>".
-std::string store_download(const std::string &name, const std::vector<uint8_t> &bytes, std::string &error);
-// Bytes of a "mem:" path.
+std::string store_download(const std::string &name, std::vector<uint8_t> &bytes, std::string &error);
+// An entry's key in the memory window ("<uuid>.<ext>").
+std::string memory_key(const content::MakapixEntry &e);
+// Bytes of a "mem:" path (a copy; the loader shares the window's own).
 bool memory_bytes(const std::string &path, std::vector<uint8_t> &out);
 // Free space on the card (0 without one).
 uint64_t free_bytes();

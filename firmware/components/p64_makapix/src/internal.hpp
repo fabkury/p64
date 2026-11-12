@@ -37,6 +37,10 @@ struct Channel {
   bool active = false;  // in the active playset
   bool rewalk = false;  // the size limit changed during a walk: walk again as soon as it ends
   uint32_t download_cursor = 0;
+  // Cardless (policy::end_window_lap): how far the listing is walked, and whether the
+  // last walk stopped there with more to list.
+  uint32_t walk_depth = 100;
+  bool walk_more = false;
   std::string error;
   // A refresh in progress: one page per worker step, the connection kept open.
   std::string walk_cursor;

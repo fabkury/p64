@@ -62,6 +62,7 @@ TESTS = {
     "ota_smoke": ([], {"internet": True, "ntp": True, "build": True}, ("update",), 900, {"reboot": True}),
     "abuse_smoke": ([], {}, ("abuse",), 600, {}),
     "hooks_smoke": ([], {"hooks": True}, ("hooks",), 900, {"reboot": True, "panics": 1}),
+    "cardless_smoke": ([], {"hooks": True, "card": "required", "internet": True, "ntp": True}, ("hooks",), 900, {"reboot": True}),
     "soak": (["--minutes", "{minutes}"], {"internet": True, "ntp": True}, ("soak",), None, {}),
 }
 

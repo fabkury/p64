@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 
+#include "p64/content/memory_window.hpp"
 #include "p64/content/local_index.hpp"
 #include "p64/content/playset_json.hpp"
 #include "p64/decode/decoder.hpp"
@@ -302,6 +303,7 @@ void report_hidden() {
 }
 
 void report_shown(const content::HistoryItem &item) {
+  content::memory_window().note_swap(now_us());  // the window's pace: one new file per swap (ADR 0018)
   content::Provider *owner = item.provider.empty() ? nullptr : content::providers::find(item.provider);
   for (content::Provider *p : content::providers::all()) {
     if (p != owner) p->note_hidden();
