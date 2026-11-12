@@ -534,6 +534,7 @@ void play_downloaded(Job *job, const content::MakapixEntry &entry, int32_t post_
       return;
     }
   }
+  set_activity("");  // also when the file was at hand: "looking up ..." stayed until the next job (2026-11-12)
   if (g_hooks.play_artwork) g_hooks.play_artwork(path, post_id, name);
   finish(job, true, "");
 }

@@ -1428,6 +1428,16 @@ them. Newest entries are at the bottom of [Log](#log).
   in the status (it read `mem:<key>`). `run_ui.py` gained the cardless pages against a
   cardless fake device, `cardless_smoke.py` the routes and the upload. The lap rule
   moved to `p64/content/window_walk.hpp` for every provider's worker.
+- The window's renewal became a claim (`claim_download`, `unclaim_download`): with the
+  workers of three providers each asking on its own, one swap made three downloads (9 in
+  180 s); a worker now claims the swap's one download and gives it back when it has
+  nothing to fetch.
+- F-32 measured (`pages_tls_probe.py`): with four pages open, 4 update checks and 4
+  play-this downloads all worked, and the internal heap's low-water mark was 8.3 KB
+  (1.5 KB DMA-capable); the largest block stayed at 20.5 KB two minutes after the pages
+  closed. No failure, almost no margin: to be bounded.
+- The Makapix worker's activity line stayed "looking up <post>" after a play-this of a
+  post whose file was at hand; cleared now.
 - Not done of cardless: the card-failed latch (D19), formatting an unformatted card
   from the pages (D20), the PSRAM worst case (NC-D3), the soak (NC-D14). The
   show re-prepares its next artwork on every provider change (ten loads for one swap
