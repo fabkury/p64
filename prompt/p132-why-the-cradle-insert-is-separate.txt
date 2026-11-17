@@ -1,0 +1,6 @@
+Now let's polish something else about the documentation: what is said about the cradle insert.
+
+One thing hasn't been explained to the user yet:
+ - Q: Why does the cradle insert exist as a separate piece? Why isn't it just part of the enclosure?
+ - A: Because the 90-degree USB-C adaptors may vary (in exact shape and size) from brand to brand, and the cradle insert needs to meet them wherever they land physically. The cradle insert should be glued to the correct height to meet the 90-degree USB-C adaptors and support them.
+Please add this information to the documentation (no need to copy it verbatim).
