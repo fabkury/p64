@@ -238,12 +238,16 @@ void draw_beach(Frame &frame, const Moment &m, const Options &o, const Sky &plac
       }
       frame.set(xx, yy, lit);
     }
-  // the foam along the waterline, breaking every step
+  // the foam along the waterline, breaking every step, on the water and the sand the
+  // tide reaches and never on the hut (whose bottom edge sits a row above the shore)
+  const auto beach_pixel = [&](int xx, int yy) {
+    return yy >= 0 && yy < Frame::height() && (sea.inked(xx, yy) || (art.shore[xx] < yy && yy <= art.shore[xx] + tide_rows));
+  };
   for (int xx = 0; xx < Frame::width(); ++xx) {
     if (art.shore[xx] < 0) continue;
     const int wl = art.shore[xx] + tide_rows;
-    if (hash3(xx, wl, tick) % 4) frame.set(xx, wl, lerp(frame.get(xx, wl), {255, 255, 255}, 0.5f));
-    if (hash3(xx, wl - 1, tick) % 7 == 0) frame.set(xx, wl - 1, lerp(frame.get(xx, wl - 1), {255, 255, 255}, 0.3f));
+    if (beach_pixel(xx, wl) && hash3(xx, wl, tick) % 4) frame.set(xx, wl, lerp(frame.get(xx, wl), {255, 255, 255}, 0.5f));
+    if (beach_pixel(xx, wl - 1) && hash3(xx, wl - 1, tick) % 7 == 0) frame.set(xx, wl - 1, lerp(frame.get(xx, wl - 1), {255, 255, 255}, 0.3f));
   }
   if (place.precip != Sky::Precip::None) {
     uint32_t rng = static_cast<uint32_t>((m.minute * 7919 + m.hour * 104729) % 65536);

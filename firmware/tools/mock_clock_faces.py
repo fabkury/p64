@@ -2168,14 +2168,18 @@ def draw_beach(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", m
                 elif roll % 29 == 0:
                     lit = lerp(lit, (255, 255, 255), 0.10 + 0.15 * light)
             frame.set(xx, yy, lit)
-    # the foam along the waterline, breaking every step
+    # the foam along the waterline, breaking every step, on the water and the sand the
+    # tide reaches and never on the hut (whose bottom edge sits a row above the shore)
+    def beach_pixel(xx, yy):
+        return 0 <= yy < H and (kp[xx, yy][3] >= 128 or shore[xx] < yy <= shore[xx] + tide_rows)
+
     for xx in range(W):
         if shore[xx] < 0:
             continue
         wl = shore[xx] + tide_rows
-        if hash3(xx, wl, tick) % 4:
+        if beach_pixel(xx, wl) and hash3(xx, wl, tick) % 4:
             frame.set(xx, wl, lerp(frame.get(xx, wl), (255, 255, 255), 0.5))
-        if hash3(xx, wl - 1, tick) % 7 == 0:
+        if beach_pixel(xx, wl - 1) and hash3(xx, wl - 1, tick) % 7 == 0:
             frame.set(xx, wl - 1, lerp(frame.get(xx, wl - 1), (255, 255, 255), 0.3))
     if precip:
         rng = (m.minute * 7919 + m.hour * 104729) % 65536
@@ -2403,8 +2407,8 @@ def write_rd_design():
                       ("broken", draw_beach(Moment(15, 0), o, cover=2, **ny)),
                       ("rain", draw_beach(Moment(15, 0), o, cover=3, precip="rain", **ny)),
                       ("12 h", draw_beach(Moment(6, 40), Options(h24=False), **ny)),
-                      ("low tide", draw_beach(Moment(15, 0, 0, 2, 29, 9, 271), o, **ny)),
-                      ("high tide", draw_beach(Moment(21, 0, 0, 2, 29, 9, 271), o, **ny)),
+                      ("high tide", draw_beach(Moment(15, 0, 0, 2, 29, 9, 271), o, **ny)),
+                      ("low tide", draw_beach(Moment(21, 0, 0, 2, 29, 9, 271), o, **ny)),
                       ("full moon", draw_beach(Moment(22, 30), o, **ny)),
                       ("sao paulo", draw_beach(Moment(18, 10), o, lat=-23.55, lon=-46.63, tz=-3))]
     contact_sheet(beach_variants, scale=4, columns=4, gap=24).save(os.path.join(DESIGN, "beach-variants.png"))
@@ -2414,6 +2418,9 @@ def write_rd_design():
             mm, ms = at_ms(start, i * BEACH_STEP_MS)
             seq.append((draw_beach(mm, o, millis=ms, **ny), BEACH_STEP_MS))
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)
+    # a day in ten-minute steps: the boat's crossing under the sun, the tide, the props by the hour
+    seq = [(draw_beach(Moment(5 + (30 + i * 10) // 60, (30 + i * 10) % 60), o, **ny), 120) for i in range(90)]
+    save_gif(os.path.join(DESIGN, "beach-timelapse@4x.gif"), seq, 4, 255)
     tank_moments = [(10, 32, 37), (10, 32, 49), (14, 5, 12), (6, 25, 0), (19, 5, 30), (22, 40, 10)]
     contact_sheet([(f"{hh:02d}:{mi:02d}:{ss:02d}", draw_aquarium(Moment(hh, mi, ss), o, **ny)) for hh, mi, ss in tank_moments],
                   scale=4, columns=6).save(os.path.join(DESIGN, "aquarium-moments.png"))

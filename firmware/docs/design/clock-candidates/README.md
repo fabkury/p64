@@ -177,7 +177,8 @@ with the hour is drawn by the firmware over it:
 | `beach` | The horizon's sky and almanac above a beach: a palm's fronds hanging in from the top left, a lifeguard hut on stilts at the right, the sea across the middle, the sand in front. The sea mirrors the sky and glitters under the sun and the moon (the sun sets into it). The tide follows the moon (the equilibrium tide's M2: cos 2H of the moon's hour angle): the waterline climbs the sand by up to two rows at the transits and leaves wet sand at the low, a foam line breaking along it. By the hour: a boat on the horizon under the sun; a gull every other minute by day; the umbrella and the towel from 09:00 to 18:00 in the sun; the crab at the twilights; the campfire from 19:00 to 01:00 once it is dark, its glow flickering; the hut's window lit while it is dark; a blue night, warmed at the twilights. | `land.png` (64x64, the painting with its sky transparent), `sea.png` (the water's mask), `lights.png` (the window), `umbrella.png` (17x17), `crab.png` (four 6x10 frames, the 32 px sprite's side walk shrunk 2x), `fire.png` (seven 12x15 frames, p119's campfire effect shrunk 2x); the horizon's sun, moon and clouds. The boat is drawn (the painted one read as a white post). | The horizon's lettering, right-aligned at the top, clear of the palm; the meridiem under the time in 12 h; the date at the bottom right | Every 250 ms (the foam, the glints, the fire, the crab) |
 
 `beach-day.png` is one day in New York (twelve moments), `beach-variants.png` the weather,
-12 h, the low and the high tide, the full moon and Sao Paulo, `beach@8x.gif`,
+12 h, the high and the low tide, the full moon and Sao Paulo, `beach-timelapse@4x.gif` a day
+from 05:30 in ten-minute steps (the boat's crossing under the sun, the tide), `beach@8x.gif`,
 `beach-night@8x.gif` and `beach-day@8x.gif` six seconds each at dusk (the crab), at night
 (the fire) and by day (the gull). Floating point, compared within the horizon's tolerance.
 

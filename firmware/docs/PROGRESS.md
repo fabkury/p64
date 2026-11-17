@@ -1744,3 +1744,11 @@ them. Newest entries are at the bottom of [Log](#log).
   reaches the horizon's. The pages, the device tests and the docs list the face.
   Device: not flashed in this session (the board was off USB); the flash, `faces_smoke.py`
   and the CPU and heap measurements are owed.
+- The user's first look (same day): the tide read as reversed, the foam was drawn over the
+  hut, the crab read as a lifeguard. The tide's physics was right (high water at the moon's
+  transits; 15:00 on 29 September is +0.99) and the two captions in `beach-variants.png`
+  were swapped: captions fixed. The foam line is now drawn only on water or on the sand the
+  tide reaches (`beach_pixel`), never on the hut's bottom edge between its stilts; the five
+  references regenerated, the host suite passes. The crab stays as it is. A time-lapse of a
+  day in ten-minute steps (`beach-timelapse@4x.gif`: the boat's crossing under the sun, the
+  tide) joins the design images.
