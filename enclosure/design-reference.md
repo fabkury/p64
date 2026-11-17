@@ -182,7 +182,10 @@ CAD cutaway of the adapter window; dimensions and fit assumptions follow below.
   on the cavity back and reaches 3 mm beyond the window on each side and 1 mm below it.
   Its opening has 0.55 mm of clearance in x and 0.75 in y (0.3/0.5 plus the print
   allowance), because it is glued to the cavity back while sitting on the real adapters and
-  so aligns itself to wherever they are. It takes the sideways and downward part of the
+  so aligns itself to wherever they are. That is why it is a separate part and not a
+  feature of the shell: adapter bodies differ in shape and size between brands and the
+  port position is only known to +-1 mm, so a cradle at a fixed height would miss some
+  builds, while a glued one meets the adapters where they land. It takes the sideways and downward part of the
   cable forces so they cannot lever the adapters in the receptacles. The bodies pass
   through the sole's opening into the wall's window, so from outside the sole frames the
   two socket faces at 2.4 mm depth and hides the shell's wider opening on the sides and

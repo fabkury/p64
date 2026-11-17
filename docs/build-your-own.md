@@ -97,6 +97,8 @@ $1, plus shipping; delivery took eleven days. Nothing here needs a 3D printer or
 experience with one.
 
 > *What is the cradle insert? Do I need it?* Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works as a lever on the controller's own USB-C connector every time it is plugged, pulled or bumped, and that connector is what would give. The insert takes the force instead.
+>
+> *Why is it a separate piece, and not part of the shell?* Because right-angle USB-C adapters differ a little in shape and size from brand to brand, and the controller's ports are not in exactly the same place on every unit. A cradle printed into the shell would sit at one fixed height and miss some adapters. A separate insert is glued in at the first assembly, resting on your own adapters, so it ends up exactly where they are and supports them.
 
 **1. Download the two files.** Pick your variant and save both files to your computer
 (each link opens the file on GitHub; use its **Download raw file** button, the icon
@@ -180,7 +182,10 @@ lights are how you check the soldering.
    should seat without force. Take the panel out again.
 5. Glue the insert: a thin bead of cyanoacrylate along the outer edge of its sole,
    away from the opening (or double-sided tape). Seat the panel again, letting the
-   adapters position the insert, fit two screws and leave the glue to set.
+   adapters position the insert, fit two screws and leave the glue to set. The
+   adapters decide the insert's height, not the rails or the window: never glue it
+   with the panel out, or it may set where it does not touch the adapters and
+   support nothing.
 6. Fit all six M3 × 10 screws from the back with the hex key from the pack. Snug, not
    tight.
 7. Plug the supply into **POWER**, the left port viewed from behind. **USB**, on the

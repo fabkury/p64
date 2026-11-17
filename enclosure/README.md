@@ -2,6 +2,9 @@
 
 A support-free tabletop shell for the Waveshare P2 64×64 panel and ESP32-S3 controller.
 Both variants share a parametric OpenSCAD source and a separately printed cradle insert.
+The insert is separate because right-angle USB-C adapters vary between brands: it is
+glued in on the builder's own adapters, at the height where they sit, instead of at a
+height fixed in the shell.
 
 [Build and assembly](../docs/build-your-own.md) · [Design reference](design-reference.md) ·
 [Current status](../docs/status.md)
