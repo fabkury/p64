@@ -98,7 +98,7 @@ experience with one.
 
 > *What is the cradle insert? Do I need it?* Yes. The insert is a small U-shaped block, glued inside the back wall, that holds the two 90-degree USB-C adapters plugged on the controller. Without it, a USB-C cable works as a lever on the controller's own USB-C connector every time it is plugged, pulled or bumped, and that connector is what would give. The insert takes the force instead.
 >
-> *Why is it a separate piece, and not part of the shell?* Because right-angle USB-C adapters differ a little in shape and size from brand to brand, and the controller's ports are not in exactly the same place on every unit. A cradle printed into the shell would sit at one fixed height and miss some adapters. A separate insert is glued in at the first assembly, resting on your own adapters, so it ends up exactly where they are and supports them.
+> *Why is it a separate piece, and not part of the shell?* Because right-angle USB-C adapters differ a little in shape and size from brand to brand. A cradle printed into the shell would sit at one fixed height and miss some adapters. A separate insert is glued in at the first assembly, resting on your own adapters, so it ends up exactly where they are and supports them.
 
 **1. Download the two files.** Pick your variant and save both files to your computer
 (each link opens the file on GitHub; use its **Download raw file** button, the icon
