@@ -1759,3 +1759,10 @@ them. Newest entries are at the bottom of [Log](#log).
 - The boat was drawn over the hut (the user): its pixels now yield to whatever the painting
   raises above the sea, so it passes behind the hut; and its pace breathes, +-10 px over an
   hour on the 30 s per pixel mean (half to one and a half times the pace).
+- Device (the p64b on COM13; an unrelated ESP32-P4 on a CH343 at COM5 was left alone):
+  flashed, `faces_smoke.py` passes with the beach among the faces (it draws a sky; internal
+  heap after the thirteen faces 62.2 KB free, 32 KB largest), the beach on show at
+  6.7 % of core 1 (`cpu_sample.py`, 30 s; Horizon-RD 4.9 %, the aquarium 8.7 %),
+  internal heap 58.5 KB free and 32 KB largest with it up, PSRAM 16.0 MB free. The
+  README and the owner's guide count 13 faces, the clock-faces illustration has a fourth
+  row for the beach. Pushed to main.

@@ -36,7 +36,7 @@ references. SVGs have a fixed light background, accessible titles and descriptio
 and no external dependencies.
 
 The clock sheet imports `firmware/tools/mock_clock_faces.py`, the project's reference
-renderer, and preserves its 64×64 pixels. It shows eleven themed faces plus LED's
+renderer, and preserves its 64×64 pixels. It shows twelve themed faces plus LED's
 VFD style; Digital and Analogue are also supported. These are software previews,
 not photographs or measurements of panel colour. Existing clock artwork retains
 its [credits](../../credits.md).

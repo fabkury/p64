@@ -53,10 +53,10 @@ Quality mode uses 11 bit planes at about 264 Hz; Photo mode raises refresh to ab
 
 ## Clock faces
 
-![Eleven themed clock faces and the LED face in VFD style](docs/images/illustrations/clock-faces.svg)
+![Twelve themed clock faces and the LED face in VFD style](docs/images/illustrations/clock-faces.svg)
 
-p64 ships 12 clock faces: Digital, Analogue, Flip, Nixie, Words, Hourglass, Orrery,
-LED (five colour styles), Horizon-RD, Aquarium, Bracket and Station. Reference renders,
+p64 ships 13 clock faces: Digital, Analogue, Flip, Nixie, Words, Hourglass, Orrery,
+LED (five colour styles), Horizon-RD, Aquarium, Bracket, Station and Beach. Reference renders,
 enlarged without smoothing; the [owner's guide](docs/using-p64.md#clocks-and-widgets)
 covers the faces, the clock overlay and the weather, air and temperature widgets.
 
