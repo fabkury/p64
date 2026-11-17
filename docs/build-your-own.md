@@ -40,7 +40,7 @@ and tax; [build costs](costs.md) has the per-build totals.
 
 | Qty | Part | Where | Price seen |
 |---|---|---|---|
-| 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) controller board (SKU 34422) | Waveshare | $24.99, 2026-09-02. The box includes the panel power lead and a short 4-pin cable. |
+| 1 | [ESP32-S3-RGB-Matrix](https://www.waveshare.com/esp32-s3-rgb-matrix.htm) controller board (SKU 34422) | Waveshare | $24.99, 2026-09-02. The box includes the panel power lead and a 4-pin cable; p64b uses the cable. |
 | 1 | [RGB-Matrix-P2-64x64-B](https://www.waveshare.com/rgb-matrix-p2-64x64.htm?sku=33838) panel, GOB version (SKU 33838) | Waveshare | $31.99, 2026-09-02. The standard (non-GOB) version, SKU 23706, fits the same shell. |
 | 1 | [PSU-27W-USB-C](https://www.waveshare.com/psu-27w-usb-c-c.htm) power supply; pick the US, EU or UK plug on the page | Waveshare | $6.99, 2026-09-02. Any 5 V USB-C supply rated 3 A or more also works. |
 | 2 | [Right-angle USB-C male-to-female adapters, 2-pack](https://www.amazon.com/dp/B0B2NJ3P3L) (AreMe, metallic purple) | Amazon | $4.99, 2026-10-19. [This 4-pack](https://www.amazon.com/dp/B0H3JNGX1D) ($6.99, 2026-10-10) also fits. |
@@ -63,11 +63,15 @@ checked first.
 |---|---|---|---|
 | 2 | [Adafruit 5880](https://www.adafruit.com/product/5880) I2C QT rotary encoder breakout, with the encoder soldered on ([DigiKey 1528-5880-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5880/22596384)) | Adafruit or DigiKey | $7.95 each, 2026-09-11. One becomes knob A, the other knob B. Each encoder brings its own nut and washer. |
 | 2 | [Adafruit 5528](https://www.adafruit.com/product/5528) 20 mm silver aluminium knob ([DigiKey 1528-5528-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5528/16653404)); [5529](https://www.adafruit.com/product/5529) ([DigiKey 1528-5529-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5529/16653408)) is the same knob in blue | Adafruit or DigiKey | $2.95 each, 2026-09-11. Any knob with a 6 mm bore fits; the shell was drawn for 20 mm. |
-| 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm ([DigiKey 1528-4209-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4209/10230003)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into the controller. |
-| 1 | [Adafruit 4397](https://www.adafruit.com/product/4397) STEMMA QT cable to female sockets, 150 mm ([DigiKey 1528-4397-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4397/10824270)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into board A; its sockets take the 4209's pins. |
+| 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm ([DigiKey 1528-4209-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4209/10230003)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into the controller; its pins go into the sockets of the controller's 4-pin cable. |
 | 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm ([DigiKey 1528-4401-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4401/10824265)) | Adafruit or DigiKey | $1.25, 2026-09-27. Board A to board B. |
 | 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. ½ W resistors also work but are bulkier. |
 | some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack ([DigiKey 1528-1649AD-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/1649/10670039), not stocked, ordered in) | any | Wraps the four cable joints. |
+
+The harness's second cable is not bought: it is the 4-pin cable in the controller's
+box (Waveshare lists it as "SH1.0 4pin cable": a small white plug on one end, four
+separate female sockets on the other, about 100 mm, wires black, red, orange and
+yellow).
 
 DigiKey carries every Adafruit part above at Adafruit's own prices (checked 2026-11-04,
 all in stock except the heat-shrink pack), so the p64b parts can come from either shop.
@@ -83,7 +87,7 @@ Delivered to New York, from the invoices in [build costs](costs.md):
 | Build | Parts | Shipping | Tax | Delivered |
 |---|---:|---:|---:|---:|
 | p64a | $86.25 | $31.84 | $0.97 | $119.06 |
-| p64b | $115.06 | $37.66 | $4.04 | $156.76 |
+| p64b | $114.11 | $37.66 | $3.96 | $155.73 |
 
 ## B. Order the shell from JLC3DP
 
@@ -229,26 +233,31 @@ Nothing on board B.
 
 Board A with its two resistors standing on the header holes.
 
-**Job 3: plug the two cables into each other** (no solder). The controller's socket
-and the boards' sockets use different pin orders, so a plain cable between them
-would be wrong. Instead, push each pin of the 4209 cable into one socket of the 4397
-cable, **crossing the two signal colours**:
+**Job 3: plug the two cables into each other** (no solder). The two cables are the
+Adafruit 4209 (white plug, four male pins) and the controller's 4-pin cable, the one
+that came in the controller's box (white plug, four female sockets; wires black, red,
+orange, yellow). The controller's socket and the boards' sockets use different pin
+orders, so a plain cable between them would be wrong. Instead, push each pin of the
+4209 into one socket of the controller's cable, **by this table, not by colour**; only
+red and black match:
 
-| 4209 pin (controller end) | into 4397 socket (board end) |
+| 4209 pin (goes to the controller) | into this socket of the controller's 4-pin cable (goes to board A) |
 |---|---|
-| yellow | **blue** |
+| yellow | **orange** |
 | blue | **yellow** |
 | red | red |
 | black | black |
 
-Wrap each of the four joints in tape or heat-shrink so no two touch. Mark the
-cable's 4209 end "controller". If you would rather solder the wires than mate the
+Wrap each of the four joints in tape or heat-shrink so no two touch. The joined
+cable has a white plug at each end and they are not interchangeable: the 4209's plug
+goes into the controller, and the plug of the cable from the controller's box goes
+into board A. Mark the 4209's plug "controller". If you would rather solder the wires than mate the
 pins, the [long guide](hardware/encoders-soldered.md#5-the-cables)
 describes the splice.
 
 **Test it** (needs the firmware, step D): plug the 4209's plug into the controller's
 4-pin GPIO socket on the controller's right edge; the keyed plug fits one way, and the
-black wire lands on the pin marked GND. Plug the 4397's plug into board A, the 4401
+black wire lands on the pin marked GND. Plug the other plug, the one on the controller's 4-pin cable, into board A, the 4401
 from board A's other socket to board B, and power the controller from USB. Within a
 few seconds board A's small colour LED flashes **green** and board B's flashes
 **blue**. Both green means job 1 did not take; one dark means its cable; the

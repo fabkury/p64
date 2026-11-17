@@ -70,7 +70,7 @@ covers the faces, the clock overlay and the weather, air and temperature widgets
 | Soldering | None | Required for the encoder wiring |
 | Shell | v7a | v7b |
 | Status | Finished; assembled 2026-10-09, in daily use | Finished; assembled 2026-10-17, in daily use |
-| Cost | About US$119 delivered | About US$157 delivered |
+| Cost | About US$119 delivered | About US$156 delivered |
 
 Both variants use the same firmware and remain supported. The build guide defaults
 to p64a and links the extra p64b steps.
@@ -92,7 +92,7 @@ No printer, no breadboard, no custom boards. A p64 is four steps:
    command ([flashing guide](docs/flash-firmware.md)). No ESP-IDF needed.
 
 For scale, one p64a cost the maintainer about **US$119 delivered** (parts $86, shipping
-$32, tax $1) and one p64b about **US$157** (parts $115, shipping $38, tax $4), at
+$32, tax $1) and one p64b about **US$156** (parts $114, shipping $38, tax $4), at
 the September and October 2026 prices paid, with shipping to New York. The
 [build guide](docs/build-your-own.md#a-buy-the-parts) has every link and the
 [build costs](docs/costs.md) page every invoice line.

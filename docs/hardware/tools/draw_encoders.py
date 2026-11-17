@@ -27,6 +27,7 @@ PNG = "--png" in sys.argv
 
 # Wire colours of the STEMMA QT / Qwiic cables (Adafruit 4209, 4397, 4399).
 BLACK, RED, BLUE, YELLOW = "#222222", "#c62828", "#1565c0", "#c9a400"
+ORANGE = "#e65100"  # the SDA wire of the 4-pin cable that comes in the controller's box
 GREY = "#777777"
 SP = 2.2  # pin spacing
 
@@ -169,6 +170,28 @@ def harness_map(name: str) -> None:
         save(d, name)
 
 
+def harness_controller_cable(name: str) -> None:
+    """The p64b harness: 4209 pins mated to the sockets of the 4-pin cable from the controller's box."""
+    with schemdraw.Drawing(show=False) as d:
+        d.config(unit=2, fontsize=10)
+        left = d.add(ic([], [
+            ("yellow pin (IO45 = SDA)", "p1"), ("blue pin   (IO46 = SCL)", "p2"),
+            ("red pin    (3V3)", "p3"), ("black pin  (GND)", "p4")],
+            "Adafruit 4209\n(plug in the controller)", edgepadW=1.6))
+        right = d.add(ic([
+            ("orange socket (SDA)", "sda"), ("yellow socket (SCL)", "scl"),
+            ("red socket    (V+)", "v33"), ("black socket  (GND)", "gnd")], [],
+            "Controller's 4-pin cable\n(plug in encoder board A)", edgepadW=1.6).at((left.p1[0] + 4.5, left.p1[1])).anchor("sda"))
+        for a, b, colour in (("p1", "sda", ORANGE), ("p2", "scl", YELLOW), ("p3", "v33", RED), ("p4", "gnd", BLACK)):
+            d.add(elm.Line().at(getattr(left, a)).to(getattr(right, b)).color(colour))
+        d.add(elm.Label().at((left.center[0] - 1.0, left.p4[1] - 1.6)).label(
+            "Each male pin pushes into one female socket; wrap each pair in tape or heat-shrink.\n"
+            "Lines are drawn in the socket's wire colour. Pair by this drawing, not by colour:\n"
+            "the 4209's yellow goes to orange, its blue to yellow.",
+            fontsize=8, color=GREY, halign="left"))
+        save(d, name)
+
+
 def divider(name: str) -> None:
     """The idle-level divider: R_up (board pull-ups || external) against R59/R60."""
     with schemdraw.Drawing(show=False) as d:
@@ -208,7 +231,8 @@ def main() -> None:
         note="The Twist's own 2.2k pull-ups replace the breadboard resistors; the harness is then cable-to-cable.")
     bench_map("bench-map-one-board", second_board=False)
     bench_map("bench-map-two-boards", second_board=True)
-    harness_map("harness-cable-to-cable")
+    harness_map("harness-cable-to-cable")  # the one-encoder experiment's figure (historical)
+    harness_controller_cable("harness-controller-cable")  # the p64b harness of the two-encoder guide
     divider("idle-level")
 
 

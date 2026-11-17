@@ -40,18 +40,18 @@ Everything in the p64a column, with the v7b shell in place of v7a, plus the enco
 | 2 × Adafruit 5880 encoder boards, $7.95 each | 15.90 | | 1.41 | Adafruit, 2026-09-11 |
 | 2 × Adafruit 5528 silver 20 mm knobs, $2.95 each | 5.90 | | 0.52 | Adafruit, 2026-09-11 |
 | Adafruit 4209 cable (SH to male headers, 150 mm) | 0.95 | | 0.08 | Adafruit, 2026-09-11 |
-| Adafruit 4397 cable (SH to female sockets, 150 mm) | 0.95 | | 0.08 | Adafruit, 2026-09-11 |
 | Adafruit 4401 cable (SH to SH, 200 mm, between the boards) | 1.25 | | 0.11 | Adafruit, 2026-09-27 |
 | Adafruit shipping (USPS Ground Advantage, one order) | | 5.82 | 0.52 | the first Adafruit order; see the note below |
 | 2.2 kΩ ½ W resistors, pack of 40 (a build uses two) | 3.99 | 0.00 | 0.35 | Amazon, 2026-09-17 |
-| **Total** | **115.06** | **37.66** | **4.04** | **156.76 delivered** |
+| **Total** | **114.11** | **37.66** | **3.96** | **155.73 delivered** |
 
 Optional, outside the total: a multi-colour heat-shrink pack (Adafruit 1649, $4.95) for
 the spliced harness; electrical tape does the same job. Tools (soldering iron, meter,
 hex key, breadboard for the bench test) are not build parts and are not counted; the
 [encoder development record](hardware/encoder-history.md) lists the ones used.
 
-Not costed, as for p64a: glue, microSD card, USB data cable.
+Not costed, as for p64a: glue, microSD card, USB data cable. The harness's second
+cable costs nothing: it comes in the controller's box.
 
 ## 3. How the numbers were split
 
@@ -96,10 +96,10 @@ that shared an Amazon order are left out, and their share of that order's tax wi
 | 2026-10-10 | Amazon | 2 × 4-packs of right-angle USB-C adapters, 6.99 each (free shipping) | 13.98 | 0.00 | 1.24 | 15.22 |
 | | **Total spent on p64 parts and prints** | | | | | **259.63** |
 
-The total spent falls short of one p64a plus one p64b (275.82 by the tables, 119.06 +
-156.76) only on paper: the tables price the adapters at the single-unit listing and the
-resistor and screw packs in full in both builds, while the maintainer's spend includes spares, the replacement
-board, the v1 shell and the breadboards, and excludes the tools bought for the
+The total spent falls short of one p64a plus one p64b (274.79 by the tables, 119.06 +
+155.73) only on paper: the tables price the adapters at the single-unit listing and the
+resistor and screw packs in full in both builds, while the maintainer's spend includes spares, parts
+the build does not use, the replacement board, the v1 shell and the breadboards, and excludes the tools bought for the
 soldering ([encoder development record](hardware/encoder-history.md)).
 
 ## 5. Keeping this page true

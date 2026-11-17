@@ -22,7 +22,15 @@ the alternatives that were not taken.
 
 ## 1. Parts
 
-The [p64b shopping list](../build-your-own.md#a2-p64b-only) has the links. Tools: a
+The [p64b shopping list](../build-your-own.md#a2-p64b-only) has the links. One part is
+not on it because it is not bought: **the controller's 4-pin cable**, which comes in
+the ESP32-S3-RGB-Matrix box (Waveshare's package list calls it "SH1.0 4pin cable
+~100mm"). It has a 4-pin JST-SH 1.0 mm plug on one end and four separate female
+jumper sockets on the other, with black, red, orange and yellow wires. Here its plug
+goes into encoder board A and its sockets take the pins of the Adafruit 4209, whose
+plug goes into the controller (section 5).
+
+Tools: a
 temperature-controlled iron with a fine tip, electronics solder, flux if you have it,
 side cutters, tape or heat-shrink, and the 2 mm hex key from the screw pack for the
 knobs. A multimeter helps with the optional checks in section 8; the firmware's own
@@ -33,7 +41,7 @@ start-up lights are the real test.
 | Fact | Consequence |
 |---|---|
 | The controller's only spare connector is the 4-pin JST-SH "GPIO" socket on its right edge: pin 1 IO45, 2 IO46, 3 3V3, 4 GND (schematic) | a second I2C bus, IO45 = SDA, IO46 = SCL |
-| STEMMA QT order is GND, V+, SDA, SCL; the socket's is signal, signal, 3V3, GND | never a straight SH-to-SH cable to the controller; the 4209 and 4397 cables are joined by function, which crosses the two signal colours |
+| STEMMA QT order is GND, V+, SDA, SCL; the socket's is signal, signal, 3V3, GND | never a straight SH-to-SH cable to the controller; the 4209 and the controller's 4-pin cable are joined by function, not by colour (section 5.1) |
 | IO45/IO46 carry 10 k pull-downs on the controller (R59/R60); each 5880 has 10 k pull-ups | the two boards alone would idle at 2.20 V, below the 2.475 V threshold; one 2.2 k per line to 3.3 V lifts it to 2.86 V |
 | Two seesaw boards need different addresses | board B gets its A0 jumper bridged: 0x37 instead of 0x36 |
 | IO46 high at reset could break the manual download mode | normal flashing works with the harness attached; if ever needed, unplug the 4209 to flash |
@@ -132,35 +140,48 @@ Board A with its two resistors standing on the header holes.
 ### 5.1 Controller to board A: mated (no solder)
 
 This is what the assembled p64b uses. Each male pin of the 4209 pushes into one female
-socket of the 4397, paired by function, each joint wrapped in tape or heat-shrink:
+socket of the controller's 4-pin cable, paired by function, each joint wrapped in tape
+or heat-shrink:
 
-![harness](img/harness-cable-to-cable.svg)
+![harness](img/harness-controller-cable.svg)
 
 ```
- 4209 (controller)            4397 (board A)
- yellow pin (IO45 = SDA) --->  blue socket   (SDA)
- blue pin   (IO46 = SCL) --->  yellow socket (SCL)
- red pin    (3V3)        --->  red socket    (V+)
- black pin  (GND)        --->  black socket  (GND)
+ 4209 (plug in the controller)     controller's 4-pin cable (plug in board A)
+ yellow pin (IO45 = SDA) --------> orange socket (SDA)
+ blue pin   (IO46 = SCL) --------> yellow socket (SCL)
+ red pin    (3V3)        --------> red socket    (V+)
+ black pin  (GND)        --------> black socket  (GND)
 ```
 
-The colours cross on purpose: Adafruit colours its cables by STEMMA QT function, and
-the controller's socket puts the signals on different pins. The keyed plug settles
-which 4209 wire is which: yellow = IO45 (SDA), blue = IO46 (SCL),
-red = 3V3, black = GND; the black wire lands on the socket pin next to the board's GND
-label. Before the first power-up, read the silkscreen beside the socket once more and
+Only red and black pair by colour. The keyed plugs settle which wire is which. The
+4209 in the controller's socket: yellow = IO45 (SDA), blue = IO46 (SCL), red = 3V3,
+black = GND; the black wire lands on the socket pin next to the board's GND label.
+The controller's 4-pin cable in a board's STEMMA QT socket: black = GND, red = V+,
+orange = SDA, yellow = SCL. So the 4209's yellow and the other cable's yellow carry
+different signals and are not joined to each other.
+
+Which plug goes where matters: the joined harness has a JST-SH plug at each end, and
+each fits both the controller and the boards. The 4209's plug belongs in the
+controller, the plug of the cable from the controller's box in board A. Turned end
+for end, the harness would put 3.3 V and ground on the board's signal pins. Mark the
+4209's plug "controller" when you make the joints.
+
+The harness is about 250 mm long (150 mm of 4209, about 100 mm of the controller's
+cable) for a 20 mm gap, so there is slack to coil (section 7). Before the first power-up, read the silkscreen beside the socket once more and
 confirm black on GND and red on 3V3: those two are the pair whose swap could damage a
 board; the two signal wires swapped only make the firmware fail to find the boards.
 
 ### 5.2 Controller to board A: spliced (solder)
 
-Cut the header end off the 4209 and the socket end off the 4397, leaving the lengths
+Cut the header end off the 4209 and the socket end off the controller's 4-pin cable,
+leaving the lengths
 the shell needs (about 60 mm each is plenty: the GPIO socket is 20 mm from the
 right-hand board). Strip 5 mm of each wire, slide a 20 mm piece of 2 mm heat-shrink
-onto one side, twist the pairs by function (yellow-4209 to blue-4397, blue to yellow,
-red to red, black to black), tin each twist with the iron, slide the heat-shrink over
-it and shrink. Then a larger piece over all four. Do one pair at a time; the colours
-cross, so label the 4209 side first.
+onto one side, twist the pairs by function (the 4209's yellow to the other cable's
+orange, the 4209's blue to the other cable's yellow, red to red, black to black), tin
+each twist with the iron, slide the heat-shrink over it and shrink. Then a larger piece
+over all four. Do one pair at a time; each cable has a yellow wire and the two are not
+a pair, so label the 4209 side first.
 
 ### 5.3 Between the boards
 
@@ -172,7 +193,8 @@ up into the left board.
 ## 6. Check it with the firmware
 
 Flash the shared product firmware ([build guide, step D](../build-your-own.md#d-put-the-firmware-on-it)),
-then plug the 4209 into the controller's GPIO socket, the 4397 into board A, the 4401
+then plug the 4209 into the controller's GPIO socket, the controller's 4-pin cable into
+board A, the 4401
 between the boards, and power the controller from USB.
 
 - **Detection:** A (0x36) lights its colour LED green and B (0x37) blue for two seconds
@@ -204,7 +226,7 @@ the washer and nut clamp it and take the knob's push. The boards go in before th
 panel, which closes the shell's open front.
 
 1. Firmware checked (section 6), power off.
-2. Plug the 4397 (or the spliced harness) into board A and the 4401 between the boards
+2. Plug the harness (its end from the controller's box) into board A and the 4401 between the boards
    before mounting: once mounted the sockets face up and down, 4.5 mm from the side
    wall, and are hard to reach.
 3. Board A (0x36, with the resistors) goes to the right-hand position seen from the
@@ -283,6 +305,8 @@ The bench measurements behind these numbers are in the [bench record](encoder-hi
 
 - Waveshare ESP32-S3-RGB-Matrix schematic (GPIO socket U8, R59/R60 10 k):
   https://github.com/waveshareteam/ESP32-S3-RGB-Matrix/tree/main/hardware/schematics
+- Waveshare ESP32-S3-RGB-Matrix product page (package content, "SH1.0 4pin cable ~100mm"):
+  https://www.waveshare.com/esp32-s3-rgb-matrix.htm
 - Adafruit 5880 guide (pinout, 10 k pull-ups, jumpers A0/A1/A2 = 0x37/0x38/0x3A):
   https://learn.adafruit.com/adafruit-i2c-qt-rotary-encoder/pinouts
 - Adafruit seesaw register map: https://github.com/adafruit/Adafruit_Seesaw

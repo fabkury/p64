@@ -53,6 +53,7 @@ Useful additions when the hardware is available: the installed cradle before pan
 seating and a close-up of the fully seated adapters on the unmodified frame. p64b's
 boards on their pegs and its knobs are photographed (`photos/p64b-*.jpg`, 2026-10-17).
 Still missing for the p64b soldering steps: a close-up of a finished A0 bridge on board B,
-and the mated 4209-to-4397 harness with its four wrapped joints.
+and the mated harness (the 4209 and the controller's 4-pin cable) with its four
+wrapped joints.
 New AI-generated product
 photos or decorative artwork are unnecessary for this documentation style.
