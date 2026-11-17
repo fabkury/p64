@@ -1,0 +1,90 @@
+[
+ {
+  "name": "beach_b",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1302,
+   "prompt": "A quiet tropical beach seen from the sand, looking straight out to sea in bright daylight: pale golden sand fills the lower third of the view, a calm turquoise sea lies as a flat band across the middle with a perfectly straight, level horizon, a tall palm tree leans in from the left edge with its fronds reaching up into the sky, a small wooden lifeguard hut on stilts with one window stands on the sand at the right, a few shells on the sand, and above the horizon a completely flat, plain, solid white sky with nothing in it at all, no sun, no clouds, no birds; the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 11.770000000000007,
+  "files": [
+   "beach_b_0.png",
+   "beach_b_1.png"
+  ],
+  "task": "p130",
+  "when": "2026-11-17 13:26"
+ },
+ {
+  "name": "umbrella",
+  "payload": {
+   "width": 24,
+   "height": 24,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A red and white striped beach umbrella planted in the sand beside a small blue beach towel, side view, filling almost the whole picture, on a plain white background"
+  },
+  "remaining": 11.710000000000006,
+  "files": [
+   "umbrella_0.png",
+   "umbrella_1.png"
+  ],
+  "task": "p130",
+  "when": "2026-11-17 13:26"
+ },
+ {
+  "name": "sailboat",
+  "payload": {
+   "width": 16,
+   "height": 16,
+   "num_images": 2,
+   "prompt_style": "rd_fast__low_res",
+   "remove_bg": true,
+   "prompt": "A tiny white sailing boat with a white triangular sail, side view, filling almost the whole picture, on a plain white background"
+  },
+  "remaining": 11.650000000000006,
+  "files": [
+   "sailboat_0.png",
+   "sailboat_1.png"
+  ],
+  "task": "p130",
+  "when": "2026-11-17 13:27"
+ },
+ {
+  "name": "crab",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A small orange-red crab with two claws"
+  },
+  "remaining": 11.580000000000005,
+  "files": [
+   "crab_0.gif"
+  ],
+  "task": "p130",
+  "when": "2026-11-17 13:27"
+ },
+ {
+  "name": "beach_a",
+  "payload": {
+   "width": 80,
+   "height": 80,
+   "num_images": 2,
+   "prompt_style": "rd_pro__default",
+   "seed": 1301,
+   "prompt": "A quiet tropical beach seen from the sand, looking straight out to sea in bright daylight: pale golden sand fills the lower third of the view, a calm turquoise sea lies as a flat band across the middle with a perfectly straight, level horizon, a tall palm tree leans in from the left edge with its fronds reaching up into the sky, a small wooden lifeguard hut on stilts with one window stands on the sand at the right, a few shells on the sand, and above the horizon a completely flat, plain, solid white sky with nothing in it at all, no sun, no clouds, no birds; the scene extends edge to edge with no border and no frame."
+  },
+  "remaining": 11.580000000000005,
+  "files": [
+   "beach_a_0.png",
+   "beach_a_1.png"
+  ],
+  "task": "p130",
+  "when": "2026-11-17 13:27"
+ }
+]

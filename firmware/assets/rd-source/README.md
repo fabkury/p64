@@ -97,6 +97,19 @@ folder. Nothing in `p119/` is embedded in the firmware. What the calls taught:
 - `rd_animation__vfx` drew fire (8 usable frames, then a frame whose GIF descriptor is
   corrupt) and nothing at all for petals, leaves or snow on black (927-byte files).
 
+### The beach clock face (p130, 2026-11-17)
+
+`p130/` holds the sources of the `beach` face, the one concept of the three rounds that was
+built: one painting (`beach_a_1.png`, `rd_pro__default` at 80 px, seed 1302's pair had a
+painted border and `beach_a_0`'s crop lost the trunk), the umbrella and the towel
+(`umbrella_0.png`, `rd_fast__low_res` with `remove_bg`), the crab (`crab_0.gif`,
+`rd_animation__small_sprites`); the campfire is p119's `fx_fire_0.gif`. The sailing boat
+(`sailboat_0.png`) was cut and then dropped for a drawn one: at 5x9 it read as a white
+post. **$1.27 spent** of an $8 budget (balance $12.49 before, $11.58 after; each call in
+`p130/log.json`). `tools/prep_rd_clock_assets.py` (`beach()`) cuts
+`assets/clock-png/beach/`. The lesson that shaped the face: one painting and a computed
+sky, with the hours drawn over it, instead of a painting per hour.
+
 ### Four more scene clock concepts (p120, 2026-11-05)
 
 `p120/` holds the second set of four concepts (square, harbour, farm, space station), again
