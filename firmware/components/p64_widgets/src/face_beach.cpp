@@ -48,7 +48,8 @@ constexpr int kFireX = 14, kFireBottom = 56;
 constexpr Rgb kFireGlow{255, 150, 50};
 constexpr int kBoatBottom = 30;
 constexpr int kBoatFrom = -5, kBoatTo = 41;  // it sails from off the left edge to the hut, and back
-constexpr int kBoatSecondsPerPx = 30;         // a crossing in 23 minutes
+constexpr int kBoatSecondsPerPx = 30;         // a crossing in 23 minutes at the mean pace
+constexpr float kBoatSway = 10, kBoatSwayPeriod = 3600;  // the pace breathes: +-10 px over an hour
 constexpr int kBoatSail[][2] = {{2, 0}, {2, 1}, {3, 1}, {2, 2}, {3, 2}, {4, 2}, {1, 3}, {2, 3}, {3, 3}, {4, 3}};
 constexpr Rgb kBoatHull{92, 62, 40};
 constexpr int kCrabFrom = 20, kCrabTo = 38, kCrabBottom = 48;
@@ -266,15 +267,22 @@ void draw_beach(Frame &frame, const Moment &m, const Options &o, const Sky &plac
   const Rgb white_shade = shade({255, 255, 255});
   const float shade_k[3] = {white_shade.r / 255.0f, white_shade.g / 255.0f, white_shade.b / 255.0f};
   // the boat on the horizon while the sun is up: it sails from the left edge to the hut
-  // and back, a crossing every 23 minutes, counted from midnight
+  // and back, a crossing every 23 minutes at the mean pace, which breathes over the hour;
+  // counted from midnight; behind whatever the painting raises above the sea
   if (sun_up) {
     const int span = kBoatTo - kBoatFrom;
-    const int pos = ((m.hour * 60 + m.minute) * 60 + m.second) / kBoatSecondsPerPx % (2 * span);
+    const int t = (m.hour * 60 + m.minute) * 60 + m.second;
+    const float u = t / static_cast<float>(kBoatSecondsPerPx) + kBoatSway * std::sin(2 * 3.14159265f * t / kBoatSwayPeriod);
+    const int pos = ((static_cast<int>(std::floor(u)) % (2 * span)) + 2 * span) % (2 * span);
     const bool sailing_right = pos < span;
     const int bx = sailing_right ? kBoatFrom + pos : kBoatTo - (pos - span);
     const int by = kBoatBottom - 4;
-    for (const auto &s : kBoatSail) frame.set(bx + (sailing_right ? s[0] : 4 - s[0]), by + s[1], mul({255, 255, 255}, shade_k));
-    for (int dx = 0; dx < 5; ++dx) frame.set(bx + dx, kBoatBottom, mul(kBoatHull, shade_k));
+    const auto boat_pixel = [&](int x, int y, Rgb c) {
+      if (x >= 0 && x < Frame::width() && land.inked(x, y) && !sea.inked(x, y)) return;  // the hut or the fronds stand in front
+      frame.set(x, y, c);
+    };
+    for (const auto &s : kBoatSail) boat_pixel(bx + (sailing_right ? s[0] : 4 - s[0]), by + s[1], mul({255, 255, 255}, shade_k));
+    for (int dx = 0; dx < 5; ++dx) boat_pixel(bx + dx, kBoatBottom, mul(kBoatHull, shade_k));
   }
   // the umbrella and the towel, out in the day's sun
   if (m.hour >= kUmbrellaFrom && m.hour < kUmbrellaTo && el > 5) {

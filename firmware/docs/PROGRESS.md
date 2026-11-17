@@ -1756,3 +1756,6 @@ them. Newest entries are at the bottom of [Log](#log).
   (the user, same day): it now sails from the left edge to the hut and back on its own
   clock, a crossing every 23 minutes from midnight, mirrored on the way back; references
   regenerated, `beach-boat@4x.gif` added.
+- The boat was drawn over the hut (the user): its pixels now yield to whatever the painting
+  raises above the sea, so it passes behind the hut; and its pace breathes, +-10 px over an
+  hour on the 30 s per pixel mean (half to one and a half times the pace).

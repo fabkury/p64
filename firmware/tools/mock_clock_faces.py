@@ -1955,7 +1955,8 @@ def draw_station(m, o, millis=0):
 #   - the tide follows the moon: the waterline climbs the sand by up to two rows at the
 #     moon's transits (the equilibrium tide's M2, cos 2H of the moon's hour angle) and
 #     leaves two rows of wet sand at the low; a foam line breaks along it every step;
-#   - a sailing boat (drawn) crosses the horizon and back every 23 minutes while the sun is up; a gull flies
+#   - a sailing boat (drawn) crosses the horizon and back every 23 minutes or so, its pace
+#     breathing over the hour, while the sun is up, behind the hut; a gull flies
 #     over every other minute by day; the umbrella and the towel are out from 09:00 to
 #     18:00 in the sun; the crab comes out at the twilights; the campfire burns on the
 #     sand in the evening, its glow on the sand flickering; the hut's window is lit while
@@ -1976,7 +1977,8 @@ BEACH_FIRE = (14, 56)  # the fire's (where the umbrella stands by day; they neve
 BEACH_FIRE_GLOW = (255, 150, 50)
 BEACH_BOAT_BOTTOM = 30  # the boat's hull in the first rows of the sea
 BEACH_BOAT_SPAN = (-5, 41)  # it sails from off the left edge to the hut, and back
-BEACH_BOAT_S_PER_PX = 30  # a crossing in 23 minutes
+BEACH_BOAT_S_PER_PX = 30  # a crossing in 23 minutes at the mean pace
+BEACH_BOAT_SWAY = (10, 3600)  # the pace breathes: +-10 px over an hour, half to one and a half times the mean
 BOAT_SAIL = [(2, 0), (2, 1), (3, 1), (2, 2), (3, 2), (4, 2), (1, 3), (2, 3), (3, 3), (4, 3)]  # a 5x5 boat, drawn
 BOAT_HULL = (92, 62, 40)
 BEACH_CRAB = (20, 38, 48)  # it walks between these columns, on this bottom row
@@ -2195,18 +2197,27 @@ def draw_beach(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", m
                 frame.set(x, y, (240, 244, 255))
     shade_k = [shade((255, 255, 255))[i] / 255 for i in range(3)]
     # the boat on the horizon while the sun is up: it sails from the left edge to the hut
-    # and back, a crossing every 23 minutes, counted from midnight
+    # and back, a crossing every 23 minutes at the mean pace, which breathes over the hour;
+    # counted from midnight; behind whatever the painting raises above the sea
     if sy is not None:
         x0, x1 = BEACH_BOAT_SPAN
         span = x1 - x0
-        pos = ((m.hour * 60 + m.minute) * 60 + m.second) // BEACH_BOAT_S_PER_PX % (2 * span)
+        t = (m.hour * 60 + m.minute) * 60 + m.second
+        sway, period = BEACH_BOAT_SWAY
+        pos = int(math.floor(t / BEACH_BOAT_S_PER_PX + sway * math.sin(2 * math.pi * t / period))) % (2 * span)
         sailing_right = pos < span
         bx = x0 + pos if sailing_right else x1 - (pos - span)
         by = BEACH_BOAT_BOTTOM - 4
+
+        def boat_pixel(x, y, c):
+            if 0 <= x < W and lp[x, y][3] >= 128 and kp[x, y][3] < 128:
+                return  # the hut or the fronds stand in front
+            frame.set(x, y, c)
+
         for dx, dy in BOAT_SAIL:
-            frame.set(bx + (dx if sailing_right else 4 - dx), by + dy, mul((255, 255, 255), shade_k))
+            boat_pixel(bx + (dx if sailing_right else 4 - dx), by + dy, mul((255, 255, 255), shade_k))
         for dx in range(5):
-            frame.set(bx + dx, BEACH_BOAT_BOTTOM, mul(BOAT_HULL, shade_k))
+            boat_pixel(bx + dx, BEACH_BOAT_BOTTOM, mul(BOAT_HULL, shade_k))
     # the umbrella and the towel, out in the day's sun
     if BEACH_UMBRELLA_FROM <= m.hour < BEACH_UMBRELLA_TO and el > 5:
         blit_shaded(frame, umbrella, BEACH_UMBRELLA[0], BEACH_UMBRELLA[1] - umbrella.height + 1, shade_k)
