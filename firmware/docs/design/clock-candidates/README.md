@@ -179,6 +179,8 @@ with the hour is drawn by the firmware over it:
 `beach-day.png` is one day in New York (twelve moments), `beach-variants.png` the weather,
 12 h, the high and the low tide, the full moon and Sao Paulo, `beach-timelapse@4x.gif` a day
 from 05:30 in ten-minute steps (the boat's crossing under the sun, the tide), `beach@8x.gif`,
+`beach-moon.png` the eight phases of October 2026 (each on a dark night with that moon up;
+the thin crescent at dusk, the new moon unseen beside the sun),
 `beach-night@8x.gif` and `beach-day@8x.gif` six seconds each at dusk (the crab), at night
 (the fire) and by day (the gull). Floating point, compared within the horizon's tolerance.
 
