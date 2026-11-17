@@ -185,7 +185,9 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
   // state; any other face lets it go.
   if (s.clock.face != ClockFace::HorizonRd) state.horizon_rd.reset();
   if (s.clock.face != ClockFace::Aquarium) state.aquarium.reset();
-  if (s.clock.face != ClockFace::HorizonRd && s.clock.face != ClockFace::Aquarium) state.art_failed = false;
+  if (s.clock.face != ClockFace::Beach) state.beach.reset();
+  if (s.clock.face != ClockFace::HorizonRd && s.clock.face != ClockFace::Aquarium && s.clock.face != ClockFace::Beach)
+    state.art_failed = false;
   if (!ctx.time) {
     state.phase = 0;
     state.shown = false;
@@ -329,6 +331,19 @@ uint32_t draw_clock(Frame &out, const system::Settings &s, const ClockContext &c
       const uint32_t into = static_cast<uint32_t>((m.second * 1000 + ctx.millis) % static_cast<int>(themed::kAquariumFrameMs));
       return themed::kAquariumFrameMs - into;
     }
+    case ClockFace::Beach:
+      if (!state.beach && !state.art_failed) {
+        state.beach = std::make_unique<themed::BeachArt>();
+        if (!state.beach->load()) state.beach.reset(), state.art_failed = true;
+      }
+      if (!state.beach) {  // a plain sky and the time
+        out.clear({30, 34, 100});
+        const std::string text = themed::hour_text(m, o) + (themed::colon_on(m, o) ? ":" : " ") + (m.minute < 10 ? "0" : "") + std::to_string(m.minute);
+        gfx::fonts::draw_centred(out, gfx::fonts::default_font(), 28, text, {255, 255, 255}, 2);
+        return o.blink ? to_next_second(ctx) : to_next_minute(t, ctx);
+      }
+      themed::draw_beach(out, m, o, ctx.sky, *state.beach, ctx.millis);
+      return themed::kBeachStepMs - static_cast<uint32_t>(ctx.millis) % themed::kBeachStepMs;
     case ClockFace::Bracket:
       themed::draw_bracket(out, m, o, ctx.millis);
       return themed::kDialStepMs - static_cast<uint32_t>(ctx.millis) % themed::kDialStepMs;

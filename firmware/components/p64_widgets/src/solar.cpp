@@ -86,20 +86,42 @@ float moon_phase(int year, int year_day, float hour_local, float tz_hours) {
   return static_cast<float>(phase);
 }
 
-Position moon(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local) {
-  const double n = j2000_days(year, year_day, hour_local, tz_hours);
+namespace {
+
+// The moon's right ascension and declination (radians) and its horizontal parallax
+// (degrees) at the J2000 day n.
+void moon_equatorial(double n, double &ra, double &decl, double &parallax) {
   const Ecliptic e = moon_ecliptic(n);
   const double obliquity = radians(23.439 - 0.0000004 * n);
   const double lon = radians(e.longitude), lat = radians(e.latitude);
-  const double ra =
-      std::atan2(std::sin(lon) * std::cos(obliquity) - std::tan(lat) * std::sin(obliquity), std::cos(lon));
-  const double decl =
-      std::asin(std::sin(lat) * std::cos(obliquity) + std::cos(lat) * std::sin(obliquity) * std::sin(lon));
-  const double sidereal = radians(280.46061837 + 360.98564736629 * n + longitude);
-  Position p = elevation_azimuth(radians(latitude), decl, sidereal - ra);
+  ra = std::atan2(std::sin(lon) * std::cos(obliquity) - std::tan(lat) * std::sin(obliquity), std::cos(lon));
+  decl = std::asin(std::sin(lat) * std::cos(obliquity) + std::cos(lat) * std::sin(obliquity) * std::sin(lon));
+  parallax = e.parallax;
+}
+
+double local_sidereal(double n, float longitude) { return radians(280.46061837 + 360.98564736629 * n + longitude); }
+
+}  // namespace
+
+Position moon(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local) {
+  const double n = j2000_days(year, year_day, hour_local, tz_hours);
+  double ra, decl, parallax;
+  moon_equatorial(n, ra, decl, parallax);
+  Position p = elevation_azimuth(radians(latitude), decl, local_sidereal(n, longitude) - ra);
   // seen from the ground rather than the earth's centre: up to a degree lower
-  p.elevation -= static_cast<float>(e.parallax * std::cos(radians(p.elevation)));
+  p.elevation -= static_cast<float>(parallax * std::cos(radians(p.elevation)));
   return p;
+}
+
+float moon_hour_angle(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local) {
+  (void)latitude;
+  const double n = j2000_days(year, year_day, hour_local, tz_hours);
+  double ra, decl, parallax;
+  moon_equatorial(n, ra, decl, parallax);
+  double ha = std::fmod((local_sidereal(n, longitude) - ra) * 180 / kPi, 360.0);
+  if (ha < 0) ha += 360;
+  if (ha > 180) ha -= 360;
+  return static_cast<float>(ha);
 }
 
 }  // namespace p64::widgets::solar

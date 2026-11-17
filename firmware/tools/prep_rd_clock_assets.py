@@ -25,6 +25,18 @@ Aquarium:
   sign.png     the signpost (the board and its post down to the chest), drawn last
   lights.png   the castle's windows, lit at night
   fish-a.png, fish-b.png, fish-c.png   eight frames each, facing right
+
+Beach (p130, 2026-11-17; the sources under assets/rd-source/p130, the fire from p119 and
+nothing else; one painting, so nothing in the scene is ever regenerated):
+  land.png     the whole 64x64 crop of the painting with its white sky keyed out: the
+               palm, the sea, the sand, the lifeguard hut
+  sea.png      the sea's pixels (white where water), which mirror the computed sky and
+               move with the tide
+  lights.png   the hut's window, lit when it is dark
+  umbrella.png the beach umbrella and towel (daytime), crab.png four frames of the crab
+               (side walk, 2x k-centroid of the 32 px sprite), fire.png eight frames of the
+               campfire (2x k-centroid of the 64 px effect, seven frames); the boat on the horizon is
+               drawn (the painted one read as a white post at 5x9)
 """
 
 import os
@@ -248,7 +260,95 @@ def dials():
     print("station/dial.png 64x64 (assets/clock)")
 
 
+# ---------------------------------------------------------------- Beach (p130)
+
+P130 = os.path.join(FIRMWARE, "assets", "rd-source", "p130")
+BEACH_PAINTING = "beach_a_1.png"
+BEACH_CROP = (8, 8, 72, 72)  # the panel inside the 80x80 painting (its painted border is right and below)
+BEACH_SEA_ROWS = (27, 46)  # the rows in which the sea's colours are water (27 and 28 are the far sea)
+BEACH_SEA_COLOURS = {(64, 168, 186), (89, 196, 199), (225, 249, 226)}  # the far sea, the water and its painted foam
+BEACH_WINDOW = (49, 28, 54, 32)  # the hut's window pane, [x0, y0, x1, y1) in the crop
+BEACH_WINDOW_COLOUR = (255, 206, 96, 255)
+CRAB_FRAMES = (6, 7, 8, 9)  # the sprite sheet's side walk, 1-based
+FIRE_FRAMES = (1, 2, 3, 4, 5, 6, 7)  # the effect's readable frames but the sparse first (the ninth has a corrupt descriptor)
+
+
+def kcentroid2(img):
+    """A 2x shrink in the k-centroid manner: each 2x2 block keeps the opaque pixel nearest
+    the block's mean, or stays clear when fewer than two of its pixels are opaque."""
+    w, h = img.size
+    out = Image.new("RGBA", (w // 2, h // 2), (0, 0, 0, 0))
+    px, dst = img.load(), out.load()
+    for y in range(h // 2):
+        for x in range(w // 2):
+            block = [px[2 * x + dx, 2 * y + dy] for dy in (0, 1) for dx in (0, 1)]
+            opaque = [p for p in block if p[3] >= 128]
+            if len(opaque) < 2:
+                continue
+            mean = tuple(sum(p[i] for p in opaque) / len(opaque) for i in range(3))
+            best = min(opaque, key=lambda p: sum((p[i] - mean[i]) ** 2 for i in range(3)))
+            dst[x, y] = best[:3] + (255,)
+    return out
+
+
+def strip_of(frames):
+    """Frames laid side by side in one box (so a sprite does not jump between frames)."""
+    boxes = [f.getbbox() for f in frames]
+    box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+    w, h = box[2] - box[0], box[3] - box[1]
+    sheet = Image.new("RGBA", (w * len(frames), h), (0, 0, 0, 0))
+    for i, f in enumerate(frames):
+        sheet.paste(f.crop(box), (i * w, 0))
+    return sheet
+
+
+def rgba_frames(path, count=None):
+    im = Image.open(path)
+    out = []
+    for i in range(im.n_frames if count is None else count):
+        im.seek(i)
+        out.append(im.convert("RGBA").copy())
+    return out
+
+
+def beach():
+    day = Image.open(os.path.join(P130, BEACH_PAINTING)).convert("RGB").crop(BEACH_CROP)
+    px = day.load()
+    # the sky: the white connected to the top edge
+    sky = [[False] * 64 for _ in range(64)]
+    todo = [(x, 0) for x in range(64)]
+    while todo:
+        x, y = todo.pop()
+        if not (0 <= x < 64 and 0 <= y < 64) or sky[y][x] or min(px[x, y]) < 226:
+            continue
+        sky[y][x] = True
+        todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    land = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    sea = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    for y in range(64):
+        for x in range(64):
+            if sky[y][x]:
+                continue
+            land.putpixel((x, y), px[x, y] + (255,))
+            if BEACH_SEA_ROWS[0] <= y < BEACH_SEA_ROWS[1] and px[x, y] in BEACH_SEA_COLOURS:
+                sea.putpixel((x, y), (255, 255, 255, 255))
+    lights = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    x0, y0, x1, y1 = BEACH_WINDOW
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            lights.putpixel((x, y), BEACH_WINDOW_COLOUR)
+    save("beach", "land", land)
+    save("beach", "sea", sea)
+    save("beach", "lights", lights)
+    save("beach", "umbrella", crop_alpha(Image.open(os.path.join(P130, "umbrella_0.png")).convert("RGBA")))
+    crab = rgba_frames(os.path.join(P130, "crab_0.gif"))
+    save("beach", "crab", strip_of([kcentroid2(crab[i - 1]) for i in CRAB_FRAMES]))
+    fire = rgba_frames(os.path.join(FIRMWARE, "assets", "rd-source", "p119", "fx_fire_0.gif"), max(FIRE_FRAMES) + 1)
+    save("beach", "fire", strip_of([kcentroid2(fire[i]) for i in FIRE_FRAMES]))
+
+
 if __name__ == "__main__":
     horizon_rd()
     aquarium()
     dials()
+    beach()

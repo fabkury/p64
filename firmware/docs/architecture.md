@@ -457,7 +457,7 @@ table, a hand as a profile of half widths along its axis in 64ths of a pixel, a 
 a dark edge by the side of the axis, a one-pixel shadow. Both redraw every 100 ms while
 something moves (the bracket's pendulum always; the station's second hand, or its glint
 for 1.5 s of every 12) and are pixel-exact against the mock. `solar.cpp` (NOAA's low-precision
-sun, the Astronomical Almanac's low-precision moon with its phase from the elongation) is tested against the almanac. The weather keeps one `Forecast` (Open-Meteo current conditions
+sun, the Astronomical Almanac's low-precision moon with its phase from the elongation, and the moon's hour angle for the beach's tide) is tested against the almanac. The beach (p130, 2026-11-17: `face_beach.cpp`, `BeachArt`) is a third PNG face on the horizon machinery (`horizon_sky.hpp` now also holds the shared `mul`, `hash3`, `draw_moon` and `blit_scaled`): one painting with its sky keyed out, the sea's mask and the hut's window as masks, the umbrella, four crab frames and seven campfire frames as small PNGs (the horizon's sun, moon and clouds reused); the tide is `beach_tide` (cos 2H of the moon's hour angle), floating point, within the mock's tolerance; about 70 KB decoded, in PSRAM. The weather keeps one `Forecast` (Open-Meteo current conditions
 and four daily rows, parsed by the host-tested `weather_model`) fetched by a small
 task with a PSRAM stack on the refresh interval, and draws "NO DATA" after six hours
 without a refresh. The air widget (2026-10-03, spec 7.4) keeps one `Air` (Open-Meteo's

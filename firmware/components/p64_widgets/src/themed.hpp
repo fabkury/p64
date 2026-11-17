@@ -106,6 +106,25 @@ struct HorizonRdArt {
 };
 void draw_horizon_rd(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky, HorizonRdArt &art, int millis = 0);
 
+// 12. Beach (p130): a seaside clock on one painting by Retro Diffusion under the sky faces'
+// computed sky, the tide following the moon, the beach's day and night; a frame every
+// kBeachStepMs. Its pictures as the Horizon-RD's (about 70 KB decoded, in PSRAM).
+constexpr uint32_t kBeachStepMs = 250;
+struct BeachArt {
+  static constexpr int kSkyRows = 27;  // the gradient ends at the sea's horizon
+  picture::Picture land, sea, lights, umbrella, crab, fire, sun, moon, cloud_a, cloud_b;
+  float line[64] = {};        // the skyline's row per column, smoothed
+  float raised = 0;           // its median: the sea's horizon, where the bodies rise and set
+  int8_t shore[64] = {};      // the sea's lowest row per column, -1 where the hut hides it
+  std::vector<uint8_t> sky;   // scratch: the sky's colours of the frame being drawn (the sea mirrors them)
+  std::vector<uint8_t> mask;  // scratch: the lettering's outline
+  bool load();
+};
+void draw_beach(gfx::Frame &frame, const Moment &m, const Options &o, const Sky &sky, BeachArt &art, int millis = 0);
+// The tide at a moment, 1 at high water (the moon at either transit) to -1 at low: the
+// equilibrium tide's M2, cos 2H of the moon's hour angle.
+float beach_tide(const Sky &place, int year, int yday, float hour);
+
 // 9. Aquarium (p076): a goldfish tank painted by Retro Diffusion, the time on its sign; a
 // frame every kAquariumFrameMs. Its pictures as the Horizon-RD's (about 290 KB decoded:
 // the tank's sixteen frames); `sky` gives the place, for the tank's day and night.

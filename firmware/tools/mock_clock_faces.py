@@ -610,6 +610,19 @@ def moon_position(lat, lon, tz_hours, year, year_day, hour_local):
     return el - par * math.cos(math.radians(el)), az
 
 
+def moon_hour_angle(lat, lon, tz_hours, year, year_day, hour_local):
+    """The moon's local hour angle in degrees, -180..180: 0 at its upper transit, +-180 at
+    its lower one (the beach's tide: high water near both, the equilibrium tide's M2)."""
+    n = _j2000_days(year, year_day, hour_local, tz_hours)
+    mlon, mlat, _par = _moon_ecliptic(n)
+    obliquity = math.radians(23.439 - 0.0000004 * n)
+    mlon, mlat = math.radians(mlon), math.radians(mlat)
+    ra = math.atan2(math.sin(mlon) * math.cos(obliquity) - math.tan(mlat) * math.sin(obliquity), math.cos(mlon))
+    sidereal = math.radians(280.46061837 + 360.98564736629 * n + lon)
+    ha = math.degrees(sidereal - ra) % 360
+    return ha - 360 if ha > 180 else ha
+
+
 def sky_x(az, el, lat):
     """The viewer faces the equator: the sun rises on the left and sets on the right in the
     northern hemisphere (mirrored in the southern); the east-west component projected on
@@ -1930,11 +1943,303 @@ def draw_station(m, o, millis=0):
     return frame
 
 
+
+# ---------------------------------------------------------------- 12. Beach (floating point)
+
+# A seaside clock on one painting (p130, 2026-11-17): a palm's fronds hanging in from the
+# top left, a lifeguard hut on stilts at the right, the sea across the middle, the sand in
+# front; above it the sky faces' computed sky (the sun and the moon where they really are,
+# the stars, the weather). Nothing in the picture is ever regenerated, so nothing in it
+# moves between the hours except what the firmware moves:
+#   - the sea mirrors the sky and glitters under the sun and the moon (the sun sets into it);
+#   - the tide follows the moon: the waterline climbs the sand by up to two rows at the
+#     moon's transits (the equilibrium tide's M2, cos 2H of the moon's hour angle) and
+#     leaves two rows of wet sand at the low; a foam line breaks along it every step;
+#   - a sailing boat (drawn) crosses the horizon under the sun while the sun is up; a gull flies
+#     over every other minute by day; the umbrella and the towel are out from 09:00 to
+#     18:00 in the sun; the crab comes out at the twilights; the campfire burns on the
+#     sand in the evening, its glow on the sand flickering; the hut's window is lit while
+#     it is dark; the land sinks to a blue night and is warmed at the twilights.
+# A frame every BEACH_STEP_MS. The time at the top right, the date at the bottom right,
+# in the horizon faces' lettering. Floating point, compared within a tolerance.
+
+BEACH_STEP_MS = 250
+BEACH_SKY_ROWS = 27  # the gradient ends at the sea's horizon
+BEACH_ZENITH_Y = 9
+BEACH_SEA_TOP = 27
+BEACH_STARS = [(5, 4), (14, 9), (22, 3), (30, 12), (41, 6), (50, 2), (57, 10), (9, 16), (36, 18), (60, 14),
+               (26, 22), (47, 15), (3, 24), (33, 6), (62, 4), (1, 12), (28, 25), (54, 8), (18, 20), (44, 24)]
+BEACH_CLOUD_SPOTS = [(30, 13), (46, 5), (10, 18), (54, 16), (36, 21)]
+BEACH_WET = (0.74, 0.74, 0.78)  # what the wet sand keeps of the dry sand
+BEACH_UMBRELLA = (12, 59)  # the umbrella's left column and bottom row
+BEACH_FIRE = (14, 56)  # the fire's (where the umbrella stands by day; they never meet)
+BEACH_FIRE_GLOW = (255, 150, 50)
+BEACH_BOAT_BOTTOM = 30  # the boat's hull in the first rows of the sea
+BOAT_SAIL = [(2, 0), (2, 1), (3, 1), (2, 2), (3, 2), (4, 2), (1, 3), (2, 3), (3, 3), (4, 3)]  # a 5x5 boat, drawn
+BOAT_HULL = (92, 62, 40)
+BEACH_CRAB = (20, 38, 48)  # it walks between these columns, on this bottom row
+BEACH_GULL = (40, 40, 52)
+BEACH_RIGHT = 62  # the lettering's right edge
+BEACH_FIRE_FROM, BEACH_FIRE_TO = 19, 1  # the campfire burns from 19:00 to 01:00 (when it is dark)
+BEACH_UMBRELLA_FROM, BEACH_UMBRELLA_TO = 9, 18
+BEACH_FIRE_FRAMES = 7
+
+
+def beach_tide(lat, lon, tz, year, yday, h):
+    """The tide, 1 at high water (the moon at either transit) to -1 at low."""
+    return math.cos(math.radians(2 * moon_hour_angle(lat, lon, tz, year, yday, h)))
+
+
+def beach_shore(sea):
+    """The sea's lowest row per column, -1 where the hut hides the shore."""
+    a = sea.split()[-1].load()
+    return [max([y for y in range(sea.height) if a[x, y] >= 128], default=-1) for x in range(W)]
+
+
+def blit_shaded(frame, img, x, y, k):
+    px = img.load()
+    for yy in range(img.height):
+        for xx in range(img.width):
+            if px[xx, yy][3] >= 128:
+                frame.set(x + xx, y + yy, mul(px[xx, yy][:3], k))
+
+
+def strip_frame(img, count, i, flip=False):
+    w = img.width // count
+    f = img.crop((i * w, 0, (i + 1) * w, img.height))
+    return f.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if flip else f
+
+
+def draw_beach_lettering(frame, m, o):
+    """The horizon faces' lettering (white, one outline at 75 % black), right-aligned
+    at the top, clear of the palm; in 12 h the meridiem under the time's right end."""
+    font = load_font("capital-hill")
+    small = load_font("everyday-slight")
+    big = load_font("everyday-vast-black")
+    hh = f"{m.hour:02d}" if o.h24 else str(m.h12())
+    time_text = f"{hh}:{m.minute:02d}" if colon_on(m, o) else f"{hh} {m.minute:02d}"
+    gap = 1
+    spaced = text_width(big, time_text) + gap * (len(time_text) - 1)
+    x0 = BEACH_RIGHT - spaced
+    mer = "" if o.h24 else m.meridiem()
+    date = m.date(o.month_first)
+    dx = W - 1 - text_width(small, date)
+
+    def letters(target, text_c, outline):
+        x = x0
+        for ch in time_text:
+            draw_text(target, big, x, 3, ch, text_c, 1, outline=outline)
+            x += text_width(big, ch) + gap
+        if mer:
+            draw_text(target, font, BEACH_RIGHT - text_width(font, mer), 16, mer, text_c, 1, outline=outline)
+        draw_text(target, small, dx, 58, date, text_c, 1, outline=outline)
+
+    mask = Frame()
+    letters(mask, MASK_TEXT, MASK_OUTLINE)
+    for y in range(H):
+        for x in range(W):
+            if mask.get(x, y) == MASK_OUTLINE:
+                frame.set(x, y, blend(frame.get(x, y), (0, 0, 0), HORIZON_OUTLINE_ALPHA))
+    letters(frame, (255, 255, 255), None)
+
+
+def draw_beach(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", millis=0):
+    h = m.hour + m.minute / 60.0 + m.second / 3600.0
+    frame = Frame((0, 0, 0))
+    land, sea, lights = (png_asset("beach", n) for n in ("land", "sea", "lights"))
+    umbrella, crab, fire = (png_asset("beach", n) for n in ("umbrella", "crab", "fire"))
+    sun, moon = png_asset("horizon_rd", "sun"), png_asset("horizon_rd", "moon")
+    clouds = (png_asset("horizon_rd", "cloud-a"), png_asset("horizon_rd", "cloud-b"))
+    el, az = solar_position(lat, lon, tz, m.yday, h)
+    top, near_c, away_c = sky_palette(el)
+    grey = 0.22 * cover
+    top, near_c, away_c = (lerp(c, (110, 116, 130), grey) for c in (top, near_c, away_c))
+    sx = sky_x(az, el, lat)
+    glow_width = 30 if el < 12 else 60
+    sky = [[None] * BEACH_SKY_ROWS for _ in range(W)]
+    for x in range(W):
+        w = math.exp(-((x - sx) / glow_width) ** 2)
+        hz = lerp(away_c, near_c, w)
+        for y in range(BEACH_SKY_ROWS):
+            sky[x][y] = lerp(top, hz, (y / (BEACH_SKY_ROWS - 1)) ** 1.5)
+            frame.set(x, y, sky[x][y])
+    light = daylight(el)
+    star_k = max(0.0, min(1.0, (-el - 4) / 8)) * (1 - 0.8 * min(1, cover / 2))
+    if star_k > 0:
+        for i, (x, y) in enumerate(BEACH_STARS):
+            frame.set(x, y, lerp(frame.get(x, y), (232, 232, 250), star_k * (0.85 if i % 3 else 1.0)))
+            if i % 3 == 0 and star_k > 0.6:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    if 0 <= x + dx < W and 0 <= y + dy < BEACH_SKY_ROWS:
+                        frame.set(x + dx, y + dy, lerp(frame.get(x + dx, y + dy), (150, 150, 190), star_k))
+    # the skyline (rd_skyline with the land at row 0) and the bodies on the sea's horizon
+    a = land.split()[-1].load()
+    tops = [next((y for y in range(land.height) if a[x, y] >= 128), land.height) for x in range(W)]
+    line = [sum(tops[min(W - 1, max(0, x + d))] for d in range(-2, 3)) / 5 for x in range(W)]
+    raised = float(BEACH_SEA_TOP)  # the sea's horizon: the hut and the fronds above it only hide a body
+
+    def body_y(bel, bx, radius):
+        if bel <= SET:
+            return None
+        local = max(line[min(W - 1, max(0, bx))], raised)
+        edge = raised + (local - raised) * max(0.0, 1 - (bel - RESTS) / BLEND)
+        rests, hidden = edge - radius - 1, edge + radius
+        if bel < RESTS:
+            return int(round(hidden + (rests - hidden) * (bel - SET) / (RESTS - SET)))
+        return int(round(rests + (BEACH_ZENITH_Y - rests) * (min(bel, 90) - RESTS) / (90 - RESTS)))
+
+    phase = moon_phase(year, m.yday, h, tz)
+    mel, maz = moon_position(lat, lon, tz, year, m.yday, h)
+    mx = sky_x(maz, mel, lat)
+    my = body_y(mel, mx, moon.width // 2)
+    moon_up = my is not None and el < 25
+    if moon_up:
+        draw_moon_rd(frame, moon, mx, my, phase, lat, el < -6)
+    sy = body_y(el, sx, sun.width // 2)
+    sun_tint = lerp((255, 120, 90), (255, 255, 255), max(0.0, min(1.0, el / 6)))
+    sun_k = [v / 255 for v in sun_tint]
+    if sy is not None:
+        for dy in range(-9, 10):
+            for dx in range(-9, 10):
+                d = math.hypot(dx, dy)
+                if d < RD_GLOW:
+                    frame.set(sx + dx, sy + dy, lerp(frame.get(sx + dx, sy + dy), sun_tint, 0.30 * (1 - d / RD_GLOW)))
+        px = sun.load()
+        for yy in range(sun.height):
+            for xx in range(sun.width):
+                if px[xx, yy][3] >= 128:
+                    frame.set(sx - sun.width // 2 + xx, sy - sun.height // 2 + yy, mul(px[xx, yy][:3], sun_k))
+    tint = lerp((50, 52, 80), lerp((255, 255, 255), near_c, 0.35), light)
+    if cover >= 3:
+        tint = lerp((40, 42, 60), (168, 172, 186), light)
+    tint_k = [v / 255 for v in tint]
+    for i, (base_x, y) in enumerate(BEACH_CLOUD_SPOTS[: (1, 2, 3, 5)[cover]]):
+        cloud = clouds[i % 2]
+        x = (base_x + m.minute * 64 // 60) % (W + cloud.width) - cloud.width
+        blit_shaded(frame, cloud, x, y, tint_k)
+    # the gull, every other minute by day, flapping every step
+    tick = (m.second * 1000 + millis) // BEACH_STEP_MS + m.minute * (60000 // BEACH_STEP_MS)
+    if el > 5:
+        t = (m.minute % 2) * 60 + m.second + millis / 1000
+        if t < 24:
+            gx = int(-6 + t * 3)
+            gy = 9 + int(round(2 * math.sin(t / 2)))
+            wings = ((0, 1), (1, 0), (2, 1), (3, 0), (4, 1)) if tick % 2 == 0 else ((0, 0), (1, 1), (2, 0), (3, 1), (4, 0))
+            for dx, dy in wings:
+                if gy + dy < BEACH_SKY_ROWS:
+                    frame.set(gx + dx, gy + dy, BEACH_GULL)
+    # the land: its own colours by day, a blue night, warmed by the twilight's glow; the
+    # sea mirrors the sky, glitters, and climbs the sand with the tide
+    warm = [0.6 + 0.4 * v / 255 for v in near_c]
+    dusk = 0.5 * (1 - abs(2 * light - 1))
+
+    def shade(c):
+        if cover:
+            g = (c[0] * 3 + c[1] * 6 + c[2]) // 10
+            c = lerp(c, (g, g, g), 0.15 * cover)
+        if precip == "snow":
+            c = lerp(c, (228, 232, 242), 0.3)
+        lit = lerp(mul(c, RD_NIGHT_LAND), c, light)
+        return lerp(lit, mul(c, warm), dusk)
+
+    shore = beach_shore(sea)
+    tide_rows = int(round(2 * beach_tide(lat, lon, tz, year, m.yday, h)))
+    lp, kp = land.load(), sea.load()
+    for yy in range(land.height):
+        for xx in range(W):
+            if lp[xx, yy][3] < 128:
+                continue
+            c = lp[xx, yy][:3]
+            water = kp[xx, yy][3] >= 128
+            if shore[xx] >= 0:
+                if tide_rows > 0 and shore[xx] < yy <= shore[xx] + tide_rows:
+                    water, c = True, lp[xx, shore[xx]][:3]
+                elif tide_rows < 0 and water and yy > shore[xx] + tide_rows:
+                    water, c = False, mul(lp[xx, shore[xx] + 1][:3], BEACH_WET)
+            lit = shade(c)
+            if water:
+                lit = lerp(lit, sky[xx][max(0, BEACH_SKY_ROWS - 1 - (yy - BEACH_SEA_TOP) * 2)], 0.45)
+                spread = 1 + (yy - BEACH_SEA_TOP) // 3
+                roll = hash3(xx, yy, tick)
+                if sy is not None and el < 30 and abs(xx - sx) <= spread and roll % 5 < 2:
+                    lit = lerp(lit, mul((255, 236, 170), sun_k), 0.5)
+                elif moon_up and el < -4 and abs(xx - mx) <= spread and roll % 5 < 2:
+                    lit = lerp(lit, (214, 220, 240), 0.4)
+                elif roll % 29 == 0:
+                    lit = lerp(lit, (255, 255, 255), 0.10 + 0.15 * light)
+            frame.set(xx, yy, lit)
+    # the foam along the waterline, breaking every step
+    for xx in range(W):
+        if shore[xx] < 0:
+            continue
+        wl = shore[xx] + tide_rows
+        if hash3(xx, wl, tick) % 4:
+            frame.set(xx, wl, lerp(frame.get(xx, wl), (255, 255, 255), 0.5))
+        if hash3(xx, wl - 1, tick) % 7 == 0:
+            frame.set(xx, wl - 1, lerp(frame.get(xx, wl - 1), (255, 255, 255), 0.3))
+    if precip:
+        rng = (m.minute * 7919 + m.hour * 104729) % 65536
+        for _ in range(22):
+            rng = (rng * 1103515245 + 12345) % 2147483648
+            x, y = (rng >> 8) % W, (rng >> 4) % 50
+            if precip == "rain":
+                for k in range(3):
+                    frame.set(x, y + k, lerp(frame.get(x, y + k), (150, 190, 240), 0.7))
+            else:
+                frame.set(x, y, (240, 244, 255))
+    shade_k = [shade((255, 255, 255))[i] / 255 for i in range(3)]
+    # the boat on the horizon, under the sun, while the sun is up
+    if sy is not None:
+        bx = max(2, min(36, sx * 34 // W + 2))
+        by = BEACH_BOAT_BOTTOM - 4
+        for dx, dy in BOAT_SAIL:
+            frame.set(bx + dx, by + dy, mul((255, 255, 255), shade_k))
+        for dx in range(5):
+            frame.set(bx + dx, BEACH_BOAT_BOTTOM, mul(BOAT_HULL, shade_k))
+    # the umbrella and the towel, out in the day's sun
+    if BEACH_UMBRELLA_FROM <= m.hour < BEACH_UMBRELLA_TO and el > 5:
+        blit_shaded(frame, umbrella, BEACH_UMBRELLA[0], BEACH_UMBRELLA[1] - umbrella.height + 1, shade_k)
+    # the crab, out at the twilights, walking the waterline forth and back
+    if 0.02 < light < 0.9:
+        x0, x1, bottom = BEACH_CRAB
+        span = x1 - x0
+        pos = tick % (2 * span)
+        going_right = pos < span
+        cx = x0 + pos if going_right else x1 - (pos - span)
+        blit_shaded(frame, strip_frame(crab, 4, tick % 4, flip=not going_right), cx, bottom - crab.height + 1, shade_k)
+    # the campfire in the evening, its glow on the sand
+    if el < -4 and (m.hour >= BEACH_FIRE_FROM or m.hour < BEACH_FIRE_TO):
+        fw, fh = fire.width // BEACH_FIRE_FRAMES, fire.height
+        fx, fy = BEACH_FIRE[0], BEACH_FIRE[1] - fh + 1
+        cx, cy = fx + fw / 2, BEACH_FIRE[1] - 2
+        flicker = 0.75 + 0.25 * ((tick * 7) % 5) / 4
+        for y in range(int(cy) - 10, int(cy) + 6):
+            for x in range(int(cx) - 11, int(cx) + 12):
+                d = math.hypot(x - cx, (y - cy) * 1.6)
+                if d < 10 and 0 <= x < W and 0 <= y < H:
+                    frame.set(x, y, lerp(frame.get(x, y), BEACH_FIRE_GLOW, 0.45 * flicker * (1 - d / 10)))
+        blit_shaded(frame, strip_frame(fire, BEACH_FIRE_FRAMES, tick % BEACH_FIRE_FRAMES), fx, fy, (1.0, 1.0, 1.0))
+    # the hut's window, lit while it is dark
+    lamp = max(0.0, min(1.0, (0.35 - light) / 0.25))
+    if lamp > 0:
+        gp = lights.load()
+        spots = [(xx, yy) for yy in range(lights.height) for xx in range(W) if gp[xx, yy][3] >= 128]
+        for xx, yy in spots:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if (xx + dx, yy + dy) not in spots:
+                    frame.set(xx + dx, yy + dy, lerp(frame.get(xx + dx, yy + dy), gp[xx, yy][:3], 0.22 * lamp))
+        for xx, yy in spots:
+            frame.set(xx, yy, lerp(frame.get(xx, yy), gp[xx, yy][:3], lamp))
+    draw_beach_lettering(frame, m, o)
+    return frame
+
+
 # ---------------------------------------------------------------- output
 
 FACES = {"flip": draw_flip, "nixie": draw_nixie, "words": draw_words,
          "hourglass": draw_hourglass, "orrery": draw_orrery, "led": draw_led,
-         "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium, "bracket": draw_bracket, "station": draw_station}
+         "horizon_rd": draw_horizon_rd, "aquarium": draw_aquarium, "bracket": draw_bracket, "station": draw_station,
+         "beach": draw_beach}
 
 
 def contact_sheet(items, scale=6, gap=12, columns=None):
@@ -1993,6 +2298,10 @@ REFERENCES = [
     ("bracket", Moment(3, 45, 12), "s"), ("bracket", Moment(18, 30, 50), "sm"), ("bracket", Moment(23, 55, 28), ""),
     ("station", Moment(10, 9, 37), "s"), ("station", Moment(10, 9, 37), ""), ("station", Moment(0, 0, 0), "s"),
     ("station", Moment(3, 45, 12), "s"), ("station", Moment(18, 30, 59), "sm"), ("station", Moment(8, 20, 24), ""),
+    # the beach (p130), floating point, within the tolerance: afternoon, the dusk crab,
+    # the evening fire, dawn in 12 h, night with the colon off
+    ("beach", Moment(15, 10, 0), ""), ("beach", Moment(18, 40, 20), ""), ("beach", Moment(21, 30, 0), ""),
+    ("beach", Moment(6, 20, 0), "h"), ("beach", Moment(3, 0, 7), "b"),
 ]
 
 
@@ -2086,6 +2395,25 @@ def write_rd_design():
         mm, ms = at_ms(Moment(18, 42, 0), i * RD_GLINT_MS)
         seq.append((draw_horizon_rd(mm, o, millis=ms, **ny), RD_GLINT_MS))
     save_gif(os.path.join(DESIGN, "horizon_rd@8x.gif"), seq, 8, 255)
+    # the beach (p130): a day in New York, the variants, six seconds at dusk, at night and by day
+    beach_moments = [(0, 30), (3, 0), (5, 30), (6, 20), (6, 50), (8, 0), (10, 0), (12, 30), (16, 30), (18, 20), (18, 50), (21, 0)]
+    contact_sheet([(f"{hh:02d}:{mm:02d}", draw_beach(Moment(hh, mm), o, **ny)) for hh, mm in beach_moments], scale=4, columns=6).save(
+        os.path.join(DESIGN, "beach-day.png"))
+    beach_variants = [("clear", draw_beach(Moment(15, 0), o, **ny)),
+                      ("broken", draw_beach(Moment(15, 0), o, cover=2, **ny)),
+                      ("rain", draw_beach(Moment(15, 0), o, cover=3, precip="rain", **ny)),
+                      ("12 h", draw_beach(Moment(6, 40), Options(h24=False), **ny)),
+                      ("low tide", draw_beach(Moment(15, 0, 0, 2, 29, 9, 271), o, **ny)),
+                      ("high tide", draw_beach(Moment(21, 0, 0, 2, 29, 9, 271), o, **ny)),
+                      ("full moon", draw_beach(Moment(22, 30), o, **ny)),
+                      ("sao paulo", draw_beach(Moment(18, 10), o, lat=-23.55, lon=-46.63, tz=-3))]
+    contact_sheet(beach_variants, scale=4, columns=4, gap=24).save(os.path.join(DESIGN, "beach-variants.png"))
+    for name, start in (("beach", Moment(18, 40, 0)), ("beach-night", Moment(21, 30, 0)), ("beach-day", Moment(10, 0, 50))):
+        seq = []
+        for i in range(24):
+            mm, ms = at_ms(start, i * BEACH_STEP_MS)
+            seq.append((draw_beach(mm, o, millis=ms, **ny), BEACH_STEP_MS))
+        save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)
     tank_moments = [(10, 32, 37), (10, 32, 49), (14, 5, 12), (6, 25, 0), (19, 5, 30), (22, 40, 10)]
     contact_sheet([(f"{hh:02d}:{mi:02d}:{ss:02d}", draw_aquarium(Moment(hh, mi, ss), o, **ny)) for hh, mi, ss in tank_moments],
                   scale=4, columns=6).save(os.path.join(DESIGN, "aquarium-moments.png"))

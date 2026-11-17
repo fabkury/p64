@@ -18,6 +18,7 @@ idf_component_register(
         "src/face_hourglass.cpp"
         "src/face_orrery.cpp"
         "src/face_horizon_rd.cpp"
+        "src/face_beach.cpp"
         "src/face_aquarium.cpp"
         "src/dial.cpp"
         "src/face_bracket.cpp"

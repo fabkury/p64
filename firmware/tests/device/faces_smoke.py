@@ -27,7 +27,7 @@ import api_smoke
 from api_smoke import check, request
 import mock_clock_faces as mock
 
-FACES = ["digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"]
+FACES = ["digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station", "beach"]
 EXACT = {"flip": mock.draw_flip, "nixie": mock.draw_nixie, "words": mock.draw_words,
          "hourglass": mock.draw_hourglass, "orrery": mock.draw_orrery}
 
@@ -101,7 +101,7 @@ def main():
             style = clock.get("led_style", "red")
             wanted = [mock.draw_led(mo, opts, ms, None, 0, style).img.tobytes() for mo in (before, after) for ms in range(0, 1000, 200)]
             check(px in wanted, "led (%s) on the device is one of the host's frames of %02d:%02d:%02d" % (style, before.hour, before.minute, before.second))
-        if face == "horizon_rd":
+        if face in ("horizon_rd", "beach"):
             # a sky: the top rows are not black and vary down the frame
             top = px[0:64 * 3]
             mid = px[30 * 64 * 3:31 * 64 * 3]

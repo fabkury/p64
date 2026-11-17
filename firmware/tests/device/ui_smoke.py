@@ -68,7 +68,7 @@ def main():
     check('id="pill-bar"' in home and "className = 'pill-row'" in home and "Math.ceil(pills.length / 2)" in home,
           "the Home page lays its playset pills out in two .pill-row strips")
     settings = bodies["/settings"].decode("utf-8", "replace")
-    for face in ("digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"):
+    for face in ("digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "beach", "station"):
         check('<option value="%s">' % face in settings, "the settings page offers the %s face" % face)
     check('id="clock-preview"' in settings and 'id="clock-show"' in settings, "the Clock section has the live preview and the Show button")
     check('data-tab="inputs"' in settings and 'id="tab-inputs"' in settings, "the settings page has the Inputs tab")

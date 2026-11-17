@@ -335,7 +335,7 @@ TEST_CASE("themed: 12-hour mode blanks the leading zero and shows AM or PM on ev
 }
 
 TEST_CASE("themed: settings JSON round-trips every face name") {
-  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station"};
+  static const char *const kNames[] = {"digital", "analogue", "flip", "nixie", "words", "hourglass", "orrery", "led", "horizon_rd", "aquarium", "bracket", "station", "beach"};
   static_assert(sizeof(kNames) / sizeof(kNames[0]) == p64::system::kClockFaceCount);
   for (int i = 0; i < p64::system::kClockFaceCount; ++i) {
     p64::system::Settings s;
@@ -445,6 +445,9 @@ TEST_CASE("picture: every embedded PNG decodes to its size with a 0/255 alpha") 
       {&assets::kHorizonRdLakePng, 64, 38, false, true},    {&assets::kHorizonRdLightsPng, 64, 38, false, true},
       {&assets::kHorizonRdSunPng, 12, 12, false, true},     {&assets::kHorizonRdMoonPng, 12, 12, false, true},
       {&assets::kHorizonRdCloudAPng, 14, 8, false, true},   {&assets::kHorizonRdCloudBPng, 18, 9, false, true},
+      {&assets::kBeachLandPng, 64, 64, false, true},        {&assets::kBeachSeaPng, 64, 64, false, true},
+      {&assets::kBeachLightsPng, 64, 64, false, true},      {&assets::kBeachUmbrellaPng, 17, 17, false, true},
+      {&assets::kBeachCrabPng, 24, 10, false, true},        {&assets::kBeachFirePng, 84, 15, false, true},
   };
   for (const Case &c : cases) {
     picture::Picture p;
@@ -515,6 +518,80 @@ TEST_CASE("themed: the Horizon-RD loads its art once, moves its glints every 500
   s.clock.face = ClockFace::Nixie;
   faces::draw_clock(b, s, ctx, state);
   CHECK_FALSE(state.horizon_rd);
+}
+
+TEST_CASE("themed: the beach loads its art once, steps every 250 ms, follows the moon's tide and frees the art for another face") {
+  p64::system::Settings s;
+  s.clock.face = ClockFace::Beach;
+  faces::ClockState state;
+  faces::ClockContext ctx;
+  tm t = moment(13, 0, 0);
+  ctx.time = &t;
+  Frame a, b, c;
+  CHECK_EQ(faces::draw_clock(a, s, ctx, state), 250u);
+  REQUIRE(state.beach);
+  CHECK_FALSE(state.horizon_rd);
+  const themed::BeachArt *art = state.beach.get();
+  ctx.millis = 100;
+  CHECK_EQ(faces::draw_clock(b, s, ctx, state), 150u);
+  CHECK(same(a, b));  // the same quarter second: the same glints and foam
+  CHECK_EQ(state.beach.get(), art);  // not decoded again
+  ctx.millis = 250;
+  CHECK_EQ(faces::draw_clock(c, s, ctx, state), 250u);
+  CHECK_FALSE(same(a, c));
+  // the sky above the sea does not move between steps (no gull at 13:00:00)
+  for (int y = 0; y < 20; ++y)
+    for (int x = 0; x < 64; ++x) REQUIRE(a.get(x, y) == c.get(x, y));
+  // the art: the sea's horizon is the raised skyline, the shore sits in the sand's reach
+  CHECK_EQ(art->raised, doctest::Approx(27.0f));
+  CHECK(art->shore[20] >= 41);
+  CHECK(art->shore[20] <= 44);
+  CHECK_EQ(art->shore[43], -1);  // behind the hut
+  // the tide: within -1..1, and high water about 12 h 25 min apart
+  themed::Sky place;
+  float lo = 2, hi = -2;
+  for (int q = 0; q < 24 * 4; ++q) {
+    const float v = themed::beach_tide(place, 2026, 268, q / 4.0f);
+    lo = std::min(lo, v), hi = std::max(hi, v);
+  }
+  CHECK(lo < -0.95f);
+  CHECK(hi > 0.95f);
+  CHECK_EQ(themed::beach_tide(place, 2026, 268, 3.0f), doctest::Approx(themed::beach_tide(place, 2026, 268, 3.0f + 12.42f)).epsilon(0.15));
+  // night: the land is darker and the hut's window is lit in its own colour
+  Frame night;
+  tm late = moment(1, 0, 0);
+  ctx.time = &late;
+  ctx.millis = 0;
+  faces::draw_clock(night, s, ctx, state);
+  const auto sand_sum = [](const Frame &f) {
+    long sum = 0;
+    for (int y = 46; y < 56; ++y)
+      for (int x = 26; x < 40; ++x) sum += f.get(x, y).r + f.get(x, y).g + f.get(x, y).b;
+    return sum;
+  };
+  CHECK(sand_sum(night) * 3 < sand_sum(a));
+  CHECK(night.get(50, 29) == Rgb{255, 206, 96});
+  CHECK_FALSE(a.get(50, 29) == Rgb{255, 206, 96});
+  // the evening: the campfire's own colours on the sand at 21:30, not at 01:00
+  Frame evening;
+  tm eve = moment(21, 30, 0);
+  ctx.time = &eve;
+  faces::draw_clock(evening, s, ctx, state);
+  const auto warm_pixels = [](const Frame &f) {
+    int n = 0;
+    for (int y = 42; y < 57; ++y)
+      for (int x = 14; x < 26; ++x) {
+        const Rgb p = f.get(x, y);
+        n += p.r > 180 && p.r > p.b + 80;
+      }
+    return n;
+  };
+  CHECK(warm_pixels(evening) > 10);
+  CHECK_EQ(warm_pixels(night), 0);
+  // another face: the art goes
+  s.clock.face = ClockFace::Nixie;
+  faces::draw_clock(b, s, ctx, state);
+  CHECK_FALSE(state.beach);
 }
 
 TEST_CASE("themed: the aquarium draws a frame every 150 ms counted from midnight, the time on its sign, a blue night") {

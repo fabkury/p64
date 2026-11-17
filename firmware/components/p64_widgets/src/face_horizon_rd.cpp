@@ -37,19 +37,6 @@ constexpr int kCloudSpots[][2] = {{4, 19}, {38, 25}, {22, 13}, {50, 9}, {12, 29}
 constexpr int kCloudsByCover[4] = {1, 2, 3, 5};
 constexpr int kCross[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-// A colour scaled per channel.
-Rgb mul(Rgb c, const float k[3]) {
-  const auto ch = [](uint8_t v, float f) { return static_cast<uint8_t>(std::min(255L, std::lround(v * f))); };
-  return {ch(c.r, k[0]), ch(c.g, k[1]), ch(c.b, k[2])};
-}
-
-// A small 32-bit hash of a pixel and a tick: the lake's glints.
-uint32_t hash3(int x, int y, int t) {
-  uint32_t v = (static_cast<uint32_t>(x) * 73856093u) ^ (static_cast<uint32_t>(y) * 19349663u) ^ (static_cast<uint32_t>(t) * 83492791u);
-  v = (v ^ (v >> 13)) * 1274126177u;
-  return (v ^ (v >> 16)) & 0xFFFFu;
-}
-
 // The row of a body's centre at column x (the arc the retired horizon face drew, with this
 // face's zenith row): it rests on the skyline at kRests degrees and has slid behind it by
 // kSet; the raised horizon is the skyline's median, and the trees and the peaks above it
@@ -64,37 +51,6 @@ bool body_y(const HorizonRdArt &art, double el, int x, int radius, int &y) {
                                 : rests + (kZenithY - rests) * (std::min(el, 90.0) - kRests) / (90 - kRests);
   y = static_cast<int>(std::lround(cy));
   return true;
-}
-
-// The painted moon with its terminator: the lit side keeps the picture's craters, the dark
-// side shows faintly on a dark sky.
-void draw_moon(Frame &frame, const sprite::View &moon, int x, int y, float phase, float lat, bool dark_sky) {
-  constexpr float kLit[3] = {1.25f, 1.25f, 1.3f};
-  const float r = moon.w / 2.0f;
-  const float c = std::cos(2 * 3.14159265f * phase);
-  for (int yy = 0; yy < moon.h; ++yy) {
-    const float v = (yy + 0.5f - r) / r;
-    const float s = std::sqrt(std::max(0.0f, 1 - v * v));
-    for (int xx = 0; xx < moon.w; ++xx) {
-      if (!moon.inked(xx, yy)) continue;
-      const float u = (xx + 0.5f - r) / r;
-      const float uu = lat >= 0 ? u : -u;
-      const bool lit = phase < 0.5f ? uu > s * c : uu < -s * c;
-      const int X = x - moon.w / 2 + xx, Y = y - moon.h / 2 + yy;
-      if (lit) {
-        frame.set(X, Y, mul(moon.colour(xx, yy), kLit));
-      } else if (dark_sky) {
-        frame.set(X, Y, lerp(frame.get(X, Y), {60, 62, 90}, 0.5f));
-      }
-    }
-  }
-}
-
-// A sprite's inked pixels, each scaled by `k`.
-void blit_scaled(Frame &frame, const sprite::View &v, int x, int y, const float k[3]) {
-  for (int yy = 0; yy < v.h; ++yy)
-    for (int xx = 0; xx < v.w; ++xx)
-      if (v.inked(xx, yy)) frame.set(x + xx, y + yy, mul(v.colour(xx, yy), k));
 }
 
 }  // namespace

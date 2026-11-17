@@ -43,6 +43,7 @@ struct ClockState {
   // aquarium): loaded at its first frame, freed when another face draws or the state goes.
   std::unique_ptr<themed::HorizonRdArt> horizon_rd;
   std::unique_ptr<themed::AquariumArt> aquarium;
+  std::unique_ptr<themed::BeachArt> beach;
   bool art_failed = false;  // a picture did not decode: do not try again every frame
 };
 // The weather's WMO code as the sky's cloud cover and precipitation.

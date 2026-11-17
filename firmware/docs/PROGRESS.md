@@ -1725,3 +1725,22 @@ them. Newest entries are at the bottom of [Log](#log).
   installed it in 54 s (SHA256 verified), rebooted into `ota_1`, confirmed, boot animation
   `bands_cross`, first artwork 2 ms after the window; rolled back to `ota_0` and reflashed
   with `0.2.1+private` (the public 0.2.1 stays in `ota_1`).
+
+### 2026-11-17 (the beach clock face, p130)
+
+- A thirteenth clock face, `beach` (`face_beach.cpp`, `BeachArt`, settings value
+  `beach`), after two rounds of Retro Diffusion concepts (p119, p120) whose scenes drifted
+  between regenerations: one painting (Pro at 80 px, the sky asked for flat white and keyed
+  out; $1.27 of an $8 budget, `assets/rd-source/p130`) under the Horizon RD's computed sky,
+  and every change with the hour drawn by the firmware: the sea mirrors the sky and
+  glitters, the tide follows the moon (`solar::moon_hour_angle`, new; `beach_tide` = cos 2H,
+  the waterline up to two rows into the sand, wet sand at the low, a foam line every
+  250 ms), a drawn boat under the sun, a gull every other minute by day, the umbrella from
+  09:00 to 18:00, the crab at the twilights, the campfire from 19:00 to 01:00 once dark
+  (p119's effect shrunk 2x), the hut's window lit at night. `horizon_sky.hpp` now holds
+  the helpers the horizon_rd and the beach share. Mock first (`draw_beach`, references
+  `beach-*.png`, within the horizon's tolerance), then the C++; the host suite passes (the
+  aquarium sign case had been updated by p118). The weather reaches the beach's sky as it
+  reaches the horizon's. The pages, the device tests and the docs list the face.
+  Device: not flashed in this session (the board was off USB); the flash, `faces_smoke.py`
+  and the CPU and heap measurements are owed.

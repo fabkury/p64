@@ -520,6 +520,22 @@ refresh of being asked so it can be shown seamlessly.
     cap; the date in small letters; a mock pendulum whose brass bob swings in a slot
     under the XII once every two seconds. The seconds setting adds a thin red second
     hand that ticks.
+  - Beach (`beach`, 2026-11-17, p130): the Horizon RD's computed sky (the sun and the
+    moon where they really are over the weather location, the stars, the weather's
+    clouds and rain) above one beach painted with Retro Diffusion: a palm's fronds at the
+    top left, a lifeguard hut on stilts at the right, the sea across the middle, the sand
+    in front. One painting, so nothing in the scene is ever regenerated; the firmware
+    moves the rest. The sea mirrors the sky and glitters under the sun and the moon (the
+    sun sets into it). The tide follows the moon: the equilibrium tide's M2 (cos 2H of the
+    moon's hour angle), high water at the moon's transits, the waterline climbing the sand
+    by up to two rows and leaving wet sand at the low, a foam line breaking along it four
+    times a second. By the hour: a sailing boat crosses the horizon under the sun while
+    the sun is up; a gull flies over every other minute by day; the umbrella and the
+    towel are out from 09:00 to 18:00 in the sun; the crab walks the waterline at the
+    twilights; the campfire burns on the sand from 19:00 to 01:00 once it is dark, its
+    glow flickering; the hut's window is lit while it is dark; the land sinks to a blue
+    night and is warmed at the twilights. The time at the top right (the meridiem under
+    it in 12 h), the date at the bottom right. A frame every 250 ms.
   - Station clock (`station`, same dates): an analogue face on a painted railway station
     dial, white in a steel rim: a bar at every hour, heavier at the quarters, a tick a
     minute, black bar hands, the date in grey, a glint that crosses the glass every
@@ -931,7 +947,7 @@ All persisted unless noted. Ranges are inclusive.
 | Widgets | chosen widget (Widget state) | clock, weather, temperature, air | clock |
 | Widgets | interlude median gap, per widget | 0 (never), or 5 to 1440 min | clock 30, weather 180, temperature 0, air 0 |
 | Widgets | random clock face at clock interludes | on/off | off |
-| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, words, hourglass, orrery, led, horizon_rd, aquarium, bracket, station (horizon, retired 2026-10-21, loads as horizon_rd); LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
+| Clock | face; LED style; font; scale; seconds; blinking colon; 12/24 h; date order; colours | face: digital, analogue, flip, nixie, words, hourglass, orrery, led, horizon_rd, aquarium, bracket, station, beach (horizon, retired 2026-10-21, loads as horizon_rd); LED style: red, green, amber, blue, vfd; the rest as listed | digital; red; Capital Hill; 2x; off; off; 24 h; day-month; white on black |
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |

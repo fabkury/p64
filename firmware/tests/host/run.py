@@ -81,6 +81,7 @@ CXX_SOURCES = [
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_hourglass.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_orrery.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_horizon_rd.cpp"),
+    os.path.join(COMPONENTS, "p64_widgets", "src", "face_beach.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_aquarium.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "dial.cpp"),
     os.path.join(COMPONENTS, "p64_widgets", "src", "face_bracket.cpp"),
@@ -541,7 +542,7 @@ def check(path, frames_path):
 
 def check_faces(exe, build_dir):
     """The themed clock faces against the mock's references (tests/host/corpus/clock/): every
-    face pixel for pixel, the horizon_rd (floating point) within a tolerance."""
+    face pixel for pixel, the horizon_rd and the beach (floating point) within a tolerance."""
     from PIL import Image
     refs = sorted(glob.glob(os.path.join(HERE, "corpus", "clock", "*.png")))
     if not refs:
@@ -579,7 +580,7 @@ def check_faces(exe, build_dir):
             if d and first is None:
                 first = (i // 3 % DST_W, i // 3 // DST_W, tuple(ours[i:i + 3]), tuple(expected[i:i + 3]))
             worst = max(worst, d)
-        tolerant = name.startswith("horizon_rd-")
+        tolerant = name.startswith("horizon_rd-") or name.startswith("beach-")
         if tolerant and off <= DST_W * DST_H * 3 // 100:
             continue
         failures += 1

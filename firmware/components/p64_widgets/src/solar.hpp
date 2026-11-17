@@ -19,5 +19,8 @@ Position sun(float latitude, float longitude, float tz_hours, int year_day, floa
 float moon_phase(int year, int year_day, float hour_local, float tz_hours);
 // The moon as seen from the place (parallax included, refraction not).
 Position moon(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local);
+// The moon's local hour angle in degrees, -180..180: 0 at its upper transit, +-180 at its
+// lower one (the beach face's tide: high water near both, the equilibrium tide's M2).
+float moon_hour_angle(float latitude, float longitude, float tz_hours, int year, int year_day, float hour_local);
 
 }  // namespace p64::widgets::solar

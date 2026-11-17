@@ -4,10 +4,12 @@
 // tools/mock_clock_faces.py. Written for the horizon face, retired on 2026-10-21 (p104).
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
 #include "p64/gfx/frame.hpp"
+#include "sprite.hpp"
 
 namespace p64::widgets::themed::horizon_sky {
 
@@ -65,5 +67,49 @@ constexpr double kRests = 0.7, kSet = -0.83, kBlend = 5.0;
 
 // The daylight, 0 at 6 degrees below the horizon to 1 at 8 above.
 inline float daylight(float el) { return clamp01((el + 6) / 14); }
+
+// A colour scaled per channel.
+inline Rgb mul(Rgb c, const float k[3]) {
+  const auto ch = [](uint8_t v, float f) { return static_cast<uint8_t>(std::min(255L, std::lround(v * f))); };
+  return {ch(c.r, k[0]), ch(c.g, k[1]), ch(c.b, k[2])};
+}
+
+// A small 32-bit hash of a pixel and a tick: the water's glints.
+inline uint32_t hash3(int x, int y, int t) {
+  uint32_t v = (static_cast<uint32_t>(x) * 73856093u) ^ (static_cast<uint32_t>(y) * 19349663u) ^ (static_cast<uint32_t>(t) * 83492791u);
+  v = (v ^ (v >> 13)) * 1274126177u;
+  return (v ^ (v >> 16)) & 0xFFFFu;
+}
+
+// The painted moon with its terminator: the lit side keeps the picture's craters, the dark
+// side shows faintly on a dark sky.
+inline void draw_moon(gfx::Frame &frame, const sprite::View &moon, int x, int y, float phase, float lat, bool dark_sky) {
+  constexpr float kLit[3] = {1.25f, 1.25f, 1.3f};
+  const float r = moon.w / 2.0f;
+  const float c = std::cos(2 * 3.14159265f * phase);
+  for (int yy = 0; yy < moon.h; ++yy) {
+    const float v = (yy + 0.5f - r) / r;
+    const float s = std::sqrt(std::max(0.0f, 1 - v * v));
+    for (int xx = 0; xx < moon.w; ++xx) {
+      if (!moon.inked(xx, yy)) continue;
+      const float u = (xx + 0.5f - r) / r;
+      const float uu = lat >= 0 ? u : -u;
+      const bool lit = phase < 0.5f ? uu > s * c : uu < -s * c;
+      const int X = x - moon.w / 2 + xx, Y = y - moon.h / 2 + yy;
+      if (lit) {
+        frame.set(X, Y, mul(moon.colour(xx, yy), kLit));
+      } else if (dark_sky) {
+        frame.set(X, Y, lerp(frame.get(X, Y), {60, 62, 90}, 0.5f));
+      }
+    }
+  }
+}
+
+// A sprite's inked pixels, each scaled by `k`.
+inline void blit_scaled(gfx::Frame &frame, const sprite::View &v, int x, int y, const float k[3]) {
+  for (int yy = 0; yy < v.h; ++yy)
+    for (int xx = 0; xx < v.w; ++xx)
+      if (v.inked(xx, yy)) frame.set(x + xx, y + yy, mul(v.colour(xx, yy), k));
+}
 
 }  // namespace p64::widgets::themed::horizon_sky
