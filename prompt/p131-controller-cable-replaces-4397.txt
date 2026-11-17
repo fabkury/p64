@@ -1,0 +1,13 @@
+I recently (yesterday) built one more p64b. In doing so, I realized something: the package of the RGB Matrix board (https://www.waveshare.com/esp32-s3-rgb-matrix.htm) includes this SH1.0-4PIN cable (https://www.waveshare.com/img/devkit/general/SH1.0-4PIN-cable-100mm.jpg), which is essentially a shorter version of the Adafruit 4397 (https://www.adafruit.com/product/4397). I have used the included SH1.0-4PIN cable instead of the 4397, and it works. The shorter length is irrelevant for the project, there is still plenty of cable length left. This means that the 4397 is now deemed not necessary.
+
+One thing must be observed, though: one of the colors of the cables in the included SH1.0-4PIN is different. Where the 4397 had a blue cable, the SH1.0-4PIN has an orange cable. All other colors match: black-black, red-red, yellow-yellow. Therefore, the connection of the Adafruit 4209 (A) to the SH1.0-4PIN (B) becomes:
+ - A-black to B-black
+ - A-red to B-red
+ - A-blue to B-yellow
+ - A-yellow to B-orange
+
+Let's fix this in the documentation. Please do:
+ - Remove the Adafruit 4397 from the entire repository. Don't explain it is not necessary, because that would be just prolonguing the presence of that component in this project; instead, don't list it. Make it look like the component was never considered (even though it was). Remove its cost from the cost estimates.
+ - Explain in the documentation, properly, how to use the SH1.0-4PIN. By the way, if you have a better name for "SH1.0-4PIN", please use it, because I am going by that name without being sure about it.
+
+ Feel free to ask me questions.
