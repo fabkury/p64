@@ -1752,3 +1752,7 @@ them. Newest entries are at the bottom of [Log](#log).
   references regenerated, the host suite passes. The crab stays as it is. A time-lapse of a
   day in ten-minute steps (`beach-timelapse@4x.gif`: the boat's crossing under the sun, the
   tide) joins the design images.
+- The boat sailed with the sun, one crossing a day, which looked odd for so short a stretch
+  (the user, same day): it now sails from the left edge to the hut and back on its own
+  clock, a crossing every 23 minutes from midnight, mirrored on the way back; references
+  regenerated, `beach-boat@4x.gif` added.

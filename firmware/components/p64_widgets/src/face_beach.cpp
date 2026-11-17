@@ -8,7 +8,7 @@
 // moon (the sun sets into it); the tide follows the moon (the equilibrium tide's M2:
 // cos 2H of the moon's hour angle; the waterline climbs the sand by up to two rows at the
 // transits and leaves wet sand at the low; a foam line breaks along it every step); a
-// sailing boat crosses the horizon under the sun; a gull flies over every other minute by
+// sailing boat crosses the horizon and back every 23 minutes; a gull flies over every other minute by
 // day; the umbrella and the towel are out from 09:00 to 18:00 in the sun; the crab comes
 // out at the twilights; the campfire burns on the sand in the evening, its glow
 // flickering; the hut's window is lit while it is dark; the land sinks to a blue night and
@@ -47,6 +47,8 @@ constexpr int kUmbrellaX = 12, kUmbrellaBottom = 59;
 constexpr int kFireX = 14, kFireBottom = 56;
 constexpr Rgb kFireGlow{255, 150, 50};
 constexpr int kBoatBottom = 30;
+constexpr int kBoatFrom = -5, kBoatTo = 41;  // it sails from off the left edge to the hut, and back
+constexpr int kBoatSecondsPerPx = 30;         // a crossing in 23 minutes
 constexpr int kBoatSail[][2] = {{2, 0}, {2, 1}, {3, 1}, {2, 2}, {3, 2}, {4, 2}, {1, 3}, {2, 3}, {3, 3}, {4, 3}};
 constexpr Rgb kBoatHull{92, 62, 40};
 constexpr int kCrabFrom = 20, kCrabTo = 38, kCrabBottom = 48;
@@ -263,11 +265,15 @@ void draw_beach(Frame &frame, const Moment &m, const Options &o, const Sky &plac
   }
   const Rgb white_shade = shade({255, 255, 255});
   const float shade_k[3] = {white_shade.r / 255.0f, white_shade.g / 255.0f, white_shade.b / 255.0f};
-  // the boat on the horizon, under the sun, while the sun is up
+  // the boat on the horizon while the sun is up: it sails from the left edge to the hut
+  // and back, a crossing every 23 minutes, counted from midnight
   if (sun_up) {
-    const int bx = std::max(2, std::min(36, sx * 34 / Frame::width() + 2));
+    const int span = kBoatTo - kBoatFrom;
+    const int pos = ((m.hour * 60 + m.minute) * 60 + m.second) / kBoatSecondsPerPx % (2 * span);
+    const bool sailing_right = pos < span;
+    const int bx = sailing_right ? kBoatFrom + pos : kBoatTo - (pos - span);
     const int by = kBoatBottom - 4;
-    for (const auto &s : kBoatSail) frame.set(bx + s[0], by + s[1], mul({255, 255, 255}, shade_k));
+    for (const auto &s : kBoatSail) frame.set(bx + (sailing_right ? s[0] : 4 - s[0]), by + s[1], mul({255, 255, 255}, shade_k));
     for (int dx = 0; dx < 5; ++dx) frame.set(bx + dx, kBoatBottom, mul(kBoatHull, shade_k));
   }
   // the umbrella and the towel, out in the day's sun

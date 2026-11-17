@@ -529,8 +529,8 @@ refresh of being asked so it can be shown seamlessly.
     sun sets into it). The tide follows the moon: the equilibrium tide's M2 (cos 2H of the
     moon's hour angle), high water at the moon's transits, the waterline climbing the sand
     by up to two rows and leaving wet sand at the low, a foam line breaking along it four
-    times a second. By the hour: a sailing boat crosses the horizon under the sun while
-    the sun is up; a gull flies over every other minute by day; the umbrella and the
+    times a second. By the hour: a sailing boat sails from the left edge to the hut and back,
+    a crossing every 23 minutes, while the sun is up; a gull flies over every other minute by day; the umbrella and the
     towel are out from 09:00 to 18:00 in the sun; the crab walks the waterline at the
     twilights; the campfire burns on the sand from 19:00 to 01:00 once it is dark, its
     glow flickering; the hut's window is lit while it is dark; the land sinks to a blue
