@@ -185,7 +185,7 @@ def harness_controller_cable(name: str) -> None:
         for a, b, colour in (("p1", "sda", ORANGE), ("p2", "scl", YELLOW), ("p3", "v33", RED), ("p4", "gnd", BLACK)):
             d.add(elm.Line().at(getattr(left, a)).to(getattr(right, b)).color(colour))
         d.add(elm.Label().at((left.center[0] - 1.0, left.p4[1] - 1.6)).label(
-            "Each male pin pushes into one female socket; wrap each pair in tape or heat-shrink.\n"
+            "Each male pin pushes fully into one female socket.\n"
             "Lines are drawn in the socket's wire colour. Pair by this drawing, not by colour:\n"
             "the 4209's yellow goes to orange, its blue to yellow.",
             fontsize=8, color=GREY, halign="left"))

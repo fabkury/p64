@@ -54,6 +54,6 @@ seating and a close-up of the fully seated adapters on the unmodified frame. p64
 boards on their pegs and its knobs are photographed (`photos/p64b-*.jpg`, 2026-10-17).
 Still missing for the p64b soldering steps: a close-up of a finished A0 bridge on board B,
 and the mated harness (the 4209 and the controller's 4-pin cable) with its four
-wrapped joints.
+joints.
 New AI-generated product
 photos or decorative artwork are unnecessary for this documentation style.

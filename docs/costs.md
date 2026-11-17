@@ -46,7 +46,7 @@ Everything in the p64a column, with the v7b shell in place of v7a, plus the enco
 | **Total** | **114.11** | **37.66** | **3.96** | **155.73 delivered** |
 
 Optional, outside the total: a multi-colour heat-shrink pack (Adafruit 1649, $4.95) for
-the spliced harness; electrical tape does the same job. Tools (soldering iron, meter,
+the spliced harness, which the standard build does not use. Tools (soldering iron, meter,
 hex key, breadboard for the bench test) are not build parts and are not counted; the
 [encoder development record](hardware/encoder-history.md) lists the ones used.
 

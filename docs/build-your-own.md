@@ -66,7 +66,6 @@ checked first.
 | 1 | [Adafruit 4209](https://www.adafruit.com/product/4209) STEMMA QT cable to male header pins, 150 mm ([DigiKey 1528-4209-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4209/10230003)) | Adafruit or DigiKey | $0.95, 2026-09-11. Plugs into the controller; its pins go into the sockets of the controller's 4-pin cable. |
 | 1 | [Adafruit 4401](https://www.adafruit.com/product/4401) STEMMA QT cable, 200 mm ([DigiKey 1528-4401-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/4401/10824265)) | Adafruit or DigiKey | $1.25, 2026-09-27. Board A to board B. |
 | 2 | [2.2 kΩ ¼ W resistors, 100-pack](https://www.amazon.com/dp/B08QRPRVMJ) (Chanzon, metal film) | Amazon | $5.49, 2026-10-19. ½ W resistors also work but are bulkier. |
-| some | Electrical tape, or [Adafruit 1649](https://www.adafruit.com/product/1649) heat-shrink pack ([DigiKey 1528-1649AD-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/1649/10670039), not stocked, ordered in) | any | Wraps the four cable joints. |
 
 The harness's second cable is not bought: it is the 4-pin cable in the controller's
 box (Waveshare lists it as "SH1.0 4pin cable": a small white plug on one end, four
@@ -74,7 +73,7 @@ separate female sockets on the other, about 100 mm, wires black, red, orange and
 yellow).
 
 DigiKey carries every Adafruit part above at Adafruit's own prices (checked 2026-11-04,
-all in stock except the heat-shrink pack), so the p64b parts can come from either shop.
+all in stock), so the p64b parts can come from either shop.
 
 Tools for p64b: a soldering iron with a fine tip and electronics solder, flux if you
 have it, small side cutters, and the 2 mm hex key from the screw pack (it also fits
@@ -248,8 +247,8 @@ red and black match:
 | red | red |
 | black | black |
 
-Wrap each of the four joints in tape or heat-shrink so no two touch. The joined
-cable has a white plug at each end and they are not interchangeable: the 4209's plug
+Push each pin in fully; the sockets' plastic housings cover the joints, so nothing
+needs wrapping. The joined cable has a white plug at each end and they are not interchangeable: the 4209's plug
 goes into the controller, and the plug of the cable from the controller's box goes
 into board A. Mark the 4209's plug "controller". If you would rather solder the wires than mate the
 pins, the [long guide](hardware/encoders-soldered.md#5-the-cables)

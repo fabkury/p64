@@ -32,7 +32,7 @@ plug goes into the controller (section 5).
 
 Tools: a
 temperature-controlled iron with a fine tip, electronics solder, flux if you have it,
-side cutters, tape or heat-shrink, and the 2 mm hex key from the screw pack for the
+side cutters, and the 2 mm hex key from the screw pack for the
 knobs. A multimeter helps with the optional checks in section 8; the firmware's own
 start-up lights are the real test.
 
@@ -140,8 +140,8 @@ Board A with its two resistors standing on the header holes.
 ### 5.1 Controller to board A: mated (no solder)
 
 This is what the assembled p64b uses. Each male pin of the 4209 pushes into one female
-socket of the controller's 4-pin cable, paired by function, each joint wrapped in tape
-or heat-shrink:
+socket of the controller's 4-pin cable, paired by function. The sockets' plastic housings cover the joints, so nothing needs
+wrapping:
 
 ![harness](img/harness-controller-cable.svg)
 
