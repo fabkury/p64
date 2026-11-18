@@ -24,12 +24,12 @@ extern const Png kAquariumFrontPng;  // aquarium/front.png, 1024x64, 7783 bytes
 extern const Png kAquariumLightsPng;  // aquarium/lights.png, 64x64, 145 bytes
 extern const Png kAquariumSignPng;  // aquarium/sign.png, 27x30, 360 bytes
 extern const Png kAquariumTankPng;  // aquarium/tank.png, 1024x64, 7651 bytes
-extern const Png kBeachCrabPng;  // beach/crab.png, 24x10, 361 bytes
 extern const Png kBeachFirePng;  // beach/fire.png, 84x15, 1409 bytes
 extern const Png kBeachLandPng;  // beach/land.png, 64x64, 1379 bytes
 extern const Png kBeachLightsPng;  // beach/lights.png, 64x64, 124 bytes
 extern const Png kBeachSeaPng;  // beach/sea.png, 64x64, 168 bytes
 extern const Png kBeachUmbrellaPng;  // beach/umbrella.png, 17x17, 459 bytes
+extern const Png kBeachWalkerPng;  // beach/walker.png, 20x14, 402 bytes
 extern const Png kHorizonRdCloudAPng;  // horizon_rd/cloud-a.png, 14x8, 262 bytes
 extern const Png kHorizonRdCloudBPng;  // horizon_rd/cloud-b.png, 18x9, 255 bytes
 extern const Png kHorizonRdLakePng;  // horizon_rd/lake.png, 64x38, 195 bytes

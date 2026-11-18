@@ -532,8 +532,8 @@ refresh of being asked so it can be shown seamlessly.
     times a second. By the hour: a sailing boat sails from the left edge to behind the hut and
     back, a crossing every 23 minutes or so (its pace breathes over the hour), while the
     sun is up; a gull flies over every other minute by day; the umbrella and the
-    towel are out from 09:00 to 18:00 in the sun; the crab walks the waterline at the
-    twilights; the campfire burns on the sand from 19:00 to 01:00 once it is dark, its
+    towel are out from 09:00 to 18:00 in the sun; a beachgoer in a straw hat strolls the
+    waterline at the twilights; the campfire burns on the sand from 19:00 to 01:00 once it is dark, its
     glow flickering; the hut's window is lit while it is dark; the land sinks to a blue
     night and is warmed at the twilights. The time at the top right (the meridiem under
     it in 12 h), the date at the bottom right. A frame every 250 ms.

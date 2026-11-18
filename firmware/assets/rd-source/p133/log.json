@@ -1,0 +1,114 @@
+[
+ {
+  "name": "walker_hat",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A person on a beach holiday wearing a wide straw sun hat, a white t-shirt and blue swimming shorts, barefoot, walking"
+  },
+  "remaining": 11.440000000000005,
+  "files": [
+   "walker_hat_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_red",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A woman in a red one-piece swimsuit with dark hair, barefoot, walking along the beach"
+  },
+  "remaining": 11.440000000000005,
+  "files": [
+   "walker_red_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_child",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A small child in a yellow swimsuit carrying a little red sand bucket on the beach, walking"
+  },
+  "remaining": 11.300000000000004,
+  "files": [
+   "walker_child_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_shirt",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A man in a loud Hawaiian shirt and beige shorts with sunglasses, barefoot beachgoer, walking"
+  },
+  "remaining": 11.300000000000004,
+  "files": [
+   "walker_shirt_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_surfer",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A surfer with sun-bleached hair in black and teal wetsuit shorts carrying a white surfboard under one arm, walking"
+  },
+  "remaining": 11.160000000000004,
+  "files": [
+   "walker_surfer_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_lifeguard",
+  "payload": {
+   "width": 32,
+   "height": 32,
+   "num_images": 1,
+   "prompt_style": "rd_animation__small_sprites",
+   "prompt": "A lifeguard in red shorts and a white tank top with a whistle, tanned, walking on the sand"
+  },
+  "remaining": 11.160000000000004,
+  "files": [
+   "walker_lifeguard_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:14"
+ },
+ {
+  "name": "walker_hat_large",
+  "payload": {
+   "width": 64,
+   "height": 64,
+   "num_images": 1,
+   "prompt_style": "rd_animation__large_walking_idle",
+   "prompt": "A person on a beach holiday wearing a wide straw sun hat, a white t-shirt and blue swimming shorts, barefoot, walking"
+  },
+  "remaining": 11.090000000000003,
+  "files": [
+   "walker_hat_large_0.gif"
+  ],
+  "task": "p133",
+  "when": "2026-11-18 12:15"
+ }
+]

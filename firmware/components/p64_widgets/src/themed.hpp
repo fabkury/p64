@@ -112,7 +112,7 @@ void draw_horizon_rd(gfx::Frame &frame, const Moment &m, const Options &o, const
 constexpr uint32_t kBeachStepMs = 250;
 struct BeachArt {
   static constexpr int kSkyRows = 27;  // the gradient ends at the sea's horizon
-  picture::Picture land, sea, lights, umbrella, crab, fire, sun, moon, cloud_a, cloud_b;
+  picture::Picture land, sea, lights, umbrella, walker, fire, sun, moon, cloud_a, cloud_b;
   float line[64] = {};        // the skyline's row per column, smoothed
   float raised = 0;           // its median: the sea's horizon, where the bodies rise and set
   int8_t shore[64] = {};      // the sea's lowest row per column, -1 where the hut hides it

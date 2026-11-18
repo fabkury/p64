@@ -447,7 +447,7 @@ TEST_CASE("picture: every embedded PNG decodes to its size with a 0/255 alpha") 
       {&assets::kHorizonRdCloudAPng, 14, 8, false, true},   {&assets::kHorizonRdCloudBPng, 18, 9, false, true},
       {&assets::kBeachLandPng, 64, 64, false, true},        {&assets::kBeachSeaPng, 64, 64, false, true},
       {&assets::kBeachLightsPng, 64, 64, false, true},      {&assets::kBeachUmbrellaPng, 17, 17, false, true},
-      {&assets::kBeachCrabPng, 24, 10, false, true},        {&assets::kBeachFirePng, 84, 15, false, true},
+      {&assets::kBeachWalkerPng, 20, 14, false, true},      {&assets::kBeachFirePng, 84, 15, false, true},
   };
   for (const Case &c : cases) {
     picture::Picture p;

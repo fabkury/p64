@@ -33,9 +33,11 @@ nothing else; one painting, so nothing in the scene is ever regenerated):
   sea.png      the sea's pixels (white where water), which mirror the computed sky and
                move with the tide
   lights.png   the hut's window, lit when it is dark
-  umbrella.png the beach umbrella and towel (daytime), crab.png four frames of the crab
-               (side walk, 2x k-centroid of the 32 px sprite), fire.png eight frames of the
-               campfire (2x k-centroid of the 64 px effect, seven frames); the boat on the horizon is
+  umbrella.png the beach umbrella and towel (daytime), walker.png two frames of the
+               beachgoer in a straw hat (p133: the 32 px sprite's side walk, the service's free
+               k-centroid downscale to 24 px cells, black keyed out, turned to face right;
+               the first cut, a crab, had come out as a red humanoid), fire.png seven frames
+               of the campfire (2x k-centroid of the 64 px effect); the boat on the horizon is
                drawn (the painted one read as a white post at 5x9)
 """
 
@@ -269,7 +271,9 @@ BEACH_SEA_ROWS = (27, 46)  # the rows in which the sea's colours are water (27 a
 BEACH_SEA_COLOURS = {(64, 168, 186), (89, 196, 199), (225, 249, 226)}  # the far sea, the water and its painted foam
 BEACH_WINDOW = (49, 28, 54, 32)  # the hut's window pane, [x0, y0, x1, y1) in the crop
 BEACH_WINDOW_COLOUR = (255, 206, 96, 255)
-CRAB_FRAMES = (6, 7, 8, 9)  # the sprite sheet's side walk, 1-based
+P133 = os.path.join(FIRMWARE, "assets", "rd-source", "p133")
+WALKER_DOWNSCALE = "walker_hat_k24.png"  # frames 6 and 7 of walker_hat_0.gif (the stand and the step), 24 px cells, on black
+WALKER_CELL = 24
 FIRE_FRAMES = (1, 2, 3, 4, 5, 6, 7)  # the effect's readable frames but the sparse first (the ninth has a corrupt descriptor)
 
 
@@ -341,8 +345,14 @@ def beach():
     save("beach", "sea", sea)
     save("beach", "lights", lights)
     save("beach", "umbrella", crop_alpha(Image.open(os.path.join(P130, "umbrella_0.png")).convert("RGBA")))
-    crab = rgba_frames(os.path.join(P130, "crab_0.gif"))
-    save("beach", "crab", strip_of([kcentroid2(crab[i - 1]) for i in CRAB_FRAMES]))
+    walker = Image.open(os.path.join(P133, WALKER_DOWNSCALE)).convert("RGBA")
+    px = walker.load()
+    for y in range(walker.height):
+        for x in range(walker.width):
+            if px[x, y][:3] == (0, 0, 0):
+                px[x, y] = (0, 0, 0, 0)  # the downscale's black background (the sprite's outline is brown)
+    cells = [walker.crop((i * WALKER_CELL, 0, (i + 1) * WALKER_CELL, WALKER_CELL)) for i in range(walker.width // WALKER_CELL)]
+    save("beach", "walker", strip_of([c.transpose(Image.FLIP_LEFT_RIGHT) for c in cells]))  # the sprite faces left; the face wants right
     fire = rgba_frames(os.path.join(FIRMWARE, "assets", "rd-source", "p119", "fx_fire_0.gif"), max(FIRE_FRAMES) + 1)
     save("beach", "fire", strip_of([kcentroid2(fire[i]) for i in FIRE_FRAMES]))
 

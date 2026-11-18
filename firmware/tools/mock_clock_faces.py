@@ -1958,7 +1958,7 @@ def draw_station(m, o, millis=0):
 #   - a sailing boat (drawn) crosses the horizon and back every 23 minutes or so, its pace
 #     breathing over the hour, while the sun is up, behind the hut; a gull flies
 #     over every other minute by day; the umbrella and the towel are out from 09:00 to
-#     18:00 in the sun; the crab comes out at the twilights; the campfire burns on the
+#     18:00 in the sun; a beachgoer strolls at the twilights; the campfire burns on the
 #     sand in the evening, its glow on the sand flickering; the hut's window is lit while
 #     it is dark; the land sinks to a blue night and is warmed at the twilights.
 # A frame every BEACH_STEP_MS. The time at the top right, the date at the bottom right,
@@ -1981,7 +1981,8 @@ BEACH_BOAT_S_PER_PX = 30  # a crossing in 23 minutes at the mean pace
 BEACH_BOAT_SWAY = (10, 3600)  # the pace breathes: +-10 px over an hour, half to one and a half times the mean
 BOAT_SAIL = [(2, 0), (2, 1), (3, 1), (2, 2), (3, 2), (4, 2), (1, 3), (2, 3), (3, 3), (4, 3)]  # a 5x5 boat, drawn
 BOAT_HULL = (92, 62, 40)
-BEACH_CRAB = (20, 38, 48)  # it walks between these columns, on this bottom row
+BEACH_WALKER = (10, 27, 48)  # the beachgoer walks between these columns (short of the hut's ladder), on this bottom row
+BEACH_WALKER_FRAMES = 2
 BEACH_GULL = (40, 40, 52)
 BEACH_RIGHT = 62  # the lettering's right edge
 BEACH_FIRE_FROM, BEACH_FIRE_TO = 19, 1  # the campfire burns from 19:00 to 01:00 (when it is dark)
@@ -2051,7 +2052,7 @@ def draw_beach(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", m
     h = m.hour + m.minute / 60.0 + m.second / 3600.0
     frame = Frame((0, 0, 0))
     land, sea, lights = (png_asset("beach", n) for n in ("land", "sea", "lights"))
-    umbrella, crab, fire = (png_asset("beach", n) for n in ("umbrella", "crab", "fire"))
+    umbrella, walker, fire = (png_asset("beach", n) for n in ("umbrella", "walker", "fire"))
     sun, moon = png_asset("horizon_rd", "sun"), png_asset("horizon_rd", "moon")
     clouds = (png_asset("horizon_rd", "cloud-a"), png_asset("horizon_rd", "cloud-b"))
     el, az = solar_position(lat, lon, tz, m.yday, h)
@@ -2221,14 +2222,15 @@ def draw_beach(m, o, lat=40.0, lon=0.0, tz=0.0, year=2026, cover=0, precip="", m
     # the umbrella and the towel, out in the day's sun
     if BEACH_UMBRELLA_FROM <= m.hour < BEACH_UMBRELLA_TO and el > 5:
         blit_shaded(frame, umbrella, BEACH_UMBRELLA[0], BEACH_UMBRELLA[1] - umbrella.height + 1, shade_k)
-    # the crab, out at the twilights, walking the waterline forth and back
+    # the beachgoer, out at the twilights, strolling the waterline forth and back
     if 0.02 < light < 0.9:
-        x0, x1, bottom = BEACH_CRAB
+        x0, x1, bottom = BEACH_WALKER
         span = x1 - x0
         pos = tick % (2 * span)
         going_right = pos < span
         cx = x0 + pos if going_right else x1 - (pos - span)
-        blit_shaded(frame, strip_frame(crab, 4, tick % 4, flip=not going_right), cx, bottom - crab.height + 1, shade_k)
+        blit_shaded(frame, strip_frame(walker, BEACH_WALKER_FRAMES, tick % BEACH_WALKER_FRAMES, flip=not going_right), cx,
+                    bottom - walker.height + 1, shade_k)
     # the campfire in the evening, its glow on the sand
     if el < -4 and (m.hour >= BEACH_FIRE_FROM or m.hour < BEACH_FIRE_TO):
         fw, fh = fire.width // BEACH_FIRE_FRAMES, fire.height
@@ -2320,7 +2322,7 @@ REFERENCES = [
     ("bracket", Moment(3, 45, 12), "s"), ("bracket", Moment(18, 30, 50), "sm"), ("bracket", Moment(23, 55, 28), ""),
     ("station", Moment(10, 9, 37), "s"), ("station", Moment(10, 9, 37), ""), ("station", Moment(0, 0, 0), "s"),
     ("station", Moment(3, 45, 12), "s"), ("station", Moment(18, 30, 59), "sm"), ("station", Moment(8, 20, 24), ""),
-    # the beach (p130), floating point, within the tolerance: afternoon, the dusk crab,
+    # the beach (p130), floating point, within the tolerance: afternoon, the dusk walker,
     # the evening fire, dawn in 12 h, night with the colon off
     ("beach", Moment(15, 10, 0), ""), ("beach", Moment(18, 40, 20), ""), ("beach", Moment(21, 30, 0), ""),
     ("beach", Moment(6, 20, 0), "h"), ("beach", Moment(3, 0, 7), "b"),
@@ -2430,9 +2432,10 @@ def write_rd_design():
                       ("full moon", draw_beach(Moment(22, 30), o, **ny)),
                       ("sao paulo", draw_beach(Moment(18, 10), o, lat=-23.55, lon=-46.63, tz=-3))]
     contact_sheet(beach_variants, scale=4, columns=4, gap=24).save(os.path.join(DESIGN, "beach-variants.png"))
-    for name, start in (("beach", Moment(18, 40, 0)), ("beach-night", Moment(21, 30, 0)), ("beach-day", Moment(10, 0, 50))):
+    for name, start, n in (("beach", Moment(18, 40, 0), 24), ("beach-night", Moment(21, 30, 0), 24), ("beach-day", Moment(10, 0, 50), 24),
+                           ("beach-dawn", Moment(6, 20, 0), 36)):
         seq = []
-        for i in range(24):
+        for i in range(n):
             mm, ms = at_ms(start, i * BEACH_STEP_MS)
             seq.append((draw_beach(mm, o, millis=ms, **ny), BEACH_STEP_MS))
         save_gif(os.path.join(DESIGN, name + "@8x.gif"), seq, 8, 255)

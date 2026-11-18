@@ -1766,3 +1766,19 @@ them. Newest entries are at the bottom of [Log](#log).
   internal heap 58.5 KB free and 32 KB largest with it up, PSRAM 16.0 MB free. The
   README and the owner's guide count 13 faces, the clock-faces illustration has a fourth
   row for the beach. Pushed to main.
+
+### 2026-11-18 (the beach's walker, p133)
+
+- The beach's crab (p130's `crab_0.gif`, a small-sprites call that drew a red humanoid,
+  kept for a day) is replaced by a person: six `rd_animation__small_sprites` candidates
+  at 32 px and one `large_walking_idle` at 64 px ($0.49 of a $3 budget,
+  `assets/rd-source/p133`, its README has what each taught). The straw-hat beachgoer
+  (`walker_hat_0.gif`, frames 6 and 7: the side walk's stand and step) is used through the
+  service's free k-centroid downscale to 24 px cells: a 2x shrink of so thin a figure was
+  a blob whichever way it was cut, and at 1x it stood as tall as the hut. `walker.png`
+  (two 10x14 frames, facing right) replaces `crab.png`; `face_beach.cpp` and the mock
+  walk it from column 10 to 27 (short of the hut's ladder at 38) on the waterline at the
+  twilights, as before. The 06:20 reference regenerated (the only one the walker is in:
+  the 18:40 reference is after dark at longitude 0); the host suite passes (255 cases,
+  72 references). `beach-dawn@8x.gif` (nine seconds, the whole stroll) joins the design
+  images. Not flashed: the user asked to see the animations on a page first.

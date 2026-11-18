@@ -9,7 +9,7 @@
 // cos 2H of the moon's hour angle; the waterline climbs the sand by up to two rows at the
 // transits and leaves wet sand at the low; a foam line breaks along it every step); a
 // sailing boat crosses the horizon and back every 23 minutes; a gull flies over every other minute by
-// day; the umbrella and the towel are out from 09:00 to 18:00 in the sun; the crab comes
+// day; the umbrella and the towel are out from 09:00 to 18:00 in the sun; a beachgoer strolls
 // out at the twilights; the campfire burns on the sand in the evening, its glow
 // flickering; the hut's window is lit while it is dark; the land sinks to a blue night and
 // is warmed at the twilights. A frame every kBeachStepMs. The time at the top right, the
@@ -52,13 +52,13 @@ constexpr int kBoatSecondsPerPx = 30;         // a crossing in 23 minutes at the
 constexpr float kBoatSway = 10, kBoatSwayPeriod = 3600;  // the pace breathes: +-10 px over an hour
 constexpr int kBoatSail[][2] = {{2, 0}, {2, 1}, {3, 1}, {2, 2}, {3, 2}, {4, 2}, {1, 3}, {2, 3}, {3, 3}, {4, 3}};
 constexpr Rgb kBoatHull{92, 62, 40};
-constexpr int kCrabFrom = 20, kCrabTo = 38, kCrabBottom = 48;
+constexpr int kWalkerFrom = 10, kWalkerTo = 27, kWalkerBottom = 48;  // the walk stops short of the hut's ladder (column 38)
 constexpr Rgb kGull{40, 40, 52};
 constexpr int kGullUp[][2] = {{0, 1}, {1, 0}, {2, 1}, {3, 0}, {4, 1}}, kGullDown[][2] = {{0, 0}, {1, 1}, {2, 0}, {3, 1}, {4, 0}};
 constexpr int kRight = 62;  // the lettering's right edge
 constexpr int kFireFrom = 19, kFireTo = 1;  // the campfire burns from 19:00 to 01:00, when it is dark
 constexpr int kUmbrellaFrom = 9, kUmbrellaTo = 18;
-constexpr int kCrabFrames = 4, kFireFrames = 7;
+constexpr int kWalkerFrames = 2, kFireFrames = 7;
 
 // A body's row at column x: the arc of the horizon faces over this face's skyline (the
 // sea's horizon, the hut and the fronds above it hide a body).
@@ -79,11 +79,11 @@ bool body_y(const BeachArt &art, double el, int x, int radius, int &y) {
 bool BeachArt::load() {
   const bool ok = picture::decode(assets::kBeachLandPng, land) && picture::decode(assets::kBeachSeaPng, sea) &&
                   picture::decode(assets::kBeachLightsPng, lights) && picture::decode(assets::kBeachUmbrellaPng, umbrella) &&
-                  picture::decode(assets::kBeachCrabPng, crab) && picture::decode(assets::kBeachFirePng, fire) &&
+                  picture::decode(assets::kBeachWalkerPng, walker) && picture::decode(assets::kBeachFirePng, fire) &&
                   picture::decode(assets::kHorizonRdSunPng, sun) && picture::decode(assets::kHorizonRdMoonPng, moon) &&
                   picture::decode(assets::kHorizonRdCloudAPng, cloud_a) && picture::decode(assets::kHorizonRdCloudBPng, cloud_b);
   if (!ok || land.w != Frame::width() || land.h != Frame::height() || sea.w != land.w || sea.h != land.h || lights.w != land.w ||
-      lights.h != land.h || crab.w % kCrabFrames || fire.w % kFireFrames)
+      lights.h != land.h || walker.w % kWalkerFrames || fire.w % kFireFrames)
     return false;
   const sprite::View v = land.view(), s = sea.view();
   int tops[64];
@@ -289,17 +289,17 @@ void draw_beach(Frame &frame, const Moment &m, const Options &o, const Sky &plac
     const sprite::View u = art.umbrella.view();
     blit_scaled(frame, u, kUmbrellaX, kUmbrellaBottom - u.h + 1, shade_k);
   }
-  // the crab, out at the twilights, walking the waterline forth and back
+  // the beachgoer, out at the twilights, strolling the waterline forth and back
   if (light > 0.02f && light < 0.9f) {
-    const int span = kCrabTo - kCrabFrom;
+    const int span = kWalkerTo - kWalkerFrom;
     const int pos = tick % (2 * span);
     const bool going_right = pos < span;
-    const int cx = going_right ? kCrabFrom + pos : kCrabTo - (pos - span);
-    const sprite::View f = art.crab.frame(kCrabFrames, tick % kCrabFrames);
+    const int cx = going_right ? kWalkerFrom + pos : kWalkerTo - (pos - span);
+    const sprite::View f = art.walker.frame(kWalkerFrames, tick % kWalkerFrames);
     for (int yy = 0; yy < f.h; ++yy)
       for (int xx = 0; xx < f.w; ++xx) {
         const int src_x = going_right ? xx : f.w - 1 - xx;
-        if (f.inked(src_x, yy)) frame.set(cx + xx, kCrabBottom - f.h + 1 + yy, mul(f.colour(src_x, yy), shade_k));
+        if (f.inked(src_x, yy)) frame.set(cx + xx, kWalkerBottom - f.h + 1 + yy, mul(f.colour(src_x, yy), shade_k));
       }
   }
   // the campfire in the evening, its glow on the sand

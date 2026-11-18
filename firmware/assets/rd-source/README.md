@@ -97,13 +97,28 @@ folder. Nothing in `p119/` is embedded in the firmware. What the calls taught:
 - `rd_animation__vfx` drew fire (8 usable frames, then a frame whose GIF descriptor is
   corrupt) and nothing at all for petals, leaves or snow on black (927-byte files).
 
+### The beach's walker (p133, 2026-11-18)
+
+`p133/` holds the beachgoer that replaced the crab: the crab of p130 had come out as a red
+humanoid, kept for a day, and the user asked for a real person. Six `rd_animation__small_sprites`
+calls at 32 px ($0.07 each; `log.json` has the prompts: a straw hat, a red swimsuit, a
+Hawaiian shirt, a child with a bucket, a surfer, a lifeguard) and one `rd_animation__large_walking_idle`
+at 64 px (a smeared, winged figure; unusable). `walker_hat_0.gif` is the one used: frames 6
+and 7 of its sheet (the side walk's stand and step; 8 repeats 6 and 9 turns away) were laid
+in a strip and put through the service's free `k_centroid_downscale` to 24 px cells
+(`walker_hat_k24.png`, on black; `_k16` and `_k20` were the smaller tries: a 2x shrink of
+so thin a figure, local or the service's, is a blob, and at 1x the sprite stood as tall as
+the hut). The face draws it 10x14, turned to face right, walking from column 10 to 27 so
+it never crosses the hut's ladder. **$0.49 spent** of a $3 budget (the downscales $0.003;
+balance $11.58 before, $11.09 after).
+
 ### The beach clock face (p130, 2026-11-17)
 
 `p130/` holds the sources of the `beach` face, the one concept of the three rounds that was
 built: one painting (`beach_a_1.png`, `rd_pro__default` at 80 px, seed 1302's pair had a
 painted border and `beach_a_0`'s crop lost the trunk), the umbrella and the towel
 (`umbrella_0.png`, `rd_fast__low_res` with `remove_bg`), the crab (`crab_0.gif`,
-`rd_animation__small_sprites`); the campfire is p119's `fx_fire_0.gif`. The sailing boat
+`rd_animation__small_sprites`; replaced by p133's walker on 2026-11-18, see above); the campfire is p119's `fx_fire_0.gif`. The sailing boat
 (`sailboat_0.png`) was cut and then dropped for a drawn one: at 5x9 it read as a white
 post. **$1.27 spent** of an $8 budget (balance $12.49 before, $11.58 after; each call in
 `p130/log.json`). `tools/prep_rd_clock_assets.py` (`beach()`) cuts
