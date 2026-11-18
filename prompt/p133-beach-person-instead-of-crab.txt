@@ -1,0 +1,5 @@
+We've recently created a new clock widget, the Beach clock.
+
+Among the components for drawing this clock, there is one funny situation. One of them was intended to be a crab that walks around, but it came out as a person instead. We decided to keep it as-is. Let's now fix it: use RetroDiffusion again (you have a budget of $3) to generate an actual person animation, not a crab-that-came-out-as-a-person.
+
+Once done, create an artifact with animated examples of the Beach clockface, so I can see the results before we commit to flashing it to the real p64 device.
