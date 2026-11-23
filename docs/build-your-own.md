@@ -199,7 +199,9 @@ The assembled p64a: supply in POWER, USB free for the computer.
 
 **Check:** the panel sits flat, the adapters stay put when a cable is plugged and
 unplugged, and the device stands on its own. The firmware's default image rotation
-already matches the shell.
+(270 degrees) gave an upright picture on the two units built last (2026-11); panels of
+the same model have differed, so if yours shows the picture turned, pick the upright one
+in **Settings → Display**.
 
 ### C.2 p64b: solder three things, then assemble
 

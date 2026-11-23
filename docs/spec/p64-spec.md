@@ -133,7 +133,10 @@ reboot. The mode persists across reboots.
 
 ### 3.4 Rotation
 
-Setting: 0, 90, 180, 270 (clockwise) or auto; default 270 (set by the owner on 2026-11-23; 90 before). Applied in the display layer: every state renders in logical orientation
+Setting: 0, 90, 180, 270 (clockwise) or auto; default 270 (set by the owner on
+2026-11-23, 90 before: panels of the same Waveshare model have differed in orientation,
+the first units were upright at 90, the two built last at 270; the owner's observation,
+cause not established). Applied in the display layer: every state renders in logical orientation
 and never knows the physical one. Auto reads gravity from the IMU and picks the multiple of
 90 degrees that puts "up" up, with hysteresis so a tilted desk does not flip it; the last
 resolved value is used until the IMU reports a new stable orientation.
