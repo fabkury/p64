@@ -366,7 +366,8 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
     </div>
     <div class="section">
         <h3>Channels</h3>
-        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Refresh interval</label><input class="num-input" type="number" id="mk-refresh" min="60" max="86400" onchange="save({makapix:{refresh_seconds:+this.value}})"><span class="setting-hint" style="margin:0">s</span></div>
+        <div class="toggle-row" style="flex-wrap:wrap;gap:8px"><label class="toggle-label">Refresh interval</label><input class="num-input" type="number" id="mk-refresh" min="60" max="86400" oninput="refreshWords()" onchange="save({makapix:{refresh_seconds:+this.value}})"><span class="setting-hint" style="margin:0">s</span></div>
+        <div class="setting-hint" id="mk-refresh-words"></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label">Channel cache size</label><input class="num-input" type="number" id="mk-cache" min="32" max="4096" onchange="save({makapix:{channel_cache_size:+this.value}})"><span class="setting-hint" style="margin:0">artworks per channel</span></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="mk-min">Minimum artwork size</label><select class="sel" id="mk-min" style="min-width:0" onchange="save({makapix:{min_size:+this.value}})"><option value="16">16x16</option><option value="32">32x32</option><option value="64">64x64 (native)</option><option value="128">128x128</option></select></div>
         <div class="toggle-row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><label class="toggle-label" for="mk-size">Maximum artwork size</label><select class="sel" id="mk-size" style="min-width:0" onchange="save({makapix:{max_size:+this.value}})"><option value="32">32x32</option><option value="64">64x64 (native)</option><option value="128">128x128</option><option value="256">256x256</option></select></div>
@@ -511,8 +512,22 @@ function fill(s) {
     sv('device-name', s.network.device_name); hostPreview(); sv('ntp', s.network.ntp_server);
     var tz = document.getElementById('timezone'); if (tz.options.length) tz.value = s.network.timezone; else tz.setAttribute('data-want', s.network.timezone);
     sv('mk-refresh', s.makapix.refresh_seconds); sv('mk-cache', s.makapix.channel_cache_size); sv('mk-min', s.makapix.min_size); sv('mk-size', s.makapix.max_size); sv('mk-retention', s.makapix.cache_retention_days);
-    sizeLimits(s.makapix.min_size, s.makapix.max_size);
+    sizeLimits(s.makapix.min_size, s.makapix.max_size); refreshWords();
     sc('auto-check', s.updates.auto_check);
+}
+// A count of seconds in words: 86300 is "23 hours, 58 minutes and 20 seconds". Empty for anything
+// that is not a whole number above zero.
+function secondsInWords(n) {
+    if (!isFinite(n) || n < 1 || Math.floor(n) !== n) return '';
+    var parts = [];
+    [[Math.floor(n / 3600), 'hour'], [Math.floor(n % 3600 / 60), 'minute'], [n % 60, 'second']].forEach(function (p) {
+        if (p[0]) parts.push(p[0] + ' ' + p[1] + (p[0] === 1 ? '' : 's'));
+    });
+    return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+}
+function refreshWords() {
+    var v = document.getElementById('mk-refresh').value;
+    document.getElementById('mk-refresh-words').textContent = v === '' ? '' : secondsInWords(+v);
 }
 function setRotation(r) { save({ display: { rotation: r, rotation_auto: false } }); }
 // A colour swatch: an opaque colour fills it; a semitransparent one keeps the solid colour in the
