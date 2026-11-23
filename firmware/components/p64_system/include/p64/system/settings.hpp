@@ -44,7 +44,7 @@ struct Settings {
     uint8_t brightness = 0;  // 1..255, or 0 = panel off
   } night;
   PanelMode panel_mode = PanelMode::Quality;
-  uint16_t rotation = 90;      // 0, 90, 180, 270
+  uint16_t rotation = 270;     // 0, 90, 180, 270
   bool rotation_auto = false;  // IMU decides; `rotation` is the fallback
   bool mirror = false;         // the picture flipped left-right, as the viewer sees it
   gfx::Rgb background{0, 0, 0};

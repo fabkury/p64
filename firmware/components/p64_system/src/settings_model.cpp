@@ -131,7 +131,7 @@ void Settings::clamp() {
   brightness_ceiling = clamp_to<uint8_t>(brightness_ceiling, 1, 255);
   night.start_minutes = clamp_to<uint16_t>(night.start_minutes, 0, 24 * 60 - 1);
   night.end_minutes = clamp_to<uint16_t>(night.end_minutes, 0, 24 * 60 - 1);
-  if (!gfx::valid_rotation(rotation)) rotation = 90;
+  if (!gfx::valid_rotation(rotation)) rotation = 270;
   gain_r = clamp_to<uint8_t>(gain_r, 50, 100);
   gain_g = clamp_to<uint8_t>(gain_g, 50, 100);
   gain_b = clamp_to<uint8_t>(gain_b, 50, 100);

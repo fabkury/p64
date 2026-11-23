@@ -68,7 +68,7 @@ Principles, in priority order:
 | Driver board | Waveshare ESP32-S3-RGB-Matrix: ESP32-S3-WROOM-2-N32R16V, 32 MB octal flash, 16 MB octal PSRAM, HUB75 header, two USB-C (POWER, USB), BOOT button, IMU (6-axis), RTC, temperature/humidity sensor, audio codec with two microphones, speaker output, TF slot. Native USB Serial/JTAG on the USB port. | Panel, BOOT, IMU, temperature/humidity sensor, TF slot, USB console (the RTC has no battery and is not used, ADR 0011) |
 | Panel | Waveshare RGB-Matrix-P2-64x64: 4096 RGB LEDs, 2 mm pitch, 1/32 scan, HUB75E, 5 V, 15 W max, 128x128 mm. | Yes |
 | Power | Recommended supply: [Waveshare PSU-27W-USB-C-C](https://www.waveshare.com/psu-27w-usb-c-c.htm) on the POWER port; the USB port takes a computer for console and flashing. Full white at brightness 255 draws close to the panel's 15 W; a USB-only rig cannot supply that (see brightness ceiling). | Yes |
-| Shell | [v7 enclosure](../../enclosure/README.md): panel turned 90 degrees clockwise from the front; two right-angle USB-C adapters and a cradle insert. p64a has no knobs; p64b has two Adafruit 5880 encoders. | Rotation default 90; shared firmware for both variants |
+| Shell | [v7 enclosure](../../enclosure/README.md): panel turned 90 degrees clockwise from the front; two right-angle USB-C adapters and a cradle insert. p64a has no knobs; p64b has two Adafruit 5880 encoders. | Rotation default 270 (since 2026-11-23); shared firmware for both variants |
 | Not used in v1 | Audio codec, speaker, microphones, Bluetooth. | Extension points only |
 
 Firmware platform: ESP-IDF v5.5, C++, the vendored and patched `esp-hub75` driver from
@@ -133,8 +133,7 @@ reboot. The mode persists across reboots.
 
 ### 3.4 Rotation
 
-Setting: 0, 90, 180, 270 (clockwise) or auto; default 90 (the printed shell stands the
-panel that way). Applied in the display layer: every state renders in logical orientation
+Setting: 0, 90, 180, 270 (clockwise) or auto; default 270 (set by the owner on 2026-11-23; 90 before). Applied in the display layer: every state renders in logical orientation
 and never knows the physical one. Auto reads gravity from the IMU and picks the multiple of
 90 degrees that puts "up" up, with hysteresis so a tilted desk does not flip it; the last
 resolved value is used until the IMU reports a new stable orientation.
@@ -934,7 +933,7 @@ All persisted unless noted. Ranges are inclusive.
 | Display | brightness ceiling | 1 to 255 | 255 |
 | Display | night schedule | enabled; start, end HH:MM; brightness 1 to 255 or off | disabled |
 | Display | panel mode | quality, photo | quality |
-| Display | rotation | 0, 90, 180, 270, auto | 90 |
+| Display | rotation | 0, 90, 180, 270, auto | 270 |
 | Display | mirror | off, on (the picture flipped left-right) | off |
 | Display | background colour | RGB 0 to 255 each | 0, 0, 0 |
 | Display | RGB gains | 50 to 100 % each | 100, 100, 100 |

@@ -216,11 +216,17 @@ TEST_CASE("settings: a minimum artwork size above the maximum is refused and not
   CHECK_EQ(s.makapix_min_side, 32);
 }
 
+TEST_CASE("settings: the rotation defaults to 270 (p136)") {
+  const Settings d;
+  CHECK_EQ(d.rotation, 270);
+  CHECK_FALSE(d.rotation_auto);
+}
+
 TEST_CASE("settings: invalid values fall back, unknown enum names leave the value alone") {
   const Settings a = applied(R"({"display":{"rotation":45,"panel_mode":"disco"},"show":{"main_state":"nap"},
     "weather":{"location_set":true,"latitude":123,"longitude":0},"network":{"device_name":"Bad Name!",
     "timezone":"","ntp_server":""},"storage":{"card_root":"relative"},"stream":{"ddp_port":0}})");
-  CHECK_EQ(a.rotation, 90);
+  CHECK_EQ(a.rotation, 270);
   CHECK(a.panel_mode == p64::system::PanelMode::Quality);
   CHECK(a.main_state == p64::system::MainState::AnimationShow);
   CHECK(!a.weather.location_set);
