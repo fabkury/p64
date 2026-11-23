@@ -347,6 +347,8 @@ No HTTP routes: pixels arrive over UDP (spec 8, ADR 0007). The status document c
 fps, last_latency_ms, sender, ddp_listening, raw_listening}` and `playback.stream_up`.
 Settings group `stream` (takeover, silence_ms 500..60000, ddp_enabled, ddp_port,
 raw_udp_enabled, raw_udp_port); changing a port or an enable reopens the sockets.
+DDP listens by default; raw p64 is off by default since 2026-11-23, so turn it on
+(Settings > Stream, or `raw_udp_enabled`) before sending raw, or send with `--ddp`.
 `tools/stream_send.py` sends a test pattern, an image or the PC screen over either
 protocol; `tests/device/stream_smoke.py` checks both pixel for pixel.
 

@@ -113,7 +113,7 @@ struct Settings {
   uint32_t stream_silence_ms = 5000;  // 500..60000
   bool ddp_enabled = true;
   uint16_t ddp_port = 4048;
-  bool raw_udp_enabled = true;
+  bool raw_udp_enabled = false;  // off unless the owner turns it on (p137)
   uint16_t raw_udp_port = 4064;
 
   // Inputs

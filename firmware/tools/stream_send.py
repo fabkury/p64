@@ -2,6 +2,7 @@
 r"""Send pixels to a p64 over UDP: DDP (port 4048) or the raw p64 format (port 4064).
 
     python tools\stream_send.py p64.local test                 # moving test pattern, raw, 64x64
+                                                               # (raw is off by default: Settings > Stream)
     python tools\stream_send.py p64.local test --ddp --size 128
     python tools\stream_send.py p64.local image.gif            # any file Pillow opens (animations loop)
     python tools\stream_send.py p64.local image.png --fmt 565

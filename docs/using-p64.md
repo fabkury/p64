@@ -118,7 +118,7 @@ python firmware/tools/stream_send.py p64.local screen
 Replace `image.gif` with your file. Pillow supports image playback; `mss` is needed
 for screen capture. Stop a continuous stream with Ctrl+C. With the default takeover
 setting, normal playback resumes five seconds after the stream stops. Settings →
-Stream controls takeover, timeout, DDP (UDP 4048) and raw p64 (UDP 4064).
+Stream controls takeover, timeout, DDP (UDP 4048) and raw p64 (UDP 4064; off until you turn it on).
 
 ## Offline and cardless use
 

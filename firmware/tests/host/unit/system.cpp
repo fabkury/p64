@@ -216,6 +216,12 @@ TEST_CASE("settings: a minimum artwork size above the maximum is refused and not
   CHECK_EQ(s.makapix_min_side, 32);
 }
 
+TEST_CASE("settings: DDP listens by default, raw p64 UDP does not (p137)") {
+  const Settings d;
+  CHECK(d.ddp_enabled);
+  CHECK_FALSE(d.raw_udp_enabled);
+}
+
 TEST_CASE("settings: the rotation defaults to 270 (p136)") {
   const Settings d;
   CHECK_EQ(d.rotation, 270);

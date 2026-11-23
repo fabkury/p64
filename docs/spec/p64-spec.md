@@ -954,7 +954,7 @@ All persisted unless noted. Ranges are inclusive.
 | Weather | latitude, longitude; units; refresh | decimal degrees; metric, imperial; 10 to 180 min | unset; metric; 30 |
 | Air | index | us, european | us |
 | Temperature | offsets; trend arrow | -10 to +10 units each; on/off | 0; on |
-| Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; on, 4064 |
+| Stream | takeover; silence timeout; DDP on, port; raw UDP on, port | on/off; 500 to 60000 ms; on/off, port | on; 5000; on, 4048; off, 4064 |
 | Inputs | tap gestures; sensitivity | on/off; 1 to 10 | on; 5 |
 | Inputs | encoders enabled; swap roles; invert direction | on/off each | on; off; off |
 | Network | Wi-Fi SSID, password | strings (NVS, separate) | unset |
