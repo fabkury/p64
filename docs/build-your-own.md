@@ -374,7 +374,7 @@ covers rebuilding.
 4. Open [p64.local](http://p64.local) (or `http://p64-<name>.local` for a named
    device). If `.local` does not resolve, use the address from your router's client
    list.
-5. Set the time zone under **Settings → Network**. Choose **Local** to play card files
+5. Set the time zone under **Settings → Widgets** (Time). Choose **Local** to play card files
    or **Promoted** for Makapix artwork without an account; downloads start once Wi-Fi
    and the time sync are up.
 

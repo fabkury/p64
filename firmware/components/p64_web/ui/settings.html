@@ -191,6 +191,14 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="setting-hint hidden" id="clock-none">This face has no settings of its own.</div>
     </div>
     <div class="section">
+        <h3>Time</h3>
+        <div class="info-row"><span class="info-label">Now</span><span class="info-value" id="time-now">-</span></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Time zone</label><select class="sel" id="timezone" onchange="save({network:{timezone:this.value}})"></select></div>
+        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">NTP server</label><input type="text" class="text-input" style="max-width:220px" id="ntp" onchange="save({network:{ntp_server:this.value.trim()}})"></div>
+        <div class="info-row"><span class="info-label">NTP</span><span class="info-value" id="time-ntp">-</span></div>
+        <div class="setting-hint">The time comes only from NTP (UDP port 123): the router's server when it offers one, then this server, then time.google.com and time.cloudflare.com, at boot and every 6 hours. Until the first answer, clocks show --:--, and Makapix, the night schedule and the cache sweep wait.</div>
+    </div>
+    <div class="section">
         <h3>Weather</h3>
         <div class="grid3">
             <div><label>Latitude</label><input class="num-input" type="number" id="lat" step="0.0001"></div>
@@ -293,14 +301,6 @@ pre.log { max-height: 300px; overflow: auto; font-size: 0.7rem; background: var(
         <div class="name-hint">Lowercase letters, digits and hyphens; empty means p64.local. A change needs a reboot.</div>
         <div class="name-error" id="name-error">Use only lowercase letters, digits and hyphens, no hyphen at the edges.</div>
         <button type="button" class="btn btn-full" style="margin-top:var(--sp-2)" onclick="saveDeviceName()">Save</button>
-    </div>
-    <div class="section">
-        <h3>Time</h3>
-        <div class="info-row"><span class="info-label">Now</span><span class="info-value" id="time-now">-</span></div>
-        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">Time zone</label><select class="sel" id="timezone" onchange="save({network:{timezone:this.value}})"></select></div>
-        <div class="toggle-row" style="margin-top:8px;flex-wrap:wrap;gap:8px"><label class="toggle-label">NTP server</label><input type="text" class="text-input" style="max-width:220px" id="ntp" onchange="save({network:{ntp_server:this.value.trim()}})"></div>
-        <div class="info-row"><span class="info-label">NTP</span><span class="info-value" id="time-ntp">-</span></div>
-        <div class="setting-hint">The time comes only from NTP (UDP port 123): the router's server when it offers one, then this server, then time.google.com and time.cloudflare.com, at boot and every 6 hours. Until the first answer, clocks show --:--, and Makapix, the night schedule and the cache sweep wait.</div>
     </div>
     <div class="section">
         <h3>PIN</h3>

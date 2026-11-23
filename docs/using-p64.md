@@ -47,7 +47,7 @@ Promoted cannot be edited. Widgets appear as interludes, configured separately b
 
 ## Clocks and widgets
 
-In **Settings → Network**, set your time zone. After each boot, clocks wait for NTP;
+In **Settings → Widgets**, under Time, set your time zone. After each boot, clocks wait for NTP;
 the onboard RTC is not used and there is no manual time setting.
 
 In **Settings → Widgets**, choose a full-time widget or stay in **Animation show** and
@@ -153,7 +153,7 @@ lockout.
 |---|---|
 | Cannot open `p64.local` | Use the router's client list to find the IP; check that phone and device share a network. |
 | Wrong Wi-Fi saved | Wait about a minute for `p64-setup`, then open [192.168.4.1](http://192.168.4.1) and save the correct network. |
-| Clock stays at `--:--`; downloads wait | Check NTP status in Settings → Network. The network must allow an NTP server to answer (UDP 123). |
+| Clock stays at `--:--`; downloads wait | Check NTP status in Settings → Widgets, under Time. The network must allow an NTP server to answer (UDP 123). |
 | No artwork | Check the selected playset, channel status, card, and size filters. Promoted requires internet and trusted time for new downloads. |
 | Dark panel | Check pause, night schedule, brightness, and the selected main state. |
 | Flicker or resets on laptop power | Use the specified supply on POWER; laptop power may be insufficient for bright content. |

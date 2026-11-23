@@ -755,11 +755,10 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
     corner, 12/24 h, colour), boot animation length.
   - Widgets: main state selector (Animation show, Widget: which, Stream), per-widget
     settings (clock face and font, weather location and units, the air quality index,
-    temperature offsets) and
-    each widget's interlude gap.
+    temperature offsets), the time (time zone, NTP server with the NTP status; under
+    Network until 2026-11-23) and each widget's interlude gap.
   - Stream: takeover on/off, silence timeout, DDP and raw UDP on/off with their ports.
-  - Network: connection status (SSID, IP, gateway, signal), device name, time zone, NTP
-    server with the NTP status, PIN, erase Wi-Fi and restart in setup mode.
+  - Network: connection status (SSID, IP, gateway, signal), device name, PIN, erase Wi-Fi and restart in setup mode.
   - Inputs: tap gestures and sensitivity, encoder enable, role swap, direction and detected boards.
   - Storage: card status and space, the Makapix cache size and last sweep, root folder,
     the file manager (browse folders, upload,

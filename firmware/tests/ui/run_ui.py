@@ -210,6 +210,11 @@ def t_settings(fake, base, context):
     check(len(bodies) == 1 and (b"true" in bodies[0] or b"false" in bodies[0]) and b'"mirror"' in bodies[0], "settings: the mirror switch sends a boolean (%s)" % (bodies[:1]))
     check(p.page.query_selector("#dl-cap") is None and p.page.query_selector("#card-root") is None,
           "settings: the downloads cap and the root folder, which did nothing, are gone")
+    # The Time section sits in the Widgets tab, above Weather (p138), and nowhere else.
+    order = p.page.evaluate("() => Array.from(document.querySelectorAll('#tab-widgets h3')).map(h => h.textContent)")
+    check("Time" in order and "Weather" in order and order.index("Time") + 1 == order.index("Weather"), "settings: Time is in Widgets, right above Weather (%s)" % order)
+    check(p.page.evaluate("() => !!document.querySelector('#tab-widgets #timezone') && !!document.querySelector('#tab-widgets #ntp') && document.querySelectorAll('#timezone').length === 1"),
+          "settings: the time zone and the NTP server moved with it")
     # The refresh interval is spelled out below its field, when filled and as it is typed.
     words = lambda: p.page.evaluate("() => document.getElementById('mk-refresh-words').textContent")
     check(words() == "4 hours", "settings: the refresh interval is spelled out when the page fills (%r)" % words())
