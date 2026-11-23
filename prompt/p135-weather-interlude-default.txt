@@ -1,0 +1,1 @@
+Second item: The default interlude for Weather in http://p64.local/settings#widgets should be 3 hours, not 24 hours.

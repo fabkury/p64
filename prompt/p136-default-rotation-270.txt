@@ -1,0 +1,1 @@
+Third item. The default display orientation of the p64 firmware should be 270 degrees, unless the user configures something else. Please make it so.
