@@ -17,7 +17,7 @@ and every **major** is fixed or moved, with a reason, to the known limits of
 | F-02 | A 400-byte request reboots the device |
 | F-10 | The like path hands the worker a stack object |
 | F-11 | The cardless feed downloads everything and keeps almost nothing |
-| F-21 | Cardless PSRAM has no worst-case bound (a lead to confirm) |
+| F-21 | Cardless PSRAM has no worst-case bound (confirmed by reading and fixed 2026-11-23, `memory_smoke.py`) |
 
 The leads of section C are each confirmed or dismissed before this gate is judged.
 

@@ -215,6 +215,12 @@ These are the Makapix upload limits, so every Makapix artwork plays. A rejection
 recorded with the artwork's identity and reason, shown in the web UI (status banner and
 diagnostics), and the item is skipped without stopping playback.
 
+A file within these limits can still be turned away for a moment: each file is held
+whole in memory, and several large ones at once (a download, an upload, the artwork
+playing and the next one) can ask for more than the device has. The file that does not
+fit is then refused with its reason ("not enough memory for this file now"), nothing is
+remembered against it, and it plays when asked again later.
+
 ### 4.3 Frame timing
 
 - Presentation is locked to the panel refresh; a frame changes only on a refresh boundary.

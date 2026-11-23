@@ -93,6 +93,8 @@ which with D31 belong to the pages): see [findings.md](findings.md) for what eac
 | D43 | Purchases | **None for now.** The setup portal's join, the BOOT hold and a real card pull stay in the hands-on session; power cuts are stood in for by abrupt resets. |
 | D44 | Instrument measurements | **None gates 1.0.0.** The camera and power claims stay "unmeasured" in `docs/status.md`. |
 | D45 | ADRs | 0018 and 0019, written the same day. |
+| D46 | F-21, the PSRAM's worst case (2026-11-23) | **Fail softly, keep the 5 MB limit**, cardless included: every whole-file buffer is granted only while 2 MB of PSRAM stay free, and refused with a reason otherwise (`p64/system/big_alloc.hpp`). The caps are not lowered and uploads and downloads are not made to exclude each other. |
+| D47 | F-32, open pages and internal RAM (2026-11-23) | **Bound what the pages can take** (fewer HTTP sockets, idle ones closed), measured with `pages_tls_probe.py` against a target set beforehand: with four pages and a TLS operation the largest internal block stays at 16 KB or more and is back above its floor within a few minutes of the pages closing. **If the target is not reached, D27 becomes two pages** rather than more work on internal RAM. |
 
 ## What these decisions change in the chapters
 

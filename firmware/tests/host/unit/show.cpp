@@ -343,6 +343,7 @@ class FakeEnv : public p64::show::ShowEnv {
   std::vector<Load> loads;
   std::vector<std::pair<uint32_t, p64::content::Playset>> scans;
   std::set<std::string> missing_files;
+  std::set<std::string> no_memory_files;  // refused by system::big: the file is fine (F-21)
   uint32_t next_id = 1;
   int swapped_events = 0;
 
@@ -429,6 +430,9 @@ class FakeEnv : public p64::show::ShowEnv {
       if (missing_files.count(l.path)) {
         r->error = "no such file";
         r->missing = true;
+      } else if (no_memory_files.count(l.path)) {
+        r->error = "not enough memory for this file now";
+        r->no_memory = true;
       } else {
         auto art = std::make_shared<p64::playback::Artwork>();
         std::string error;
@@ -866,6 +870,34 @@ TEST_CASE("show core: a missing file is marked and another pick plays") {
   REQUIRE(core::state().current);
   CHECK(core::state().current->name() == "c.gif");
   CHECK(core::state().load_failures >= 1);
+}
+
+// Finding F-21: a file the loader could not take for lack of memory at that moment is
+// not a bad file. Marking it rejected took it out of play until the next scan.
+TEST_CASE("show core: a file refused for lack of memory keeps its place (F-21)") {
+  FakeEnv env;
+  Frame scratch;
+  core::init(env, scratch);
+  core::restore("Local");
+  env.no_memory_files = {"/sd/p64/animations/a.gif", "/sd/p64/animations/b.gif"};
+  env.complete_scan({"a.gif", "b.gif", "c.gif"});
+  for (int i = 0; i < 6 && !core::state().current; ++i) env.complete_loads();
+  const core::State &st = core::state();
+  REQUIRE(st.current);
+  CHECK(st.current->name() == "c.gif");  // another pick plays meanwhile
+  CHECK(st.load_failures >= 1);
+  REQUIRE_EQ(st.channels.size(), 1u);
+  CHECK_EQ(st.channels[0].available, 3u);  // and nothing was struck from the channel
+  for (const auto &e : st.channels[0].entries) CHECK((!e.rejected && !e.missing));
+  // The memory is back: the refused files play like any other.
+  env.no_memory_files.clear();
+  std::set<std::string> seen;
+  for (int i = 0; i < 40 && seen.size() < 3; ++i) {
+    core::next();
+    env.complete_loads();
+    if (st.current) seen.insert(st.current->name());
+  }
+  CHECK_EQ(seen.size(), 3u);
 }
 
 TEST_CASE("show core: a provider channel plays its items and hears what happened (ADR 0012)") {

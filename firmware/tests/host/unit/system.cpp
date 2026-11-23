@@ -1,6 +1,7 @@
 // Host unit tests: the night rule and the settings document.
 #include "common.hpp"
 #include "p64/storage/fail_latch.hpp"
+#include "p64/system/big_alloc.hpp"
 #include "p64/system/text.hpp"
 
 namespace {
@@ -392,6 +393,61 @@ TEST_CASE("storage: when a mounted card counts as failed (ADR 0018, D19)") {
   CHECK(w.write_error(false));
   CHECK(w.tripped());
   CHECK(!w.write_error(false));
+}
+
+// --- large buffers (finding F-21) ---------------------------------------------------
+// A whole artwork file is one buffer of up to 5 MB; the buffers that can exist at once
+// exceed the PSRAM, and a failed allocation aborts. The rule grants one only while a
+// reserve stays free, and bounds how a buffer of unknown final size grows.
+
+TEST_CASE("big buffers: granted only while the reserve stays free (F-21)") {
+  using namespace p64::system::big;
+  const size_t MB = 1024 * 1024;
+  // The device at rest has about 16 MB free: a 5 MB file fits, twice, and a third time.
+  CHECK(admits(5 * MB, 16 * MB, 16 * MB));
+  CHECK(admits(5 * MB, 11 * MB, 11 * MB));
+  // The worst case of the finding: the window's 6 MB and one 5 MB buffer are held
+  // (5 MB left); the next 5 MB buffer is refused, not attempted.
+  CHECK(!admits(5 * MB, 5 * MB, 5 * MB));
+  // Exactly the reserve left over is allowed; one byte less is not.
+  CHECK(admits(5 * MB, 5 * MB + kReserve, 6 * MB));
+  CHECK(!admits(5 * MB, 5 * MB + kReserve - 1, 6 * MB));
+  // Free in total is not enough: the buffer is one block.
+  CHECK(!admits(5 * MB, 12 * MB, 4 * MB));
+  // Small buffers are not this rule's matter, whatever the heap says.
+  CHECK(admits(kThreshold - 1, 0, 0));
+  CHECK(!admits(kThreshold, 0, 0));
+  // Nothing wraps around.
+  CHECK(!admits(SIZE_MAX, 16 * MB, 16 * MB));
+}
+
+TEST_CASE("big buffers: a body of unknown length grows to its cap and no further (F-21)") {
+  using namespace p64::system::big;
+  const size_t MB = 1024 * 1024, cap = 5 * MB;
+  CHECK_EQ(grown(0, 2048, cap), 16u * 1024);
+  CHECK_EQ(grown(16 * 1024, 16 * 1024 + 2048, cap), 32u * 1024);
+  // What the vector did on its own: 4 MB held, 8 MB asked for. Here: the cap.
+  CHECK_EQ(grown(4 * MB, 4 * MB + 2048, cap), cap);
+  // A small cap (a JSON answer of 64 KB at most) is honoured from the first step.
+  CHECK_EQ(grown(0, 100, 4096), 4096u);
+  // Never less than what is needed now.
+  CHECK_EQ(grown(0, 40000, cap), 40000u);
+  // A whole download, chunk by chunk: the capacity never passes the cap, the steps are
+  // few, and old and new buffer together never pass twice the cap.
+  size_t capacity = 0, size = 0, steps = 0;
+  while (size < cap) {
+    const size_t need = size + 2048 > cap ? cap : size + 2048;
+    if (need > capacity) {
+      const size_t next = grown(capacity, need, cap);
+      CHECK(next >= need);
+      CHECK(next <= cap);
+      CHECK(capacity + next <= 2 * cap);
+      capacity = next;
+      ++steps;
+    }
+    size = need;
+  }
+  CHECK(steps <= 12);
 }
 
 }  // namespace

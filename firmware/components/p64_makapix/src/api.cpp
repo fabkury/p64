@@ -6,6 +6,7 @@
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "p64/net/fetch.hpp"
+#include "p64/system/big_alloc.hpp"
 #include "sdkconfig.h"
 
 namespace p64::makapix::api {
@@ -355,7 +356,8 @@ bool download(const std::string &url, std::vector<uint8_t> &out, size_t max_byte
     return false;
   }
   if (r.error != ESP_OK) {
-    error = std::string("download: ") + esp_err_to_name(r.error);
+    // No memory for the file now is a refusal of system::big, not a fault (F-21).
+    error = r.error == ESP_ERR_NO_MEM ? std::string(system::big::kRefused) : std::string("download: ") + esp_err_to_name(r.error);
     return false;
   }
   if (r.body.size() < 12) {

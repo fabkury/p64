@@ -16,6 +16,7 @@
 #include "p64/net/http_server.hpp"
 #include "p64/playback/artwork.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/big_alloc.hpp"
 #include "p64/system/event_bus.hpp"
 #include "p64/web/web.hpp"
 
@@ -62,7 +63,20 @@ esp_err_t upload_handler(httpd_req_t *req) {
     return refuse("413 Payload Too Large", "FILE_TOO_LARGE", "files up to 5 MB");
   }
   std::vector<uint8_t> bytes;
-  bytes.resize(req->content_len);
+  // Refused, not fatal, when the memory is not there now (finding F-21).
+  if (!system::big::resize(bytes, req->content_len)) {
+    // The body is read and dropped first, so the answer reaches the browser: closing on
+    // a body still being sent shows the owner a broken connection, not the reason. It
+    // costs the server what the upload itself would have.
+    char drop[2048];
+    for (size_t left = req->content_len; left > 0;) {
+      const int n = httpd_req_recv(req, drop, left < sizeof(drop) ? left : sizeof(drop));
+      if (n <= 0) return ESP_FAIL;
+      left -= static_cast<size_t>(n);
+    }
+    return reply_error(req, "507 Insufficient Storage", "NO_MEMORY",
+                       "the device has no memory for this file right now; try again in a moment");
+  }
   size_t got = 0;
   while (got < bytes.size()) {
     const int n = httpd_req_recv(req, reinterpret_cast<char *>(bytes.data()) + got, bytes.size() - got);

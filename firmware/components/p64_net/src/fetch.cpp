@@ -1,5 +1,7 @@
 #include "p64/net/fetch.hpp"
 
+#include "p64/system/big_alloc.hpp"
+
 #include <condition_variable>
 #include <cstring>
 #include <mutex>
@@ -128,7 +130,15 @@ bool run(esp_http_client_handle_t client, const Request &request, Result &out, b
     out.error = ESP_ERR_INVALID_SIZE;
     return true;
   }
-  if (content_length > 0) out.body.reserve(static_cast<size_t>(content_length));
+  // The body is one buffer, taken through system::big (finding F-21): refused, not
+  // fatal, when the memory is not there, at the start when the length is known and at
+  // each growth when it is not.
+  if (content_length > 0 && !system::big::reserve(out.body, static_cast<size_t>(content_length))) {
+    ESP_LOGW(TAG, "%s: no memory for %lld bytes now", request.url.c_str(), static_cast<long long>(content_length));
+    esp_http_client_close(client);
+    out.error = ESP_ERR_NO_MEM;
+    return true;
+  }
   uint8_t chunk[2048];
   while (true) {
     const int n = esp_http_client_read(client, reinterpret_cast<char *>(chunk), sizeof(chunk));
@@ -140,6 +150,13 @@ bool run(esp_http_client_handle_t client, const Request &request, Result &out, b
     if (n == 0) break;
     if (out.body.size() + static_cast<size_t>(n) > request.max_bytes) {
       out.error = ESP_ERR_INVALID_SIZE;
+      break;
+    }
+    const size_t need = out.body.size() + static_cast<size_t>(n);
+    if (need > out.body.capacity() &&
+        !system::big::reserve(out.body, system::big::grown(out.body.capacity(), need, request.max_bytes))) {
+      ESP_LOGW(TAG, "%s: no memory to go on after %u bytes", request.url.c_str(), static_cast<unsigned>(out.body.size()));
+      out.error = ESP_ERR_NO_MEM;
       break;
     }
     out.body.insert(out.body.end(), chunk, chunk + n);

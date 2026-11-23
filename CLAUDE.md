@@ -218,7 +218,12 @@ stops answering trips `storage::FailLatch` (a write error that is not a full car
 three read errors running) and `storage::mounted()` is false until the restart; a card
 without a file system is formatted by `storage::format_unformatted()`, then the device
 restarts. The TCP send buffer is 11.5 KB on purpose (F-32: queued data costs internal
-RAM); four WebSocket clients at most. When a finding is fixed, mark it in
+RAM); four WebSocket clients at most. A buffer that holds a whole artwork file (a
+download, an upload, a card read: up to 5 MB) is taken through `system::big`
+(`p64/system/big_alloc.hpp`, F-21, 2026-11-23), which refuses it while less than 2 MB of
+PSRAM would stay free; a failed `std::vector` allocation aborts, so never size one from
+a file's length directly. `tests\device\memory_smoke.py` (hooks lane, `psram_hold`)
+proves the refusals. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

@@ -29,6 +29,7 @@
 #include "p64/net/wifi.hpp"
 #include "p64/playback/artwork.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/big_alloc.hpp"
 #include "p64/system/event_bus.hpp"
 #include "p64/system/log_ring.hpp"
 #include "p64/system/reliability.hpp"
@@ -189,6 +190,11 @@ cJSON *build_status() {
   cJSON_AddNumberToObject(heap, "internal_largest",
                           heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
   cJSON_AddNumberToObject(heap, "psram_free", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+  cJSON_AddNumberToObject(heap, "psram_largest", heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+  // Whole-file buffers given and refused since boot (system::big, finding F-21).
+  const system::big::Stats big = system::big::stats();
+  cJSON_AddNumberToObject(heap, "big_granted", big.granted);
+  cJSON_AddNumberToObject(heap, "big_refused", big.refused);
 
   const net::wifi::Status w = net::wifi::status();
   cJSON *net = cJSON_AddObjectToObject(d, "network");
@@ -870,8 +876,24 @@ esp_err_t diag_bench(httpd_req_t *req) {
 #ifdef CONFIG_P64_TEST_HOOKS
 // --- the test build's hooks (system/test_hooks.hpp) ------------------------------------
 
+// PSRAM taken away from the firmware, in blocks of 256 KB so a fragmented heap gives
+// what it has: what the code sees when the memory is full (finding F-21).
+std::vector<void *> g_test_psram;
+constexpr size_t kTestPsramBlock = 256 * 1024;
+
+void test_hold_psram(size_t bytes) {
+  for (void *p : g_test_psram) heap_caps_free(p);
+  g_test_psram.clear();
+  for (size_t held = 0; held + kTestPsramBlock <= bytes; held += kTestPsramBlock) {
+    void *p = heap_caps_malloc(kTestPsramBlock, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!p) break;
+    g_test_psram.push_back(p);
+  }
+}
+
 cJSON *test_state() {
   cJSON *d = cJSON_CreateObject();
+  cJSON_AddNumberToObject(d, "psram_hold", static_cast<double>(g_test_psram.size() * kTestPsramBlock));
   std::string eject;
   system::state::get(system::test::kEjectKey, eject);
   cJSON_AddStringToObject(d, "card_eject", eject.c_str());  // takes effect at the next boot
@@ -887,7 +909,7 @@ cJSON *test_state() {
 esp_err_t test_get(httpd_req_t *req) { return reply_ok(req, test_state()); }
 
 // POST /api/v1/test: any of {"card_eject": "<reason>" | "", "time_withheld": bool,
-// "hold_worker_ms": N, "imu_absent_s": N, "panic": true, "reset": true}. The eject, the
+// "hold_worker_ms": N, "imu_absent_s": N, "psram_hold": bytes, "panic": true, "reset": true}. The eject, the
 // time and the IMU persist across reboots until cleared; the eject and the IMU take
 // effect at the next boot.
 esp_err_t test_post(httpd_req_t *req) {
@@ -923,6 +945,10 @@ esp_err_t test_post(httpd_req_t *req) {
     } else {
       system::state::erase(system::test::kNoImuKey);
     }
+  }
+  // PSRAM held back (0 gives it all back): until changed or the restart.
+  if (const cJSON *m = cJSON_GetObjectItem(body, "psram_hold"); cJSON_IsNumber(m)) {
+    test_hold_psram(m->valuedouble <= 0 ? 0 : static_cast<size_t>(m->valuedouble));
   }
   // "Nothing was ever chosen while cardless": a state no route leads back to.
   if (cJSON_IsTrue(cJSON_GetObjectItem(body, "forget_cardless_playset"))) system::state::erase("playset_nc");

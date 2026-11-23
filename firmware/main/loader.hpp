@@ -24,6 +24,9 @@ struct LoadResult {
   std::shared_ptr<playback::Artwork> artwork;  // null on failure
   std::string error;
   bool missing = false;  // the file is not there (as opposed to unreadable or undecodable)
+  // The file is fine and was refused for lack of memory at this moment (system::big,
+  // finding F-21): nothing is to be remembered against it.
+  bool no_memory = false;
   uint32_t read_ms = 0;
   uint32_t open_ms = 0;
   size_t bytes = 0;

@@ -6,6 +6,7 @@ idf_component_register(
     INCLUDE_DIRS
         "include"
     PRIV_REQUIRES
+        p64_system
         fatfs
         sdmmc
         esp_driver_sdmmc

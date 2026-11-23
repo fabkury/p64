@@ -17,6 +17,7 @@
 #include "p64/content/provider.hpp"
 #include "p64/net/clock.hpp"
 #include "p64/storage/card.hpp"
+#include "p64/system/big_alloc.hpp"
 
 namespace p64::loader {
 namespace {
@@ -67,7 +68,8 @@ void do_load(Request &r) {
     }
   } else if (!storage::read_file(r.path, bytes, playback::kMaxFileBytes, error)) {
     struct stat st = {};
-    res->missing = stat(r.path.c_str(), &st) != 0;
+    res->no_memory = error == system::big::kRefused;
+    res->missing = !res->no_memory && stat(r.path.c_str(), &st) != 0;
     res->error = error;
     g_on_load(res);
     return;

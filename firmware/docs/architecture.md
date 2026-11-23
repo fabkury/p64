@@ -43,7 +43,7 @@ for the ESP32-S3; each component has one job, a public header set under
 | `p64_gfx` | `Frame` (RGB888, panel-sized, logical orientation), `Rgb`, blending, rotation, `Scaler`, bitmap fonts and text | none | yes |
 | `p64_decode` | `Decoder` interface, format sniffing, GIF, PNG/APNG, WebP, BMP decoders, the frame-delay rule | `animatedgif`, libpng, libwebp | yes |
 | `p64_display` | `Display`: owns the driver, frame pacing locked to the DMA, rotation, gains, brightness pipeline, panel modes, health | `hub75`, `p64_gfx`, IDF | partly (`light_curve.cpp`: the brightness scale) |
-| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON) |
+| `p64_system` | event bus, task helpers, monotonic clock, log ring buffer, reboot counters, coredump summary, settings store (NVS JSON document) | IDF | partly (`night`, `settings_model`: the settings document's clamps, enums and JSON; `big_alloc.hpp`: the rule that grants or refuses a whole-file buffer; `text.hpp`) |
 | `p64_playback` | `FrameSource` (anything the panel can show), `Artwork` (bytes + decoder + scaler), `StaticSource`, `Player` (timeline, no-drop rule), `Renderer` (the only presenter), `FrameQueue` | `p64_decode`, `p64_gfx`, `p64_display` | partly (the queue, `Artwork`, and `timing.hpp`: the player's timeline and the renderer's schedule) |
 | `p64_storage` | card mount, layout under the root, atomic writes, file manager operations, eviction | IDF | no |
 | `p64_content` | channels, playsets and their JSON, the playset name rules (ADR 0017), scheduler (SWRR/stochastic, recency/random), history, local folder index, playset store, the memory window of a cardless device (ADR 0018), the Makapix index format, the content provider interface and registry (ADR 0012) | `p64_storage`, cJSON | yes (model, name rules, JSON, scheduler, history, the Makapix index, the provider registry, the local folder index) |
@@ -194,7 +194,17 @@ the device and on the host; results go to [benchmarks](benchmarks.md).
 | Artwork bytes, current + next | PSRAM | 2 x ≤ 5 MB |
 | Canvases (≤ 256x256x3, GIF backup x2) | PSRAM | ≤ 400 KB per artwork |
 | Channel indexes (≤ 64 x 4096 x 64 B, lazily loaded) | PSRAM | ≤ 16 MB worst case; capped by a global index budget |
-| Memory cache without a card | PSRAM | ≤ 8 MB |
+| Memory window without a card (ADR 0018) | PSRAM | ≤ 6 MB, 48 files |
+| One download and one upload in flight | PSRAM | ≤ 5 MB each |
+
+These PSRAM items can add up to more than the 16 MB there is, and with C++ exceptions
+off a failed allocation aborts. So every buffer that holds a whole file (a download, an
+upload, a file read from the card) is taken through `system::big`
+(`p64/system/big_alloc.hpp`, finding F-21, 2026-11-23): granted only while 2 MB of PSRAM
+stay free for everything else, refused otherwise, and the refusal is an ordinary failure
+of that one file ("not enough memory for this file now"; `507 NO_MEMORY` for an upload).
+A download without a length grows to its cap and no further. A new whole-file buffer
+goes through it too.
 
 The internal-RAM floor is checked at boot and logged; diagnostics expose the largest
 free block. Anything larger than 1 KB that is not DMA-bound is allocated from PSRAM

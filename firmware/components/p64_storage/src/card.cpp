@@ -1,5 +1,7 @@
 #include "p64/storage/card.hpp"
 
+#include "p64/system/big_alloc.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
@@ -514,7 +516,13 @@ bool read_file(const std::string &path, std::vector<uint8_t> &out, size_t max_by
     if (io_errno(e)) note_read(false);
     return false;
   }
-  out.resize(static_cast<size_t>(st.st_size));
+  // One buffer for the whole file, refused rather than fatal when the memory is not
+  // there (finding F-21).
+  if (!system::big::resize(out, static_cast<size_t>(st.st_size))) {
+    close(fd);
+    error = system::big::kRefused;
+    return false;
+  }
   size_t got = 0;
   {
     std::lock_guard<std::mutex> lock(g_io_mutex);

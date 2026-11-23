@@ -13,6 +13,7 @@ idf_component_register(
         "src/i2c_bus.cpp"
         "src/night.cpp"
         "src/flash_guard.cpp"
+        "src/big_alloc.cpp"
     INCLUDE_DIRS
         "include"
     REQUIRES

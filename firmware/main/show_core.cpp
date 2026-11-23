@@ -830,7 +830,8 @@ void on_loaded_impl(std::unique_ptr<loader::LoadResult> res) {
       LOGW("%s: %s", res->path.c_str(), res->error.c_str());
       ++st.load_failures;
       st.last_error = basename_of(res->path) + ": " + res->error;
-      mark_entry(st.prepared_pick, res->missing);
+      // A file refused for lack of memory is not a bad file: it keeps its place.
+      if (!res->no_memory) mark_entry(st.prepared_pick, res->missing);
       if (++st.prepare_failures < kMaxPrepareFailures) {
         request_prepare();
         if (st.want_prepared_now && st.prepared_load_id) return;
@@ -864,6 +865,12 @@ void on_loaded_impl(std::unique_ptr<loader::LoadResult> res) {
       ++st.load_failures;
       st.last_error = basename_of(res->path) + ": " + res->error;
       if (purpose == Pending::Purpose::PlayThis) return;  // the current picture stays (spec 4.5)
+      if (res->no_memory) {
+        // Refused for lack of memory at this moment: the item stays in the history and
+        // the picture on the panel stays; with nothing on the panel, something else.
+        if (!st.current) swap_fresh();
+        return;
+      }
       // A history item whose file is gone is dropped and the walk continues (spec 4.6).
       const size_t pos = st.history.position();
       if (st.history.size() && st.history.at(pos).path == res->path) st.history.remove(pos);
