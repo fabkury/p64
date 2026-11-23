@@ -1,0 +1,3 @@
+Let's polish a few things about p64.
+
+First item. In http://p64.local/settings#makapix, we see parameter "Refresh interval", expressed in seconds. Please add a text below that parameter, which auto-updates when the user types, giving a readable version of the amount of seconds entered. For example, if the user enters 86300 seconds, it auto-translates to "23 hours, 58 minutes and 20 seconds".
