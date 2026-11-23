@@ -173,6 +173,26 @@ F-28, F-29 and the divergences of section D) were decided the same day:
   design today; the pages rely on clamping). To decide: keep, or answer 400 for a wrong
   type so a script learns of its mistake.
 
+### F-34 On a network of several access points the device joins the first it hears (major; fixed 2026-11-23)
+
+- **Seen** on 2026-11-23, on a mesh network, after a flash: the device associated with
+  an access point at -74 dBm (`34:bc:5e:cd:1e:05`) while its own scan listed the same
+  name at -48 dBm. A quarter to 40 % of 1400-byte pings were lost, a 12 KB upload took
+  5 s and one of 100 KB never finished (`SHORT_BODY` after the 5 s receive timeout). A
+  restart joined the same far access point again. The device had been at -51 dBm an
+  hour earlier, so which one it gets is chance.
+- **Cause**: the station configuration left the driver's default, a fast scan that
+  joins the first access point of the name it hears (`wifi.cpp`, `apply_sta_config`).
+- **Fixed**: every channel is scanned and the strongest is joined
+  (`WIFI_ALL_CHANNEL_SCAN`, `WIFI_CONNECT_AP_BY_SIGNAL`). After it: -49 dBm on
+  `34:bc:5e:cd:3b:05`, no ping lost in 15. The cost is the scan: the association came
+  3.4 s after boot instead of 1.1 s. The first artwork of a boot comes from the card and
+  did not move.
+- **Not covered**: a device that stays up does not move to a nearer access point later
+  (the driver does not roam by itself); it chooses at each connection.
+- **Tests**: none automatic: it takes two access points of one name. The boot budget of
+  `api_smoke.py` guards the cost.
+
 ### What the probes did not break
 
 For the record, served correctly: 40 sequential and 120 parallel `next`; 20 idle

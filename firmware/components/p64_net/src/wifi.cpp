@@ -101,6 +101,12 @@ void apply_sta_config(const std::string &ssid, const std::string &password) {
   cfg.sta.threshold.authmode = password.empty() ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA2_PSK;
   cfg.sta.pmf_cfg.capable = true;
   cfg.sta.pmf_cfg.required = false;
+  // Every channel is scanned and the strongest access point of the name is joined. The
+  // driver's default joins the first one it hears: on a network of several access points
+  // (a mesh) the device sat on a far one at -74 dBm, losing a quarter of its packets,
+  // with another at -48 dBm in the room (finding F-34, 2026-11-23).
+  cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+  cfg.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
   esp_wifi_set_config(WIFI_IF_STA, &cfg);
 }
 
