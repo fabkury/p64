@@ -1,0 +1,1 @@
+Fifth item. The "Time" configurations are kind of buried under http://p64.local/settings#network. Please move the entire "Time" section to above the "Weather" section in http://p64.local/settings#widgets.
