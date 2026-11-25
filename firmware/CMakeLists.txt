@@ -42,7 +42,7 @@ if(EXISTS "${P64_PRIVATE_DIR}/components" AND NOT P64_NO_PRIVATE)
 endif()
 
 # Firmware version, embedded in the image and compared by OTA. MAJOR.MINOR.PATCH[-suffix].
-set(PROJECT_VER "0.3.0")
+set(PROJECT_VER "0.3.1")
 if(P64_PRIVATE)
     string(APPEND PROJECT_VER "+private")
 endif()
