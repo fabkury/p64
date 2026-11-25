@@ -223,7 +223,15 @@ download, an upload, a card read: up to 5 MB) is taken through `system::big`
 (`p64/system/big_alloc.hpp`, F-21, 2026-11-23), which refuses it while less than 2 MB of
 PSRAM would stay free; a failed `std::vector` allocation aborts, so never size one from
 a file's length directly. `tests\device\memory_smoke.py` (hooks lane, `psram_hold`)
-proves the refusals. When a finding is fixed, mark it in
+proves the refusals. The Wi-Fi driver's transmit buffers come from internal RAM, about
+1.6 KB a frame: `CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM` is 8 on purpose (F-32, 2026-11-25;
+32 let page loads take the heap down to 1.5 KB), checked by `tests\device\pages_tls_probe.py
+--reload` against `pages_tls_largest_block_min`. A task created with
+`xTaskCreatePinnedToCoreWithCaps` that ends itself calls `vTaskDeleteWithCaps(nullptr)`:
+`vTaskDelete(nullptr)` leaks its stack and control block (F-35, the update check did, twice
+a day). To see who holds internal RAM, `tools\heap_trace_report.py` with a diagnosis build
+(its docstring has the steps; never trust `heap_by_task` of `diag/memory`, whose figures
+were nonsense on ESP-IDF 5.5.4). When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

@@ -58,6 +58,7 @@ TESTS = {
     "makapix_smoke": (["{paired}"], {"internet": True, "ntp": True}, ("full",), 900, {}),
     "cache_sweep_smoke": ([], {"card": "required", "ntp": True}, ("full",), 600, {}),
     "tls_slot_smoke": ([], {"paired": True, "internet": True}, ("full",), 600, {}),
+    "pages_tls_probe": (["--reload", "--rounds", "4"], {"internet": True, "ntp": True, "paired": True}, ("full",), 900, {}),
     "ota_smoke:check": (["--no-install"], {"internet": True, "ntp": True}, ("full",), 300, {}),
     "ota_smoke": ([], {"internet": True, "ntp": True, "build": True}, ("update",), 900, {"reboot": True}),
     "abuse_smoke": ([], {}, ("abuse",), 600, {}),

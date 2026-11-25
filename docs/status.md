@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Build guide](build-your-own.md) · [Owner's guide](using-p64.md)
 
-Documentation reviewed 2026-10-15, updated 2026-11-23. Both p64 variants are finished as
+Documentation reviewed 2026-10-15, updated 2026-11-25. Both p64 variants are finished as
 designed and work well: the maintainer's two devices, one p64a and one p64b, run
 essentially around the clock (reported 2026-10-20). The firmware is at version 0.3.0 and in
 good working order, and is being hardened towards 1.0.0 by a written
@@ -44,6 +44,24 @@ that field use does not stand in for:
 The formal 12-hour and 24-hour `soak.py` runs of the acceptance list (spec 18.1 and 18.11)
 were never run as such; continuous operation of two devices for weeks covers what those
 runs were meant to show, so they are not tracked as open work.
+
+## Fixed since v0.3.0, not yet released
+
+Found and fixed on 2026-11-23 and 2026-11-25 while working through the
+[findings register](../firmware/docs/testing-strategy/findings.md); v0.3.0 and the
+releases before it have all four:
+
+- A slow leak (F-35): every update check, twice a day by itself, kept 360 bytes of
+  internal RAM and 12 KB of PSRAM for good. Over a month that is about 22 KB of the 55 KB
+  of internal RAM that are free. A device restarted now and then never notices; one left
+  running for months would.
+- On a network of several access points (a mesh) the device joined the first one it
+  heard, not the strongest (F-34). On a far one it lost a quarter of its packets and
+  uploads stalled.
+- Several large files handled at once could ask for more memory than there is, and the
+  device restarted (F-21). The file that does not fit is now refused with its reason.
+- Pages loaded again and again while the device talked to a server could take nearly all
+  the internal RAM (F-32). Nothing failed in the tests, but the margin was 1.5 KB.
 
 ## Engineering notes
 

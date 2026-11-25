@@ -150,7 +150,7 @@ void task(void *) {
   i2c_master_bus_handle_t bus = system::i2c_ext_bus();
   if (!bus) {
     ESP_LOGE(TAG, "no external I2C bus: encoders off");
-    vTaskDelete(nullptr);
+    vTaskDeleteWithCaps(nullptr);
     return;
   }
   for (Knob &k : g_knobs) try_open(k, bus, 0);

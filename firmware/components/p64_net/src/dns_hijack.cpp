@@ -26,7 +26,7 @@ void task(void *) {
   if (sock < 0) {
     ESP_LOGE(TAG, "socket failed");
     g_task = nullptr;
-    vTaskDelete(nullptr);
+    vTaskDeleteWithCaps(nullptr);
     return;
   }
   sockaddr_in addr = {};
@@ -37,7 +37,7 @@ void task(void *) {
     ESP_LOGE(TAG, "bind failed");
     close(sock);
     g_task = nullptr;
-    vTaskDelete(nullptr);
+    vTaskDeleteWithCaps(nullptr);
     return;
   }
   timeval tv = {1, 0};
@@ -68,7 +68,7 @@ void task(void *) {
   }
   close(sock);
   g_task = nullptr;
-  vTaskDelete(nullptr);
+  vTaskDeleteWithCaps(nullptr);
 }
 
 }  // namespace

@@ -141,7 +141,7 @@ void knob_like_task(void *arg) {
   if (p64::makapix::like(post, true, error, &queued)) ESP_LOGI(TAG, "knob: %s post %ld", queued ? "like queued for" : "liked", static_cast<long>(post));
   else ESP_LOGW(TAG, "knob: like of post %ld failed: %s", static_cast<long>(post), error.c_str());
   g_like_busy = false;
-  vTaskDelete(nullptr);
+  vTaskDeleteWithCaps(nullptr);
 }
 
 void knob_like() {

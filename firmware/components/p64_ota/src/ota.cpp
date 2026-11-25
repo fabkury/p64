@@ -310,7 +310,7 @@ void worker(void *) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_busy = false;
   }
-  vTaskDelete(nullptr);
+  vTaskDeleteWithCaps(nullptr);
 }
 
 bool queue(Job job, const std::string &url, const std::string &sha) {

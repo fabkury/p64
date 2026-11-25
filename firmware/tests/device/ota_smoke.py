@@ -80,6 +80,28 @@ def main():
     check(st == 200, "check queued")
     u = wait_state(base, ("up_to_date", "available", "error"), 40)
     check(u["state"] in ("up_to_date", "available", "error"), "check finished: %s%s" % (u["state"], (" (" + u["error"] + ")") if u["error"] else ""))
+    # Finding F-35: every check runs on a task of its own whose 12 KB stack is in PSRAM; it
+    # ended itself with the call that frees neither the stack nor the control block
+    # (360 bytes of internal RAM), twice a day by the automatic check alone. Four more
+    # checks with the show paused (so that no artwork comes or goes) must cost nothing.
+    def quiet_psram():
+        best = 0
+        for _ in range(5):
+            best = max(best, status(base)["heap"]["psram_free"])
+            time.sleep(1)
+        return best
+
+    request(base, "POST", "/api/v1/action/pause")
+    time.sleep(3)
+    before_checks = quiet_psram()
+    for _ in range(4):
+        request(base, "POST", "/api/v1/update/check")
+        time.sleep(2)
+        wait_state(base, ("up_to_date", "available", "error"), 40)
+    time.sleep(2)
+    lost = before_checks - quiet_psram()
+    request(base, "POST", "/api/v1/action/resume")
+    check(lost < 30000, "four update checks keep no memory (PSRAM free %+d bytes; a leaked task is 12288 each)" % -lost)
     st, j = request(base, "POST", "/api/v1/update/install", {"url": "http://x/y.bin"})
     check(st == 400, "an install from a URL without its sha256 is refused")
     if no_install:

@@ -206,6 +206,15 @@ of that one file ("not enough memory for this file now"; `507 NO_MEMORY` for an 
 A download without a length grows to its cap and no further. A new whole-file buffer
 goes through it too.
 
+Internal RAM has one consumer that the table's "Wi-Fi + lwIP" row hides: the driver
+copies every outgoing frame into a transmit buffer from internal RAM, about 1.6 KB for a
+full frame. `CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM` is 8 (finding F-32, 2026-11-25): the
+default of 32 let the frames of a few page loads take most of what was free. Data the
+device sends beyond those eight frames waits in lwIP (PSRAM). Receiving costs nothing of
+the kind. A task whose stack is in PSRAM ends itself with `vTaskDeleteWithCaps(nullptr)`,
+never `vTaskDelete`: the plain call frees neither its stack nor its control block
+(finding F-35).
+
 The internal-RAM floor is checked at boot and logged; diagnostics expose the largest
 free block. Anything larger than 1 KB that is not DMA-bound is allocated from PSRAM
 (`SPIRAM_MALLOC_ALWAYSINTERNAL=1024`; 4096 until the review of 2026-09-22), and the

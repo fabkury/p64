@@ -14,6 +14,9 @@
 #if CONFIG_HEAP_TASK_TRACKING
 #include "esp_heap_task_info.h"
 #endif
+#if CONFIG_HEAP_TRACING_STANDALONE
+#include "esp_heap_trace.h"
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "p64/content/memory_window.hpp"
@@ -876,6 +879,51 @@ esp_err_t diag_bench(httpd_req_t *req) {
 #ifdef CONFIG_P64_TEST_HOOKS
 // --- the test build's hooks (system/test_hooks.hpp) ------------------------------------
 
+#if CONFIG_HEAP_TRACING_STANDALONE
+// A diagnosis build only (CONFIG_HEAP_TRACING_STANDALONE=y in its sdkconfig): every
+// allocation made after "start" is recorded with its callers; a dump prints those still
+// held in internal RAM to the console, for tools/heap_trace_report.py (finding F-32).
+heap_trace_record_t *g_trace_records = nullptr;
+constexpr size_t kTraceRecords = 6000;
+
+void test_heap_trace_dump(const char *label) {
+  esp_rom_printf("HEAP TRACE BEGIN %s free %u largest %u\n", label,
+                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+  heap_trace_dump_caps(MALLOC_CAP_INTERNAL);
+  esp_rom_printf("HEAP TRACE END\n");
+}
+
+// Dumps once, the moment the internal heap's free size falls below the armed value: the
+// low is a matter of milliseconds and no request from outside arrives in time.
+void test_heap_trace_watch(void *arg) {
+  const size_t below = reinterpret_cast<uintptr_t>(arg);
+  while (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) >= below) vTaskDelay(1);
+  test_heap_trace_dump("armed");
+  vTaskDelete(nullptr);
+}
+
+// "start", "stop", "dump:<label>", "arm:<bytes>".
+void test_heap_trace(const char *what) {
+  if (!std::strcmp(what, "start")) {
+    if (!g_trace_records) {
+      g_trace_records = static_cast<heap_trace_record_t *>(
+          heap_caps_malloc(kTraceRecords * sizeof(heap_trace_record_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+      if (!g_trace_records || heap_trace_init_standalone(g_trace_records, kTraceRecords) != ESP_OK) return;
+    }
+    heap_trace_stop();
+    heap_trace_start(HEAP_TRACE_LEAKS);
+  } else if (!std::strncmp(what, "dump:", 5)) {
+    test_heap_trace_dump(what + 5);
+  } else if (!std::strncmp(what, "arm:", 4)) {
+    xTaskCreatePinnedToCore(test_heap_trace_watch, "heap_watch", 3072,
+                            reinterpret_cast<void *>(static_cast<uintptr_t>(std::atoi(what + 4))), 21, nullptr, 0);
+  } else if (!std::strcmp(what, "stop")) {
+    heap_trace_stop();
+  }
+}
+#endif
+
 // PSRAM taken away from the firmware, in blocks of 256 KB so a fragmented heap gives
 // what it has: what the code sees when the memory is full (finding F-21).
 std::vector<void *> g_test_psram;
@@ -946,6 +994,9 @@ esp_err_t test_post(httpd_req_t *req) {
       system::state::erase(system::test::kNoImuKey);
     }
   }
+#if CONFIG_HEAP_TRACING_STANDALONE
+  if (const cJSON *t = cJSON_GetObjectItem(body, "heap_trace"); cJSON_IsString(t)) test_heap_trace(t->valuestring);
+#endif
   // PSRAM held back (0 gives it all back): until changed or the restart.
   if (const cJSON *m = cJSON_GetObjectItem(body, "psram_hold"); cJSON_IsNumber(m)) {
     test_hold_psram(m->valuedouble <= 0 ? 0 : static_cast<size_t>(m->valuedouble));
