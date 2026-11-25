@@ -229,7 +229,9 @@ internal RAM of a build. `docs/review-2026-09/memory.md` has the inventory.
 ## 7. Settings
 
 One JSON document in NVS (`p64_system::Settings`), typed accessors, defaults from the
-spec's settings table, change notifications on the event bus, double-buffered writes.
+spec's settings table, change notifications on the event bus; one NVS blob, which NVS
+replaces by writing the new one before retiring the old (a reset mid-write leaves one of
+the two: `hooks_smoke.py` resets the device during writes and checks it).
 Wi-Fi credentials and Makapix credentials live in their own NVS namespaces. Development
 builds may seed Wi-Fi credentials from the git-ignored `sdkconfig.secrets`
 (`P64_DEV_WIFI_*`) when NVS holds none; release builds leave those options empty.
@@ -237,8 +239,9 @@ builds may seed Wi-Fi credentials from the git-ignored `sdkconfig.secrets`
 ## 8. Web and API
 
 `esp_http_server` on port 80 with wildcard routing to `/api/v1/...` handlers, the
-p3a envelope, one WebSocket endpoint for status push and the live preview (PNG of the
-logical frame, 2 to 4 fps while a client is connected), the UI embedded through
+p3a envelope, one WebSocket endpoint for the status push, the live preview as a plain
+route (`GET /api/v1/frame`, a PNG of the logical frame, asked for once a second by a page
+that shows it), the UI embedded through
 `EMBED_FILES` (gzip where it pays). PIN check is one hook at the top of every handler.
 
 ## 9. Build and tools

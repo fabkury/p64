@@ -65,6 +65,16 @@ releases before it have all four, so a device on an older release should be upda
 - Pages loaded again and again while the device talked to a server could take nearly all
   the internal RAM (F-32). Nothing failed in the tests, but the margin was 1.5 KB.
 
+## Fixed since v0.3.1, not yet released
+
+- A page left open that stopped reading (a laptop asleep, a phone out of range) made the
+  device slow for every other page, several times for five seconds, and delayed their
+  updates (F-22). Such a page is now left alone and closed after six seconds.
+- p64b: a restart that caught an encoder board in the middle of a read left both knobs
+  dead until the device was unplugged (F-37). The firmware now frees the bus by itself.
+- A channel index that failed to read was deleted; it is now left alone and replaced at
+  the next listing (F-15).
+
 ## Engineering notes
 
 Observations from the bench that are worth a change some day. None of them affects a

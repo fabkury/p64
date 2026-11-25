@@ -40,8 +40,10 @@ bool load_index(const std::string &channel_id, content::MakapixEntries &out, uin
   std::string error;
   if (!storage::read_file(path, bytes, 512 * 1024, error)) return false;
   if (!content::deserialize_index(bytes.data(), bytes.size(), out, error)) {
-    ESP_LOGW(TAG, "%s: %s; dropped", path.c_str(), error.c_str());
-    storage::remove_path(path, error);
+    // Not deleted (spec 14: nothing is deleted because a read failed; a dying card
+    // misreads healthy files, finding F-15). The channel is walked again from the server
+    // and the next save replaces the file.
+    ESP_LOGW(TAG, "%s: %s; ignored, the channel is listed again", path.c_str(), error.c_str());
     return false;
   }
   struct stat st = {};

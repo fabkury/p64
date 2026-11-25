@@ -283,6 +283,14 @@ TEST_CASE("knob rules: roles and brightness steps") {
   CHECK_FALSE(socket_idle_high(0, 0));  // an empty socket
   CHECK_FALSE(socket_idle_high(0, 1));  // one line held low
   CHECK_FALSE(socket_idle_high(1, 0));
+  // The clock high and the data low is a board holding the data line: a reset caught it
+  // in the middle of a read (finding F-37, both knobs gone until the power was cycled).
+  // That is the one case to clock free; an empty socket and an idle bus are left alone.
+  using p64::inputs::socket_bus_stuck;
+  CHECK(socket_bus_stuck(0, 1));
+  CHECK_FALSE(socket_bus_stuck(0, 0));  // an empty socket: nothing to free
+  CHECK_FALSE(socket_bus_stuck(1, 1));  // idle
+  CHECK_FALSE(socket_bus_stuck(1, 0));  // the clock held: pulses cannot be sent
   // N detents at once equal N single detents, and a spin down and back returns.
   CHECK_EQ(brightness_after(40, 5), brightness_after(brightness_after(40, 2), 3));
   CHECK_EQ(brightness_after(brightness_after(100, -5), 5), 100);

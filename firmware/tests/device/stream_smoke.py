@@ -217,6 +217,23 @@ def run(base):
     print("     incomplete after the 128x128 DDP bursts and 2 s at 30 fps: %d" % d["stream"]["incomplete"])
     check(d["stream"]["incomplete"] - inc128 <= 2, "at most 2 incomplete frames in the 30 fps run and the DDP bursts (%d)" % (d["stream"]["incomplete"] - inc128))
 
+    # Acceptance 18.9 as the specification words it (finding S-10): a DDP stream of 64x64
+    # at 60 fps, every frame received whole, latency under 30 ms.
+    before = status(base)["stream"]
+    t0 = time.time()
+    n = 0
+    while time.time() - t0 < 3.0:
+        send_ddp(udp, p64, seq=1 + n % 15)
+        n += 1
+        time.sleep(max(0, t0 + n / 60 - time.time()))
+    time.sleep(0.1)
+    d = status(base)
+    got = d["stream"]["frames"] - before["frames"]
+    check(got >= n - 1, "60 fps DDP: %d of %d frames received" % (got, n))
+    check(d["stream"]["incomplete"] == before["incomplete"], "60 fps DDP: no incomplete frame (%d)" % (d["stream"]["incomplete"] - before["incomplete"]))
+    check(d["stream"]["fps"] >= 57, "60 fps DDP measured at %.1f fps" % d["stream"]["fps"])
+    check(d["stream"]["last_latency_ms"] < 30, "60 fps DDP: frame latency %.1f ms (under 30)" % d["stream"]["last_latency_ms"])
+
     # Silence: the show takes the panel back and the stream did not enter history.
     last = frame(base)
     d = wait_for(base, lambda d: not d["playback"]["stream_up"], silence_ms / 1000 + 3)
@@ -253,6 +270,21 @@ def run(base):
     check(not d["playback"]["stream_up"] and d["playback"]["state"] == "stream", "back to waiting after silence")
     time.sleep(0.5)
     check(frame(base) == waiting, "waiting screen back")
+
+    # Acceptance 18.9, the second half: with the default silence timeout the previous state
+    # is back 5 s after the last frame (the rest of this test uses 1.5 s to be quick).
+    settings(base, {"show": {"main_state": "animation_show"}, "stream": {"takeover": True, "silence_ms": 5000}})
+    time.sleep(1)
+    send_raw(udp, p64, 64, 64, seq=400, repeat=5)
+    sent_last = time.time()
+    d = wait_for(base, lambda d: d["playback"]["stream_up"], 3)
+    check(d["playback"]["stream_up"], "the stream took the panel with the 5 s timeout")
+    while time.time() - sent_last < 9:
+        if not status(base)["playback"]["stream_up"]:
+            break
+        time.sleep(0.05)
+    back = time.time() - sent_last
+    check(4.7 <= back <= 5.5, "the show came back %.2f s after the last frame (5 s, read by polling)" % back)
 
     # Back to what it was.
     settings(base, {"show": {"main_state": original["show"]["main_state"]},

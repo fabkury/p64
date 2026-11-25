@@ -61,6 +61,8 @@ KnobRole role_of_knob(const Knob &k) { return role_of(static_cast<int>(&k - g_kn
 
 // The idle levels of the socket's two lines: both 1 only while a board's pull-ups are
 // there (an empty socket sits low under the controller's pull-downs, knob_rules.hpp).
+std::atomic<uint32_t> g_bus_recoveries{0};  // times the bus was clocked free (finding F-37)
+
 bool lines_idle_high() {
 #ifdef CONFIG_P64_ENCODERS
   return socket_idle_high(gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SDA)),
@@ -75,6 +77,17 @@ bool lines_idle_high() {
 // while a probe of an empty socket (p64a) times out and the I2C driver logs an error
 // line each time, so the lines are only read there, every 5 s, with no bus traffic.
 bool try_open(Knob &k, i2c_master_bus_handle_t bus, uint32_t poll) {
+#ifdef CONFIG_P64_ENCODERS
+  // A board left in the middle of a read by a reset holds the data line low; the bus is
+  // clocked free and looked at again (knob_rules.hpp, finding F-37).
+  if (socket_bus_stuck(gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SDA)),
+                       gpio_get_level(static_cast<gpio_num_t>(CONFIG_P64_I2C_EXT_SCL)))) {
+    const esp_err_t err = i2c_master_bus_reset(bus);
+    ++g_bus_recoveries;
+    ESP_LOGW(TAG, "the data line was held low with the clock high (a board left mid-read by a reset): bus clocked free, %s",
+             err == ESP_OK && lines_idle_high() ? "the lines idle high again" : "still held");
+  }
+#endif
   if (!lines_idle_high()) {
     if (!g_socket_low_warned) {
       ESP_LOGW(TAG, "GPIO socket lines idle low: nothing attached, not probing (looked at again every 5 s)");
@@ -216,6 +229,7 @@ cJSON *json(bool scan) {
   cJSON_AddBoolToObject(d, "enabled", false);
 #endif
   cJSON_AddNumberToObject(d, "polls", g_poll);
+  cJSON_AddNumberToObject(d, "bus_recoveries", g_bus_recoveries.load());
   cJSON_AddBoolToObject(d, "acting", g_enabled.load());
   cJSON_AddBoolToObject(d, "swap", g_swap.load());
   cJSON_AddBoolToObject(d, "invert", g_invert.load());

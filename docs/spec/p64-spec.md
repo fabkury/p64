@@ -182,9 +182,11 @@ previous picture), reboot, pause (deliberate darkness).
 
 ### 3.7 Live preview
 
-The device can hand out its current logical frame (64x64 RGB888, or a PNG of it) on
-request, and pushes it to the web UI at 2 to 4 frames per second while the Home page is
-open. Every state is previewable, including widgets, streams and status screens.
+The device hands out its current logical frame (a PNG of the 64x64 picture) on request,
+and the web UI asks for it once a second while a page that shows the preview is in view.
+Every state is previewable, including widgets, streams and status screens. One frame a
+second, by request, is the design: what the device sends costs it internal RAM (finding
+F-32), and a preview is not a second display.
 
 ## 4. Artworks and playback
 
@@ -800,8 +802,8 @@ Bottom navigation: Home, Playsets, Settings, Update (badge when an update is ava
   (`{"ok":true,"data":...}` and `{"ok":false,"error":"...","code":"..."}`), actions as
   POST to `/api/v1/action/<name>` answering 202 when queued, settings read and merged with
   GET and PUT on `/api/v1/settings`, resource routes for playsets, channels, files,
-  history, Makapix, network, update, diagnostics; one WebSocket for status push and the
-  live preview; an API version number reported in status. Route-level detail lives in the
+  history, Makapix, network, update, diagnostics; one WebSocket for the status push; the
+  live preview as a route of its own (3.7); an API version number reported in status. Route-level detail lives in the
   API reference written with the architecture.
 - A JSON body is at most 32 KB and 16 levels deep. A settings write merges the keys it
   knows: numbers out of range are clamped, unknown keys ignored, and a known key with a
@@ -874,11 +876,14 @@ p3a's client is the reference implementation. p64 uses:
 - A card that answers at boot without a FAT file system leaves the device cardless with
   that reason shown; Settings, Storage offers to format it (the usual confirmation), and
   the device restarts when the format is done.
-- Settings live in NVS as one JSON document, written double-buffered; Wi-Fi credentials
-  and Makapix credentials in their own NVS namespaces; nothing else in flash except the
-  firmware and its embedded web UI.
-- No card-detect line: a swapped card is picked up on the next mount attempt (automatic
-  after a failure, or on request from the web UI).
+- Settings live in NVS as one JSON document, replaced whole at each write: NVS writes the
+  new document before it retires the old one, so a reset during a write leaves one of the
+  two, never a mixture or the defaults. A change is applied at once and written a moment
+  later (0.3 s after the last change, 2 s at most; an orderly restart writes what is
+  pending). Wi-Fi credentials and Makapix credentials live in their own NVS namespaces;
+  nothing else is in flash except the firmware and its embedded web UI.
+- No card-detect line: a card put in or changed while the device runs is not noticed
+  until the next restart.
 
 ## 15. Operations
 
@@ -913,7 +918,8 @@ web UI and at `p64.local`. The status document carries `boot.first_artwork_ms` a
   hardware allows it.
 - The panel's DMA channel keeps GDMA priority over the crypto engines (hardware tests:
   without it, TLS traffic freezes the panel). Any new DMA user (SD, SPI, I2S) is checked
-  with the panel stress test.
+  with the device tests that load the network while the panel's DMA counters are read
+  (the soak and the pages test).
 - Reboot counters by cause (watchdog, panic, brownout, Wi-Fi recovery) persist in NVS
   and reset on a successful update.
 
@@ -926,8 +932,7 @@ touched.
 ### 15.5 Diagnostics
 
 Always on, behind the PIN: panel health (DMA stall flag, refresh rate, mode, timing),
-GDMA priority (read and set live), a panel stress test (network load while the panel is
-watched), late-frame counters, stream loss and latency, memory (internal, PSRAM, largest
+GDMA priority (read and set live), late-frame counters, stream loss and latency, memory (internal, PSRAM, largest
 free block), tasks, an in-memory log ring buffer readable over HTTP, reboot counters and
 the last crash summary, and a reboot action.
 
@@ -973,7 +978,7 @@ All persisted unless noted. Ranges are inclusive.
 | Makapix | credentials | player key, certificate, private key, CA, token (NVS, separate) | unset |
 | Updates | automatic check | on/off | on |
 
-Runtime, not persisted: pause, current stream, history, live preview subscribers.
+Runtime, not persisted: pause, current stream, history.
 
 ## 17. Limits reference
 
@@ -1033,8 +1038,8 @@ device and read over diagnostics.
    quiet network; silence returns the previous state exactly 5 s after the last frame.
 10. Pairing: the code appears within 5 s of the request; credentials are stored within
     10 s of the owner entering it; "send to device" shows the artwork within 15 s.
-11. Robustness: a 24 h soak with Makapix refreshes, downloads, the stress test and the
-    web UI open shows no panel stall, no watchdog and no memory growth.
+11. Robustness: a 24 h soak with Makapix refreshes, downloads and the web UI open shows
+    no panel stall, no watchdog and no memory growth.
 12. Recovery: pulling power mid-download leaves a mountable card and a playable playset;
     a corrupt cached file is rejected once, recorded, and never retried in a loop.
 

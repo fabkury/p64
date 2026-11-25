@@ -2,6 +2,7 @@
 #include "common.hpp"
 #include "p64/net/origin.hpp"
 #include "auth_rules.hpp"
+#include "push_rules.hpp"
 
 #include <set>
 
@@ -94,6 +95,43 @@ TEST_CASE("web: a request that changes the device is the device's own page or no
   CHECK(!same_origin("null", "p64.local"));  // a sandboxed frame, a local file
   CHECK(!same_origin("http://p64.local", ""));
   CHECK(!same_origin("p64.local", "p64.local"));  // not an origin at all
+}
+
+// Finding F-22: a page that stopped reading its WebSocket stalled the one HTTP task for a
+// send timeout at every push until its buffer was full, four times running on the device.
+// Nothing is sent to a client that cannot take it, and one that takes none of three
+// pushes is closed.
+
+TEST_CASE("status push: a client that cannot take data is skipped, then closed (F-22)") {
+  namespace push = p64::web::push;
+  int misses = 0;
+  // A healthy client is sent to, every time.
+  for (int i = 0; i < 10; ++i) CHECK(push::next(true, misses) == push::Action::Send);
+  CHECK_EQ(misses, 0);
+  // One that stopped reading: never sent to (a send is what blocks the server), and
+  // closed at the third push in a row it cannot take.
+  CHECK(push::next(false, misses) == push::Action::Skip);
+  CHECK(push::next(false, misses) == push::Action::Skip);
+  CHECK(push::next(false, misses) == push::Action::Close);
+  // A slow one that catches up in time starts again from nothing.
+  misses = 0;
+  CHECK(push::next(false, misses) == push::Action::Skip);
+  CHECK(push::next(false, misses) == push::Action::Skip);
+  CHECK(push::next(true, misses) == push::Action::Send);
+  CHECK_EQ(misses, 0);
+  CHECK(push::next(false, misses) == push::Action::Skip);
+  // The bound that matters: over any run of pushes, a client that never reads is asked
+  // about kMaxMisses times and sent to never.
+  misses = 0;
+  int sends = 0, asked = 0;
+  for (int i = 0; i < 100; ++i) {
+    ++asked;
+    const push::Action a = push::next(false, misses);
+    if (a == push::Action::Send) ++sends;
+    if (a == push::Action::Close) break;
+  }
+  CHECK_EQ(sends, 0);
+  CHECK_EQ(asked, push::kMaxMisses);
 }
 
 }  // namespace

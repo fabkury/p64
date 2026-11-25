@@ -231,7 +231,12 @@ proves the refusals. The Wi-Fi driver's transmit buffers come from internal RAM,
 `vTaskDelete(nullptr)` leaks its stack and control block (F-35, the update check did, twice
 a day). To see who holds internal RAM, `tools\heap_trace_report.py` with a diagnosis build
 (its docstring has the steps; never trust `heap_by_task` of `diag/memory`, whose figures
-were nonsense on ESP-IDF 5.5.4). When a finding is fixed, mark it in
+were nonsense on ESP-IDF 5.5.4). The status push never sends to a WebSocket client that
+cannot take data at that moment (`p64_web/src/push_rules.hpp`, F-22: a blocking send holds
+the one HTTP task for 5 s); three missed pushes close it; `tests\device\ws_stall_smoke.py`.
+On the p64b the clock high with the data low means a seesaw board left mid-read by a reset:
+the encoder task clocks the bus free (`socket_bus_stuck`, F-37); the boards keep power
+through a restart, so only that or unplugging frees them. When a finding is fixed, mark it in
 the register in the same commit. The p64b runs the public tree since 2026-11-11, the test image when hooks are needed (build
 the plain one with `tools\idf.ps1 -B build_public -DP64_NO_PRIVATE=ON -DSDKCONFIG=build_public/sdkconfig
 build`, flash with `idf.py -B build_public -p COM13 flash`).

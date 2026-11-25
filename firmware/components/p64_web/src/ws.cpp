@@ -2,6 +2,7 @@
 // document as JSON text every 2 s and at once when something changes (spec 11.2).
 
 #include <algorithm>
+#include <map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -11,8 +12,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
+#include "lwip/sockets.h"
 #include "p64/net/http_server.hpp"
 #include "p64/web/web.hpp"
+#include "push_rules.hpp"
 
 namespace p64::web::ws {
 namespace {
@@ -23,6 +26,7 @@ constexpr size_t kMaxClients = 4;
 
 std::mutex g_mutex;
 std::vector<int> g_clients;  // socket descriptors of open WebSocket connections
+std::map<int, int> g_misses;  // per descriptor: pushes it could not take, in a row (push_rules.hpp)
 TaskHandle_t g_task = nullptr;
 volatile bool g_wake = false;
 
@@ -34,6 +38,7 @@ esp_err_t ws_handler(httpd_req_t *req) {
     // by the next client, and a stale entry would send it everything twice (F-22).
     g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
     g_clients.push_back(fd);
+    g_misses[fd] = 0;
     ESP_LOGI(TAG, "client %d connected (%u total)", fd, static_cast<unsigned>(g_clients.size()));
     // Four pages are served (decision D27, ADR 0019). Beyond that the page connected the
     // longest loses its push: its socket is closed, its script falls back to polling and
@@ -65,6 +70,23 @@ esp_err_t ws_handler(httpd_req_t *req) {
   return err;
 }
 
+// The client leaves the push list (its socket is the server's to close).
+void forget(int fd) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
+  g_misses.erase(fd);
+}
+
+// Whether the socket can take data without blocking: lwIP calls a TCP socket writable
+// while about half its send buffer is free, more than one status document.
+bool writable_now(int fd) {
+  fd_set w;
+  FD_ZERO(&w);
+  FD_SET(fd, &w);
+  timeval none = {0, 0};
+  return select(fd + 1, nullptr, &w, nullptr, &none) == 1 && FD_ISSET(fd, &w);
+}
+
 void broadcast(const std::string &text) {
   std::vector<int> clients;
   {
@@ -75,19 +97,38 @@ void broadcast(const std::string &text) {
   if (!server) return;
   for (int fd : clients) {
     if (httpd_ws_get_fd_info(server, fd) != HTTPD_WS_CLIENT_WEBSOCKET) {
-      std::lock_guard<std::mutex> lock(g_mutex);
-      g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
+      forget(fd);
       continue;
+    }
+    // Nothing is sent to a client that cannot take it now: the send would block the one
+    // HTTP task for its 5 s timeout, for every page (push_rules.hpp, finding F-22).
+    int misses = 0;
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      misses = g_misses[fd];
+    }
+    const push::Action action = push::next(writable_now(fd), misses);
+    if (action != push::Action::Send) {
+      if (action == push::Action::Close) {
+        ESP_LOGI(TAG, "client %d closed: it took none of the last %d pushes", fd, push::kMaxMisses);
+        httpd_sess_trigger_close(server, fd);
+        forget(fd);
+      } else {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        g_misses[fd] = misses;
+      }
+      continue;
+    }
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_misses[fd] = 0;
     }
     httpd_ws_frame_t frame = {};
     frame.type = HTTPD_WS_TYPE_TEXT;
     frame.payload = reinterpret_cast<uint8_t *>(const_cast<char *>(text.data()));
     frame.len = text.size();
     // Synchronous send from this task: the server serialises access to the socket.
-    if (httpd_ws_send_data(server, fd, &frame) != ESP_OK) {
-      std::lock_guard<std::mutex> lock(g_mutex);
-      g_clients.erase(std::remove(g_clients.begin(), g_clients.end(), fd), g_clients.end());
-    }
+    if (httpd_ws_send_data(server, fd, &frame) != ESP_OK) forget(fd);
   }
 }
 

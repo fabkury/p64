@@ -45,4 +45,12 @@ uint8_t notice_alpha(int64_t elapsed_us);
 // (seen 2026-09-29, two lines every 5 s). Probe only while both lines idle high.
 constexpr bool socket_idle_high(int sda_level, int scl_level) { return sda_level == 1 && scl_level == 1; }
 
+// The clock high and the data low is neither an empty socket (both low) nor an idle bus
+// (both high): a board is there, its pull-ups hold the clock up, and it holds the data
+// line down. That is what a board does when the controller was reset in the middle of a
+// read: it waits for clock pulses that never come, and since the boards keep their power
+// through a restart, only unplugging the device freed them (finding F-37, 2026-11-25:
+// both knobs gone after a day of flashing and resets). Nine clock pulses free it.
+constexpr bool socket_bus_stuck(int sda_level, int scl_level) { return sda_level == 0 && scl_level == 1; }
+
 }  // namespace p64::inputs

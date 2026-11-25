@@ -112,7 +112,7 @@ python tests/device/ui_smoke.py $p64Url
 | `makapix_smoke.py` | Internet and NTP; downloads and plays artwork. `--paired` also exercises account likes and paired playsets. |
 | `widgets_smoke.py`, `faces_smoke.py` | Select and inspect widgets/faces; network-backed widgets need their data prerequisites. |
 | `intro_smoke.py [--all]` | The intro animations (p101): the list, the off-screen render bench of all 21 against the frame budget, the `boot_animation` setting round trip, one animation (every one with `--all`) played on the panel for a slot with no late flips. |
-| `stream_smoke.py` | Sends UDP frames and takes over playback. |
+| `stream_smoke.py` | Sends UDP frames and takes over playback: raw and DDP, 64x64 and 128x128 pixel-exact, the counters, takeover off, the Stream state. Since 2026-11-25 also acceptance 18.9 as worded: DDP at 60 fps for 3 s with every frame received and latency under 30 ms, and the show back 5 s after the last frame. |
 | `panel_mode_smoke.py`, `brightness_smoke.py`, `timing_smoke.py` | Change display/playback settings; timing tests need suitable test artwork. |
 | `ops_smoke.py` | Changes night settings and ceiling; does not factory-reset. |
 | `imu_smoke.py`, `encoders_smoke.py` | Exercise input settings and diagnostics; encoder tests can watch physical turns/presses. |
@@ -126,6 +126,7 @@ python tests/device/ui_smoke.py $p64Url
 | `cardless_soak.py` | The test build only. Ejects the card virtually, runs `soak.py` on the cardless device and records the memory window every minute (downloads an hour, different artworks seen, heap lows) into `reports/`; gives the card back. `--minutes 720` is the overnight run. |
 | `memory_smoke.py` | The test build only (finding F-21). Holds the PSRAM back to 4 MB free, then: a 3 MB upload is refused with `507 NO_MEMORY` and a 1 MB one taken; a 3 MB play-this by URL is refused, served with its length and without it (this PC serves the filler); no restart, nothing lost; with the memory given back the same upload and download are taken. Nothing is written to the card. It moves megabytes, so it needs a healthy Wi-Fi link. |
 | `hooks_smoke.py` | The test build only. Reboots the device about ten times: the like path with the worker held, the time withheld, the IMU found late, a deliberate panic, abrupt resets during settings writes, two boots without the card. Clears every hook at the end. |
+| `ws_stall_smoke.py` | Finding F-22 (abuse lane): a WebSocket opened with a small receive buffer and never read, for 90 s, beside one status request a second and a healthy WebSocket client. No answer may take longer than one send timeout (8 s allowed), at most two may be slow, the healthy client keeps its pushes, no restart. |
 | `ws_smoke.py`, `ui_smoke.py` | WebSocket and browser-route checks; inspect scripts for their complete scope. |
 | `soak.py` | Changes playset and swap interval for the run; restores them at normal completion. |
 
